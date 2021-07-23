@@ -2,24 +2,7 @@
 
 game_log("STARTING UPGRADE AND COMPOUND SCRIPT");
 
-var upgradeWhitelist = {
-		//ItemName, Max Level
-        hbow: 6,
-        helmet: 6
-	};
 
-var combineWhitelist = {
-		//ItemName, Max Level
-    intamulet: 1,
-    stramulet: 1,
-    dexamulet: 1,
-    vitamulet: 1,
-    intring: 1,
-    dexring: 1,
-    strring: 1,
-    vitring: 1
-
-	}
 
 
 function upgrade() {

@@ -12,7 +12,7 @@
 game_log("STARTING AUTO-MERCHANT SCRIPT");
 
 var state = "selling";
-var max_timer = 150;
+var max_timer = 60;
 var timer = max_timer;
 var current_member = 1;
 var collection_done = false;
@@ -134,7 +134,7 @@ function merchant_mluck(){
         if(parent.entities[m]  && parent.entities[m].type == "character" && !parent.entities[m].s.mluck && character.mp > G.skills.mluck.mp 
         && distance(character, parent.entities[m]) < G.skills.mluck.range && can_use("mluck")){
         //log('Buffing [' + m + "] with Merchant's Luck", 'green');
-        use_skill('mluck', m);
+            use_skill('mluck', m);
         }
         
         

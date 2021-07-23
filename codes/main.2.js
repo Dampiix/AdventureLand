@@ -1,29 +1,26 @@
 //CODE for AdventureLand
-//autorerun
+
 
 game_log("STARTING MAIN SCRIPT");
-var party_list = ["DampiixMerch", "DampiixPri", "Dampiix", "Dampiiix"];
 
-var farm_monster = ["minimush"];
-var monster_list = [farm_monster[0],
- "goo", "crab", "bee", "croc", "armadillo", "squig","squigtoad", "snake","osnake", "arcticbee", "porcupine", "minimush"];
+load_code("lists");
 
 var min_potions = 5;                        //number of potions at which to buy new ones
 var purchase_amount = 200;                  //amount to buy
-var potion_types = ["hpot0", "mpot0"];      //types of potions to resupply
-var gold_keep = 10000;                      //amount of gold to keep for buying potions
-
-//Items to sell to traders
-var sell_list = ["slimestaff", "hpbelt", "hpamulet", "ringsj", "stinger",
-                 "wcap", "wshoes", "wattire", "wbreeches", "wgloves"];
-//items to keep, and not send to the merchant
-var keep_item_list = [potion_types[0], potion_types[1],"tracker"];
+var gold_keep = 50000;                      //amount of gold to keep for buying potions
 
 var last_respawn = null;
 
 var state = "farm";
 
-var party_created = false;
+var party_created = false; 
+var enable_monsterhunt = false;
+var gather_in_city = false;
+var farm_firebird = true; 
+
+var temp_party_list = [0,1,2,3];
+var succ_magiport = 0;
+var last_magiport = null;
 
 if(character.ctype == "merchant"){
     load_code("auto-merchant");
@@ -62,12 +59,15 @@ setInterval(function(){
             set_message("SNOWMAN", "blue");
             break;
 
+        case "phoenix":
+            farm_phoenix();
+            break;
         case "resupply":
             potion_run();
             set_message("resupplying", "yellow");
             break;  
     }
-}, 100); //10 times per second
+}, 50); //20 times per second
 
 //Utility Loop
 setInterval(function(){
@@ -76,6 +76,7 @@ setInterval(function(){
     manage_inventory();
     manage_respawn();
     loot();  
+    //autorerun
 },500);
 
 
@@ -85,6 +86,17 @@ function state_controller(){
 
     if(character.ctype == "merchant" && party_created){
         new_state = "merchant_state";
+    }
+
+    //TEMP CODE TO GET ALL CHARACTERS TO THE MAIN CITY
+
+    if (gather_in_city == true){
+        if(!smart.moving){
+            smart_move({map: "main"});
+            return;
+        }else{
+            return;
+        }
     }
 
     //check for potions
@@ -102,10 +114,12 @@ function state_controller(){
     if(character.ctype != "merchant" && new_state != "resupply"){
         if(parent.S.snowman != undefined){
             new_state = "snowman";
-        }else if(character.s.monsterhunt && monster_list.includes(character.s.monsterhunt.id)){
+        }else if(enable_monsterhunt == true && character.s.monsterhunt && monster_list.includes(character.s.monsterhunt.id)){
             new_state = "monsterhunt";
-        }else if(!character.s.monsterhunt && character.ctype != "priest" ){
+        }else if(enable_monsterhunt == true && !character.s.monsterhunt && character.ctype != "priest" ){
             new_state = "get_monsterhunt";
+        }else if(farm_firebird){
+            new_state = "phoenix"
         }else{
             new_state = "farm";
         }
@@ -128,20 +142,28 @@ function manage_respawn(){
 
 function use_pots(){
 
-	if(character.hp < character.max_hp-200){
+	if(character.hp <= character.max_hp/2){
 		//use_hp_or_mp();
 		use_skill('use_hp');
 	}
-	if(character.mp <= character.mp_cost *10){
+	if(character.mp <= character.max_mp/2){
 		//use_hp_or_mp();
 		use_skill('use_mp');
 	}	
 }
 
 function farm(){
-	var target = find_viable_targets()[0];
+
+    if(character.ctype == "priest"){
+        priest_basic_heal();
+    }
+    
+    
+    var target = find_viable_targets()[0];
+	
 	//Attack or move to target
     if (target != null) {
+        
         if (distance_to_point(target.real_x, target.real_y) < character.range) {
             if (can_attack(target)) {
                 attack(target);
@@ -454,12 +476,15 @@ function get_monsterhunt(){
 
 function snowman_event(){
     var snowman_map = parent.S.snowman.map;
-    var snowman_location = {x: parent.S.snowman.x, y: parent.S.snowman.y, map: parent.S.snowman.map}
+    var snowman_location = {x: parent.S.snowman.x, y: parent.S.snowman.y, map: parent.S.snowman.map};
 
 	var snowman = get_nearest_monster({type: "snowman"});
 	var target = get_targeted_monster();
 
     if (character.ctype == "merchant") return;
+    if(character.ctype == "priest"){
+        priest_basic_heal();
+    }
     if(!target){
         if(snowman){
             change_target(snowman);
@@ -480,3 +505,90 @@ function snowman_event(){
     }
 }
 
+function farm_phoenix(){
+
+    
+    //Mage walks around looking for Phoenix
+    if(character.ctype == "mage"){
+    set_message("phoenix");
+    farm_monster = ["phoenix"];
+    //var target = find_viable_targets()[0];
+    var target = get_nearest_monster({type: farm_monster[0]});
+        if (target != null) {
+            if(temp_party_list.length == 0){
+                farm();
+            } 
+            //use magiport when close to phoenix
+            if (distance_to_point(target.real_x, target.real_y) < character.range) {
+
+                for(m in party_list){
+                    if(parent.party[party_list[m]].type == "merchant"){
+                            temp_party_list.pop();
+                            continue;
+                    }else if(party_list[m] == character.name){
+                            temp_party_list.pop();
+                            continue;
+                    }
+                    if(temp_party_list.length > 0 && succ_magiport < 2){
+                    //if(distance(character,parent.party[party_list[m]]) > 300){
+                        if(character.mp < 1000){
+                            if(can_use("use_mp")){
+                                use_skill("use_mp");
+                            }
+                        }else if(can_use("magiport") && character.mp > 1000){
+                                use_skill("magiport", party_list[m]);
+                                game_log(party_list[m]);
+                        }
+                    }
+                    
+                }
+            }else {
+                move_to_target(target);
+            }
+        }else{
+            temp_party_list = [0,1,2,3];
+            if (!smart.moving) {
+                
+                game_log("finding a target");
+                smart_move({ to: farm_monster[0] });
+            }
+        }
+    }
+
+    //if not mage -> kill nearby mobs from list
+    else{
+    set_message("farm");
+    farm_monster = ["phoenix","mvampire"];
+    var target = find_viable_targets()[0];
+    if(target != null){
+        if(character.ctype == "warrior"){
+            if(can_use("taunt")){
+                use_skill("taunt");
+            }
+        }
+        farm();
+    }else{
+        farm_monster = monster_list;
+        target = find_viable_targets()[0];
+        farm();
+    }
+}
+ 
+
+} 
+
+function on_magiport(name){
+    if(name == "Dampiix"){
+        accept_magiport(name);
+        accept_magiport(name);
+        accept_magiport(name);
+        accept_magiport(name);
+        accept_magiport(name);
+        game_log("accepted");
+        temp_party_list.pop();
+        succ_magiport++;
+        last_magiport = new Date();
+    }
+    
+    
+}
