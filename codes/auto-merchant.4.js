@@ -12,7 +12,7 @@
 game_log("STARTING AUTO-MERCHANT SCRIPT");
 
 var state = "selling";
-var max_timer = 60;
+var max_timer = 100;
 var timer = max_timer;
 var current_member = 1;
 var collection_done = false;

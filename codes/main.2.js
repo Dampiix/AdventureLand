@@ -6,19 +6,19 @@ game_log("STARTING MAIN SCRIPT");
 load_code("lists");
 
 var min_potions = 5;                        //number of potions at which to buy new ones
-var purchase_amount = 200;                  //amount to buy
-var gold_keep = 50000;                      //amount of gold to keep for buying potions
+var purchase_amount = 400;                  //amount to buy
+var gold_keep = 100000;                     //amount of gold to keep for buying potions
 
 var last_respawn = null;
 
 var state = "farm";
-
+ 
 var party_created = false; 
-var enable_monsterhunt = false;
+var enable_monsterhunt = false; 
 var gather_in_city = false;
-var farm_firebird = true; 
-
-var temp_party_list = [0,1,2,3];
+var farm_firebird = false;                   //set true to farm phoenix
+ 
+var temp_party_list = [0,1,2,3]; 
 var succ_magiport = 0;
 var last_magiport = null;
 
@@ -67,7 +67,7 @@ setInterval(function(){
             set_message("resupplying", "yellow");
             break;  
     }
-}, 50); //20 times per second
+}, 75);
 
 //Utility Loop
 setInterval(function(){
@@ -94,9 +94,8 @@ function state_controller(){
         if(!smart.moving){
             smart_move({map: "main"});
             return;
-        }else{
-            return;
         }
+        return;
     }
 
     //check for potions
@@ -142,25 +141,49 @@ function manage_respawn(){
 
 function use_pots(){
 
-	if(character.hp <= character.max_hp/2){
+	if(character.hp <= character.max_hp * 0.7){
 		//use_hp_or_mp();
 		use_skill('use_hp');
 	}
-	if(character.mp <= character.max_mp/2){
+	if(character.mp <= character.max_mp-750){
 		//use_hp_or_mp();
 		use_skill('use_mp');
 	}	
 }
 
 function farm(){
+    var target = null;
+    var tank = party_list[0];
+    target = find_viable_targets()[0];
+    var tank_pos = {x: get_parent("DampiixWar",true).character.real_x, y: get_parent("DampiixWar",true).character.real_y};
+
+
 
     if(character.ctype == "priest"){
         priest_basic_heal();
     }
-    
-    
-    var target = find_viable_targets()[0];
-	
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    /////////////////////////////////////NEEDS MORE WORK////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    if(character.name != tank){
+        if(character.map != get_parent("DampiixWar",true).character.map){
+            if(!smart.moving){
+                smart_move(get_parent("DampiixWar",true).character.map)
+            }
+            return;
+        }
+        if(character.map == get_parent("DampiixWar",true).character.map && distance_to_point(tank_pos.x, tank_pos.y) > character.range*0.8){
+            if(!is_moving(character) && can_move_to(tank_pos) && !smart.moving){
+                xmove(tank_pos.x, tank_pos.y);  
+            }
+            return;
+        }
+    }
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 	//Attack or move to target
     if (target != null) {
         
@@ -169,13 +192,25 @@ function farm(){
                 attack(target);
             }
         }else {
+            /*
+            if(smart.moving){
+                return;
+            }
+            */
             move_to_target(target);
         }
 	}else{
 		if (!smart.moving) {
-			game_log("finding a target");
-            smart_move({ to: farm_monster[0] });
+            if(farm_monster[0] == "cgoo"){
+                game_log("finding a target");
+                smart_move({map: "arena", type: farm_monster[0]});
+            }else{
+                game_log("finding a target");
+                smart_move({ to: farm_monster[0] });
+            }
+			
         }
+        return;
 	}
 }
 
@@ -218,7 +253,7 @@ function find_viable_targets() {
         if (dist_current < dist_next) {
             return -1;
         }else if (dist_current > dist_next) {
-            return 1
+            return 1;
         }else {
             return 0;
         }
@@ -321,12 +356,12 @@ function manage_inventory(){
         dist_to_merchant = distance_to_point(potion_merchant.position[0], potion_merchant.position[1]);
     }
 
-    if(empty_slots() < 5){
+    if(empty_slots() < 3){
         if(!smart.moving){
             smart_move({to: "potions"}, function(){
                 sell_items();
             });
-        }   
+        }    
     }
 
     if(dist_to_merchant != null && dist_to_merchant < 250){
@@ -394,11 +429,11 @@ function create_party(){
 
 function send_to_merchant(){
 	if(character.ctype != "merchant"){
-		let merchant = get_player(party_list[0]);
+		let merchant = get_player(party_list[3]);
 		if(merchant != null){
 			//send items to merchant
 			if(character.gold > gold_keep * 2){
-				send_gold(party_list[0], gold_keep);
+				send_gold(party_list[3], gold_keep);
 			}
 
 			for(let i in character.items){
@@ -407,7 +442,7 @@ function send_to_merchant(){
 					if(!keep_item_list.includes(item.name)){
 						//send items to merchant
 						var slot = locate_item(item.name);
-						send_item(party_list[0], slot, 9999);
+						send_item(party_list[3], slot, 9999);
 					}
 				}
 			}
@@ -472,7 +507,7 @@ function get_monsterhunt(){
             }, character.ping);
         });
     }
-}
+} 
 
 function snowman_event(){
     var snowman_map = parent.S.snowman.map;
@@ -485,9 +520,16 @@ function snowman_event(){
     if(character.ctype == "priest"){
         priest_basic_heal();
     }
+    if(character.ctype == "warrior"){
+        if(character.mp > 700 && can_use("taunt")){
+            use_skill("taunt");
+        }else if(character.mp < 700){
+            use_skill("use_mp"); 
+        }
+    }
     if(!target){
         if(snowman){
-            change_target(snowman);
+            change_target(snowman); 
         }else{
             if(!smart.moving){
                 smart_move(snowman_location)
@@ -531,7 +573,7 @@ function farm_phoenix(){
                     }
                     if(temp_party_list.length > 0 && succ_magiport < 2){
                     //if(distance(character,parent.party[party_list[m]]) > 300){
-                        if(character.mp < 1000){
+                        if(character.mp < 2000){
                             if(can_use("use_mp")){
                                 use_skill("use_mp");
                             }
@@ -562,8 +604,10 @@ function farm_phoenix(){
     var target = find_viable_targets()[0];
     if(target != null){
         if(character.ctype == "warrior"){
-            if(can_use("taunt")){
+            if(distance_to_point(target.x,target.y) < character.range && character.mp > 700 && can_use("taunt")){
                 use_skill("taunt");
+            }else if(character.mp < 700){
+                use_skill("use_mp");
             }
         }
         farm();
@@ -578,6 +622,7 @@ function farm_phoenix(){
 } 
 
 function on_magiport(name){
+    game_log("Got a Magiport invite");
     if(name == "Dampiix"){
         accept_magiport(name);
         accept_magiport(name);
@@ -587,8 +632,18 @@ function on_magiport(name){
         game_log("accepted");
         temp_party_list.pop();
         succ_magiport++;
-        last_magiport = new Date();
     }
     
     
+}
+
+function get_parent(name, is_master) {
+    if (is_master) {
+        return parent.parent;
+    } else {
+        const char_iframe = parent.parent.$("#ichar"+name.toLowerCase())[0];
+        if (char_iframe) {
+            return char_iframe.contentWindow;
+        }
+    }
 }

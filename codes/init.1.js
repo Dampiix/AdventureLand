@@ -1,7 +1,7 @@
 //Initialize the scripts
 
 load_code("lists");
-//var party_list = ["DampiixMerch", "DampiixPri", "Dampiix", "Dampiiix"];
+//var party_list = ["DampiixMerch", "DampiixPri", "Dampiiix", "Dampiiix"];
 
 game_log("STARTING SCRIPTS");
 load_code("main");

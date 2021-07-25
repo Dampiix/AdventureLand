@@ -49,11 +49,10 @@ function priest_basic_heal(){
     var lowest_health = lowest_health_partymember();
     
     //If we have a target to heal, heal them. Otherwise attack a target.
-    if (character.ctype == "priest" && lowest_health != null && lowest_health.health_ratio < 0.80) {
+    if (character.ctype == "priest" && lowest_health != null && lowest_health.health_ratio < 0.90) {
         if (distance_to_point(lowest_health.real_x, lowest_health.real_y) < character.range) {
             heal(lowest_health);
-        }
-        else {
+        }else {
             move_to_target(lowest_health);
         }
     }

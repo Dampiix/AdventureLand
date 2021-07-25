@@ -1,13 +1,13 @@
 // CODE to store all lists used in other code
 game_log("LOADING LISTS");
 
-var party_list = ["DampiixMerch","Dampiix","DampiixWar","DampiixPri" ];
+var party_list = ["DampiixWar","Dampiiix","DampiixPri","DampiixMerch" ];
 
-var farm_monster = ["arcticbee"];
+var farm_monster = ["cgoo"];
 var monster_list = [farm_monster[0],
                     "goo", "crab", "bee", "croc", "armadillo", "frog",
                      "squig", "squigtoad", "snake","osnake", "arcticbee",
-                     "porcupine", "minimush","bat"];
+                     "porcupine", "minimush","bat","goldenbat"];
 
  var potion_types = ["hpot1", "mpot1"];      //types of potions to resupply
 
@@ -16,7 +16,8 @@ var sell_list = ["whiteegg","spores",
                  "slimestaff", "hpbelt", "hpamulet", "ringsj", "mushroomstaff", "stinger",
                 "wcap", "wshoes", "wattire", "wbreeches", "wgloves",
                 "vitearring","vitring",
-                "vitscroll"
+                "vitscroll",
+                "stramulet", "dexamulet","wbook0","bwing"
                 /*,
                 "intearring", "strearring", "dexearring",
                 "intring", "strring", "dexring",
@@ -28,21 +29,21 @@ var keep_item_list = [potion_types[0], potion_types[1],"tracker"];
 
 var upgradeWhitelist = {
     //ItemName, Max Level
-    /*hbow: 6,
-    firestaff: 6,
-    fireblade: 6 */
+    //firestaff: 6
+    //fireblade: 6
+    //coat: 7
 };
 
 var combineWhitelist = {
     //ItemName, Max Level
-intamulet: 1,
-stramulet: 1,
-dexamulet: 1,
-vitamulet: 1,
-intring: 1,
-dexring: 1,
-strring: 1,
-vitring: 1
+    intamulet: 1,
+    stramulet: 1,
+    dexamulet: 1,
+    vitamulet: 1,
+    intring: 1,
+    dexring: 1,
+    strring: 1,
+    vitring: 1
 
 }
 
