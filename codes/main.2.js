@@ -174,7 +174,7 @@ function farm(){
             return;
         }
         if(character.map == get_parent("DampiixWar",true).character.map && distance_to_point(tank_pos.x, tank_pos.y) > character.range*0.8){
-            if(!is_moving(character) && can_move_to(tank_pos) && !smart.moving){
+            if(!is_moving(character) && can_move_to(tank_pos)){
                 xmove(tank_pos.x, tank_pos.y);  
             }
             return;
@@ -192,11 +192,11 @@ function farm(){
                 attack(target);
             }
         }else {
-            /*
-            if(smart.moving){
+            
+            if(smart.moving && character.name == tank){
                 return;
             }
-            */
+            
             move_to_target(target);
         }
 	}else{

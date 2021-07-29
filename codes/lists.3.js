@@ -6,7 +6,7 @@ var party_list = ["DampiixWar","Dampiiix","DampiixPri","DampiixMerch" ];
 var farm_monster = ["cgoo"];
 var monster_list = [farm_monster[0],
                     "goo", "crab", "bee", "croc", "armadillo", "frog",
-                     "squig", "squigtoad", "snake","osnake", "arcticbee",
+                     "squig", "squigtoad","osnake", "snake", "arcticbee",
                      "porcupine", "minimush","bat","goldenbat"];
 
  var potion_types = ["hpot1", "mpot1"];      //types of potions to resupply
@@ -17,7 +17,8 @@ var sell_list = ["whiteegg","spores",
                 "wcap", "wshoes", "wattire", "wbreeches", "wgloves",
                 "vitearring","vitring",
                 "vitscroll",
-                "stramulet", "dexamulet","wbook0","bwing"
+                "stramulet", "dexamulet","bwing",
+                "coat","gloves","shoes","pants","helmet"
                 /*,
                 "intearring", "strearring", "dexearring",
                 "intring", "strring", "dexring",
@@ -29,9 +30,14 @@ var keep_item_list = [potion_types[0], potion_types[1],"tracker"];
 
 var upgradeWhitelist = {
     //ItemName, Max Level
-    //firestaff: 6
-    //fireblade: 6
-    //coat: 7
+    t2bow: 6,
+    sword: 4,
+    pmace: 6,
+    crossbow: 6,
+    basher: 6
+
+
+
 };
 
 var combineWhitelist = {
