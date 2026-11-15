@@ -386,8 +386,56 @@ module.exports = function createWorkshop(ctx) {
             }
         }
         util.log("workshop", "not enough copies to build " + w.name + " +" + w.level + " yet", "orange");
+        noteShortage(w.name, w.level);
         blockedUntil[k] = Date.now() + cfg.giveUpForMs;
         return false;
+    }
+
+    // ---- drop shortages ----------------------------------------------------------
+    //
+    // Wished items we can't build for lack of copies (and config.drops.want) are
+    // reported to the leader, whose guide finds the drop route (bot_drops).
+
+    const shortages = {}; // name -> { level, at }
+    let nextDropReportAt = 0;
+
+    function noteShortage(name, level) {
+        shortages[name] = { level: level, at: Date.now() };
+    }
+
+    function unlockedCopies(name) {
+        const list = [];
+        character.items.forEach(function (i) { if (i && i.name === name && !i.l && !i.p) list.push(i.level || 0); });
+        (bankSnapshot ? bankSnapshot.items : []).forEach(function (b) { if (b.name === name) list.push(b.level); });
+        return list;
+    }
+
+    // +0 copies still missing for name +level: three of a level make one of the next.
+    function copiesMissing(name, level) {
+        const compound = !!(G.items[name] && G.items[name].compound);
+        const levels = unlockedCopies(name);
+        if (!compound) return levels.length ? 0 : 1; // upgradeable: one base copy is enough
+        const owned = levels.reduce(function (sum, l) { return sum + (l >= level ? Infinity : Math.pow(3, l)); }, 0);
+        return Math.max(0, Math.pow(3, level) - owned);
+    }
+
+    function reportDrops() {
+        const d = config.drops;
+        if (!d || !d.enabled || !config.leader || Date.now() < nextDropReportAt) return;
+        nextDropReportAt = Date.now() + d.reportMs;
+        const list = [];
+        Object.keys(shortages).forEach(function (name) {
+            const s = shortages[name];
+            const wished = fighters().some(function (f) { return wishList(f).some(function (w) { return w.name === name; }); });
+            const missing = wished && Date.now() - s.at < 2 * 60 * 60 * 1000 ? copiesMissing(name, s.level) : 0;
+            if (missing > 0) list.push({ name: name, copies: missing });
+            else delete shortages[name];
+        });
+        (d.want || []).forEach(function (w) {
+            const missing = (w.copies || 1) - unlockedCopies(w.name).length;
+            if (G.items[w.name] && missing > 0 && !list.some(function (x) { return x.name === w.name; })) list.push({ name: w.name, copies: missing });
+        });
+        comms.send(config.leader, "drops", { list: list });
     }
 
     // Without open wishes: combine spare accessories/books up to autoUpTo.
@@ -698,6 +746,7 @@ module.exports = function createWorkshop(ctx) {
                 pay(k, def.g);
             } else if (!(await buyWithTokens(w.name))) {
                 util.log("workshop", "no copy of " + w.name + " and no shop or token offer for it", "orange");
+                if (!tokenOffer(w.name)) noteShortage(w.name, 0); // drop-only item: the team can farm it
                 blockedUntil[k] = Date.now() + cfg.giveUpForMs;
                 return false;
             }
@@ -976,6 +1025,7 @@ module.exports = function createWorkshop(ctx) {
 
         // Ping fighters that have finished items waiting.
         sampleIncome();
+        reportDrops();
         fighters().forEach(function (fighter) {
             if (readyFor(fighter).length || goalReadyFor(fighter).length) comms.send(fighter, "ready", {});
         });

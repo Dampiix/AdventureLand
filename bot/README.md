@@ -42,6 +42,7 @@ rogue) fight with basic attacks.
 | `core/hunts.js` | 32 `bot_hunts` | Monster Hunts: pick a safe hunt of any party fighter, Daisy trips, turn in |
 | `core/gear.js` | 33 `bot_gear` | fighter: equipment wishes from the progression guide, equips the guide's upgrades |
 | `core/events.js` | 35 `bot_events` | live events and world bosses: join events, travel to bosses, search the Phoenix |
+| `core/drops.js` | 37 `bot_drops` | leader: farms the drop route for items the merchant is missing |
 | `roles/workshop.js` | 34 `bot_workshop` | merchant: fulfils wishes from bag, bank, upgrades or compounds; combines spare accessories |
 
 ## Phases and the party
@@ -79,6 +80,19 @@ a reported position (Snowman) are travelled to, roaming bosses listed in `events
 searched across their spawn areas every 10 minutes and engaged whenever one shows up. Events beat
 hunts, hunts beat farming; no Daisy trips during events. Cooperative monsters may be attacked while
 they fight other players, because every contributor is rewarded.
+
+## Drop farming
+
+Items that can't be bought (rings, earrings, amulets, books ...) come before XP.
+- **What is missing:** the merchant reports it to the leader every 5 minutes. These are wished
+  items it can't build for lack of copies, counted as +0 copies across bag and bank (three of a
+  level make one of the next), plus `drops.want`.
+- **Where to farm:** the leader asks its progression guide for each item (`get_progression` with an
+  item goal). The guide answers with the best safe drop route and its kill cycle and drop rate.
+- **When to farm:** a route needing at most `drops.maxHoursPerCopy` (4 h) per copy is farmed, the
+  fastest item first. Slower ones are only logged.
+- **Order:** events, hunts and a configured farm target still come first. Crowded drop spots are
+  skipped like crowded guide spots. A shortage ends when the copies are there or the wish is gone.
 
 ## Equipment (workshop)
 

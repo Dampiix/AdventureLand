@@ -6,9 +6,10 @@
 //   2. an open, safe Monster Hunt of any party fighter (bot_hunts)
 //   3. per-character or global farm setting (config.characters[name].farm,
 //      config.targeting.farm)
-//   4. the game's progression guide: get_progression().choices
+//   4. a drop route for an item the merchant is missing (bot_drops)
+//   5. the game's progression guide: get_progression().choices
 //      (top safe farm routes for this character's current gear)
-//   5. config.targeting.fallback
+//   6. config.targeting.fallback
 // Party members use the leader's farm target instead.
 //
 // Target choice:
@@ -59,9 +60,10 @@ module.exports = function createTargeting(ctx) {
 
     // Called by the fighter every combat tick. If we stand on the farm map for
     // a while without any free target (other players clear the spot), mark the
-    // spot as crowded and move on to the guide's next choice.
+    // spot as crowded and move on to the guide's next choice (or the next drop route).
     function reportSearch(found) {
-        if (found || !farm || !String(farm.source).startsWith("guide") || character.map !== farm.map) {
+        const src = farm ? String(farm.source) : "";
+        if (found || !farm || !(src.startsWith("guide") || src.startsWith("drop")) || character.map !== farm.map) {
             idleSince = 0;
             return;
         }
@@ -109,7 +111,18 @@ module.exports = function createTargeting(ctx) {
         }
 
         const now = Date.now();
-        if (farm && now < nextPickAt) return farm; // hunt/leader targets reset nextPickAt to 0
+
+        // Items that can't be bought come before XP: the merchant reports what is
+        // missing, the guide names the drop route (bot_drops).
+        const drop = !override && ctx.drops ? ctx.drops.target(function (m) { return crowdedUntil[m] > now; }) : null;
+        if (drop) {
+            if (!farm || farm.monster !== drop.monster) util.log("target", "farm target: " + drop.monster + " (" + drop.source + ")", "yellow");
+            farm = drop;
+            nextPickAt = 0; // back to the guide as soon as the item is complete
+            return farm;
+        }
+
+        if (farm && now < nextPickAt) return farm; // hunt/leader/drop targets reset nextPickAt to 0
 
         let next = override ? { monster: override, source: "config" } : fromProgression();
         if (!next) next = { monster: config.targeting.fallback, source: "fallback" };

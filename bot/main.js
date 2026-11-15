@@ -5,7 +5,7 @@
 // other characters of the current phase as CODE-only characters in the
 // same client, each running this same slot. Every character looks itself
 // up in bot_config and loads its role:
-//   fighter  -> bot_fighter + its class module + party + hunts + events + targeting + gear + supply
+//   fighter  -> bot_fighter + its class module + party + hunts + events + drops + targeting + gear + supply
 //   merchant -> bot_merchant + bot_workshop
 // =====================================================================
 
@@ -69,6 +69,7 @@ function startBot() {
         botParty = ctx.party;
         ctx.hunts = require_code("bot_hunts")(ctx);
         ctx.events = require_code("bot_events")(ctx);
+        ctx.drops = require_code("bot_drops")(ctx);
         const classSlot = BOT_CLASS_SLOTS[character.ctype];
         const cls = classSlot ? require_code(classSlot)(ctx) : noClassModule();
         ctx.targeting = require_code("bot_targeting")(ctx);

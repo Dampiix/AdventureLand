@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.12.0",
+    version: "1.13.0",
 
     team: {
         leader: "DmpxPalTank",                          // played in the client, starts the others, tanks
@@ -60,6 +60,18 @@ module.exports = {
         waitAtDaisyMs: 6000,             // leader waits so members can talk to Daisy too
         daisyRange: 200,                 // how close counts as standing at Daisy
         shareMs: 10000,                  // members report their hunt to the leader this often
+    },
+
+    // Items that can't be bought come before XP (approved 2026-11-15). The merchant
+    // reports what is missing (wishes without enough copies + `want`), the leader's
+    // guide names the best drop route and its expected time.
+    drops: {
+        enabled: true,
+        maxHoursPerCopy: 4,         // slower drops are not farmed (guide's own time estimate)
+        refreshMs: 5 * 60 * 1000,   // leader re-asks the guide this often
+        reportMs: 5 * 60 * 1000,    // merchant reports shortages this often
+        // Extra stock to collect even without a wish: { name, copies } (bag + bank, any level)
+        want: [],
     },
 
     targeting: {
