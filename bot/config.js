@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.10.3",
+    version: "1.11.0",
 
     team: {
         leader: "DmpxPalTank",                          // played in the client, starts the others, tanks
@@ -153,6 +153,13 @@ module.exports = {
             budgetPerLevel: 300000,  // gold per target level per 24 h (fodder + scrolls)
             maxAttempts: 25,         // fodder attempts per farming round
         },
+        // Spare copies to upgrade when idle (approved 2026-11-15): Phoenix weapons are kept
+        // as spares; the best copy below upTo is upgraded, failures use up surplus copies,
+        // never going below `spares` copies in total.
+        stock: [
+            { name: "fireblade", upTo: 7, spares: 3 },
+            { name: "firestaff", upTo: 7, spares: 3 },
+        ],
         // Fixed wishes on top of the guide's. Items without a shop are bought with tokens
         // (Monster Tokens at Daisy). Steps below the risk tier are not attempted: the copy
         // is delivered at the level reached and the fighter's guide decides whether to wear it.
@@ -166,7 +173,7 @@ module.exports = {
         // Exchange (approved 2026-11-15: everything except seasonal items).
         exchange: {
             enabled: true,
-            items: ["armorbox", "gem0", "gem1", "seashell"],
+            items: ["gem0", "gem1", "seashell"], // armor boxes stopped 2026-11-15 (their rewards only filled the bank)
             batch: 10,     // exchanges per round, so deliveries are not delayed for long
             keepFree: 8,   // stop while fewer bag slots are free (rewards need room)
         },
@@ -204,6 +211,12 @@ module.exports = {
             // they are compound/upgrade material the progression guide asks for.
             { name: "helmet", maxLevel: 3 },
             { name: "mace", maxLevel: 2 },
+            // armor box rewards: tier-1 and heavy armor at +0 – useless for a level-60 team
+            // (approved 2026-11-15; X-armor, Fury and Starkillers are kept)
+            "coat1", "helmet1", "pants1", "gloves1", "shoes1",
+            "hhelmet", "harmor", "hpants", "hgloves", "hboots",
+            // rat tails: every recipe needs 30+ – we have 5
+            "rattail",
         ],
         // Items the merchant hands to a fighter on its next delivery (one-off gifts).
         give: {

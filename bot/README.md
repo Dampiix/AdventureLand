@@ -101,6 +101,13 @@ If the next upgrade step is below 70 %, the copy is delivered at the level reach
 is not fulfilled again for 6 hours. Finished items go out on the next
 delivery; the fighter follows its guide's "equip" advice and hands the old piece back.
 
+## Spare upgrades
+
+`workshop.stock` lists items we keep many spare copies of (Phoenix weapons). When there is nothing
+else to do, the merchant upgrades the best spare below `upTo` with the usual risk rules; while more than
+`spares` copies exist, failures (which use up surplus copies) are acceptable. Budget: `budgetPerWish` per
+item per session.
+
 ## Merchant flow
 
 ```

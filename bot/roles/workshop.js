@@ -521,7 +521,47 @@ module.exports = function createWorkshop(ctx) {
     }
 
     // Upgrade the copy at `index` towards `target`. Returns true on success.
-    async function develop(fighter, w) {
+    // ---- stock upgrades ---------------------------------------------------------
+    //
+    // config.workshop.stock: items we hold many spare copies of (Phoenix weapons).
+    // Without open wishes, the best copy below upTo is upgraded step by step with
+    // the usual risk rules. While we hold more than `spares` copies, a copy counts
+    // as replaceable, so failures (which use up surplus copies) are acceptable.
+
+    function totalCopies(name, filter) {
+        const inBag = character.items.filter(function (i) { return i && i.name === name && (!filter || filter(i.level || 0)); }).length;
+        const inBank = bankSnapshot ? bankSnapshot.items.filter(function (b) { return b.name === name && (!filter || filter(b.level)); }).length : 0;
+        return inBag + inBank;
+    }
+
+    async function stockUpgrade() {
+        const now = Date.now();
+        for (const rule of cfg.stock || []) {
+            const k = key("_stock", { name: rule.name, level: rule.upTo });
+            if (blockedUntil[k] > now) continue;
+            const total = totalCopies(rule.name);
+            if (total <= rule.spares) continue;
+            if (!totalCopies(rule.name, function (l) { return l < rule.upTo; })) continue;
+            if (character.esize < 3) return false;
+            util.status("upgrading spare " + rule.name, "orange");
+            try {
+                await develop("_stock", { name: rule.name, level: rule.upTo }, { replaceable: total > rule.spares });
+            } catch (e) {
+                util.log("workshop", "spare " + rule.name + ": " + util.errReason(e), "orange");
+                blockedUntil[k] = Date.now() + cfg.giveUpForMs;
+            }
+            if (reachedOnly[k] !== undefined) {
+                // Next step too risky right now: try again later (grace or luck may help).
+                delete reachedOnly[k];
+                blockedUntil[k] = Date.now() + cfg.giveUpForMs;
+            }
+            return true;
+        }
+        return false;
+    }
+
+    // opts.replaceable overrides the shop check (e.g. a spare we hold many copies of).
+    async function develop(fighter, w, opts) {
         const k = key(fighter, w);
         const def = G.items[w.name];
         if (!def.upgrade) {
@@ -568,7 +608,8 @@ module.exports = function createWorkshop(ctx) {
 
             const grade = item_grade(item);
             // Re-buyable from an NPC = replaceable; token/bank-only copies are precious.
-            const minChance = minChanceFor(item, !!sellerOf(w.name), 1);
+            const replaceable = opts && opts.replaceable !== undefined ? opts.replaceable : !!sellerOf(w.name);
+            const minChance = minChanceFor(item, replaceable, 1);
             let scroll = "scroll" + grade;
             await ensureScroll(k, scroll, w.level - level);
             await goTo("newupgrade");
@@ -644,6 +685,7 @@ module.exports = function createWorkshop(ctx) {
         const open = openWishes().filter(function (o) { return bagIndex(o.wish.name, targetLevel(o.fighter, o.wish)) === -1; });
         if (!open.length) {
             if (await autoCompound()) return;
+            if (await stockUpgrade()) return;
             await autoExchange();
             return;
         }
