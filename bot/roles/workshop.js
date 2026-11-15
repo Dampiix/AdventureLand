@@ -26,16 +26,50 @@ module.exports = function createWorkshop(ctx) {
     const comms = ctx.comms;
     const cfg = config.workshop;
 
-    const wishes = {};      // fighter -> [{ name, level }]
+    const wishes = {};      // fighter -> [{ name, level }] from its progression guide
     const spent = {};       // wish key -> gold spent
     const blockedUntil = {}; // wish key -> timestamp (gave up for a while)
+    const reachedOnly = {}; // wish key -> level we stopped at (too risky to go on) – delivered as is
     let bankSnapshot = null; // { at, items: [{ pack, index, name, level }] }
+
+    // Delivered wishes are not fulfilled again for a while (survives restarts).
+    const DELIVERED_KEY = "workshop_delivered";
+    function loadDelivered() {
+        try { return get(DELIVERED_KEY) || {}; } catch (e) { return {}; }
+    }
+    const delivered = loadDelivered(); // "fighter:name" -> timestamp
+    function markDelivered(fighter, name) {
+        delivered[fighter + ":" + name] = Date.now();
+        try { set(DELIVERED_KEY, delivered); } catch (e) { /* storage unavailable – only this session remembers */ }
+    }
+    function recentlyDelivered(fighter, name) {
+        return Date.now() - (delivered[fighter + ":" + name] || 0) < cfg.redeliverAfterMs;
+    }
 
     comms.on("wishes", function (data, from) {
         wishes[from] = (data.list || []).filter(function (w) { return w && G.items[w.name]; });
     });
 
     function key(fighter, w) { return fighter + ":" + w.name + ":" + w.level; }
+
+    // Guide wishes plus fixed wishes from config.workshop.wishes, minus recent deliveries.
+    function wishList(fighter) {
+        const list = (wishes[fighter] || []).slice();
+        ((cfg.wishes || {})[fighter] || []).forEach(function (w) {
+            if (G.items[w.name] && !list.some(function (x) { return x.name === w.name && x.level >= w.level; })) list.push(w);
+        });
+        return list.filter(function (w) { return !recentlyDelivered(fighter, w.name); });
+    }
+
+    function fighters() {
+        return Object.keys(Object.assign({}, wishes, cfg.wishes || {}));
+    }
+
+    // The level a wish is fulfilled at: the wished one, or where we had to stop.
+    function targetLevel(fighter, w) {
+        const r = reachedOnly[key(fighter, w)];
+        return r !== undefined ? r : w.level;
+    }
 
     function npcPos(id) {
         const npc = (G.maps.main.npcs || []).find(function (n) { return n.id === id; });
@@ -60,25 +94,26 @@ module.exports = function createWorkshop(ctx) {
 
     // Items reserved for a fighter must not be sold or banked.
     function isReserved(item) {
-        return Object.keys(wishes).some(function (f) {
-            return wishes[f].some(function (w) { return w.name === item.name; });
+        return fighters().some(function (f) {
+            return wishList(f).some(function (w) { return w.name === item.name; });
         });
     }
 
     // ---- delivery -------------------------------------------------------
 
     function readyFor(fighter) {
-        return (wishes[fighter] || []).filter(function (w) { return bagIndex(w.name, w.level) !== -1; });
+        return wishList(fighter).filter(function (w) { return bagIndex(w.name, targetLevel(fighter, w)) !== -1; });
     }
 
     async function handOver(fighter) {
         for (const w of readyFor(fighter)) {
-            const index = bagIndex(w.name, w.level);
+            const index = bagIndex(w.name, targetLevel(fighter, w));
             if (index === -1) continue;
             const item = character.items[index];
             await send_item(fighter, index, 1);
             util.log("workshop", "delivered " + item.name + " +" + (item.level || 0) + " to " + fighter, "green");
-            wishes[fighter] = wishes[fighter].filter(function (x) { return x !== w; });
+            markDelivered(fighter, w.name);
+            wishes[fighter] = (wishes[fighter] || []).filter(function (x) { return x !== w; });
         }
     }
 
@@ -289,6 +324,41 @@ module.exports = function createWorkshop(ctx) {
         return false;
     }
 
+    // ---- token shops ---------------------------------------------------------
+
+    // Token price of an item (e.g. Concord Mace = 12 Monster Tokens), or null.
+    function tokenOffer(name) {
+        for (const token of Object.keys(G.tokens || {})) {
+            const price = G.tokens[token][name];
+            if (price) return { token: token, price: price };
+        }
+        return null;
+    }
+
+    // Buy a +0 copy with tokens at the token NPC (Daisy for Monster Tokens).
+    async function buyWithTokens(name) {
+        const offer = tokenOffer(name);
+        if (!offer) return false;
+        let have = util.countItem(offer.token);
+        if (have < offer.price) {
+            const banked = bankSnapshot && bankSnapshot.items.find(function (b) { return b.name === offer.token; });
+            if (banked && have + banked.q >= offer.price) {
+                await retrieve(banked);
+                have = util.countItem(offer.token);
+            }
+        }
+        if (have < offer.price) {
+            util.log("workshop", name + " costs " + offer.price + " " + offer.token + ", we have " + have, "orange");
+            return false;
+        }
+        const npc = Object.keys(G.npcs).find(function (id) { return G.npcs[id].token === offer.token && npcPos(id); });
+        if (!npc) return false;
+        await goTo(npc);
+        await exchange_buy(offer.token, name);
+        util.log("workshop", "bought " + name + " for " + offer.price + " " + offer.token, "green");
+        return true;
+    }
+
     // Upgrade the copy at `index` towards `target`. Returns true on success.
     async function develop(fighter, w) {
         const k = key(fighter, w);
@@ -315,15 +385,16 @@ module.exports = function createWorkshop(ctx) {
         }
         if (index === -1) {
             const seller = sellerOf(w.name);
-            if (!seller) {
-                util.log("workshop", "no copy of " + w.name + " and no NPC sells it", "orange");
+            if (seller) {
+                if (!canSpend(k, def.g)) throw { reason: "budget" };
+                await goTo(seller);
+                await buy(w.name, 1);
+                pay(k, def.g);
+            } else if (!(await buyWithTokens(w.name))) {
+                util.log("workshop", "no copy of " + w.name + " and no shop or token offer for it", "orange");
                 blockedUntil[k] = Date.now() + cfg.giveUpForMs;
                 return false;
             }
-            if (!canSpend(k, def.g)) throw { reason: "budget" };
-            await goTo(seller);
-            await buy(w.name, 1);
-            pay(k, def.g);
             index = bagIndex(w.name, 0);
         }
 
@@ -347,8 +418,8 @@ module.exports = function createWorkshop(ctx) {
             const preview = await upgrade(index, scrollIndex, null, true);
             if (preview.chance < cfg.minChance) {
                 util.log("workshop", w.name + " +" + level + " -> +" + (level + 1) + " only " + Math.round(preview.chance * 100) + "% - stopping at +" + level, "orange");
-                blockedUntil[k] = Date.now() + cfg.giveUpForMs;
-                return false;
+                reachedOnly[k] = level; // deliver the copy as it is; the fighter's guide decides whether to wear it
+                return true;
             }
             const result = await upgrade(index, scrollIndex);
             if (result.success) {
@@ -366,8 +437,8 @@ module.exports = function createWorkshop(ctx) {
     function openWishes() {
         const now = Date.now();
         const list = [];
-        Object.keys(wishes).forEach(function (fighter) {
-            wishes[fighter].forEach(function (w) {
+        fighters().forEach(function (fighter) {
+            wishList(fighter).forEach(function (w) {
                 if (blockedUntil[key(fighter, w)] > now) return;
                 list.push({ fighter: fighter, wish: w });
             });
@@ -380,7 +451,7 @@ module.exports = function createWorkshop(ctx) {
         if (!cfg.enabled) return;
 
         // Ping fighters that have finished items waiting.
-        Object.keys(wishes).forEach(function (fighter) {
+        fighters().forEach(function (fighter) {
             if (readyFor(fighter).length) comms.send(fighter, "ready", {});
         });
 
@@ -390,7 +461,7 @@ module.exports = function createWorkshop(ctx) {
             readBank();
         }
 
-        const open = openWishes().filter(function (o) { return bagIndex(o.wish.name, o.wish.level) === -1; });
+        const open = openWishes().filter(function (o) { return bagIndex(o.wish.name, targetLevel(o.fighter, o.wish)) === -1; });
         if (!open.length) {
             if (await autoCompound()) return;
             await autoExchange();

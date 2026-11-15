@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.7.0",
+    version: "1.8.0",
 
     team: {
         leader: "DmpxPalTank",                          // played in the client, starts the others, tanks
@@ -130,6 +130,13 @@ module.exports = {
         budgetPerWish: 500000,        // gold per wish (base item + scrolls, failures included)
         giveUpForMs: 60 * 60 * 1000,  // after a stop (risk/budget/no source) retry in an hour
         bankScanEveryMs: 10 * 60 * 1000,
+        redeliverAfterMs: 6 * 60 * 60 * 1000, // don't fulfil the same wish for a fighter again within 6 h
+        // Fixed wishes on top of the guide's. Items without a shop are bought with tokens
+        // (Monster Tokens at Daisy). Steps below minChance are not attempted: the copy
+        // is delivered at the level reached and the fighter's guide decides whether to wear it.
+        wishes: {
+            DmpxPalTank: [{ name: "concordmace", level: 4 }], // 12 Monster Tokens, Smash-capable, Oathkeeper set
+        },
         compound: {
             auto: true,   // combine spare accessories/books when no wish is open
             autoUpTo: 3,  // ...up to this level (each step still needs >= minChance)
