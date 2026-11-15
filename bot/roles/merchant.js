@@ -8,9 +8,11 @@
 //     (config.merchantRole.bank), never buying new bank packs
 //   - keep a potion stock (config.merchantRole.stock), never spending
 //     below goldReserve
+//   - work on the fighters' equipment wishes (bot_workshop)
 // Delivery (a fighter sent a "pickup" request):
 //   - top up the stock, walk to the fighter
-//   - send the potions it asked for, cast Merchant's Luck on it
+//   - send the potions it asked for, gifts and finished wishes,
+//     cast Merchant's Luck on it
 //   - wait a moment: the fighter hands over loot and surplus gold
 //   - walk back to town
 // =====================================================================
@@ -20,6 +22,7 @@ module.exports = function createMerchant(ctx) {
     const util = ctx.util;
     const comms = ctx.comms;
     const m = config.merchantRole;
+    const workshop = ctx.workshop;
 
     const requests = new Map(); // fighter name -> latest pickup request
     let running = false;
@@ -63,6 +66,7 @@ module.exports = function createMerchant(ctx) {
     function isSellable(item) {
         const rule = sellRule(item.name);
         if (!rule || item.p || item.l) return false; // shiny / locked never
+        if (workshop.isReserved(item)) return false;  // a fighter wishes for it
         return (item.level || 0) <= rule.maxLevel;
     }
 
@@ -145,6 +149,7 @@ module.exports = function createMerchant(ctx) {
 
             await giveTo(name, (requests.get(name) || req).want);
             await giveGifts(name);
+            await workshop.handOver(name);
             if (util.canCast("mluck")) use_skill("mluck", name).catch(function () {});
             util.status("collecting from " + name, "orange");
             await sleep(m.handoverWaitMs); // the fighter hands over loot and gold while we stand here
@@ -158,7 +163,7 @@ module.exports = function createMerchant(ctx) {
 
     // Everything that is neither sold, kept, part of the potion stock nor a gift.
     function isBankable(item) {
-        if (!item || isSellable(item)) return false;
+        if (!item || isSellable(item) || workshop.isReserved(item)) return false;
         if (m.stock[item.name] !== undefined) return false;
         if (m.bank.keep.includes(item.name)) return false;
         const gifts = [].concat.apply([], Object.values(m.give || {}));
@@ -211,6 +216,7 @@ module.exports = function createMerchant(ctx) {
                 nextChoresAt = Date.now() + 30 * 1000;
                 await sellJunk();
                 await bankIfNeeded();
+                await workshop.work();
                 await goHome();
                 await restock();
             }

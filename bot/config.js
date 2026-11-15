@@ -5,7 +5,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.2.2",
+    version: "1.3.0",
 
     // The character you play in the client. Its CODE starts the others
     // and it is the party leader / tank.
@@ -105,6 +105,22 @@ module.exports = {
         firstPickupAfterMs: 60 * 1000,   // first routine pickup this long after the bot starts
         requestEveryMs: 60 * 1000,       // don't spam the merchant
         merchantTimeoutMs: 3 * 60 * 1000 // no answer for this long -> buy potions yourself
+    },
+
+    // Fighters: equipment wishes from the progression guide + auto-equip
+    gear: {
+        enabled: true,
+        wishEveryMs: 5 * 60 * 1000, // re-read the guide and resend wishes this often
+        maxWishes: 3,
+    },
+
+    // Merchant: fulfil wishes from bag, bank or by upgrading own copies (approved 2026-11-15)
+    workshop: {
+        enabled: true,
+        minChance: 0.7,               // never attempt an upgrade step below 70%
+        budgetPerWish: 500000,        // gold per wish (base item + scrolls, failures included)
+        giveUpForMs: 60 * 60 * 1000,  // after a stop (risk/budget/no source) retry in an hour
+        bankScanEveryMs: 10 * 60 * 1000,
     },
 
     // Merchant role

@@ -6,6 +6,7 @@
 //   2. class survival     -> e.g. Paladin self-heal; else potions
 //   3. loot
 //   4. party management   -> invites / accept / leave wrong party
+//   4b. gear              -> send equipment wishes, equip upgrades
 //   5. supply             -> merchant handover / pickup / self-resupply
 //   5b. hunts             -> Daisy trips, turn in / take Monster Hunts
 //   6. formation          -> members stay within the leash of the leader
@@ -82,6 +83,7 @@ module.exports = function createFighter(ctx, cls) {
         if (!cls.survive()) handlePotions();
         loot();
         party.manage();
+        ctx.gear.tick();
         if (supply.tick() === "busy") return;
         if (ctx.hunts.tick() === "busy") return;
         if (party.keepUp()) return;

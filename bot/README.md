@@ -29,6 +29,8 @@ Each character looks itself up in `config.js` and loads its role.
 | `roles/merchant.js` | 30 `bot_merchant` | sells junk, keeps a potion stock, delivers to fighters |
 | `core/party.js` | 31 `bot_party` | party invites/accept/leave, leader broadcast, following |
 | `core/hunts.js` | 32 `bot_hunts` | Monster Hunts: pick a safe hunt of any party fighter, Daisy trips, turn in |
+| `core/gear.js` | 33 `bot_gear` | fighter: equipment wishes from the progression guide, equips the guide's upgrades |
+| `roles/workshop.js` | 34 `bot_workshop` | merchant: fulfils wishes from bag, bank or by upgrading its own copies |
 
 ## Phases and the party
 
@@ -56,6 +58,16 @@ on this server, has kills left and is safe according to the progression guide (`
 / `deny` override this); the hunt expiring first wins. When a hunt is finished, or someone has none
 and nothing is huntable, the leader walks the group to Daisy (at most every 10 minutes) and every
 fighter turns in / takes a hunt there. Unsafe hunts are left to expire.
+
+## Equipment (workshop)
+
+Every 5 minutes each fighter sends up to three equipment wishes from its progression guide
+(e.g. "mace +4") to the merchant. The merchant fulfils one wish at a time: a copy already in its
+bag, a copy in the bank, or it develops its own copy (bank or +0 from an NPC) at Cue. Rules
+(`config.workshop`): every step is previewed and only attempted at **70 %** or better, never below
+the gold reserve, at most **500k per wish**, no offerings or shells. Compound items (rings,
+earrings, books) are only delivered from existing copies. Finished items go out on the next
+delivery; the fighter follows its guide's "equip" advice and hands the old piece back.
 
 ## Merchant flow
 

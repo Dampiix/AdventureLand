@@ -5,23 +5,30 @@
 //
 // Usage (from the repo root):
 //   node scripts/deploy-bot.mjs              # upload files that differ from the slot
-//   node scripts/deploy-bot.mjs --all        # upload every file
 //   node scripts/deploy-bot.mjs --dry-run    # only show what would change
+//   node scripts/deploy-bot.mjs --pull       # copy slots that were edited in game into the repo
+//   node scripts/deploy-bot.mjs --force      # upload even over in-game edits
 //
-// The account token is read from the ADVENTURELAND_TOKEN environment
-// variable and is never printed. Mapping: bot/slots.json.
+// Safety: scripts/.deploy-state.json remembers what was last deployed per
+// slot. If a slot changed in game since then, it is NOT overwritten –
+// run --pull first (or --force to discard the in-game edit).
+//
+// The account token is read from ADVENTURELAND_TOKEN and never printed.
 // =====================================================================
 
-import { readFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const API = "https://adventure.land/mcp_api/";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const botDir = path.join(root, "bot");
+const statePath = path.join(root, "scripts", ".deploy-state.json");
 const args = new Set(process.argv.slice(2));
-const uploadAll = args.has("--all");
 const dryRun = args.has("--dry-run");
+const pull = args.has("--pull");
+const force = args.has("--force");
 
 const token = process.env.ADVENTURELAND_TOKEN;
 if (!token) {
@@ -31,8 +38,8 @@ if (!token) {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const normalize = (s) => s.replace(/\r\n/g, "\n");
+const hash = (s) => createHash("sha256").update(normalize(s)).digest("hex");
 
-// POST one API method, waiting and retrying when rate limited.
 async function call(method, body) {
     for (let attempt = 0; attempt < 8; attempt++) {
         const res = await fetch(API + method, {
@@ -48,23 +55,44 @@ async function call(method, body) {
     return { failed: true, reason: "still_rate_limited" };
 }
 
+let state = {};
+try { state = JSON.parse(await readFile(statePath, "utf8")); } catch { state = {}; }
+
 const { slots } = JSON.parse(await readFile(path.join(botDir, "slots.json"), "utf8"));
-let uploaded = 0;
-let unchanged = 0;
-let failed = 0;
+const counts = { uploaded: 0, unchanged: 0, pulled: 0, conflict: 0, failed: 0 };
 
 for (const entry of slots) {
-    const local = normalize(await readFile(path.join(botDir, entry.file), "utf8"));
-    const label = `${entry.file.padEnd(20)} -> slot ${String(entry.slot).padStart(3)} ${entry.name}`;
+    const file = path.join(botDir, entry.file);
+    const local = normalize(await readFile(file, "utf8"));
+    const label = `${entry.file.padEnd(20)} slot ${String(entry.slot).padStart(3)} ${entry.name}`;
+    const remote = await call("get_code", { slot: String(entry.slot) });
+    const remoteCode = remote.success && remote.code ? normalize(remote.code.code || "") : null;
+    const remoteHash = remoteCode === null ? null : hash(remoteCode);
+    const known = state[entry.slot];
+    const editedInGame = remoteHash !== null && known && remoteHash !== known && remoteHash !== hash(local);
 
-    if (!uploadAll) {
-        const remote = await call("get_code", { slot: String(entry.slot) });
-        const same = remote.success && remote.code && remote.code.name === entry.name &&
-            normalize(remote.code.code || "") === local;
-        if (same) {
-            unchanged++;
-            continue;
+    if (remoteCode !== null && remoteCode === local) {
+        state[entry.slot] = remoteHash;
+        counts.unchanged++;
+        continue;
+    }
+
+    if (pull) {
+        if (editedInGame || (!known && remoteCode !== null)) {
+            if (!dryRun) {
+                await writeFile(file, remoteCode);
+                state[entry.slot] = remoteHash;
+            }
+            counts.pulled++;
+            console.log(`pulled        ${label} (v${remote.code.version})`);
         }
+        continue;
+    }
+
+    if (editedInGame && !force) {
+        counts.conflict++;
+        console.log(`CHANGED IN GAME ${label} (v${remote.code.version}) – not overwritten, run --pull first`);
+        continue;
     }
 
     if (dryRun) {
@@ -74,14 +102,17 @@ for (const entry of slots) {
 
     const result = await call("save_code", { slot: String(entry.slot), name: entry.name, code: local });
     if (result.success) {
-        uploaded++;
+        state[entry.slot] = hash(local);
+        counts.uploaded++;
         console.log(`uploaded      ${label} (v${result.code && result.code.version})`);
     } else {
-        failed++;
+        counts.failed++;
         console.log(`FAILED        ${label}: ${result.reason || JSON.stringify(result)}`);
     }
 }
 
-console.log(`\n${uploaded} uploaded, ${unchanged} unchanged, ${failed} failed.`);
-console.log("Saving a slot does not change running CODE - restart bot_main to load the new version.");
-process.exit(failed ? 1 : 0);
+if (!dryRun) await writeFile(statePath, JSON.stringify(state, null, 2) + "\n");
+
+console.log(`\n${counts.uploaded} uploaded, ${counts.unchanged} unchanged, ${counts.pulled} pulled, ${counts.conflict} changed in game, ${counts.failed} failed.`);
+if (counts.uploaded) console.log("Saving a slot does not change running CODE - restart bot_main to load the new version.");
+process.exit(counts.failed || counts.conflict ? 1 : 0);

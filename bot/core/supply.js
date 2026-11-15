@@ -35,6 +35,7 @@ module.exports = function createSupply(ctx) {
     function isHandover(item) {
         if (!item) return false;
         if (s.keep.includes(item.name)) return false;
+        if (ctx.gear && ctx.gear.isReserved(item)) return false; // wished gear stays with us
         if (item.name === p.hp || item.name === p.mp) return false;
         const def = G.items[item.name];
         if (def && def.type === "pot") return false; // keep every potion size
