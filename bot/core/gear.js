@@ -71,6 +71,12 @@ module.exports = function createGear(ctx) {
             if (seen[req.name] !== undefined && seen[req.name] >= level) return;
             seen[req.name] = level;
             const stat = req.stat_type && G.items[req.name].stat ? req.stat_type : null;
+            // Already worn (same item, at least that level, the wished stat): nothing to wish for.
+            // The guide lists such steps on its way to a better piece.
+            if (Object.keys(character.slots || {}).some(function (s) {
+                const w = character.slots[s];
+                return w && w.name === req.name && (w.level || 0) >= level && (!stat || w.stat_type === stat);
+            })) return;
             list.push(stat ? { name: req.name, level: level, stat: stat } : { name: req.name, level: level });
         });
         return list.slice(0, cfg.maxWishes);
