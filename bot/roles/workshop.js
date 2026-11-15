@@ -130,7 +130,9 @@ module.exports = function createWorkshop(ctx) {
                 if (item) items.push({ pack: pack, index: index, name: item.name, level: item.level || 0, q: item.q || 1 });
             });
         });
-        bankSnapshot = { at: Date.now(), items: items };
+        const packs = Object.keys(character.bank || {}).filter(function (p) { return /^items\d+$/.test(p); });
+        const capacity = packs.reduce(function (sum, p) { return sum + (character.bank[p] || []).length; }, 0);
+        bankSnapshot = { at: Date.now(), items: items, free: capacity - items.length };
     }
 
     function bankFind(name, filter) {
@@ -339,6 +341,11 @@ module.exports = function createWorkshop(ctx) {
     async function autoExchange() {
         const ex = cfg.exchange;
         if (!ex.enabled) return false;
+        // Rewards need somewhere to go: no exchanging while the bank is (almost) full.
+        if (bankSnapshot && bankSnapshot.free < 3) {
+            util.status("bank full - not exchanging", "orange");
+            return false;
+        }
         const now = Date.now();
         for (const name of ex.items) {
             const def = G.items[name];

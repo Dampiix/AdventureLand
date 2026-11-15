@@ -194,13 +194,40 @@ module.exports = function createMerchant(ctx) {
             }
         }
         util.log("merchant", "banked " + stored + " stacks" + (full ? " - bank is full, a new pack is needed" : ""), full ? "orange" : "green");
+        await takeSellablesFromBank();
         return stored;
     }
 
+    // Junk that ended up in the bank earlier (before it was on the sell list) is
+    // taken out again and sold on the next chores round – frees bank slots.
+    async function takeSellablesFromBank() {
+        let taken = 0;
+        for (const pack of Object.keys(character.bank || {})) {
+            if (!/^items\d+$/.test(pack)) continue;
+            const items = character.bank[pack] || [];
+            for (let i = 0; i < items.length; i++) {
+                if (character.esize <= 2) break; // leave room for loot handovers
+                if (!items[i] || !isSellable(items[i])) continue;
+                try {
+                    await bank_retrieve(pack, i);
+                    taken++;
+                } catch (e) {
+                    util.log("merchant", "could not take " + items[i].name + " from the bank: " + util.errReason(e), "orange");
+                }
+            }
+        }
+        if (taken) util.log("merchant", "took " + taken + " junk stacks out of the bank to sell", "green");
+        return taken;
+    }
+
     let nextBankTripAt = 0;
+    let lastBankVisit = 0;
     async function bankIfNeeded() {
-        if (character.esize >= m.bank.whenFreeBelow || Date.now() < nextBankTripAt) return;
-        if (!character.items.some(isBankable)) return;
+        if (Date.now() < nextBankTripAt) return;
+        // Visit when the bag is running full, or every 30 min to clear junk out of the bank.
+        const due = character.esize < m.bank.whenFreeBelow || Date.now() - lastBankVisit > 30 * 60 * 1000;
+        if (!due) return;
+        lastBankVisit = Date.now();
         const stored = await bankTrip();
         // Nothing fit: don't run back and forth – try again in 10 minutes.
         nextBankTripAt = Date.now() + (stored ? 60 * 1000 : 10 * 60 * 1000);
