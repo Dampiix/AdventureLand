@@ -42,8 +42,20 @@ module.exports = function createSupply(ctx) {
         if (s.keep.includes(item.name)) return false;
         if (ctx.gear && ctx.gear.isReserved(item)) return false; // wished gear stays with us
         const def = G.items[item.name];
-        if (def && def.type === "pot") return false; // keep every potion size
+        if (def && def.type === "pot") return isOutgrownPotion(item.name);
         return true;
+    }
+
+    // A smaller potion size than the one we use now (e.g. hpot0 once we drink hpot1):
+    // goes to the merchant – teammates may still use it – once we hold enough of the
+    // current size. Every other potion stays with us.
+    function isOutgrownPotion(name) {
+        const m = /^(hpot|mpot)(\d+)$/.exec(name);
+        if (!m) return false;
+        const current = util.potionNames(p)[m[1] === "hpot" ? "hp" : "mp"];
+        const c = /^(hpot|mpot)(\d+)$/.exec(current);
+        if (!c || Number(m[2]) >= Number(c[2])) return false;
+        return util.countItem(current) >= p.requestBelow;
     }
 
     // Gold first (needs no bag space), then items. A full merchant bag stops

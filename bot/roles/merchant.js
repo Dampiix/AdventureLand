@@ -33,7 +33,7 @@ module.exports = function createMerchant(ctx) {
     comms.on("pickup", function (data, from) {
         const isNew = !requests.has(from);
         requests.set(from, Object.assign({}, data, { at: Date.now() }));
-        Object.keys(data.want || {}).forEach(function (name) { if (G.items[name] && G.items[name].type === "pot") stocked.add(name); });
+        Object.keys(data.want || {}).forEach(function (name) { if (G.items[name] && G.items[name].type === "pot") stocked.set(name, Date.now()); });
         if (isNew) util.log("merchant", "pickup requested by " + from, "yellow");
         // Tell the fighter whether we can bring its potions; if not, it buys them itself.
         comms.send(from, "coming", { potions: canSupply(data.want) });
@@ -98,6 +98,7 @@ module.exports = function createMerchant(ctx) {
         if (rule && (item.level || 0) <= rule.maxLevel) return true;
         // Leftover grace fodder (any level) has done its job.
         if (config.workshop.grace && item.name === config.workshop.grace.fodder) return true;
+        if (isOutgrownPotion(item)) return true;
         return isBuyableJunk(item);
     }
 
@@ -114,13 +115,25 @@ module.exports = function createMerchant(ctx) {
     }
 
     // Potion types fighters asked for – we keep stockPerPotion of each.
-    const stocked = new Set();
+    const stocked = new Map(); // potion -> last time a fighter asked for it
     const poorLogged = {}; // potion -> last "not enough gold" log
+    const startedAt = Date.now();
+
+    // Fighters ask for their current potion sizes with every pickup (at least every
+    // 15 min). A size nobody asked for within an hour is outgrown: no restocking,
+    // and our leftovers of it are sold.
+    function isWantedPotion(name) {
+        return stocked.has(name) && Date.now() - stocked.get(name) < 60 * 60 * 1000;
+    }
+    function isOutgrownPotion(item) {
+        return /^(hpot|mpot)\d+$/.test(item.name) && Date.now() - startedAt > 60 * 60 * 1000 && !isWantedPotion(item.name);
+    }
 
     // Buy potions up to the stock (and at least what this delivery needs).
     async function restock(wanted) {
-        Object.keys(wanted || {}).forEach(function (name) { if (G.items[name] && G.items[name].type === "pot") stocked.add(name); });
-        for (const name of stocked) {
+        Object.keys(wanted || {}).forEach(function (name) { if (G.items[name] && G.items[name].type === "pot") stocked.set(name, Date.now()); });
+        for (const name of stocked.keys()) {
+            if (!isWantedPotion(name)) continue; // nobody drinks this size any more
             const target = Math.max(m.stockPerPotion, (wanted && wanted[name]) || 0);
             const missing = target - util.countItem(name);
             if (missing <= 0) continue;
