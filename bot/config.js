@@ -5,7 +5,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.1.0",
+    version: "1.1.1",
 
     // The character you play in the client. Its CODE starts the others
     // and it is the party leader / tank.
@@ -15,7 +15,7 @@ module.exports = {
     // "party": leader + mage + priest farm together, merchant supports them.
     // startWithLeader: characters the leader starts in the same client.
     // party:           fighters that form the party (leader included).
-    phase: "solo",
+    phase: "party",
     phases: {
         solo: { startWithLeader: ["DampiixMerch"], party: [] },
         party: {
@@ -83,7 +83,7 @@ module.exports = {
 
     // Fighter side of the item/gold flow
     supply: {
-        keep: ["tracker"],               // never handed to the merchant
+        keep: ["tracker", "glolipop"],   // never handed to the merchant
         goldKeep: 200000,                // fighters keep this much gold
         goldMinSend: 50000,              // only send gold when the surplus is at least this
         freeSlotsMin: 6,                 // ask for a pickup when fewer slots are free
@@ -97,12 +97,24 @@ module.exports = {
         stock: { hpot1: 1000, mpot1: 1000 }, // potions kept in stock for deliveries
         goldReserve: 1000000,                // never spend below this
         handoverWaitMs: 10000,               // wait next to the fighter for its loot
-        // Items the merchant sells to NPCs. REVIEW THIS LIST.
-        // Upgraded (+1 and higher), shiny and locked items are never sold.
+        // Items the merchant sells to NPCs.
+        // A plain name sells only +0 copies. { name, maxLevel } also sells
+        // upgraded copies up to that level. Shiny and locked items are never sold.
         sellList: [
+            // junk drops
             "whiteegg", "spores", "slimestaff", "mushroomstaff", "stinger",
             "wcap", "wshoes", "wattire", "wbreeches", "wgloves",
             "vitearring", "vitring", "vitscroll",
+            // +0 weapons and books (approved 2026-11-15)
+            "dagger", "fireblade", "firestaff", "wbook0",
+            // cheap materials (approved 2026-11-15)
+            "bfur", "frogt", "crabclaw", "ascale", "carrot", "snowball",
+            // V1 upgraded short swords to +4 – no longer needed (approved 2026-11-15)
+            { name: "sword", maxLevel: 4 },
         ],
+        // Items the merchant hands to a fighter on its next delivery (one-off gifts).
+        give: {
+            DmpxPalTank: ["glolipop"], // Lolipop Mace – lets the Paladin use Smash
+        },
     },
 };

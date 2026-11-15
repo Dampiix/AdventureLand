@@ -49,8 +49,19 @@ module.exports = function createMerchant(ctx) {
         await smart_move({ to: "potions" });
     }
 
+    // sellList entries: "name" (only +0) or { name, maxLevel }.
+    function sellRule(name) {
+        for (const entry of m.sellList) {
+            if (entry === name) return { maxLevel: 0 };
+            if (entry && entry.name === name) return { maxLevel: entry.maxLevel || 0 };
+        }
+        return null;
+    }
+
     function isSellable(item) {
-        return m.sellList.includes(item.name) && !util.isProtected(item);
+        const rule = sellRule(item.name);
+        if (!rule || item.p || item.l) return false; // shiny / locked never
+        return (item.level || 0) <= rule.maxLevel;
     }
 
     async function sellJunk() {
@@ -100,6 +111,17 @@ module.exports = function createMerchant(ctx) {
         }
     }
 
+    // One-off items from config.merchantRole.give – sent once, because afterwards
+    // they are no longer in our bag.
+    async function giveGifts(name) {
+        for (const itemName of (m.give && m.give[name]) || []) {
+            const index = util.findItemIndex(function (i) { return i.name === itemName; });
+            if (index === -1) continue;
+            await send_item(name, index, 1);
+            util.log("merchant", "gave " + itemName + " to " + name, "green");
+        }
+    }
+
     async function deliver(name) {
         const req = requests.get(name);
         util.status("delivering to " + name, "orange");
@@ -120,6 +142,7 @@ module.exports = function createMerchant(ctx) {
             }
 
             await giveTo(name, (requests.get(name) || req).want);
+            await giveGifts(name);
             if (util.canCast("mluck")) use_skill("mluck", name).catch(function () {});
             util.status("collecting from " + name, "orange");
             await sleep(m.handoverWaitMs); // the fighter hands over loot and gold while we stand here
