@@ -639,7 +639,9 @@ module.exports = function createWorkshop(ctx) {
             const s = shortages[name];
             const target = s.forItem || name; // ingredients count while the crafted item is wished
             const wished = fighters().some(function (f) { return wishList(f).some(function (w) { return w.name === target; }); });
-            const fresh = wished && Date.now() - s.at < 2 * 60 * 60 * 1000;
+            // Reported as long as it is wished and copies are missing – not only for a while
+            // after the last failed attempt (that made the team hop between farm spots).
+            const fresh = wished;
             const missing = !fresh ? 0 : s.need ? s.need - ingredientCount(name, s.level) : copiesMissing(name, s.level);
             if (missing > 0) list.push({ name: name, copies: missing });
             else delete shortages[name];

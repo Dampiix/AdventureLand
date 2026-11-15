@@ -61,8 +61,9 @@ module.exports = function createDrops(ctx) {
 
     function check() {
         nextCheckAt = Date.now() + cfg.refreshMs;
-        // Merchant reports older than 30 min are stale (merchant gone or restarted).
-        if (Date.now() - needsAt > 30 * 60 * 1000) needs = [];
+        // Merchant reports older than an hour are stale (merchant gone); it reports every
+        // few minutes, but long trips or upgrade runs can delay a report.
+        if (Date.now() - needsAt > 60 * 60 * 1000) needs = [];
         const limit = cfg.maxHoursPerCopy * 3600;
         const found = [];
         needs.forEach(function (need) {
@@ -89,6 +90,11 @@ module.exports = function createDrops(ctx) {
         if (Date.now() >= nextCheckAt) check();
         const pick = routes.find(function (r) { return !isCrowded(r.monster); });
         if (!pick) {
+            if (lastPick) {
+                const was = lastPick.split("@");
+                const still = routes.some(function (r) { return r.name === was[0]; });
+                util.log("drops", (still ? was[1] + " spot is crowded" : G.items[was[0]].name + " no longer needed") + " - back to the guide's farm target", "white");
+            }
             lastPick = "";
             return null;
         }
