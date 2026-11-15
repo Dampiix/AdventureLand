@@ -109,10 +109,23 @@ module.exports = function createParty(ctx) {
         return false;
     }
 
-    // Members without a target: stay close to the leader.
+    // Members without a target: stay close to the leader. Without a fresh
+    // broadcast (e.g. right after a restart) use the leader if it is visible,
+    // otherwise wait where we are – never wander off alone.
     function idleFollow() {
-        const lead = leaderInfo();
-        if (!lead) return false;
+        if (!enabled || isLeader) return false;
+        let lead = leaderInfo();
+        if (!lead) {
+            const visible = get_player(leader);
+            if (visible) {
+                const p = util.xy(visible);
+                lead = { map: character.map, x: p.x, y: p.y };
+            }
+        }
+        if (!lead) {
+            util.status("waiting for " + leader, "white");
+            return true;
+        }
         if (util.distanceTo(lead) > cfg.followDistance) moveTowards(lead, "following " + leader);
         else util.status("waiting near " + leader, "white");
         return true;
@@ -121,6 +134,7 @@ module.exports = function createParty(ctx) {
     return {
         enabled: enabled,
         isLeader: isLeader,
+        isMember: enabled && !isLeader,
         memberNames: memberNames,
         inParty: inParty,
         manage: manage,

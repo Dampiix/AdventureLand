@@ -101,10 +101,11 @@ module.exports = function createTargeting(ctx) {
         const attacker = nearestPartyAttacker();
         if (attacker) return attacker;
 
-        const lead = party.leaderInfo();
-        if (lead) {
-            // Party member: only assist the leader, never pull new monsters.
-            const assist = lead.target ? get_monster(lead.target) : null;
+        if (party.isMember) {
+            // Party member: only assist the leader, never pull new monsters –
+            // and never wander off to a farm spot of our own.
+            const lead = party.leaderInfo();
+            const assist = lead && lead.target ? get_monster(lead.target) : null;
             return isValid(assist) && assist.target ? assist : null;
         }
 
