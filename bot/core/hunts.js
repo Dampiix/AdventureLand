@@ -83,13 +83,14 @@ module.exports = function createHunts(ctx) {
         if (!G.monsters[monster]) return false;
         const cached = safeCache[monster];
         if (cached && Date.now() - cached.at < 2 * 60 * 1000) return cached.safe;
-        let safe = false;
+        let why = "no targeting module";
         try {
-            safe = !!(ctx.targeting && ctx.targeting.isTeamSafe(monster));
+            why = ctx.targeting ? ctx.targeting.whyUnsafe(monster) : why;
         } catch (e) {
-            util.log("hunt", "safety check failed for " + monster + ": " + util.errReason(e), "red");
+            why = "check failed: " + util.errReason(e);
         }
-        if (!safe && (!cached || cached.safe)) util.log("hunt", monster + " is not safe for the whole team - not hunting it", "orange");
+        const safe = !why;
+        if (!safe && (!cached || cached.safe)) util.log("hunt", monster + " hunt skipped: " + why, "orange");
         safeCache[monster] = { safe: safe, at: Date.now() };
         return safe;
     }

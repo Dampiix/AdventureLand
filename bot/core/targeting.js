@@ -75,9 +75,14 @@ module.exports = function createTargeting(ctx) {
         lastClock = now;
         if (party.isMember || !farm || !farm.monster || farm.any) return;
         const e = experience[farm.monster] || (experience[farm.monster] = { ms: 0, at: now });
+        // Only a death at the farm spot counts: on the farm map with such a monster nearby
+        // (a death on the way or at a hunt somewhere else must not mark this monster).
         const dead = [character.name].concat(party.memberNames()).find(function (n) {
             const p = n === character.name ? character : get_player(n);
-            return p && p.rip;
+            if (!p || !p.rip) return false;
+            if (farm.map && p.map !== farm.map) return false;
+            const m = get_nearest_monster({ type: farm.monster });
+            return !!m && Math.hypot(m.x - p.x, m.y - p.y) < 500;
         });
         if (dead) {
             if (!(e.bad && now - e.bad < 60 * 1000)) {
@@ -162,9 +167,15 @@ module.exports = function createTargeting(ctx) {
 
     // For bot_hunts: is this monster safe for the whole team right now?
     function isTeamSafe(monster) {
+        return !whyUnsafe(monster);
+    }
+    // null when safe, else who/what objects (for logs).
+    function whyUnsafe(monster) {
         let own = null;
         try { own = ownSafe(get_progression()); } catch (e) { /* guide not ready */ }
-        return !!own && !objector(monster, own);
+        if (!own) return "no guide data yet";
+        const who = objector(monster, own);
+        return who ? "not safe for " + who : null;
     }
 
     // The guide's farm choices (up to three safe routes, best first) that are safe
@@ -372,5 +383,5 @@ module.exports = function createTargeting(ctx) {
         return get_nearest_monster({ type: type, no_target: true });
     }
 
-    return { currentFarm: currentFarm, pick: pick, isValid: isValid, reportSearch: reportSearch, isTeamSafe: isTeamSafe };
+    return { currentFarm: currentFarm, pick: pick, isValid: isValid, reportSearch: reportSearch, isTeamSafe: isTeamSafe, whyUnsafe: whyUnsafe };
 };
