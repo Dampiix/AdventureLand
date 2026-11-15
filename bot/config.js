@@ -5,7 +5,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.6.1",
+    version: "1.6.2",
 
     // The character you play in the client. Its CODE starts the others
     // and it is the party leader / tank.
@@ -72,7 +72,7 @@ module.exports = {
     },
 
     targeting: {
-        farm: "bat",              // e.g. "squigtoad" to force a monster for everyone (null = guide)
+        farm: null,              // e.g. "squigtoad" to force a monster for everyone (null = guide)
         fallback: "goo",          // used when the progression guide has no answer
         refreshMs: 5 * 60 * 1000, // how often to ask the guide again
         crowdedAfterMs: 90 * 1000,    // no free target this long on the farm map -> spot is crowded

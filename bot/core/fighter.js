@@ -28,6 +28,8 @@ module.exports = function createFighter(ctx, cls) {
 
     let running = false;
     let lastRespawnTry = 0;
+    let lastFarm = null;   // remembered for the leader broadcast while busy
+    let lastTarget = null;
 
     function handleDeath() {
         if (!character.rip) return false;
@@ -58,7 +60,8 @@ module.exports = function createFighter(ctx, cls) {
         const farm = targeting.currentFarm();
         const target = targeting.pick(farm);
         targeting.reportSearch(!!target);
-        party.broadcast(farm, target, ctx.events.current());
+        lastFarm = farm;
+        lastTarget = target;
 
         if (!target) {
             if (party.idleFollow()) return; // party member: stay with the leader
@@ -85,6 +88,9 @@ module.exports = function createFighter(ctx, cls) {
         if (!cls.survive()) handlePotions();
         loot();
         party.manage();
+        // Leader: share position every tick – also while searching, travelling or at Daisy,
+        // so members never lose track (party.broadcast throttles itself).
+        party.broadcast(lastFarm, lastTarget, ctx.events.current());
         ctx.gear.tick();
         if (supply.tick() === "busy") return;
         if (ctx.events.tick() === "busy") return;
