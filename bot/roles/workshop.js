@@ -109,8 +109,38 @@ module.exports = function createWorkshop(ctx) {
         return best;
     }
 
+    // ---- earmarks -----------------------------------------------------------
+    //
+    // A fighter's wish list keeps changing (top rows of its guide). Once an item is
+    // ready for a fighter it is earmarked for it and stays reserved – never sold or
+    // banked – until it is delivered, even if the wish drops off the list. Earmarks
+    // survive restarts and expire after 12 h.
+    const EARMARK_KEY = "workshop_earmarks:" + character.name;
+    const EARMARK_MS = 12 * 60 * 60 * 1000;
+    const earmarks = (function () { // "fighter|name" -> { fighter, name, level, at }
+        try { return get(EARMARK_KEY) || {}; } catch (e) { return {}; }
+    })();
+    function saveEarmarks() {
+        try { set(EARMARK_KEY, earmarks); } catch (e) { /* storage unavailable */ }
+    }
+    function activeEarmarks() {
+        const now = Date.now();
+        return Object.keys(earmarks).filter(function (k) {
+            if (now - earmarks[k].at < EARMARK_MS && config.characters[earmarks[k].fighter]) return true;
+            delete earmarks[k];
+            return false;
+        }).map(function (k) { return earmarks[k]; });
+    }
+    function earmark(fighter, name, level) {
+        const k = fighter + "|" + name;
+        if (earmarks[k] && earmarks[k].level >= level) return;
+        earmarks[k] = { fighter: fighter, name: name, level: level, at: Date.now() };
+        saveEarmarks();
+    }
+
     // Items reserved for a fighter must not be sold or banked.
     function isReserved(item) {
+        if (activeEarmarks().some(function (e) { return e.name === item.name && (item.level || 0) >= e.level; })) return true;
         return fighters().some(function (f) {
             return wishList(f).some(function (w) { return w.name === item.name; });
         });
@@ -118,8 +148,14 @@ module.exports = function createWorkshop(ctx) {
 
     // ---- delivery -------------------------------------------------------
 
+    // Wishes we can fulfil from the bag now, plus earmarked items waiting in the bag.
     function readyFor(fighter) {
-        return wishList(fighter).filter(function (w) { return bagIndex(w.name, targetLevel(fighter, w)) !== -1; });
+        const list = wishList(fighter).filter(function (w) { return bagIndex(w.name, targetLevel(fighter, w)) !== -1; });
+        activeEarmarks().forEach(function (e) {
+            if (e.fighter !== fighter || list.some(function (w) { return w.name === e.name; })) return;
+            if (bagIndex(e.name, e.level) !== -1) list.push({ name: e.name, level: e.level });
+        });
+        return list;
     }
 
     async function handOver(fighter) {
@@ -130,6 +166,8 @@ module.exports = function createWorkshop(ctx) {
             await send_item(fighter, index, 1);
             util.log("workshop", "delivered " + item.name + " +" + (item.level || 0) + " to " + fighter, "green");
             markDelivered(fighter, w.name);
+            delete earmarks[fighter + "|" + w.name];
+            saveEarmarks();
             wishes[fighter] = (wishes[fighter] || []).filter(function (x) { return x !== w; });
         }
         // Finished gear-goal copies (indexes stay valid: sending only empties a slot).
@@ -1040,7 +1078,15 @@ module.exports = function createWorkshop(ctx) {
         // Ping fighters that have finished items waiting.
         sampleIncome();
         reportDrops();
+        // Earmark what is ready now (it stays reserved even if the wish changes).
         fighters().forEach(function (fighter) {
+            wishList(fighter).forEach(function (w) {
+                if (bagIndex(w.name, targetLevel(fighter, w)) !== -1) earmark(fighter, w.name, targetLevel(fighter, w));
+            });
+        });
+        const waiting = {};
+        fighters().concat(activeEarmarks().map(function (e) { return e.fighter; })).forEach(function (f) { waiting[f] = true; });
+        Object.keys(waiting).forEach(function (fighter) {
             if (readyFor(fighter).length || goalReadyFor(fighter).length) comms.send(fighter, "ready", {});
         });
 
@@ -1048,6 +1094,20 @@ module.exports = function createWorkshop(ctx) {
             util.status("checking the bank", "yellow");
             await smart_move("bank");
             readBank();
+        }
+
+        // Earmarked items that ended up in the bank come out first; vanished ones are dropped.
+        for (const e of activeEarmarks()) {
+            if (bagIndex(e.name, e.level) !== -1) continue;
+            const banked = bankFind(e.name, function (l) { return l >= e.level; });
+            if (banked && character.esize >= 2) {
+                await retrieve(banked);
+                return;
+            }
+            if (!banked) {
+                delete earmarks[e.fighter + "|" + e.name];
+                saveEarmarks();
+            }
         }
 
         const open = openWishes().filter(function (o) { return bagIndex(o.wish.name, targetLevel(o.fighter, o.wish)) === -1; });

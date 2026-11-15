@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.17.1",
+    version: "1.17.2",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -152,7 +152,7 @@ module.exports = {
     gear: {
         enabled: true,
         wishEveryMs: 5 * 60 * 1000, // re-read the guide and resend wishes this often
-        maxWishes: 3,
+        maxWishes: 8,   // a longer list shifts less (the merchant works through it one by one)
     },
 
     // Merchant: fulfil wishes from bag, bank or by upgrading own copies (approved 2026-11-15)
