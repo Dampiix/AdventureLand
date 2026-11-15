@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.22.4",
+    version: "1.23.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -198,7 +198,7 @@ module.exports = {
         grace: {
             enabled: true,
             minLevel: 4,             // only for steps to +4 and higher
-            fodder: "mace",          // cheap upgradeable shop item no gear goal uses (3,700 gold)
+            fodder: "wbasher",       // cheap upgradeable shop item no gear goal uses (Wooden Basher, 4,900 gold)
             budgetPerLevel: 300000,  // gold per target level per 24 h (fodder + scrolls)
             maxAttempts: 25,         // fodder attempts per farming round
             batch: 5,                // helmets prepared at once, then attempted back to back
@@ -221,9 +221,12 @@ module.exports = {
         // and only once grace has raised its chance to `minChance`.
         gearGoals: {
             enabled: true,
-            fromLevel: 7,  // only pieces worn at +7 or more: below, the guide's lessons decide
-            upTo: 8,
-            slots: ["helmet", "pants", "shoes", "gloves"], // coats are +8 already; +9 costs far more
+            // Since 2026-11-15 (player request): don't let armor and weapons wait while the guide
+            // works on accessories – worn shop armor and shop weapons go to +7 (the end of the
+            // guide's lessons) in parallel, with the class's main stat.
+            fromLevel: 0,
+            upTo: 7,
+            slots: ["helmet", "chest", "pants", "shoes", "gloves", "mainhand"],
             weapons: [{ name: "fireblade", minChance: 0.18 }], // 14% at +8, ~19% with full grace
             // Daily budget from income (player decision 2026-11-15): a share of the merchant's
             // net gold gain over the last 24 h; the gear goals' own spending is not counted

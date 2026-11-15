@@ -958,6 +958,19 @@ module.exports = function createWorkshop(ctx) {
             const level = item.level || 0;
             if (level >= w.level) return true;
 
+            // A wished stat goes on while the scroll is cheap: before the step into the
+            // next grade (e.g. +6 -> +7: 1 stat scroll instead of 10).
+            const stat = opts && opts.stat;
+            if (stat && item.stat_type !== stat && G.items[w.name].stat) {
+                const next = Object.assign({}, item, { level: level + 1 });
+                if (item_grade(next) > item_grade(item)) {
+                    await applyStat(index, stat, k);
+                    index = util.findItemIndex(function (i) { return i.name === w.name && (i.level || 0) === level && i.stat_type === stat; });
+                    if (index === -1) throw { reason: "working copy lost track" };
+                    continue;
+                }
+            }
+
             const grade = item_grade(item);
             // Re-buyable from an NPC = replaceable; token/bank-only copies are precious.
             const replaceable = opts && opts.replaceable !== undefined ? opts.replaceable : !!sellerOf(w.name);
@@ -1038,9 +1051,11 @@ module.exports = function createWorkshop(ctx) {
             g.slots.forEach(function (slot) {
                 const w = eq[slot];
                 const def = w && G.items[w.name];
-                // Below fromLevel the guide's lessons (+3, +5, +7) are in charge.
                 if (!def || !def.upgrade || !sellerOf(w.name) || (w.level || 0) < g.fromLevel || (w.level || 0) >= g.upTo) return;
-                list.push({ fighter: f, slot: slot, name: w.name, stat: def.stat ? w.stat : null, weapon: null });
+                // Stat armor: the worn piece's stat, else the fighter's main stat.
+                const cls = classes[f] && G.classes[classes[f]];
+                const stat = def.stat ? (w.stat || (cfg.mainStatOnArmor && cls ? cls.main_stat : null)) : null;
+                list.push({ fighter: f, slot: slot, name: w.name, stat: stat, weapon: null });
             });
             const main = eq.mainhand;
             (g.weapons || []).forEach(function (rule) {
@@ -1194,7 +1209,7 @@ module.exports = function createWorkshop(ctx) {
                 const banked = bankFind(need.name, function (l) { return l < g.upTo; });
                 if (banked && banked.level > bestBagLevel(need.name, g.upTo)) await retrieve(banked);
                 util.status("gear goal: " + need.name + " +" + g.upTo + " for " + need.fighter, "orange");
-                await develop("_goal", w, { budgetKey: GOALS, minChance: 0, spare: true });
+                await develop("_goal", w, { budgetKey: GOALS, minChance: 0, spare: true, stat: need.stat });
                 return true;
             }
         } catch (e) {
@@ -1372,7 +1387,7 @@ module.exports = function createWorkshop(ctx) {
                 await retrieve(banked);
                 return;
             }
-            await develop(job.fighter, job.wish);
+            await develop(job.fighter, job.wish, job.wish.stat ? { stat: job.wish.stat } : undefined);
         } catch (e) {
             const reason = util.errReason(e);
             util.log("workshop", job.wish.name + " +" + job.wish.level + " for " + job.fighter + ": " + reason, reason === "budget" ? "orange" : "red");
