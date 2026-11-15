@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.24.0",
+    version: "1.24.1",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -226,6 +226,7 @@ module.exports = {
             // guide's lessons) in parallel, with the class's main stat.
             fromLevel: 0,
             upTo: 7,
+            everyMs: 3 * 60 * 1000,   // one gear-goal step this often even while wishes are open
             slots: ["helmet", "chest", "pants", "shoes", "gloves", "mainhand"],
             weapons: [{ name: "fireblade", minChance: 0.18 }], // 14% at +8, ~19% with full grace
             // Daily budget from income (player decision 2026-11-15): a share of the merchant's

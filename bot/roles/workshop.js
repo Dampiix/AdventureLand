@@ -237,7 +237,7 @@ module.exports = function createWorkshop(ctx) {
         Object.keys(character.bank || {}).forEach(function (pack) {
             if (!/^items\d+$/.test(pack)) return;
             (character.bank[pack] || []).forEach(function (item, index) {
-                if (item) items.push({ pack: pack, index: index, name: item.name, level: item.level || 0, q: item.q || 1 });
+                if (item) items.push({ pack: pack, index: index, name: item.name, level: item.level || 0, q: item.q || 1, stat: item.stat_type || null });
             });
         });
         const packs = Object.keys(character.bank || {}).filter(function (p) { return /^items\d+$/.test(p); });
@@ -1175,6 +1175,8 @@ module.exports = function createWorkshop(ctx) {
         const now = Date.now();
         try {
             for (const need of open) {
+                // A reserved copy of this item waits for delivery: never use it as a base.
+                if (activeEarmarks().some(function (e) { return e.name === need.name; })) continue;
                 // 1. A finished copy without the right stat: scroll it for this fighter.
                 const finished = character.items.findIndex(function (item, i) {
                     return item && !takenIdx.has(i) && !item.l && item.name === need.name && (item.level || 0) >= g.upTo;
@@ -1287,6 +1289,43 @@ module.exports = function createWorkshop(ctx) {
                 }
             });
         });
+        deliverBetterCopies(fightersList, wished);
+    }
+
+    // A copy we hold that beats a worn piece (same item, higher level, the worn stat
+    // kept) goes to that fighter – e.g. a coat +4 DEX left over from a gear goal while
+    // the ranger still wears +0. Pieces another fighter wishes for are left alone.
+    function deliverBetterCopies(fightersList, wished) {
+        const pool = [];
+        character.items.forEach(function (it) {
+            if (it && !it.l && !it.p) pool.push({ name: it.name, level: it.level || 0, stat: it.stat_type || null });
+        });
+        (bankSnapshot ? bankSnapshot.items : []).forEach(function (b) { pool.push({ name: b.name, level: b.level, stat: b.stat || null }); });
+        activeEarmarks().forEach(function (e) {
+            const i = pool.findIndex(function (p) { return p.name === e.name && p.level >= e.level; });
+            if (i !== -1) pool.splice(i, 1);
+        });
+        fightersList.forEach(function (f) {
+            const eq = worn[f];
+            Object.keys(eq).forEach(function (slot) {
+                const w = eq[slot];
+                const def = w && G.items[w.name];
+                if (!def || earmarks[f + "|" + w.name]) return;
+                if (Date.now() - (filledAt[f + "|" + def.type] || 0) < 10 * 60 * 1000) return;
+                const others = fighters().some(function (o) { return o !== f && wishList(o).some(function (x) { return x.name === w.name; }); });
+                if (others) return;
+                let best = -1;
+                pool.forEach(function (p, i) {
+                    if (p.name !== w.name || p.level <= (w.level || 0)) return;
+                    if (w.stat && p.stat !== w.stat) return;
+                    if (best === -1 || p.level > pool[best].level) best = i;
+                });
+                if (best === -1) return;
+                const p = pool.splice(best, 1)[0];
+                earmark(f, p.name, p.level, p.stat);
+                util.log("workshop", p.name + " +" + p.level + (p.stat ? " " + p.stat : "") + " goes to " + f + " (better than its +" + (w.level || 0) + ")", "yellow");
+            });
+        });
     }
 
     // ---- one per character ----------------------------------------------------
@@ -1340,6 +1379,7 @@ module.exports = function createWorkshop(ctx) {
 
     // One unit of work. Returns the fighters that now have something waiting.
     const readySince = {}; // fighter -> since when something waits for it
+    let lastGoalStep = 0;  // last gear-goal unit of work
     async function work() {
         if (!cfg.enabled) return;
 
@@ -1377,7 +1417,7 @@ module.exports = function createWorkshop(ctx) {
         // Earmarked items that ended up in the bank come out first; vanished ones are dropped.
         for (const e of activeEarmarks()) {
             if (wishIndex(e, e.level) !== -1) continue;
-            const banked = bankFind(e.name, function (l) { return l >= e.level; });
+            const banked = bankSnapshot && bankSnapshot.items.filter(function (b) { return b.name === e.name && b.level >= e.level && (!e.stat || b.stat === e.stat); }).sort(function (a, b) { return b.level - a.level; })[0];
             if (banked && character.esize >= 2) {
                 await retrieve(banked);
                 return;
@@ -1392,9 +1432,16 @@ module.exports = function createWorkshop(ctx) {
         if (!open.length) {
             if (await autoCompound()) return;
             if (await stockUpgrade()) return;
+            lastGoalStep = Date.now();
             if (await workOnGoals()) return;
             await autoExchange();
             return;
+        }
+        // Gear goals also get a turn every few minutes while wishes are open, so armor
+        // and weapons keep growing while the guide waits on accessories.
+        if (goalsOn() && Date.now() - lastGoalStep >= (cfg.gearGoals.everyMs || 0)) {
+            lastGoalStep = Date.now();
+            if (await workOnGoals()) return;
         }
 
         const job = open[0];
