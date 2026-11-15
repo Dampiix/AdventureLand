@@ -5,7 +5,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.5.0",
+    version: "1.6.1",
 
     // The character you play in the client. Its CODE starts the others
     // and it is the party leader / tank.
@@ -42,6 +42,22 @@ module.exports = {
     merchant: "DampiixMerch",
 
     tickMs: 250,
+
+    // Events and world bosses (approved 2026-11-15). "always" or "never" (default).
+    events: {
+        enabled: true,
+        observe: true,                  // log which events are live and what we do
+        policy: {
+            snowman: "always",          // holiday season world boss, 1,200 HP
+            goobrawl: "always",         // daily goo fight
+            phoenix: "always",          // roaming coop boss, weak hits, 180k XP, fire weapons
+            crabxx: "never", franky: "never", icegolem: "never",
+            horseman: "never", graveyard: "never", abtesting: "never",
+        },
+        search: ["phoenix"],            // roaming bosses the leader looks for
+        searchEveryMs: 10 * 60 * 1000,  // search again this long after a miss or a kill
+        searchSpotMs: 4000,             // look around this long at each spawn area
+    },
 
     // Monster Hunts (Daisy). Unsafe hunts are left to expire.
     hunts: {

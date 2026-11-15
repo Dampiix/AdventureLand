@@ -8,6 +8,7 @@
 //   4. party management   -> invites / accept / leave wrong party
 //   4b. gear              -> send equipment wishes, equip upgrades
 //   5. supply             -> merchant handover / pickup / self-resupply
+//   5a. events            -> join events, travel to / search world bosses
 //   5b. hunts             -> Daisy trips, turn in / take Monster Hunts
 //   6. formation          -> members stay within the leash of the leader
 //   7. class support      -> e.g. Priest heals, Mage energizes
@@ -55,13 +56,14 @@ module.exports = function createFighter(ctx, cls) {
 
     function handleCombat() {
         const farm = targeting.currentFarm();
-        const target = targeting.pick(farm.monster);
+        const target = targeting.pick(farm);
         targeting.reportSearch(!!target);
-        party.broadcast(farm, target);
+        party.broadcast(farm, target, ctx.events.current());
 
         if (!target) {
             if (party.idleFollow()) return; // party member: stay with the leader
-            travel(farm.monster, "searching " + farm.monster);
+            if (farm.any) { util.status("waiting for monsters (" + farm.source + ")", "white"); return; }
+            travel(farm.dest || farm.monster, "searching " + farm.monster);
             return;
         }
 
@@ -85,7 +87,8 @@ module.exports = function createFighter(ctx, cls) {
         party.manage();
         ctx.gear.tick();
         if (supply.tick() === "busy") return;
-        if (ctx.hunts.tick() === "busy") return;
+        if (ctx.events.tick() === "busy") return;
+        if (!ctx.events.current() && ctx.hunts.tick() === "busy") return; // no Daisy trips during events
         if (party.keepUp()) return;
         if (cls.support()) return;
         handleCombat();

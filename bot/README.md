@@ -30,6 +30,7 @@ Each character looks itself up in `config.js` and loads its role.
 | `core/party.js` | 31 `bot_party` | party invites/accept/leave, leader broadcast, following |
 | `core/hunts.js` | 32 `bot_hunts` | Monster Hunts: pick a safe hunt of any party fighter, Daisy trips, turn in |
 | `core/gear.js` | 33 `bot_gear` | fighter: equipment wishes from the progression guide, equips the guide's upgrades |
+| `core/events.js` | 35 `bot_events` | live events and world bosses: join events, travel to bosses, search the Phoenix |
 | `roles/workshop.js` | 34 `bot_workshop` | merchant: fulfils wishes from bag, bank, upgrades or compounds; combines spare accessories |
 
 ## Phases and the party
@@ -58,6 +59,15 @@ on this server, has kills left and is safe according to the progression guide (`
 / `deny` override this); the hunt expiring first wins. When a hunt is finished, or someone has none
 and nothing is huntable, the leader walks the group to Daisy (at most every 10 minutes) and every
 fighter turns in / takes a hunt there. Unsafe hunts are left to expire.
+
+## Events and world bosses
+
+The leader reads `server.status` and logs which events are live. `config.events.policy` decides per
+event (`always` / `never`): join events (Goo Brawl, ...) are joined by every fighter, world bosses with
+a reported position (Snowman) are travelled to, roaming bosses listed in `events.search` (Phoenix) are
+searched across their spawn areas every 10 minutes and engaged whenever one shows up. Events beat
+hunts, hunts beat farming; no Daisy trips during events. Cooperative monsters may be attacked while
+they fight other players, because every contributor is rewarded.
 
 ## Equipment (workshop)
 

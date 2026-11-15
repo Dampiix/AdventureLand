@@ -66,7 +66,7 @@ module.exports = function createParty(ctx) {
             .catch(function (e) { util.log("party", "could not join: " + util.errReason(e), "red"); });
     }
 
-    function broadcast(farm, target) {
+    function broadcast(farm, target, event) {
         if (!enabled || !isLeader) return;
         const now = Date.now();
         if (now - lastBroadcast < cfg.broadcastMs) return;
@@ -78,6 +78,7 @@ module.exports = function createParty(ctx) {
             y: Math.round(character.y),
             farm: farm ? farm.monster : null,
             target: target ? target.id : null,
+            event: event ? { name: event.name, join: !!event.join, monster: event.monster || null } : null,
         });
     }
 

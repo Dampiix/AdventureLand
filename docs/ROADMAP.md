@@ -100,7 +100,7 @@ and the holiday season (Snowman) starts in December.
 - Compound engine for accessories; exchange for boxes (armorbox, weaponbox).
 - Bag management: bank deposits for items that are neither sold nor used.
 
-### M4 – Events (v1.4)
+### M4 – Events (v1.6) — implemented in v1.6.0: observer, Goo Brawl, Snowman, Phoenix search
 - Generic event layer: detect live events, decide per event whether the team can handle it,
   travel/`join`, fight, return to farming.
 - First handlers: Snowman (holiday season), then the recurring bosses that fit the team.

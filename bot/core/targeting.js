@@ -2,9 +2,10 @@
 // bot_targeting – WHAT to farm and WHICH monster to hit next.
 //
 // Farm choice, in order:
-//   1. per-character override (config.characters[name].farm)
-//   2. global override (config.targeting.farm)
-//   3. an open, safe Monster Hunt of any party fighter (bot_hunts)
+//   1. a live event / world boss (bot_events)
+//   2. an open, safe Monster Hunt of any party fighter (bot_hunts)
+//   3. per-character or global farm setting (config.characters[name].farm,
+//      config.targeting.farm)
 //   4. the game's progression guide: get_progression().choices
 //      (top safe farm routes for this character's current gear)
 //   5. config.targeting.fallback
@@ -73,6 +74,18 @@ module.exports = function createTargeting(ctx) {
     }
 
     function currentFarm() {
+        // Events and world bosses come first (bot_events; members get it from the leader).
+        const ev = ctx.events ? ctx.events.current() : null;
+        if (ev) {
+            const next = ev.join
+                ? { monster: null, any: true, source: "event " + ev.name }
+                : { monster: ev.monster || ev.name, dest: ev.dest || ev.monster || ev.name, source: "event " + ev.name };
+            if (!farm || farm.source !== next.source) util.log("target", "now: " + next.source, "yellow");
+            farm = next;
+            nextPickAt = 0;
+            return farm;
+        }
+
         const lead = party.leaderInfo();
         if (lead && lead.farm) {
             if (!farm || farm.monster !== lead.farm) util.log("target", "farm target: " + lead.farm + " (leader)", "yellow");
@@ -84,8 +97,9 @@ module.exports = function createTargeting(ctx) {
         const own = config.characters[character.name] || {};
         const override = own.farm || config.targeting.farm;
 
-        // An open, safe Monster Hunt beats the guide's choice (explicit overrides still win).
-        const hunt = !override && ctx.hunts ? ctx.hunts.target() : null;
+        // An open, safe Monster Hunt beats both the guide and a configured farm target;
+        // the configured target only replaces the guide's choice.
+        const hunt = ctx.hunts ? ctx.hunts.target() : null;
         if (hunt) {
             if (!farm || farm.monster !== hunt.monster) util.log("target", "farm target: " + hunt.monster + " (" + hunt.source + ")", "yellow");
             farm = hunt;
@@ -113,10 +127,17 @@ module.exports = function createTargeting(ctx) {
         return name === character.name || party.inParty(name);
     }
 
+    // Cooperative monsters (event bosses, Phoenix, ...) reward every contributor,
+    // so fighting them alongside other players is fine.
+    function isCoop(t) {
+        const def = G.monsters[t.mtype];
+        return !!(def && def.cooperative);
+    }
+
     // A target stays valid while it is visible, alive and not fighting someone else.
     function isValid(t) {
         if (!t || !t.visible || t.dead || t.type !== "monster") return false;
-        if (t.target && !isOurs(t.target)) return false;
+        if (t.target && !isOurs(t.target) && !isCoop(t)) return false;
         return true;
     }
 
@@ -135,7 +156,7 @@ module.exports = function createTargeting(ctx) {
         return best;
     }
 
-    function pick(monster) {
+    function pick(farmTarget) {
         const current = get_targeted_monster();
         if (isValid(current)) return current;
 
@@ -147,10 +168,20 @@ module.exports = function createTargeting(ctx) {
             // and never wander off to a farm spot of our own.
             const lead = party.leaderInfo();
             const assist = lead && lead.target ? get_monster(lead.target) : null;
-            return isValid(assist) && assist.target ? assist : null;
+            return isValid(assist) && (assist.target || isCoop(assist)) ? assist : null;
         }
 
-        return get_nearest_monster({ type: monster, no_target: true });
+        if (farmTarget.any) {
+            // Join event: anything in the event map is fair game.
+            const m = get_nearest_monster({});
+            return isValid(m) ? m : null;
+        }
+        const type = farmTarget.monster;
+        if (G.monsters[type] && G.monsters[type].cooperative) {
+            const boss = get_nearest_monster({ type: type });
+            if (isValid(boss)) return boss;
+        }
+        return get_nearest_monster({ type: type, no_target: true });
     }
 
     return { currentFarm: currentFarm, pick: pick, isValid: isValid, reportSearch: reportSearch };
