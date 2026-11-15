@@ -94,7 +94,7 @@ and the holiday season (Snowman) starts in December.
   (same check as the guide's safe routes), turns it in at zero, lets unsafe hunts expire.
 - Hunts are tied to the server that issued them.
 
-### M3 – Merchant economy (v1.3) · upgrade engine + bank delivery implemented in v1.3.0 (compound/exchange still open)
+### M3 – Merchant economy (v1.3) · upgrade engine + bank delivery (v1.3.0), compound (v1.4.0); exchange still open
 - Upgrade engine: whitelist with target levels, maximum risk per step, gold reserve,
   official `upgrade()` API, scroll purchase.
 - Compound engine for accessories; exchange for boxes (armorbox, weaponbox).

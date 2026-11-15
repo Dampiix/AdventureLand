@@ -5,7 +5,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.3.0",
+    version: "1.4.0",
 
     // The character you play in the client. Its CODE starts the others
     // and it is the party leader / tank.
@@ -121,6 +121,10 @@ module.exports = {
         budgetPerWish: 500000,        // gold per wish (base item + scrolls, failures included)
         giveUpForMs: 60 * 60 * 1000,  // after a stop (risk/budget/no source) retry in an hour
         bankScanEveryMs: 10 * 60 * 1000,
+        compound: {
+            auto: true,   // combine spare accessories/books when no wish is open
+            autoUpTo: 3,  // ...up to this level (each step still needs >= minChance)
+        },
     },
 
     // Merchant role

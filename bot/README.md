@@ -30,7 +30,7 @@ Each character looks itself up in `config.js` and loads its role.
 | `core/party.js` | 31 `bot_party` | party invites/accept/leave, leader broadcast, following |
 | `core/hunts.js` | 32 `bot_hunts` | Monster Hunts: pick a safe hunt of any party fighter, Daisy trips, turn in |
 | `core/gear.js` | 33 `bot_gear` | fighter: equipment wishes from the progression guide, equips the guide's upgrades |
-| `roles/workshop.js` | 34 `bot_workshop` | merchant: fulfils wishes from bag, bank or by upgrading its own copies |
+| `roles/workshop.js` | 34 `bot_workshop` | merchant: fulfils wishes from bag, bank, upgrades or compounds; combines spare accessories |
 
 ## Phases and the party
 
@@ -66,7 +66,8 @@ Every 5 minutes each fighter sends up to three equipment wishes from its progres
 bag, a copy in the bank, or it develops its own copy (bank or +0 from an NPC) at Cue. Rules
 (`config.workshop`): every step is previewed and only attempted at **70 %** or better, never below
 the gold reserve, at most **500k per wish**, no offerings or shells. Compound items (rings,
-earrings, books) are only delivered from existing copies. Finished items go out on the next
+earrings, books) are built from three matching copies per level out of bag and bank; without open
+wishes the merchant also combines spare copies up to `workshop.compound.autoUpTo` (same 70 % rule). Finished items go out on the next
 delivery; the fighter follows its guide's "equip" advice and hands the old piece back.
 
 ## Merchant flow

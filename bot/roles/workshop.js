@@ -9,8 +9,11 @@
 //               an NPC, then upgrade it step by step at Cue
 // Rules (config.workshop): only steps with a previewed success chance of at
 // least minChance, never spend below the gold reserve, at most budgetPerWish
-// per wish, no offerings, no shells. Only upgradeable items are developed;
-// compound items (rings, earrings, books, ...) can only come from bag/bank.
+// per wish, no offerings, no shells. Upgradeable items are upgraded step by
+// step; compound items (rings, earrings, books, ...) are built from three
+// matching copies per level out of bag and bank (copies can't be bought).
+// Without open wishes, spare compound items are combined up to
+// config.workshop.compound.autoUpTo (same chance/budget rules).
 // We only ever work on our own copies – worn gear is never risked.
 // Finished items are handed over on the next delivery; the fighter gets a
 // "ready" ping so it calls the merchant right away.
@@ -136,12 +139,104 @@ module.exports = function createWorkshop(ctx) {
         pay(k, price * amount);
     }
 
+    // ---- compound -----------------------------------------------------------
+
+    // Usable copies (not locked, not shiny) of name at exactly `level`.
+    function bagCopies(name, level) {
+        const list = [];
+        character.items.forEach(function (item, i) {
+            if (item && item.name === name && (item.level || 0) === level && !item.l && !item.p) list.push(i);
+        });
+        return list;
+    }
+
+    function bankCopies(name, level) {
+        if (!bankSnapshot) return [];
+        return bankSnapshot.items.filter(function (b) { return b.name === name && b.level === level; });
+    }
+
+    // Combine three copies of name +level into one +level+1 at Cue.
+    // Returns true on success, false on a failed roll, throws when it cannot try.
+    async function compoundStep(k, name, level) {
+        const missing = 3 - bagCopies(name, level).length;
+        if (missing > 0) {
+            if (character.esize < missing + 1) throw { reason: "bag full" };
+            const banked = bankCopies(name, level);
+            if (banked.length < missing) throw { reason: "not enough copies of " + name + " +" + level };
+            for (const entry of banked.slice(0, missing)) await retrieve(entry);
+        }
+        const copies = bagCopies(name, level);
+        if (copies.length < 3) throw { reason: "copies went missing" };
+
+        const scroll = "cscroll" + item_grade(character.items[copies[0]]);
+        await ensureScroll(k, scroll, 1);
+        await goTo("newupgrade");
+        const c = bagCopies(name, level);
+        const s = bagIndex(scroll, 0);
+        const preview = await compound(c[0], c[1], c[2], s, null, true);
+        if (preview.chance < cfg.minChance) {
+            throw { reason: name + " +" + level + " -> +" + (level + 1) + " only " + Math.round(preview.chance * 100) + "%" };
+        }
+        const result = await compound(c[0], c[1], c[2], s);
+        if (result.success) {
+            util.log("workshop", "compounded 3x " + name + " +" + level + " -> +" + (level + 1) + " (" + Math.round(preview.chance * 100) + "%)", "green");
+            return true;
+        }
+        util.log("workshop", "compound " + name + " +" + level + " failed (" + Math.round(preview.chance * 100) + "%) - three copies lost", "red");
+        return false;
+    }
+
+    // Build a wished compound item from existing copies, lowest level first.
+    async function developCompound(fighter, w) {
+        const k = key(fighter, w);
+        for (let level = 0; level < w.level; level++) {
+            const total = bagCopies(w.name, level).length + bankCopies(w.name, level).length;
+            if (total >= 3) {
+                await compoundStep(k, w.name, level);
+                return false; // one roll per work() round; the next round continues
+            }
+        }
+        util.log("workshop", "not enough copies to build " + w.name + " +" + w.level + " yet", "orange");
+        blockedUntil[k] = Date.now() + cfg.giveUpForMs;
+        return false;
+    }
+
+    // Without open wishes: combine spare accessories/books up to autoUpTo.
+    // Keeps the bank tidy (3 -> 1) and prepares stronger copies for later.
+    async function autoCompound() {
+        if (!cfg.compound.auto) return false;
+        const counts = {};
+        const add = function (name, level) {
+            const def = G.items[name];
+            if (!def || !def.compound || level >= cfg.compound.autoUpTo) return;
+            const id = name + ":" + level;
+            counts[id] = (counts[id] || 0) + 1;
+        };
+        character.items.forEach(function (i) { if (i && !i.l && !i.p) add(i.name, i.level || 0); });
+        (bankSnapshot ? bankSnapshot.items : []).forEach(function (b) { add(b.name, b.level); });
+
+        const now = Date.now();
+        const id = Object.keys(counts).find(function (x) { return counts[x] >= 3 && !(blockedUntil["auto:" + x] > now); });
+        if (!id) return false;
+        const parts = id.split(":");
+        const k = "auto:" + id;
+        util.status("compounding " + parts[0] + " +" + parts[1], "orange");
+        try {
+            await compoundStep(k, parts[0], Number(parts[1]));
+        } catch (e) {
+            util.log("workshop", "auto compound " + parts[0] + " +" + parts[1] + ": " + util.errReason(e), "orange");
+            blockedUntil[k] = Date.now() + cfg.giveUpForMs;
+        }
+        return true;
+    }
+
     // Upgrade the copy at `index` towards `target`. Returns true on success.
     async function develop(fighter, w) {
         const k = key(fighter, w);
         const def = G.items[w.name];
         if (!def.upgrade) {
-            util.log("workshop", w.name + " is a compound item - can only deliver existing copies", "orange");
+            if (def.compound) return developCompound(fighter, w);
+            util.log("workshop", w.name + " can be neither upgraded nor compounded", "orange");
             blockedUntil[k] = Date.now() + cfg.giveUpForMs;
             return false;
         }
@@ -230,13 +325,16 @@ module.exports = function createWorkshop(ctx) {
             if (readyFor(fighter).length) comms.send(fighter, "ready", {});
         });
 
-        const open = openWishes().filter(function (o) { return bagIndex(o.wish.name, o.wish.level) === -1; });
-        if (!open.length) return;
-
         if (!bankSnapshot || Date.now() - bankSnapshot.at > cfg.bankScanEveryMs) {
             util.status("checking the bank", "yellow");
             await smart_move("bank");
             readBank();
+        }
+
+        const open = openWishes().filter(function (o) { return bagIndex(o.wish.name, o.wish.level) === -1; });
+        if (!open.length) {
+            await autoCompound();
+            return;
         }
 
         const job = open[0];
