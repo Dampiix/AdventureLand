@@ -1067,6 +1067,19 @@ module.exports = function createWorkshop(ctx) {
     }
 
     // What each fighter should get, in team order (leader first).
+    // The shop weapon to build for a fighter that wears a drop weapon, or null: the
+    // class's starting weapon (staff, mace, bow), if at upTo it beats the worn one.
+    function shopWeaponGoal(f) {
+        const m = worn[f] && worn[f].mainhand;
+        const ctype = classes[f];
+        if (!m || !ctype || sellerOf(m.name)) return null; // nothing or a shop weapon in hand: normal goals
+        const base = G.classes[ctype] && G.classes[ctype].base_slots && G.classes[ctype].base_slots.mainhand;
+        const name = base && base.name;
+        if (!name || !G.items[name] || !G.items[name].upgrade || !sellerOf(name)) return null;
+        const bar = util.weaponPower(m.name, m.level || 0, ctype) * (1 + ((cfg.betterWeapons && cfg.betterWeapons.margin) || 0));
+        return util.weaponPower(name, cfg.gearGoals.upTo, ctype) > bar ? name : null;
+    }
+
     function goalNeeds() {
         const g = cfg.gearGoals;
         const now = Date.now();
@@ -1074,6 +1087,11 @@ module.exports = function createWorkshop(ctx) {
         config.team.fighters.forEach(function (f) {
             const eq = worn[f];
             if (!eq) return;
+            // A drop weapon in hand (e.g. a Phoenix weapon): the class's shop weapon at
+            // upTo may beat it – build that, the fighter switches, and the drop weapon is
+            // then upgraded until it wins again (betterWeapons). Player idea 2026-11-15.
+            const shopWeapon = shopWeaponGoal(f);
+            if (shopWeapon) list.push({ fighter: f, slot: "mainhand", name: shopWeapon, stat: null, weapon: null });
             g.slots.forEach(function (slot) {
                 const w = eq[slot];
                 const def = w && G.items[w.name];
@@ -1104,6 +1122,7 @@ module.exports = function createWorkshop(ctx) {
             });
         });
         (cfg.gearGoals.weapons || []).forEach(function (rule) { names.add(rule.name); });
+        config.team.fighters.forEach(function (f) { const n = shopWeaponGoal(f); if (n) names.add(n); });
         return names;
     }
 
