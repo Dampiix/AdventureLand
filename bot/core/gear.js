@@ -120,6 +120,24 @@ module.exports = function createGear(ctx) {
                 util.log("gear", "equipped " + a.name + " +" + (a.level || 0) + " -> " + a.slot, "green");
                 return; // the bag changed – re-read the guide next time
             }
+            // A better copy of a piece we wear (higher level without losing the stat, or
+            // the same level with a stat the worn one lacks): the guide skips small gains.
+            for (let num = 0; num < character.items.length; num++) {
+                const item = character.items[num];
+                const def = item && G.items[item.name];
+                if (!def || !WEARABLE.includes(def.type) || !usable(def)) continue;
+                const slot = (SLOTS_BY_TYPE[def.type] || []).find(function (s) {
+                    const w = character.slots && character.slots[s];
+                    if (!w || w.name !== item.name) return false;
+                    const lvl = item.level || 0, wl = w.level || 0;
+                    if (w.stat_type && item.stat_type !== w.stat_type) return false;
+                    return lvl > wl || (lvl === wl && !!item.stat_type && !w.stat_type);
+                });
+                if (!slot) continue;
+                await equip(num, slot);
+                util.log("gear", "equipped " + item.name + " +" + (item.level || 0) + (item.stat_type ? " " + item.stat_type : "") + " -> " + slot + " (better copy)", "green");
+                return;
+            }
             for (let num = 0; num < character.items.length; num++) {
                 const item = character.items[num];
                 const def = item && G.items[item.name];
