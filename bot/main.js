@@ -45,7 +45,11 @@ function startTeam() {
 }
 
 function startBot() {
-    if (typeof code_settings !== "undefined") code_settings.log_cm = false;
+    if (typeof code_settings !== "undefined") {
+        code_settings.log_cm = false;               // no "received CM" lines
+        code_settings.log_smart_move = false;       // no "Searching for a path... / Path found!"
+        code_settings.show_smart_move_text = false; // no floating pathfinding text
+    }
 
     const me = BOT_CONFIG.characters[character.name];
     if (!me) {
