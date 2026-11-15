@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.13.1",
+    version: "1.13.2",
 
     team: {
         leader: "DmpxPalTank",                          // played in the client, starts the others, tanks
@@ -196,9 +196,9 @@ module.exports = {
         // Fixed wishes on top of the guide's. Items without a shop are bought with tokens
         // (Monster Tokens at Daisy). Steps below the risk tier are not attempted: the copy
         // is delivered at the level reached and the fighter's guide decides whether to wear it.
-        wishes: {
-            DmpxPalTank: [{ name: "concordmace", level: 4 }], // 12 Monster Tokens, Smash-capable, Oathkeeper set
-        },
+        // e.g. DmpxPalTank: [{ name: "concordmace", level: 4 }]. The Concord Mace wish was removed
+        // 2026-11-15: at +4 it is no better than the Fiery Blade +7, and +5 needs Rare scrolls.
+        wishes: {},
         compound: {
             auto: true,   // combine spare accessories/books when no wish is open
             autoUpTo: 3,  // ...up to this level (each step still needs the risk tier's chance)
