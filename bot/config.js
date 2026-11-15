@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.20.0",
+    version: "1.21.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -260,14 +260,15 @@ module.exports = {
         },
         // Phoenix and event weapons are never on this list – they can't be bought again.
         sellList: [
-            // junk drops
-            "whiteegg", "spores", "slimestaff", "mushroomstaff", "stinger",
-            "wcap", "wshoes", "wattire", "wbreeches", "wgloves", "vitscroll",
+            // junk drops. Craft ingredients (spores, crab claws, frog tongues, ascale,
+            // bear fur, white eggs, carrots, rat tails, vit scrolls) are kept since the
+            // fresh start (2026-11-15): Cole and Leo craft gear from them.
+            "slimestaff", "mushroomstaff", "stinger",
+            "wcap", "wshoes", "wattire", "wbreeches", "wgloves",
             // +0 weapons (approved 2026-11-15). Phoenix weapons (fireblade, firestaff,
             // firebow) are never sold – player decision 2026-11-15.
             "dagger",
-            // cheap materials (approved 2026-11-15)
-            "bfur", "frogt", "crabclaw", "ascale", "carrot", "snowball",
+            "snowball",
             // V1 upgraded short swords to +4 – no longer needed (approved 2026-11-15)
             { name: "sword", maxLevel: 4 },
             // the Paladin's old starter gear (approved 2026-11-15).
@@ -279,8 +280,6 @@ module.exports = {
             // (approved 2026-11-15; X-armor, Fury and Starkillers are kept)
             "coat1", "helmet1", "pants1", "gloves1", "shoes1",
             "hhelmet", "harmor", "hpants", "hgloves", "hboots",
-            // rat tails: every recipe needs 30+ – we have 5
-            "rattail",
         ],
         // Items the merchant hands to a fighter on its next delivery (one-off gifts).
         give: {

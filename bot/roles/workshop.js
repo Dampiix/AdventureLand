@@ -94,15 +94,22 @@ module.exports = function createWorkshop(ctx) {
         return r !== undefined ? r : w.level;
     }
 
+    // Where an NPC stands: main first, then any other regular map (e.g. the witch).
     function npcPos(id) {
-        const npc = (G.maps.main.npcs || []).find(function (n) { return n.id === id; });
-        return npc ? { map: "main", x: npc.position[0], y: npc.position[1] } : null;
+        const maps = ["main"].concat(Object.keys(G.maps).filter(function (m) { return m !== "main"; }));
+        for (const mapName of maps) {
+            const map = G.maps[mapName];
+            if (!map || map.ignore || map.instance) continue;
+            const npc = (map.npcs || []).find(function (n) { return n.id === id && n.position; });
+            if (npc) return { map: mapName, x: npc.position[0], y: npc.position[1] };
+        }
+        return null;
     }
 
     async function goTo(npcId) {
         const p = npcPos(npcId);
         if (!p) throw { reason: "npc " + npcId + " not found" };
-        if (character.map === "main" && util.distanceTo(p) < 100) return;
+        if (character.map === p.map && util.distanceTo(p) < 100) return;
         await smart_move(p);
     }
 
@@ -323,11 +330,94 @@ module.exports = function createWorkshop(ctx) {
         try { set(GRACE_KEY, { since: graceSince, spent: graceSpent }); } catch (e) { /* storage unavailable */ }
     }
 
+    // An NPC shop selling this item – in town (main) only, like before.
     function sellerOf(name) {
         const id = Object.keys(G.npcs).find(function (n) {
-            return Array.isArray(G.npcs[n].items) && G.npcs[n].items.includes(name) && npcPos(n);
+            const p = Array.isArray(G.npcs[n].items) && G.npcs[n].items.includes(name) && npcPos(n);
+            return p && p.map === "main";
         });
         return id || null;
+    }
+
+    // ---- crafting -----------------------------------------------------------------
+    //
+    // Items without a shop that have a recipe (G.craft) are crafted: at Cole for his
+    // monster-material recipes, at the witch for hers, at Leo for the rest. The
+    // ingredients come from bag and bank; each one must sit in a single stack, so
+    // split stacks are merged through the bank first. Missing ingredients are
+    // reported for drop farming.
+
+    function crafterOf(name) {
+        const r = G.craft && G.craft[name];
+        if (!r) return null;
+        const id = r.quest
+            ? Object.keys(G.npcs).find(function (n) { return G.npcs[n].quest === r.quest && npcPos(n); })
+            : Object.keys(G.npcs).find(function (n) { return G.npcs[n].role === "craftsman" && npcPos(n); });
+        return id || null;
+    }
+
+    function stackable(name) {
+        return !!(G.items[name] && G.items[name].s);
+    }
+
+    // How many we hold (bag + bank): stack quantities, or copies at exactly `level`.
+    function ingredientCount(name, level) {
+        let n = 0;
+        character.items.forEach(function (i) {
+            if (!i || i.name !== name || i.l) return;
+            if (stackable(name)) n += i.q || 1;
+            else if ((i.level || 0) === level) n++;
+        });
+        (bankSnapshot ? bankSnapshot.items : []).forEach(function (b) {
+            if (b.name !== name) return;
+            if (stackable(name)) n += b.q || 1;
+            else if (b.level === level) n++;
+        });
+        return n;
+    }
+
+    // Get `q` of an ingredient into the bag (one stack for stackables).
+    async function gatherIngredient(name, q, level) {
+        if (stackable(name)) {
+            if (util.findItemIndex(function (i) { return i.name === name && (i.q || 1) >= q; }) !== -1) return;
+            await smart_move("bank");
+            // Bag stacks go into the bank first: storing merges them into one stack.
+            for (let i = character.items.length - 1; i >= 0; i--) {
+                if (character.items[i] && character.items[i].name === name) await bank_store(i);
+            }
+            readBank();
+            const stack = bankSnapshot.items.filter(function (b) { return b.name === name; })
+                .sort(function (a, b) { return b.q - a.q; })[0];
+            if (!stack || stack.q < q) throw { reason: name + " is split across stacks (" + (stack ? stack.q : 0) + "/" + q + " in one)" };
+            await retrieve(stack);
+            return;
+        }
+        if (bagIndex(name, level) !== -1 && character.items.some(function (i) { return i && i.name === name && (i.level || 0) === level; })) return;
+        const banked = bankFind(name, function (l) { return l === level; });
+        if (!banked) throw { reason: "no " + name + " +" + level + " for crafting" };
+        await retrieve(banked);
+    }
+
+    // Returns { ok: true } after crafting, or { ok: false, missing: [{ name, level, need }] }.
+    async function craftItem(k, name) {
+        const recipe = G.craft[name];
+        const npc = crafterOf(name);
+        if (!recipe || !npc) return { ok: false, missing: [] };
+        const missing = [];
+        recipe.items.forEach(function (it) {
+            const q = it[0], ing = it[1], level = it[2] || 0;
+            const have = ingredientCount(ing, level);
+            if (have < q) missing.push({ name: ing, level: level, need: q, have: have });
+        });
+        if (missing.length) return { ok: false, missing: missing };
+        if (recipe.cost && !canSpend(k, recipe.cost)) throw { reason: "budget" };
+        if (character.esize < recipe.items.length + 1) throw { reason: "bag full" };
+        for (const it of recipe.items) await gatherIngredient(it[1], it[0], it[2] || 0);
+        await goTo(npc);
+        await auto_craft(name);
+        if (recipe.cost) pay(k, recipe.cost);
+        util.log("workshop", "crafted " + G.items[name].name + " at " + (G.npcs[npc].name || npc), "green");
+        return { ok: true };
     }
 
     // Make sure a scroll is in the bag; buys enough for the remaining steps in one trip.
@@ -470,6 +560,11 @@ module.exports = function createWorkshop(ctx) {
         shortages[name] = { level: level, at: Date.now() };
     }
 
+    // A craft ingredient we lack: `need` in total, for the wished item `forItem`.
+    function noteIngredientShortage(name, level, need, forItem) {
+        shortages[name] = { level: level, at: Date.now(), need: need, forItem: forItem };
+    }
+
     function unlockedCopies(name) {
         const list = [];
         character.items.forEach(function (i) { if (i && i.name === name && !i.l && !i.p) list.push(i.level || 0); });
@@ -493,8 +588,10 @@ module.exports = function createWorkshop(ctx) {
         const list = [];
         Object.keys(shortages).forEach(function (name) {
             const s = shortages[name];
-            const wished = fighters().some(function (f) { return wishList(f).some(function (w) { return w.name === name; }); });
-            const missing = wished && Date.now() - s.at < 2 * 60 * 60 * 1000 ? copiesMissing(name, s.level) : 0;
+            const target = s.forItem || name; // ingredients count while the crafted item is wished
+            const wished = fighters().some(function (f) { return wishList(f).some(function (w) { return w.name === target; }); });
+            const fresh = wished && Date.now() - s.at < 2 * 60 * 60 * 1000;
+            const missing = !fresh ? 0 : s.need ? s.need - ingredientCount(name, s.level) : copiesMissing(name, s.level);
             if (missing > 0) list.push({ name: name, copies: missing });
             else delete shortages[name];
         });
@@ -811,6 +908,15 @@ module.exports = function createWorkshop(ctx) {
                 await goTo(seller);
                 await buy(w.name, 1);
                 pay(k, def.g);
+            } else if (crafterOf(w.name)) {
+                const r = await craftItem(k, w.name);
+                if (!r.ok) {
+                    util.log("workshop", "can't craft " + w.name + " yet - missing " +
+                        r.missing.map(function (m) { return (m.need - m.have) + "x " + m.name; }).join(", "), "orange");
+                    r.missing.forEach(function (m) { noteIngredientShortage(m.name, m.level, m.need, w.name); });
+                    blockedUntil[k] = Date.now() + cfg.giveUpForMs;
+                    return false;
+                }
             } else if (!(await buyWithTokens(w.name))) {
                 util.log("workshop", "no copy of " + w.name + " and no shop or token offer for it", "orange");
                 if (!tokenOffer(w.name)) noteShortage(w.name, 0); // drop-only item: the team can farm it
