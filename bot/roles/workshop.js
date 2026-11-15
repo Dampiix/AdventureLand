@@ -1141,16 +1141,22 @@ module.exports = function createWorkshop(ctx) {
 
     // ---- main step ----------------------------------------------------------
 
+    // Fair order: every fighter's most important wish first, then everyone's second,
+    // ... (rank = position in the fighter's guide list); on equal rank the fighter
+    // served longest ago goes first.
+    const lastServed = {}; // fighter -> when we last worked on one of its wishes
     function openWishes() {
         const now = Date.now();
         const list = [];
         fighters().forEach(function (fighter) {
-            wishList(fighter).forEach(function (w) {
+            wishList(fighter).forEach(function (w, rank) {
                 if (blockedUntil[key(fighter, w)] > now) return;
-                list.push({ fighter: fighter, wish: w });
+                list.push({ fighter: fighter, wish: w, rank: rank });
             });
         });
-        return list;
+        return list.sort(function (a, b) {
+            return a.rank - b.rank || (lastServed[a.fighter] || 0) - (lastServed[b.fighter] || 0);
+        });
     }
 
     // One unit of work. Returns the fighters that now have something waiting.
@@ -1204,6 +1210,7 @@ module.exports = function createWorkshop(ctx) {
         }
 
         const job = open[0];
+        lastServed[job.fighter] = Date.now();
         const k = key(job.fighter, job.wish);
         util.status("working on " + job.wish.name + " +" + job.wish.level, "orange");
         try {
