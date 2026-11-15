@@ -116,10 +116,13 @@ module.exports = function createWorkshop(ctx) {
     // Mass Production (lvl 30, -50%; "pp" from lvl 60, -90%) before an upgrade or compound,
     // Mass Exchange (lvl 40 / 70) before an exchange: the next one finishes faster.
     async function boost(skill) {
-        if (!cfg.massSkills || (character.s && (character.s[skill] || character.s[skill + "pp"]))) return;
-        const pick = util.canCast(skill + "pp") ? skill + "pp" : util.canCast(skill) ? skill : null;
-        if (!pick) return;
-        try { await use_skill(pick); } catch (e) { /* not worth failing the upgrade for */ }
+        try {
+            if (!cfg.massSkills || (character.s && (character.s[skill] || character.s[skill + "pp"]))) return;
+            const pick = util.canCast(skill + "pp") ? skill + "pp" : util.canCast(skill) ? skill : null;
+            if (pick) await use_skill(pick);
+        } catch (e) {
+            // a speed-up is never worth failing the upgrade for
+        }
     }
 
     function bagIndex(name, minLevel) {
@@ -1280,6 +1283,7 @@ module.exports = function createWorkshop(ctx) {
     }
 
     // One unit of work. Returns the fighters that now have something waiting.
+    const readySince = {}; // fighter -> since when something waits for it
     async function work() {
         if (!cfg.enabled) return;
 
@@ -1292,10 +1296,17 @@ module.exports = function createWorkshop(ctx) {
                 if (wishIndex(w, targetLevel(fighter, w)) !== -1) earmark(fighter, w.name, targetLevel(fighter, w), w.stat);
             });
         });
+        // Deliver in batches: call fighters only once every wish we can work on right now
+        // is done, or when a finished item has waited deliveryBatchMs. (A fighter that
+        // calls us anyway – potions, full bag, routine – gets everything that is ready.)
+        const stillWorkable = openWishes().some(function (o) { return wishIndex(o.wish, targetLevel(o.fighter, o.wish)) === -1; });
         const waiting = {};
         fighters().concat(activeEarmarks().map(function (e) { return e.fighter; })).forEach(function (f) { waiting[f] = true; });
         Object.keys(waiting).forEach(function (fighter) {
-            if (readyFor(fighter).length || goalReadyFor(fighter).length) comms.send(fighter, "ready", {});
+            const ready = readyFor(fighter).length || goalReadyFor(fighter).length;
+            if (!ready) { delete readySince[fighter]; return; }
+            if (!readySince[fighter]) readySince[fighter] = Date.now();
+            if (!stillWorkable || Date.now() - readySince[fighter] >= (cfg.deliveryBatchMs || 0)) comms.send(fighter, "ready", {});
         });
 
         if (!bankSnapshot || Date.now() - bankSnapshot.at > cfg.bankScanEveryMs) {
