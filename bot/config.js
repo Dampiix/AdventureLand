@@ -5,7 +5,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.6.2",
+    version: "1.6.3",
 
     // The character you play in the client. Its CODE starts the others
     // and it is the party leader / tank.
@@ -162,8 +162,9 @@ module.exports = {
             // junk drops
             "whiteegg", "spores", "slimestaff", "mushroomstaff", "stinger",
             "wcap", "wshoes", "wattire", "wbreeches", "wgloves", "vitscroll",
-            // +0 weapons (approved 2026-11-15)
-            "dagger", "fireblade", "firestaff",
+            // +0 weapons (approved 2026-11-15). Phoenix weapons (fireblade, firestaff,
+            // firebow) are never sold – player decision 2026-11-15.
+            "dagger",
             // cheap materials (approved 2026-11-15)
             "bfur", "frogt", "crabclaw", "ascale", "carrot", "snowball",
             // V1 upgraded short swords to +4 – no longer needed (approved 2026-11-15)
