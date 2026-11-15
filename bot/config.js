@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.11.1",
+    version: "1.11.2",
 
     team: {
         leader: "DmpxPalTank",                          // played in the client, starts the others, tanks
@@ -152,6 +152,7 @@ module.exports = {
             fodder: "helmet",        // cheapest upgradeable shop item (3,200 gold)
             budgetPerLevel: 300000,  // gold per target level per 24 h (fodder + scrolls)
             maxAttempts: 25,         // fodder attempts per farming round
+            batch: 5,                // helmets prepared at once, then attempted back to back
         },
         // Spare copies to upgrade when idle (approved 2026-11-15): Phoenix weapons are kept
         // as spares; the best copy below upTo is upgraded, failures use up surplus copies,

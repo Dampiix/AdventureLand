@@ -467,10 +467,11 @@ module.exports = function createWorkshop(ctx) {
     }
 
     // One upgrade attempt on a fodder copy; returns "success" | "fail".
-    async function fodderAttempt(gk, index) {
+    // bulk: how many scrolls to buy if we have none (one trip for a whole batch).
+    async function fodderAttempt(gk, index, bulk) {
         const item = character.items[index];
         const scroll = "scroll" + item_grade(item);
-        await ensureScroll(gk, scroll, 1);
+        await ensureScroll(gk, scroll, bulk || 1);
         await goTo("newupgrade");
         const i = util.findItemIndex(function (x) { return x.name === item.name && (x.level || 0) === (item.level || 0) && !x.l && !x.p; });
         if (i === -1) throw { reason: "fodder lost track" };
@@ -486,35 +487,67 @@ module.exports = function createWorkshop(ctx) {
         util.log("workshop", "building grace for +" + level + " with " + fodder + " (need " + pct(minChance) + ")", "yellow");
         let tries = 0;   // attempts at the target level
         let stopReason = "attempt limit";
-        for (let step = 0; step < 300 && tries < cfg.grace.maxAttempts; step++) {
-            const chance = await targetChance();
-            if (chance >= minChance) {
-                util.log("workshop", "grace done after " + tries + " attempts: +" + level + " now at " + pct(chance), "green");
-                return chance;
-            }
-            // A fodder copy at +level-1: raise the best one we have, or buy a new one.
-            let index = fodderIndex(level - 1);
-            if (index === -1) {
-                if (character.esize < 2) { stopReason = "bag full"; break; }
-                if (!canSpend(gk, def.g)) { stopReason = "budget used up"; break; }
-                await goTo(sellerOf(fodder));
-                await buy(fodder, 1);
-                pay(gk, def.g);
-                index = fodderIndex(level - 1);
-                if (index === -1) { stopReason = "could not buy " + fodder; break; }
-            }
-            try {
-                if ((character.items[index].level || 0) < level - 1) {
-                    await fodderAttempt(gk, index); // climbing; a failure here just costs a cheap copy
-                    continue;
+
+        // Fodder copies sitting exactly one level below the target.
+        const readyCount = function () {
+            return character.items.filter(function (i) {
+                return i && i.name === fodder && !i.l && !i.p && (i.level || 0) === level - 1;
+            }).length;
+        };
+
+        try {
+            for (let round = 0; round < 50 && tries < cfg.grace.maxAttempts; round++) {
+                let chance = await targetChance();
+                if (chance >= minChance) {
+                    util.log("workshop", "grace done after " + tries + " attempts: +" + level + " now at " + pct(chance), "green");
+                    return chance;
                 }
-                tries++;
-                const outcome = await fodderAttempt(gk, index);
-                util.log("workshop", "grace attempt " + tries + " at +" + level + ": " + (outcome === "fail" ? "failed (grace up)" : "succeeded (grace reset)"), "white");
-            } catch (e) {
-                stopReason = util.errReason(e); // e.g. "budget" from the scroll purchase
-                break;
+
+                // 1. Prepare a batch: buy helmets and climb all of them to +level-1 first,
+                //    so the attempts at +level can run back to back (one scroll trip, no walking).
+                const want = Math.min(cfg.grace.batch, cfg.grace.maxAttempts - tries);
+                // Buy the missing helmets in one visit.
+                const have = character.items.filter(function (i) { return i && i.name === fodder && !i.l && !i.p && (i.level || 0) <= level - 1; }).length;
+                let toBuy = Math.min(want - have, character.esize - 2);
+                while (toBuy > 1 && !canSpend(gk, def.g * toBuy)) toBuy--;
+                if (toBuy > 0 && canSpend(gk, def.g * toBuy)) {
+                    await goTo(sellerOf(fodder));
+                    for (let b = 0; b < toBuy; b++) await buy(fodder, 1);
+                    pay(gk, def.g * toBuy);
+                }
+                for (let guard = 0; readyCount() < want && guard < want * 12; guard++) {
+                    let index = fodderIndex(level - 2); // a copy that still needs climbing
+                    if (index === -1) {
+                        if (character.esize < 2) { stopReason = "bag full"; break; }
+                        if (!canSpend(gk, def.g)) { stopReason = "budget used up"; break; }
+                        await goTo(sellerOf(fodder));
+                        await buy(fodder, 1);
+                        pay(gk, def.g);
+                        index = fodderIndex(level - 2);
+                        if (index === -1) { stopReason = "could not buy " + fodder; break; }
+                    }
+                    await fodderAttempt(gk, index, want * level); // climbing; a failure just costs a cheap copy
+                }
+                if (!readyCount()) break;
+                util.log("workshop", readyCount() + " " + fodder + "s ready at +" + (level - 1) + " - attempting +" + level, "white");
+
+                // 2. Attempt the whole batch in a row, re-checking the real preview after each one.
+                while (readyCount() && tries < cfg.grace.maxAttempts) {
+                    tries++;
+                    const outcome = await fodderAttempt(gk, fodderIndex(level - 1), readyCount());
+                    util.log("workshop", "grace attempt " + tries + " at +" + level + ": " + (outcome === "fail" ? "failed (grace up)" : "succeeded (grace reset)"), "white");
+                    if (outcome === "fail") {
+                        chance = await targetChance();
+                        if (chance >= minChance) {
+                            util.log("workshop", "grace done after " + tries + " attempts: +" + level + " now at " + pct(chance), "green");
+                            return chance;
+                        }
+                    }
+                }
+                if (stopReason !== "attempt limit") break;
             }
+        } catch (e) {
+            stopReason = util.errReason(e); // e.g. "budget" from a scroll purchase
         }
         util.log("workshop", "grace for +" + level + " stopped: " + stopReason + " (" + Math.round((spent[gk] || 0) / 1000) + "k spent)", "orange");
         return null;
