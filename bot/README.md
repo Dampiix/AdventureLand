@@ -85,7 +85,9 @@ they fight other players, because every contributor is rewarded.
 Every 5 minutes each fighter sends up to three equipment wishes from its progression guide
 (e.g. "mace +4") to the merchant. The merchant fulfils one wish at a time: a copy already in its
 bag, a copy in the bank, or it develops its own copy (bank or +0 from an NPC) at Cue. Rules
-(`config.workshop`): every step is previewed and only attempted at **70 %** or better, never below
+(`config.workshop`): every step is previewed; the required chance depends on what is at risk
+(`workshop.risk`: cheap re-buyable copies 40 %, mid-value 60 %, precious or irreplaceable 70 %), and a
+higher scroll grade (owned, banked, or bought within budget) is tried when the normal one falls short; never below
 the gold reserve, at most **500k per wish**, no offerings or shells. Compound items (rings,
 earrings, books) are built from three matching copies per level out of bag and bank; without open
 wishes the merchant also combines spare copies up to `workshop.compound.autoUpTo` (same 70 % rule),

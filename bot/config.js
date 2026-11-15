@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.8.0",
+    version: "1.9.0",
 
     team: {
         leader: "DmpxPalTank",                          // played in the client, starts the others, tanks
@@ -126,20 +126,29 @@ module.exports = {
     // Merchant: fulfil wishes from bag, bank or by upgrading own copies (approved 2026-11-15)
     workshop: {
         enabled: true,
-        minChance: 0.7,               // never attempt an upgrade step below 70%
+        // Minimum success chance per step, by what is at risk (approved 2026-11-15):
+        risk: {
+            cheapBelow: 100000,    // value of the copy (x3 for compounds) below this is "cheap"
+            midBelow: 1000000,     // ...below this "mid"; above, or not re-buyable from an NPC: "precious"
+            cheap: 0.4,
+            mid: 0.6,
+            precious: 0.7,
+            maxScrollGrade: 2,     // try up to Rare scrolls when the normal one falls short
+            buyStrongerScrolls: true, // only within budgetPerWish; owned/banked ones are used first
+        },
         budgetPerWish: 500000,        // gold per wish (base item + scrolls, failures included)
         giveUpForMs: 60 * 60 * 1000,  // after a stop (risk/budget/no source) retry in an hour
         bankScanEveryMs: 10 * 60 * 1000,
         redeliverAfterMs: 6 * 60 * 60 * 1000, // don't fulfil the same wish for a fighter again within 6 h
         // Fixed wishes on top of the guide's. Items without a shop are bought with tokens
-        // (Monster Tokens at Daisy). Steps below minChance are not attempted: the copy
+        // (Monster Tokens at Daisy). Steps below the risk tier are not attempted: the copy
         // is delivered at the level reached and the fighter's guide decides whether to wear it.
         wishes: {
             DmpxPalTank: [{ name: "concordmace", level: 4 }], // 12 Monster Tokens, Smash-capable, Oathkeeper set
         },
         compound: {
             auto: true,   // combine spare accessories/books when no wish is open
-            autoUpTo: 3,  // ...up to this level (each step still needs >= minChance)
+            autoUpTo: 3,  // ...up to this level (each step still needs the risk tier's chance)
         },
         // Exchange (approved 2026-11-15: everything except seasonal items).
         exchange: {

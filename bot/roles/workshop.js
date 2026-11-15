@@ -8,7 +8,10 @@
 //   3. develop: take the best lower copy (bag/bank) or buy a +0 copy from
 //               an NPC, then upgrade it step by step at Cue
 // Rules (config.workshop): only steps with a previewed success chance of at
-// least minChance, never spend below the gold reserve, at most budgetPerWish
+// least the risk tier's chance (config.workshop.risk: cheap re-buyable items
+// 40 %, mid-value 60 %, precious/irreplaceable 70 %; a higher scroll grade is
+// tried when the normal one falls short), never spend below the gold reserve,
+// at most budgetPerWish
 // per wish, no offerings, no shells. Upgradeable items are upgraded step by
 // step; compound items (rings, earrings, books, ...) are built from three
 // matching copies per level out of bag and bank (copies can't be bought).
@@ -174,6 +177,50 @@ module.exports = function createWorkshop(ctx) {
         pay(k, price * amount);
     }
 
+    // ---- risk -------------------------------------------------------------------
+
+    // Minimum success chance for risking `item` (`copies` of it, 3 for compounds).
+    // Cheap, re-buyable things may fail more often; irreplaceable ones may not.
+    function minChanceFor(item, replaceable, copies) {
+        const r = cfg.risk;
+        let value;
+        try { value = item_value(item) * (copies || 1); } catch (e) { value = Infinity; }
+        if (!replaceable) value = Math.max(value, r.midBelow);
+        if (value < r.cheapBelow) return r.cheap;
+        if (value < r.midBelow) return r.mid;
+        return r.precious;
+    }
+
+    function pct(x) { return Math.round(x * 100) + "%"; }
+
+    // The normal scroll is not good enough: try higher scroll grades (owned, banked,
+    // or bought within the wish budget) until the preview reaches minChance.
+    // preview(scrollIndex) -> chance. Returns { scroll, chance } or null.
+    async function strongerScroll(k, prefix, grade, minChance, preview) {
+        for (let g = grade + 1; g <= cfg.risk.maxScrollGrade; g++) {
+            const name = prefix + g;
+            if (!G.items[name]) continue;
+            if (bagIndex(name, 0) === -1) {
+                const banked = bankSnapshot && bankSnapshot.items.find(function (b) { return b.name === name; });
+                const seller = sellerOf(name);
+                if (banked) {
+                    await retrieve(banked);
+                } else if (cfg.risk.buyStrongerScrolls && seller && canSpend(k, G.items[name].g)) {
+                    await goTo(seller);
+                    await buy(name, 1);
+                    pay(k, G.items[name].g);
+                } else {
+                    continue;
+                }
+            }
+            await goTo("newupgrade");
+            const chance = await preview(bagIndex(name, 0));
+            if (chance >= minChance) return { scroll: name, chance: chance };
+            util.log("workshop", "even with " + name + " only " + pct(chance), "white");
+        }
+        return null;
+    }
+
     // ---- compound -----------------------------------------------------------
 
     // Usable copies (not locked, not shiny) of name at exactly `level`.
@@ -203,21 +250,30 @@ module.exports = function createWorkshop(ctx) {
         const copies = bagCopies(name, level);
         if (copies.length < 3) throw { reason: "copies went missing" };
 
-        const scroll = "cscroll" + item_grade(character.items[copies[0]]);
+        const sample = character.items[copies[0]];
+        const grade = item_grade(sample);
+        const minChance = minChanceFor(sample, true, 3);
+        let scroll = "cscroll" + grade;
         await ensureScroll(k, scroll, 1);
         await goTo("newupgrade");
-        const c = bagCopies(name, level);
-        const s = bagIndex(scroll, 0);
-        const preview = await compound(c[0], c[1], c[2], s, null, true);
-        if (preview.chance < cfg.minChance) {
-            throw { reason: name + " +" + level + " -> +" + (level + 1) + " only " + Math.round(preview.chance * 100) + "%" };
+        const preview = async function (s) {
+            const c = bagCopies(name, level);
+            return (await compound(c[0], c[1], c[2], s, null, true)).chance;
+        };
+        let chance = await preview(bagIndex(scroll, 0));
+        if (chance < minChance) {
+            const better = await strongerScroll(k, "cscroll", grade, minChance, preview);
+            if (!better) throw { reason: name + " +" + level + " -> +" + (level + 1) + " only " + pct(chance) + " (need " + pct(minChance) + ")" };
+            scroll = better.scroll;
+            chance = better.chance;
         }
-        const result = await compound(c[0], c[1], c[2], s);
+        const c = bagCopies(name, level);
+        const result = await compound(c[0], c[1], c[2], bagIndex(scroll, 0));
         if (result.success) {
-            util.log("workshop", "compounded 3x " + name + " +" + level + " -> +" + (level + 1) + " (" + Math.round(preview.chance * 100) + "%)", "green");
+            util.log("workshop", "compounded 3x " + name + " +" + level + " -> +" + (level + 1) + " (" + pct(chance) + ")", "green");
             return true;
         }
-        util.log("workshop", "compound " + name + " +" + level + " failed (" + Math.round(preview.chance * 100) + "%) - three copies lost", "red");
+        util.log("workshop", "compound " + name + " +" + level + " failed (" + pct(chance) + ") - three copies lost", "red");
         return false;
     }
 
@@ -405,28 +461,38 @@ module.exports = function createWorkshop(ctx) {
             const level = item.level || 0;
             if (level >= w.level) return true;
 
-            const scroll = "scroll" + item_grade(item);
+            const grade = item_grade(item);
+            // Re-buyable from an NPC = replaceable; token/bank-only copies are precious.
+            const minChance = minChanceFor(item, !!sellerOf(w.name), 1);
+            let scroll = "scroll" + grade;
             await ensureScroll(k, scroll, w.level - level);
             await goTo("newupgrade");
             // Buying and walking can reorder the bag: re-locate the working copy.
-            const here = character.items[index];
-            if (!here || here.name !== w.name || (here.level || 0) !== level) {
+            const locate = function () {
+                const here = character.items[index];
+                if (here && here.name === w.name && (here.level || 0) === level) return index;
                 index = util.findItemIndex(function (i) { return i.name === w.name && (i.level || 0) === level && !i.l; });
                 if (index === -1) throw { reason: "working copy lost track" };
+                return index;
+            };
+            const preview = async function (s) { return (await upgrade(locate(), s, null, true)).chance; };
+            let chance = await preview(bagIndex(scroll, 0));
+            if (chance < minChance) {
+                const better = await strongerScroll(k, "scroll", grade, minChance, preview);
+                if (!better) {
+                    util.log("workshop", w.name + " +" + level + " -> +" + (level + 1) + " only " + pct(chance) + " (need " + pct(minChance) + ") - stopping at +" + level, "orange");
+                    reachedOnly[k] = level; // deliver the copy as it is; the fighter's guide decides whether to wear it
+                    return true;
+                }
+                scroll = better.scroll;
+                chance = better.chance;
             }
-            const scrollIndex = bagIndex(scroll, 0);
-            const preview = await upgrade(index, scrollIndex, null, true);
-            if (preview.chance < cfg.minChance) {
-                util.log("workshop", w.name + " +" + level + " -> +" + (level + 1) + " only " + Math.round(preview.chance * 100) + "% - stopping at +" + level, "orange");
-                reachedOnly[k] = level; // deliver the copy as it is; the fighter's guide decides whether to wear it
-                return true;
-            }
-            const result = await upgrade(index, scrollIndex);
+            const result = await upgrade(locate(), bagIndex(scroll, 0));
             if (result.success) {
-                util.log("workshop", w.name + " is now +" + result.level + " (" + Math.round(preview.chance * 100) + "%)", "green");
+                util.log("workshop", w.name + " is now +" + result.level + " (" + pct(chance) + ", " + scroll + ")", "green");
                 index = result.num !== undefined ? result.num : index;
             } else {
-                util.log("workshop", w.name + " +" + level + " failed (" + Math.round(preview.chance * 100) + "%) - the copy is gone", "red");
+                util.log("workshop", w.name + " +" + level + " failed (" + pct(chance) + ") - the copy is gone", "red");
                 return false; // next work() round starts again with a new base copy, budget permitting
             }
         }
