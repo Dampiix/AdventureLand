@@ -44,13 +44,17 @@ module.exports = function createWorkshop(ctx) {
     function loadDelivered() {
         try { return get(DELIVERED_KEY) || {}; } catch (e) { return {}; }
     }
-    const delivered = loadDelivered(); // "fighter:name" -> timestamp
-    function markDelivered(fighter, name) {
-        delivered[fighter + ":" + name] = Date.now();
+    // Keyed by fighter, item, level and stat: a helmet +0 does not block a later helmet +3.
+    const delivered = loadDelivered(); // "fighter:name:level:stat" -> timestamp
+    function deliveredKey(fighter, w) {
+        return fighter + ":" + w.name + ":" + (w.level || 0) + ":" + (w.stat || "");
+    }
+    function markDelivered(fighter, w) {
+        delivered[deliveredKey(fighter, w)] = Date.now();
         try { set(DELIVERED_KEY, delivered); } catch (e) { /* storage unavailable – only this session remembers */ }
     }
-    function recentlyDelivered(fighter, name) {
-        return Date.now() - (delivered[fighter + ":" + name] || 0) < cfg.redeliverAfterMs;
+    function recentlyDelivered(fighter, w) {
+        return Date.now() - (delivered[deliveredKey(fighter, w)] || 0) < cfg.redeliverAfterMs;
     }
 
     // What each fighter wears (sent with its wishes; survives restarts) – for gear goals.
@@ -75,7 +79,7 @@ module.exports = function createWorkshop(ctx) {
         ((cfg.wishes || {})[fighter] || []).forEach(function (w) {
             if (G.items[w.name] && !list.some(function (x) { return x.name === w.name && x.level >= w.level; })) list.push(w);
         });
-        return list.filter(function (w) { return !recentlyDelivered(fighter, w.name); });
+        return list.filter(function (w) { return !recentlyDelivered(fighter, w); });
     }
 
     function fighters() {
@@ -131,11 +135,23 @@ module.exports = function createWorkshop(ctx) {
             return false;
         }).map(function (k) { return earmarks[k]; });
     }
-    function earmark(fighter, name, level) {
+    function earmark(fighter, name, level, stat) {
         const k = fighter + "|" + name;
-        if (earmarks[k] && earmarks[k].level >= level) return;
-        earmarks[k] = { fighter: fighter, name: name, level: level, at: Date.now() };
+        if (earmarks[k] && earmarks[k].level >= level && (earmarks[k].stat || null) === (stat || null)) return;
+        earmarks[k] = { fighter: fighter, name: name, level: level, stat: stat || null, at: Date.now() };
         saveEarmarks();
+    }
+
+    // A bag copy that fulfils a wish/earmark: at least `level`, with the wished stat
+    // (str/int/dex scroll) if one is asked for. Smallest such level first.
+    function wishIndex(w, level) {
+        let best = -1;
+        character.items.forEach(function (item, i) {
+            if (!item || item.name !== w.name || (item.level || 0) < level) return;
+            if (w.stat && item.stat_type !== w.stat) return;
+            if (best === -1 || (item.level || 0) < (character.items[best].level || 0)) best = i;
+        });
+        return best;
     }
 
     // Items reserved for a fighter must not be sold or banked.
@@ -150,22 +166,22 @@ module.exports = function createWorkshop(ctx) {
 
     // Wishes we can fulfil from the bag now, plus earmarked items waiting in the bag.
     function readyFor(fighter) {
-        const list = wishList(fighter).filter(function (w) { return bagIndex(w.name, targetLevel(fighter, w)) !== -1; });
+        const list = wishList(fighter).filter(function (w) { return wishIndex(w, targetLevel(fighter, w)) !== -1; });
         activeEarmarks().forEach(function (e) {
             if (e.fighter !== fighter || list.some(function (w) { return w.name === e.name; })) return;
-            if (bagIndex(e.name, e.level) !== -1) list.push({ name: e.name, level: e.level });
+            if (wishIndex(e, e.level) !== -1) list.push({ name: e.name, level: e.level, stat: e.stat || null });
         });
         return list;
     }
 
     async function handOver(fighter) {
         for (const w of readyFor(fighter)) {
-            const index = bagIndex(w.name, targetLevel(fighter, w));
+            const index = wishIndex(w, targetLevel(fighter, w));
             if (index === -1) continue;
             const item = character.items[index];
             await send_item(fighter, index, 1);
             util.log("workshop", "delivered " + item.name + " +" + (item.level || 0) + " to " + fighter, "green");
-            markDelivered(fighter, w.name);
+            markDelivered(fighter, w);
             delete earmarks[fighter + "|" + w.name];
             saveEarmarks();
             wishes[fighter] = (wishes[fighter] || []).filter(function (x) { return x !== w; });
@@ -958,7 +974,9 @@ module.exports = function createWorkshop(ctx) {
     }
 
     // Apply the fighter's stat scroll (str/int/dex) to a finished copy.
-    async function applyStat(index, stat) {
+    // Apply a stat scroll (str/int/dex) to the bag copy at `index`; spends from budget key k.
+    async function applyStat(index, stat, k) {
+        const budgetKey = k || GOALS;
         const item = character.items[index];
         const scroll = stat + "scroll";
         if (!G.items[scroll] || G.items[scroll].type !== "pscroll") throw { reason: "no stat scroll for " + stat };
@@ -966,10 +984,10 @@ module.exports = function createWorkshop(ctx) {
         const missing = need - util.countItem(scroll);
         if (missing > 0) {
             const cost = missing * G.items[scroll].g;
-            if (!canSpend(GOALS, cost)) throw { reason: "budget" };
+            if (!canSpend(budgetKey, cost)) throw { reason: "budget" };
             await goTo(sellerOf(scroll));
             await buy(scroll, missing);
-            pay(GOALS, cost);
+            pay(budgetKey, cost);
         }
         await goTo("newupgrade");
         const i = util.findItemIndex(function (x) {
@@ -1081,7 +1099,7 @@ module.exports = function createWorkshop(ctx) {
         // Earmark what is ready now (it stays reserved even if the wish changes).
         fighters().forEach(function (fighter) {
             wishList(fighter).forEach(function (w) {
-                if (bagIndex(w.name, targetLevel(fighter, w)) !== -1) earmark(fighter, w.name, targetLevel(fighter, w));
+                if (wishIndex(w, targetLevel(fighter, w)) !== -1) earmark(fighter, w.name, targetLevel(fighter, w), w.stat);
             });
         });
         const waiting = {};
@@ -1098,7 +1116,7 @@ module.exports = function createWorkshop(ctx) {
 
         // Earmarked items that ended up in the bank come out first; vanished ones are dropped.
         for (const e of activeEarmarks()) {
-            if (bagIndex(e.name, e.level) !== -1) continue;
+            if (wishIndex(e, e.level) !== -1) continue;
             const banked = bankFind(e.name, function (l) { return l >= e.level; });
             if (banked && character.esize >= 2) {
                 await retrieve(banked);
@@ -1110,7 +1128,7 @@ module.exports = function createWorkshop(ctx) {
             }
         }
 
-        const open = openWishes().filter(function (o) { return bagIndex(o.wish.name, targetLevel(o.fighter, o.wish)) === -1; });
+        const open = openWishes().filter(function (o) { return wishIndex(o.wish, targetLevel(o.fighter, o.wish)) === -1; });
         if (!open.length) {
             if (await autoCompound()) return;
             if (await stockUpgrade()) return;
@@ -1123,6 +1141,18 @@ module.exports = function createWorkshop(ctx) {
         const k = key(job.fighter, job.wish);
         util.status("working on " + job.wish.name + " +" + job.wish.level, "orange");
         try {
+            // A copy at the wished level that only lacks the stat: apply the stat scroll.
+            if (job.wish.stat) {
+                const lvl = targetLevel(job.fighter, job.wish);
+                const idx = character.items.findIndex(function (it) {
+                    return it && !it.l && it.name === job.wish.name && (it.level || 0) >= lvl && it.stat_type !== job.wish.stat;
+                });
+                if (idx !== -1) {
+                    util.status(job.wish.stat + " scroll for " + job.wish.name, "orange");
+                    await applyStat(idx, job.wish.stat, k);
+                    return;
+                }
+            }
             const banked = bankFind(job.wish.name, function (l) { return l >= job.wish.level; });
             if (banked) {
                 await retrieve(banked);

@@ -51,18 +51,27 @@ module.exports = function createGear(ctx) {
         }
     }
 
-    // Equipment the guide wants us to obtain, best rows first.
+    // Equipment the guide wants us to obtain, best rows first. A wish carries the
+    // stat the guide asks for (str/int/dex scroll on armor). A "stat" row ("Add STR
+    // to Helmet") becomes a wish for a copy of that piece with the stat: the merchant
+    // builds it, we equip it and hand the old piece back.
     function readWishes(advice) {
         const seen = {};
         const list = [];
         (advice.rows || []).forEach(function (row) {
-            const req = row.request;
+            let req = row.request;
+            const a = row.action;
+            if (a && a.kind === "stat" && a.name && G.items[a.scroll] && G.items[a.scroll].stat) {
+                const own = (a.slot && character.slots[a.slot]) || character.items[a.num];
+                req = { name: a.name, level: own && own.name === a.name ? (own.level || 0) : 0, stat_type: G.items[a.scroll].stat };
+            }
             if (!req || !req.name || !G.items[req.name]) return;
             if (!WEARABLE.includes(G.items[req.name].type)) return;
             const level = req.level || 0;
             if (seen[req.name] !== undefined && seen[req.name] >= level) return;
             seen[req.name] = level;
-            list.push({ name: req.name, level: level });
+            const stat = req.stat_type && G.items[req.name].stat ? req.stat_type : null;
+            list.push(stat ? { name: req.name, level: level, stat: stat } : { name: req.name, level: level });
         });
         return list.slice(0, cfg.maxWishes);
     }
@@ -75,7 +84,7 @@ module.exports = function createGear(ctx) {
         if (key !== lastWishSent) {
             lastWishSent = key;
             if (wishes.length) {
-                util.log("gear", "wishes: " + wishes.map(function (w) { return w.name + " +" + w.level; }).join(", "), "yellow");
+                util.log("gear", "wishes: " + wishes.map(function (w) { return w.name + " +" + w.level + (w.stat ? " " + w.stat : ""); }).join(", "), "yellow");
             }
         }
         comms.send(merchant, "wishes", { list: wishes, worn: worn() });
