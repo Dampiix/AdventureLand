@@ -105,7 +105,7 @@ and the holiday season (Snowman) starts in December.
   travel/`join`, fight, return to farming.
 - First handlers: Snowman (holiday season), then the recurring bosses that fit the team.
 
-### M5 – Observability
+### M5 – Observability — deferred until the team runs headless (player decision 2026-11-15)
 - Periodic status report (level, XP/h, kills, deaths, potions, gold) readable outside the client.
 
 ### Later
