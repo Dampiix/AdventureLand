@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.17.2",
+    version: "1.17.3",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -38,6 +38,7 @@ module.exports = {
     // Client display only (no effect headless).
     ui: {
         hideGoldLogs: true,   // drop the game's "123 gold" loot lines from the log
+        hideKillLogs: true,   // drop the game's "X killed a Bee" lines
     },
 
     // Events and world bosses (approved 2026-11-15). "always" or "never" (default).

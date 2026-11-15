@@ -44,19 +44,25 @@ function startTeam() {
     });
 }
 
-// The game logs every gold pickup ("123 gold"). The game has no switch for it, so in
-// the client a filter in front of its log function drops those lines
-// (config.ui.hideGoldLogs). Installed once per window; everything else passes.
+// The game logs every gold pickup ("123 gold") and every kill ("X killed a Bee").
+// It has no switch for that, so in the client a filter in front of its log function
+// drops those lines (config.ui.hideGoldLogs / hideKillLogs). Installed once per
+// window; everything else passes.
 function hideGoldLogs() {
     try {
-        if (!BOT_CONFIG.ui || !BOT_CONFIG.ui.hideGoldLogs) return;
-        if (typeof parent === "undefined" || !parent || typeof parent.add_log !== "function" || parent.dmpxGoldFilter) return;
+        const ui = BOT_CONFIG.ui || {};
+        if (!ui.hideGoldLogs && !ui.hideKillLogs) return;
+        if (typeof parent === "undefined" || !parent || typeof parent.add_log !== "function" || parent.dmpxLogFilter) return;
         const original = parent.add_log;
         parent.add_log = function (message, color) {
-            if (typeof message === "string" && /^[\d,.]+ gold$/i.test(message.replace(/<[^>]*>/g, "").trim())) return;
+            if (typeof message === "string") {
+                const text = message.replace(/<[^>]*>/g, "").trim();
+                if (ui.hideGoldLogs && /^[\d,.]+ gold$/i.test(text)) return;
+                if (ui.hideKillLogs && /^\S+ killed an? .+$/i.test(text)) return;
+            }
             return original.apply(this, arguments);
         };
-        parent.dmpxGoldFilter = true;
+        parent.dmpxLogFilter = true;
     } catch (e) {
         // not in a browser client (headless): nothing to filter
     }
