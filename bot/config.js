@@ -5,7 +5,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.4.0",
+    version: "1.5.0",
 
     // The character you play in the client. Its CODE starts the others
     // and it is the party leader / tank.
@@ -124,6 +124,13 @@ module.exports = {
         compound: {
             auto: true,   // combine spare accessories/books when no wish is open
             autoUpTo: 3,  // ...up to this level (each step still needs >= minChance)
+        },
+        // Exchange (approved 2026-11-15: everything except seasonal items).
+        exchange: {
+            enabled: true,
+            items: ["armorbox", "gem0", "gem1", "seashell"],
+            batch: 10,     // exchanges per round, so deliveries are not delayed for long
+            keepFree: 8,   // stop while fewer bag slots are free (rewards need room)
         },
     },
 

@@ -67,7 +67,9 @@ bag, a copy in the bank, or it develops its own copy (bank or +0 from an NPC) at
 (`config.workshop`): every step is previewed and only attempted at **70 %** or better, never below
 the gold reserve, at most **500k per wish**, no offerings or shells. Compound items (rings,
 earrings, books) are built from three matching copies per level out of bag and bank; without open
-wishes the merchant also combines spare copies up to `workshop.compound.autoUpTo` (same 70 % rule). Finished items go out on the next
+wishes the merchant also combines spare copies up to `workshop.compound.autoUpTo` (same 70 % rule),
+and then exchanges Armor Boxes, gems and seashells (`workshop.exchange.items`) in batches of 10 while
+at least 8 bag slots are free. Rewards go through the normal sell / bank / compound / wish rules. Finished items go out on the next
 delivery; the fighter follows its guide's "equip" advice and hands the old piece back.
 
 ## Merchant flow

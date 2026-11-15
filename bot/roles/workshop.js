@@ -13,7 +13,8 @@
 // step; compound items (rings, earrings, books, ...) are built from three
 // matching copies per level out of bag and bank (copies can't be bought).
 // Without open wishes, spare compound items are combined up to
-// config.workshop.compound.autoUpTo (same chance/budget rules).
+// config.workshop.compound.autoUpTo (same chance/budget rules), then
+// boxes/gems/seashells from config.workshop.exchange.items are exchanged.
 // We only ever work on our own copies – worn gear is never risked.
 // Finished items are handed over on the next delivery; the fighter gets a
 // "ready" ping so it calls the merchant right away.
@@ -89,7 +90,7 @@ module.exports = function createWorkshop(ctx) {
         Object.keys(character.bank || {}).forEach(function (pack) {
             if (!/^items\d+$/.test(pack)) return;
             (character.bank[pack] || []).forEach(function (item, index) {
-                if (item) items.push({ pack: pack, index: index, name: item.name, level: item.level || 0 });
+                if (item) items.push({ pack: pack, index: index, name: item.name, level: item.level || 0, q: item.q || 1 });
             });
         });
         bankSnapshot = { at: Date.now(), items: items };
@@ -108,7 +109,7 @@ module.exports = function createWorkshop(ctx) {
         const fresh = bankSnapshot.items.find(function (b) { return b.pack === entry.pack && b.index === entry.index && b.name === entry.name; });
         if (!fresh) throw { reason: entry.name + " moved in the bank" };
         await bank_retrieve(entry.pack, entry.index);
-        util.log("workshop", "took " + entry.name + " +" + entry.level + " from the bank", "green");
+        util.log("workshop", "took " + entry.name + (entry.q > 1 ? " x" + entry.q : " +" + entry.level) + " from the bank", "green");
         readBank();
     }
 
@@ -230,6 +231,65 @@ module.exports = function createWorkshop(ctx) {
         return true;
     }
 
+    // ---- exchange -----------------------------------------------------------
+
+    // Quest items go to their quest NPC (e.g. seashells -> Tristian), the rest to Xyn.
+    function exchangeNpc(name) {
+        const quest = G.items[name].quest;
+        if (!quest) return "exchange";
+        return Object.keys(G.npcs).find(function (id) { return G.npcs[id].quest === quest && npcPos(id); }) || null;
+    }
+
+    function exchangeStack(name, need) {
+        return util.findItemIndex(function (i) { return i.name === name && (i.q || 1) >= need; });
+    }
+
+    // Without wishes or compound work: exchange boxes, gems, seashells ...
+    // (config.workshop.exchange.items) in batches while the bag has room.
+    async function autoExchange() {
+        const ex = cfg.exchange;
+        if (!ex.enabled) return false;
+        const now = Date.now();
+        for (const name of ex.items) {
+            const def = G.items[name];
+            if (!def || blockedUntil["exchange:" + name] > now) continue;
+            const need = def.e || 1;
+            if (character.esize < ex.keepFree) return false;
+
+            if (exchangeStack(name, need) === -1) {
+                const banked = bankSnapshot && bankSnapshot.items.find(function (b) { return b.name === name && b.q >= need; });
+                if (!banked) continue;
+                await retrieve(banked);
+            }
+            const npc = exchangeNpc(name);
+            if (!npc) {
+                blockedUntil["exchange:" + name] = now + cfg.giveUpForMs;
+                continue;
+            }
+            util.status("exchanging " + name, "orange");
+            await goTo(npc);
+
+            const rewards = [];
+            while (rewards.length < ex.batch && character.esize >= ex.keepFree) {
+                const index = exchangeStack(name, need);
+                if (index === -1) break;
+                try {
+                    const result = await exchange(index);
+                    rewards.push(result && result.reward ? result.reward : "?");
+                } catch (e) {
+                    util.log("workshop", "exchange " + name + ": " + util.errReason(e) + " - pausing it", "orange");
+                    blockedUntil["exchange:" + name] = Date.now() + cfg.giveUpForMs;
+                    break;
+                }
+            }
+            if (rewards.length) {
+                util.log("workshop", "exchanged " + rewards.length + "x " + name + ": " + rewards.join(", "), "green");
+                return true;
+            }
+        }
+        return false;
+    }
+
     // Upgrade the copy at `index` towards `target`. Returns true on success.
     async function develop(fighter, w) {
         const k = key(fighter, w);
@@ -333,7 +393,8 @@ module.exports = function createWorkshop(ctx) {
 
         const open = openWishes().filter(function (o) { return bagIndex(o.wish.name, o.wish.level) === -1; });
         if (!open.length) {
-            await autoCompound();
+            if (await autoCompound()) return;
+            await autoExchange();
             return;
         }
 
