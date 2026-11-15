@@ -26,7 +26,11 @@ module.exports = function createSupply(ctx) {
     let lastPickup = Date.now() - s.pickupEveryMs + s.firstPickupAfterMs;
     let nextHandoverAt = 0;    // back-off after a failed handover (e.g. merchant bag full)
 
-    comms.on("coming", function () { pendingSince = 0; });
+    let noPotionsAt = 0;       // merchant said it can't bring potions (no gold yet)
+    comms.on("coming", function (data) {
+        pendingSince = 0;
+        noPotionsAt = data && data.potions === false ? Date.now() : 0;
+    });
 
     function counts() {
         const n = util.potionNames(p);
@@ -99,7 +103,7 @@ module.exports = function createSupply(ctx) {
         busy = true;
         try {
             util.status("buying potions", "yellow");
-            util.log("supply", "no merchant answer - buying potions myself", "orange");
+            util.log("supply", noPotionsAt ? "merchant has no potions for us yet - buying them myself" : "no merchant answer - buying potions myself", "orange");
             await smart_move({ to: "potions" });
             const n = util.potionNames(p);
             for (const name of [n.hp, n.mp]) {
@@ -109,6 +113,7 @@ module.exports = function createSupply(ctx) {
                 if (amount > 0) await buy(name, amount);
             }
             pendingSince = 0;
+            noPotionsAt = 0;
         } catch (e) {
             util.log("supply", "self resupply failed: " + util.errReason(e), "red");
         } finally {
@@ -130,7 +135,9 @@ module.exports = function createSupply(ctx) {
             requestPickup(c);
         }
 
-        const merchantSilent = !merchant || (pendingSince && now - pendingSince > s.merchantTimeoutMs);
+        // No merchant, no answer for a while, or it told us it has no potions for us.
+        const merchantSilent = !merchant || (pendingSince && now - pendingSince > s.merchantTimeoutMs) ||
+            (noPotionsAt && now - noPotionsAt < 10 * 60 * 1000);
         if ((c.hp < p.selfBuyBelow || c.mp < p.selfBuyBelow) && merchantSilent) {
             selfResupply();
             return "busy";

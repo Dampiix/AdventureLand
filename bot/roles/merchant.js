@@ -35,8 +35,19 @@ module.exports = function createMerchant(ctx) {
         requests.set(from, Object.assign({}, data, { at: Date.now() }));
         Object.keys(data.want || {}).forEach(function (name) { if (G.items[name] && G.items[name].type === "pot") stocked.add(name); });
         if (isNew) util.log("merchant", "pickup requested by " + from, "yellow");
-        comms.send(from, "coming", {});
+        // Tell the fighter whether we can bring its potions; if not, it buys them itself.
+        comms.send(from, "coming", { potions: canSupply(data.want) });
     });
+
+    // At least half of every wanted potion type: in the bag or affordable above the reserve.
+    function canSupply(want) {
+        const spendable = Math.max(0, character.gold - util.goldAmount(m.goldReserve));
+        return Object.keys(want || {}).every(function (name) {
+            const need = want[name] || 0;
+            if (need <= 0 || !G.items[name]) return true;
+            return util.countItem(name) + Math.floor(spendable / G.items[name].g) >= need / 2;
+        });
+    }
 
     function survive() {
         if (is_on_cooldown("use_hp")) return;
@@ -104,6 +115,7 @@ module.exports = function createMerchant(ctx) {
 
     // Potion types fighters asked for – we keep stockPerPotion of each.
     const stocked = new Set();
+    const poorLogged = {}; // potion -> last "not enough gold" log
 
     // Buy potions up to the stock (and at least what this delivery needs).
     async function restock(wanted) {
@@ -116,7 +128,10 @@ module.exports = function createMerchant(ctx) {
             const affordable = Math.floor(Math.max(0, character.gold - util.goldAmount(m.goldReserve)) / price);
             const amount = Math.min(missing, affordable);
             if (amount <= 0) {
-                util.log("merchant", "not enough gold above the reserve for " + name, "red");
+                if (Date.now() - (poorLogged[name] || 0) > 10 * 60 * 1000) {
+                    poorLogged[name] = Date.now();
+                    util.log("merchant", "not enough gold above the reserve for " + name + " - fighters buy their own", "orange");
+                }
                 continue;
             }
             if (character.esize < 1 && util.countItem(name) === 0) {
