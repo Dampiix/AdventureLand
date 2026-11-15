@@ -25,7 +25,6 @@ module.exports = function createWorkshop(ctx) {
     const util = ctx.util;
     const comms = ctx.comms;
     const cfg = config.workshop;
-    const reserve = config.merchantRole.goldReserve;
 
     const wishes = {};      // fighter -> [{ name, level }]
     const spent = {};       // wish key -> gold spent
@@ -116,7 +115,7 @@ module.exports = function createWorkshop(ctx) {
     // ---- develop ----------------------------------------------------------
 
     function canSpend(k, amount) {
-        return character.gold - amount >= reserve && (spent[k] || 0) + amount <= cfg.budgetPerWish;
+        return character.gold - amount >= util.goldAmount(config.merchantRole.goldReserve) && (spent[k] || 0) + amount <= cfg.budgetPerWish;
     }
 
     function pay(k, amount) { spent[k] = (spent[k] || 0) + amount; }

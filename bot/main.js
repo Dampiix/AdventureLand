@@ -11,12 +11,14 @@
 
 const BOT_CONFIG = require_code("bot_config");
 const BOT_UTIL = require_code("bot_util");
+BOT_UTIL.deriveTeam(BOT_CONFIG);
 const createBotComms = require_code("bot_comms");
 
 const BOT_CLASS_SLOTS = {
     paladin: "bot_class_paladin",
     mage: "bot_class_mage",
     priest: "bot_class_priest",
+    ranger: "bot_class_ranger",
 };
 
 let botRunner = null;

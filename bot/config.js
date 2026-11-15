@@ -1,28 +1,24 @@
 // =====================================================================
 // bot_config – everything you are expected to tweak lives here.
-// Characters are identified by name; roles are explicit (no list-order
-// magic like V1's party_list[3]). Classes come from character.ctype.
+//
+// To run a different team (e.g. brand-new level-1 characters) only the
+// `team` block needs to change. Classes come from character.ctype, so any
+// class works; paladin, priest, mage and ranger have skill modules.
 // =====================================================================
 
 module.exports = {
-    version: "1.6.3",
+    version: "1.7.0",
 
-    // The character you play in the client. Its CODE starts the others
-    // and it is the party leader / tank.
-    leader: "DmpxPalTank",
-
-    // "solo":  leader farms alone (Lone Wolf bonus), merchant supports it.
-    // "party": leader + mage + priest farm together, merchant supports them.
-    // startWithLeader: characters the leader starts in the same client.
-    // party:           fighters that form the party (leader included).
-    phase: "party",
-    phases: {
-        solo: { startWithLeader: ["DampiixMerch"], party: [] },
-        party: {
-            startWithLeader: ["Dampiix", "DampiixPri", "DampiixMerch"],
-            party: ["DmpxPalTank", "Dampiix", "DampiixPri"],
-        },
+    team: {
+        leader: "DmpxPalTank",                          // played in the client, starts the others, tanks
+        fighters: ["DmpxPalTank", "Dampiix", "DampiixPri"],
+        merchant: "DampiixMerch",                       // null for no merchant
+        farm: {},                                       // optional per-character farm override, e.g. { Dampiix: "bee" }
     },
+
+    // "solo":  only the leader fights (Lone Wolf bonus); the merchant still supports it.
+    // "party": all fighters form a party around the leader.
+    phase: "party",
 
     party: {
         followDistance: 80,   // members idle within this distance of the leader
@@ -30,16 +26,6 @@ module.exports = {
         broadcastMs: 2000,    // leader shares position/target this often
         inviteEveryMs: 10000, // leader re-invites a missing member this often
     },
-
-    // Only these characters are trusted for CODE messages.
-    // Optional per-character "farm" overrides the target choice.
-    characters: {
-        DmpxPalTank: { role: "fighter" },
-        Dampiix: { role: "fighter" },
-        DampiixPri: { role: "fighter" },
-        DampiixMerch: { role: "merchant" },
-    },
-    merchant: "DampiixMerch",
 
     tickMs: 250,
 
@@ -54,6 +40,8 @@ module.exports = {
             crabxx: "never", franky: "never", icegolem: "never",
             horseman: "never", graveyard: "never", abtesting: "never",
         },
+        // "always" only applies once every fighter has reached this level
+        minLevel: { phoenix: 40, goobrawl: 20, snowman: 10 },
         search: ["phoenix"],            // roaming bosses the leader looks for
         searchEveryMs: 10 * 60 * 1000,  // search again this long after a miss or a kill
         searchSpotMs: 4000,             // look around this long at each spawn area
@@ -96,6 +84,10 @@ module.exports = {
             partyHealDanger: 0.35,          // ...or one member is below this
             useCurse: true, mpReserveRatio: 0.4,
         },
+        ranger: {
+            sturdyHits: 3,                  // Hunter's Mark / Supershot only on targets needing 3+ hits
+            mpReserveRatio: 0.3,
+        },
         mage: {
             energizeAbove: 0.6,             // only give mana while we have more than this
             energizeBelow: 0.4,             // to a member below this MP ratio
@@ -104,8 +96,9 @@ module.exports = {
     },
 
     potions: {
-        hp: "hpot1",
-        mp: "mpot1",
+        hp: "auto",       // "auto": small potions until the pool is big enough, then big ones
+        mp: "auto",
+        bigFrom: { hp: 1500, mp: 1000 }, // max HP / max MP from which hpot1 / mpot1 are used
         target: 300,       // fighters get topped up to this many of each
         requestBelow: 100, // ask the merchant for more below this
         selfBuyBelow: 20,  // walk to town and buy yourself below this (merchant missing)
@@ -114,7 +107,7 @@ module.exports = {
     // Fighter side of the item/gold flow
     supply: {
         keep: ["tracker", "glolipop"],   // never handed to the merchant
-        goldKeep: 200000,                // fighters keep this much gold
+        goldKeep: { perLevel: 5000, min: 20000, max: 200000 }, // fighters keep level x 5k gold (20k..200k)
         goldMinSend: 50000,              // only send gold when the surplus is at least this
         freeSlotsMin: 6,                 // ask for a pickup when fewer slots are free
         pickupEveryMs: 15 * 60 * 1000,   // ask for a routine pickup this often
@@ -152,8 +145,8 @@ module.exports = {
 
     // Merchant role
     merchantRole: {
-        stock: { hpot1: 1000, mpot1: 1000 }, // potions kept in stock for deliveries
-        goldReserve: 1000000,                // never spend below this
+        stockPerPotion: 1000,                // keep this many of every potion type fighters asked for
+        goldReserve: { ratio: 0.2, min: 0, max: 1000000 }, // never spend below 20% of our gold (max 1M)
         handoverWaitMs: 10000,               // wait next to the fighter for its loot
         // Items the merchant sells to NPCs.
         // A plain name sells only +0 copies. { name, maxLevel } also sells

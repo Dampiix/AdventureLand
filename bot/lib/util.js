@@ -77,7 +77,47 @@ function isProtected(item) {
     return (item.level || 0) > 0 || !!item.p || !!item.l;
 }
 
+// Fill in the derived fields (leader, merchant, characters, phases) from
+// config.team, so the rest of the bot can keep reading them directly.
+function deriveTeam(cfg) {
+    const t = cfg.team;
+    cfg.leader = t.leader;
+    cfg.merchant = t.merchant || null;
+    cfg.characters = {};
+    t.fighters.forEach(function (name) {
+        cfg.characters[name] = { role: "fighter", farm: (t.farm || {})[name] || null };
+    });
+    if (cfg.merchant) cfg.characters[cfg.merchant] = { role: "merchant" };
+    const others = t.fighters.filter(function (n) { return n !== t.leader; });
+    const merchant = cfg.merchant ? [cfg.merchant] : [];
+    cfg.phases = {
+        solo: { startWithLeader: merchant, party: [] },
+        party: { startWithLeader: others.concat(merchant), party: t.fighters.slice() },
+    };
+    return cfg;
+}
+
+// Potion names for this character: fixed in config, or "auto" by pool size
+// (small potions early on, big ones once the pools outgrow them).
+function potionNames(p) {
+    return {
+        hp: p.hp !== "auto" ? p.hp : (character.max_hp >= p.bigFrom.hp ? "hpot1" : "hpot0"),
+        mp: p.mp !== "auto" ? p.mp : (character.max_mp >= p.bigFrom.mp ? "mpot1" : "mpot0"),
+    };
+}
+
+// Gold amount from a config value: a number, or { ratio, min, max } of our gold,
+// or { perLevel, min, max } of our level.
+function goldAmount(spec) {
+    if (typeof spec === "number") return spec;
+    const base = spec.perLevel !== undefined ? character.level * spec.perLevel : character.gold * (spec.ratio || 0);
+    return Math.max(spec.min || 0, Math.min(spec.max !== undefined ? spec.max : Infinity, Math.floor(base)));
+}
+
 module.exports = {
+    deriveTeam: deriveTeam,
+    potionNames: potionNames,
+    goldAmount: goldAmount,
     hpRatio: hpRatio,
     mpRatio: mpRatio,
     canCast: canCast,

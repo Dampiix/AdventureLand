@@ -29,8 +29,32 @@ module.exports = function createEvents(ctx) {
     let lastJoinTry = 0;
     let joined = null;         // leader: { name, map } after a successful join()
 
+    // Lowest level in the team (leader + party members we know about).
+    function teamLevel() {
+        let level = character.level;
+        const p = get_party() || {};
+        Object.keys(p).forEach(function (name) {
+            if (config.characters[name] && config.characters[name].role === "fighter" && p[name] && p[name].level) {
+                level = Math.min(level, p[name].level);
+            }
+        });
+        return level;
+    }
+
+    const skippedForLevel = {};
+    // "always" only counts once every fighter reaches the event's minimum level.
     function policy(name) {
-        return (cfg.policy && cfg.policy[name]) || "never";
+        const p = (cfg.policy && cfg.policy[name]) || "never";
+        const min = (cfg.minLevel && cfg.minLevel[name]) || 0;
+        if (p === "always" && teamLevel() < min) {
+            if (!skippedForLevel[name]) {
+                skippedForLevel[name] = true;
+                util.log("event", name + " needs level " + min + " for everyone - skipping for now", "white");
+            }
+            return "never";
+        }
+        skippedForLevel[name] = false;
+        return p;
     }
 
     function liveEntries() {

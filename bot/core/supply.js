@@ -29,14 +29,14 @@ module.exports = function createSupply(ctx) {
     comms.on("coming", function () { pendingSince = 0; });
 
     function counts() {
-        return { hp: util.countItem(p.hp), mp: util.countItem(p.mp) };
+        const n = util.potionNames(p);
+        return { hp: util.countItem(n.hp), mp: util.countItem(n.mp) };
     }
 
     function isHandover(item) {
         if (!item) return false;
         if (s.keep.includes(item.name)) return false;
         if (ctx.gear && ctx.gear.isReserved(item)) return false; // wished gear stays with us
-        if (item.name === p.hp || item.name === p.mp) return false;
         const def = G.items[item.name];
         if (def && def.type === "pot") return false; // keep every potion size
         return true;
@@ -47,7 +47,7 @@ module.exports = function createSupply(ctx) {
     async function handOver(name) {
         handingOver = true;
         try {
-            const surplus = character.gold - s.goldKeep;
+            const surplus = character.gold - util.goldAmount(s.goldKeep);
             if (surplus >= s.goldMinSend) {
                 await send_gold(name, surplus);
                 util.log("supply", "handed " + surplus + " gold to " + name, "green");
@@ -89,8 +89,8 @@ module.exports = function createSupply(ctx) {
             x: Math.round(character.x),
             y: Math.round(character.y),
             want: {
-                [p.hp]: Math.max(0, p.target - c.hp),
-                [p.mp]: Math.max(0, p.target - c.mp),
+                [util.potionNames(p).hp]: Math.max(0, p.target - c.hp),
+                [util.potionNames(p).mp]: Math.max(0, p.target - c.mp),
             },
         });
     }
@@ -101,7 +101,8 @@ module.exports = function createSupply(ctx) {
             util.status("buying potions", "yellow");
             util.log("supply", "no merchant answer - buying potions myself", "orange");
             await smart_move({ to: "potions" });
-            for (const name of [p.hp, p.mp]) {
+            const n = util.potionNames(p);
+            for (const name of [n.hp, n.mp]) {
                 const want = p.target - util.countItem(name);
                 const affordable = Math.floor(character.gold / G.items[name].g);
                 const amount = Math.min(want, affordable);

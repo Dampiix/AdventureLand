@@ -4,6 +4,16 @@ One bot for every character. The leader runs `bot_main` in the game client and s
 other characters of the current phase as CODE-only characters in the same client.
 Each character looks itself up in `config.js` and loads its role.
 
+## Starting from scratch
+
+To run the bot with a new team (e.g. three new level-1 characters and a merchant), create the
+characters in the game, put their names into `team` in `config.js` and run `bot_main` on the leader.
+Everything else adapts: the progression guide picks targets and gear for each level, potions
+start small (`hpot0`/`mpot0`) and switch to big ones as the pools grow, fighters keep level x 5k gold,
+the merchant never spends below 20 % of its own gold, and events wait until every fighter reaches
+`events.minLevel` (Phoenix 40, Goo Brawl 20, Snowman 10). Classes without a skill module (warrior,
+rogue) fight with basic attacks.
+
 ## Starting
 
 1. On the leader (`DmpxPalTank`), load CODE slot **20 `bot_main`** and press **Run**.
@@ -25,7 +35,8 @@ Each character looks itself up in `config.js` and loads its role.
 | `core/fighter.js` | 26 `bot_fighter` | main loop for fighters |
 | `classes/paladin.js` | 27 `bot_class_paladin` | self-heal, Smash |
 | `classes/mage.js` | 28 `bot_class_mage` | basic attacks for now |
-| `classes/priest.js` | 29 `bot_class_priest` | self-heal, heal the most hurt party member |
+| `classes/priest.js` | 29 `bot_class_priest` | self-heal, heal the most hurt party member, Party Heal, Curse |
+| `classes/ranger.js` | 36 `bot_class_ranger` | Hunter's Mark, Supershot, 3-Shot |
 | `roles/merchant.js` | 30 `bot_merchant` | sells junk, keeps a potion stock, delivers to fighters |
 | `core/party.js` | 31 `bot_party` | party invites/accept/leave, leader broadcast, following |
 | `core/hunts.js` | 32 `bot_hunts` | Monster Hunts: pick a safe hunt of any party fighter, Daisy trips, turn in |

@@ -7,7 +7,7 @@
 //   - bag running full -> store everything else in the bank
 //     (config.merchantRole.bank), never buying new bank packs
 //   - keep a potion stock (config.merchantRole.stock), never spending
-//     below goldReserve
+//     below goldReserve (a share of our gold, so a fresh merchant still works)
 //   - work on the fighters' equipment wishes (bot_workshop)
 // Delivery (a fighter sent a "pickup" request):
 //   - top up the stock, walk to the fighter
@@ -33,6 +33,7 @@ module.exports = function createMerchant(ctx) {
     comms.on("pickup", function (data, from) {
         const isNew = !requests.has(from);
         requests.set(from, Object.assign({}, data, { at: Date.now() }));
+        Object.keys(data.want || {}).forEach(function (name) { if (G.items[name] && G.items[name].type === "pot") stocked.add(name); });
         if (isNew) util.log("merchant", "pickup requested by " + from, "yellow");
         comms.send(from, "coming", {});
     });
@@ -82,14 +83,18 @@ module.exports = function createMerchant(ctx) {
         if (sold) util.log("merchant", "sold " + sold + " junk stacks", "green");
     }
 
-    // Buy potions up to `wanted` (defaults to the configured stock).
+    // Potion types fighters asked for – we keep stockPerPotion of each.
+    const stocked = new Set();
+
+    // Buy potions up to the stock (and at least what this delivery needs).
     async function restock(wanted) {
-        for (const name of Object.keys(m.stock)) {
-            const target = Math.max(m.stock[name], (wanted && wanted[name]) || 0);
+        Object.keys(wanted || {}).forEach(function (name) { if (G.items[name] && G.items[name].type === "pot") stocked.add(name); });
+        for (const name of stocked) {
+            const target = Math.max(m.stockPerPotion, (wanted && wanted[name]) || 0);
             const missing = target - util.countItem(name);
             if (missing <= 0) continue;
             const price = G.items[name].g;
-            const affordable = Math.floor(Math.max(0, character.gold - m.goldReserve) / price);
+            const affordable = Math.floor(Math.max(0, character.gold - util.goldAmount(m.goldReserve)) / price);
             const amount = Math.min(missing, affordable);
             if (amount <= 0) {
                 util.log("merchant", "not enough gold above the reserve for " + name, "red");
@@ -164,7 +169,7 @@ module.exports = function createMerchant(ctx) {
     // Everything that is neither sold, kept, part of the potion stock nor a gift.
     function isBankable(item) {
         if (!item || isSellable(item) || workshop.isReserved(item)) return false;
-        if (m.stock[item.name] !== undefined) return false;
+        if (G.items[item.name] && G.items[item.name].type === "pot") return false; // potion stock stays with us
         if (m.bank.keep.includes(item.name)) return false;
         const gifts = [].concat.apply([], Object.values(m.give || {}));
         return !gifts.includes(item.name);
