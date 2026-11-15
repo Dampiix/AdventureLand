@@ -99,7 +99,7 @@ module.exports = function createTargeting(ctx) {
     if (comms) {
         comms.on("safe", function (data, from) {
             if (!config.characters[from]) return;
-            reports[from] = { safe: data.safe || data.list || [], sure: data.sure || data.list || [], at: Date.now() };
+            reports[from] = { listed: data.listed || null, safe: data.safe || data.list || [], sure: data.sure || data.list || [], at: Date.now() };
             // Our current guide spot is not acceptable for this member: pick again right away.
             if (farm && String(farm.source).startsWith("guide") && objector(farm.monster, null)) nextPickAt = 0;
         });
@@ -112,9 +112,23 @@ module.exports = function createTargeting(ctx) {
         if (!Array.isArray(routes)) return null;
         const safe = routes.filter(function (r) { return r && r.safe; });
         return {
+            listed: new Set(routes.filter(Boolean).map(function (r) { return r.monster; })),
             safe: new Set(safe.map(function (r) { return r.monster; })),
             sure: new Set(safe.filter(function (r) { return !r.trial || r.proven; }).map(function (r) { return r.monster; })),
         };
+    }
+
+    // Monsters the guide doesn't list at all (e.g. goos once we outgrew them) are not
+    // "unsafe", just unknown: harmless if every fighter survives 20+ of their hits
+    // (team stats from bot_events, the game's damage formula).
+    function harmless(monster) {
+        const m = G.monsters[monster];
+        if (!m || m.cooperative || (m.abilities && Object.keys(m.abilities).length)) return false;
+        const team = ctx.events && ctx.events.teamStats ? ctx.events.teamStats() : [util.combatStats()];
+        return team.every(function (f) {
+            const def = m.damage_type === "physical" ? (f.armor || 0) - (m.apiercing || 0) : (f.resistance || 0) - (m.rpiercing || 0);
+            return f.max_hp >= 20 * (m.attack || 0) * 1.1 * util.damageMultiplier(def);
+        });
     }
 
     function shareSafe() {
@@ -122,20 +136,28 @@ module.exports = function createTargeting(ctx) {
         lastReport = Date.now();
         let own = null;
         try { own = ownSafe(get_progression()); } catch (e) { /* guide not ready */ }
-        if (own) comms.send(config.leader, "safe", { safe: Array.from(own.safe), sure: Array.from(own.sure) });
+        if (own) comms.send(config.leader, "safe", { listed: Array.from(own.listed), safe: Array.from(own.safe), sure: Array.from(own.sure) });
     }
 
     // Who (if anyone) is not safe at this monster.
     function objector(monster, own) {
         if (recentDeath(monster)) return "the team (recent death)";
         const proven = !cfg.avoidTrial || provenByUs(monster);
-        if (own && (!own.safe.has(monster) || (!proven && !own.sure.has(monster)))) return character.name;
+        let unlisted = 0; // fighters whose guide doesn't know the monster
+        if (own) {
+            if (!own.listed.has(monster)) unlisted++;
+            else if (!own.safe.has(monster) || (!proven && !own.sure.has(monster))) return character.name;
+        }
         const now = Date.now();
-        return Object.keys(reports).find(function (name) {
+        const member = Object.keys(reports).find(function (name) {
             const r = reports[name];
             if (!party.inParty(name) || now - r.at > 3 * 60 * 1000) return false;
+            if (r.listed && !r.listed.includes(monster)) { unlisted++; return false; }
             return !r.safe.includes(monster) || (!proven && !r.sure.includes(monster));
-        }) || null;
+        });
+        if (member) return member;
+        if (unlisted && !harmless(monster)) return "the team (" + monster + " unknown to the guide, not harmless)";
+        return null;
     }
 
     // For bot_hunts: is this monster safe for the whole team right now?

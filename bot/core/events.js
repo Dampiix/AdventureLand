@@ -313,5 +313,6 @@ module.exports = function createEvents(ctx) {
     return {
         tick: tick,
         current: function () { return current; },
+        teamStats: teamStats, // leader: own stats + fresh member reports
     };
 };
