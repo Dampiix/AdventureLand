@@ -545,7 +545,7 @@ module.exports = function createWorkshop(ctx) {
             if (character.esize < 3) return false;
             util.status("upgrading spare " + rule.name, "orange");
             try {
-                await develop("_stock", { name: rule.name, level: rule.upTo }, { replaceable: total > rule.spares });
+                await develop("_stock", { name: rule.name, level: rule.upTo }, { replaceable: total > rule.spares, spare: true });
             } catch (e) {
                 util.log("workshop", "spare " + rule.name + ": " + util.errReason(e), "orange");
                 blockedUntil[k] = Date.now() + cfg.giveUpForMs;
@@ -560,7 +560,8 @@ module.exports = function createWorkshop(ctx) {
         return false;
     }
 
-    // opts.replaceable overrides the shop check (e.g. a spare we hold many copies of).
+    // opts.replaceable overrides the shop check (e.g. a spare we hold many copies of);
+    // opts.spare: no stronger scrolls and no grace farming for this item.
     async function develop(fighter, w, opts) {
         const k = key(fighter, w);
         const def = G.items[w.name];
@@ -624,9 +625,11 @@ module.exports = function createWorkshop(ctx) {
             const preview = async function (s) { return (await upgrade(locate(), s, null, true)).chance; };
             let chance = await preview(bagIndex(scroll, 0));
             if (chance < minChance) {
-                let better = await strongerScroll(k, "scroll", grade, minChance, preview);
+                // Spare upgrades use normal scrolls only – rare scrolls and grace are kept for wishes.
+                const spare = !!(opts && opts.spare);
+                let better = spare ? null : await strongerScroll(k, "scroll", grade, minChance, preview);
                 // Still short on a valuable item at a higher level: build grace with cheap fodder.
-                if (!better && cfg.grace.enabled && level + 1 >= cfg.grace.minLevel && minChance >= cfg.risk.mid) {
+                if (!better && !spare && cfg.grace.enabled && level + 1 >= cfg.grace.minLevel && minChance >= cfg.risk.mid) {
                     const graced = await farmGrace(level + 1, minChance, async function () {
                         await ensureScroll(k, scroll, 1); // fodder attempts may have used our scrolls
                         await goTo("newupgrade");

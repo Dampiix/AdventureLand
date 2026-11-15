@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.11.0",
+    version: "1.11.1",
 
     team: {
         leader: "DmpxPalTank",                          // played in the client, starts the others, tanks
@@ -155,7 +155,8 @@ module.exports = {
         },
         // Spare copies to upgrade when idle (approved 2026-11-15): Phoenix weapons are kept
         // as spares; the best copy below upTo is upgraded, failures use up surplus copies,
-        // never going below `spares` copies in total.
+        // never going below `spares` copies in total. Normal scrolls only: rare scrolls
+        // and grace farming are reserved for the fighters' wishes.
         stock: [
             { name: "fireblade", upTo: 7, spares: 3 },
             { name: "firestaff", upTo: 7, spares: 3 },
