@@ -70,7 +70,10 @@ module.exports = function createGear(ctx) {
             const level = req.level || 0;
             if (seen[req.name] !== undefined && seen[req.name] >= level) return;
             seen[req.name] = level;
-            const stat = req.stat_type && G.items[req.name].stat ? req.stat_type : null;
+            // Armor that can carry a stat is wished with our main stat (the merchant adds it anyway).
+            const mainStat = config.workshop && config.workshop.mainStatOnArmor && G.classes[character.ctype]
+                ? G.classes[character.ctype].main_stat : null;
+            const stat = G.items[req.name].stat ? (req.stat_type || mainStat || null) : null;
             // Already worn (same item, at least that level, the wished stat): nothing to wish for.
             // The guide lists such steps on its way to a better piece.
             if (Object.keys(character.slots || {}).some(function (s) {
