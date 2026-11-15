@@ -115,10 +115,45 @@ module.exports = function createGear(ctx) {
         }
     }
 
+    // When each bag item ("name:level") first showed up – new equipment gets a few
+    // minutes for the equip pass before it could be handed to the merchant.
+    const firstSeen = {};
+    function trackBag() {
+        const now = Date.now();
+        const present = {};
+        character.items.forEach(function (i) {
+            if (!i) return;
+            const k = i.name + ":" + (i.level || 0);
+            present[k] = true;
+            if (!firstSeen[k]) firstSeen[k] = now;
+        });
+        Object.keys(firstSeen).forEach(function (k) { if (!present[k]) delete firstSeen[k]; });
+    }
+
+    // Slots an item of this type can go into.
+    const SLOTS_BY_TYPE = {
+        weapon: ["mainhand"], shield: ["offhand"], source: ["offhand"], quiver: ["offhand"], misc_offhand: ["offhand"],
+        helmet: ["helmet"], chest: ["chest"], pants: ["pants"], gloves: ["gloves"], shoes: ["shoes"], cape: ["cape"],
+        amulet: ["amulet"], belt: ["belt"], orb: ["orb"], ring: ["ring1", "ring2"], earring: ["earring1", "earring2"],
+    };
+    // Can our class wear it at all (class-bound items, weapon and offhand types)?
+    function usable(def) {
+        const cls = G.classes[character.ctype] || {};
+        if (def.class && !def.class.includes(character.ctype)) return false;
+        if (def.type === "weapon") return !!((cls.mainhand || {})[def.wtype] || (cls.doublehand || {})[def.wtype]);
+        if (["shield", "source", "quiver", "misc_offhand"].includes(def.type)) return !!(cls.offhand || {})[def.type];
+        return true;
+    }
+    function fillsEmptySlot(def) {
+        const slots = SLOTS_BY_TYPE[def.type] || [];
+        return slots.some(function (s) { return !(character.slots && character.slots[s]); });
+    }
+
     function tick() {
         if (!cfg.enabled) return;
         sendWishes();
         const key = bagKey();
+        if (key !== lastBag) trackBag();
         if (!equipping && key !== lastBag && Date.now() >= nextEquipAt) {
             lastBag = key;
             nextEquipAt = Date.now() + 3000;
@@ -132,9 +167,16 @@ module.exports = function createGear(ctx) {
         // A stronger copy of something we wear (e.g. a finished gear goal) stays
         // with us until the equip pass puts it on.
         const slots = character.slots || {};
-        return Object.keys(slots).some(function (s) {
+        if (Object.keys(slots).some(function (s) {
             return slots[s] && slots[s].name === item.name && (item.level || 0) > (slots[s].level || 0);
-        });
+        })) return true;
+        // Equipment for a slot we leave empty, or that just arrived (the merchant's
+        // delivery may no longer be among our top wishes): give the equip pass a chance.
+        const def = G.items[item.name];
+        if (!def || !WEARABLE.includes(def.type) || !usable(def)) return false;
+        if (fillsEmptySlot(def)) return true;
+        const seen = firstSeen[item.name + ":" + (item.level || 0)];
+        return !seen || Date.now() - seen < 3 * 60 * 1000;
     }
 
     return { tick: tick, isReserved: isReserved };
