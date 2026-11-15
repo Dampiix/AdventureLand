@@ -433,14 +433,38 @@ module.exports = function createWorkshop(ctx) {
             const have = ingredientCount(ing, level);
             if (have < q) missing.push({ name: ing, level: level, need: q, have: have });
         });
-        if (missing.length) return { ok: false, missing: missing };
+        // Only shop items at +0 can be bought: the rest must be found or farmed.
+        const buyable = missing.filter(function (m) { return m.level === 0 && sellerOf(m.name); });
+        const farmable = missing.filter(function (m) { return buyable.indexOf(m) === -1; });
+        if (farmable.length) return { ok: false, missing: farmable };
+        for (const m of buyable) {
+            const amount = m.need - m.have;
+            const cost = amount * G.items[m.name].g;
+            if (!canSpend(k, cost)) throw { reason: "budget" };
+            if (character.esize < (stackable(m.name) ? 1 : amount) + 1) throw { reason: "bag full" };
+            await goTo(sellerOf(m.name));
+            if (stackable(m.name)) await buy(m.name, amount);
+            else for (let i = 0; i < amount; i++) await buy(m.name, 1);
+            pay(k, cost);
+            util.log("workshop", "bought " + amount + "x " + m.name + " for crafting " + name, "white");
+        }
         if (recipe.cost && !canSpend(k, recipe.cost)) throw { reason: "budget" };
         if (character.esize < recipe.items.length + 1) throw { reason: "bag full" };
         for (const it of recipe.items) await gatherIngredient(it[1], it[0], it[2] || 0);
         await goTo(npc);
-        await auto_craft(name);
+        let at = npc;
+        try {
+            await auto_craft(name);
+        } catch (e) {
+            // Recipes without a named specialist go to Leo, but some (e.g. the cave items)
+            // are crafted by Cole: retry there when Leo turns it down.
+            if (util.errReason(e) !== "distance" || npc === "mcollector" || !npcPos("mcollector")) throw e;
+            at = "mcollector";
+            await goTo(at);
+            await auto_craft(name);
+        }
         if (recipe.cost) pay(k, recipe.cost);
-        util.log("workshop", "crafted " + G.items[name].name + " at " + (G.npcs[npc].name || npc), "green");
+        util.log("workshop", "crafted " + G.items[name].name + " at " + (G.npcs[at].name || at), "green");
         return { ok: true };
     }
 
