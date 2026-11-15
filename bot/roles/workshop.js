@@ -176,6 +176,15 @@ module.exports = function createWorkshop(ctx) {
 
     // ---- develop ----------------------------------------------------------
 
+    // How long a stopped job waits before the next try. Too little gold right now
+    // (fighters hand gold over regularly) is retried soon; a used-up wish budget
+    // or any other reason (too risky, no copies, ...) waits giveUpForMs.
+    function pauseAfter(k, reason) {
+        if (reason !== "budget" || k === GOALS) return cfg.giveUpForMs;
+        const left = budgetFor(k) - (spent[k] || 0);
+        return left < 10000 ? cfg.giveUpForMs : (cfg.retryAfterBudgetMs || cfg.giveUpForMs);
+    }
+
     // Budget per key: wishes use budgetPerWish, grace keys ("grace:<level>") their own.
     function budgetFor(k) {
         return k.indexOf("grace:") === 0 ? cfg.grace.budgetPerLevel : cfg.budgetPerWish;
@@ -463,7 +472,7 @@ module.exports = function createWorkshop(ctx) {
             await compoundStep(k, parts[0], Number(parts[1]));
         } catch (e) {
             util.log("workshop", "auto compound " + parts[0] + " +" + parts[1] + ": " + util.errReason(e), "orange");
-            blockedUntil[k] = Date.now() + cfg.giveUpForMs;
+            blockedUntil[k] = Date.now() + pauseAfter(k, util.errReason(e));
         }
         return true;
     }
@@ -700,7 +709,7 @@ module.exports = function createWorkshop(ctx) {
                 await develop("_stock", { name: rule.name, level: rule.upTo }, { replaceable: total > rule.spares, spare: true });
             } catch (e) {
                 util.log("workshop", "spare " + rule.name + ": " + util.errReason(e), "orange");
-                blockedUntil[k] = Date.now() + cfg.giveUpForMs;
+                blockedUntil[k] = Date.now() + pauseAfter(k, util.errReason(e));
             }
             if (reachedOnly[k] !== undefined) {
                 // Next step too risky right now: try again later (grace or luck may help).
@@ -1063,7 +1072,7 @@ module.exports = function createWorkshop(ctx) {
         } catch (e) {
             const reason = util.errReason(e);
             util.log("workshop", job.wish.name + " +" + job.wish.level + " for " + job.fighter + ": " + reason, reason === "budget" ? "orange" : "red");
-            blockedUntil[k] = Date.now() + cfg.giveUpForMs;
+            blockedUntil[k] = Date.now() + pauseAfter(k, reason);
         }
     }
 

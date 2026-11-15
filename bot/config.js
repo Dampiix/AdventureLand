@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.15.2",
+    version: "1.15.3",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -159,7 +159,8 @@ module.exports = {
             buyStrongerScrolls: true, // only within budgetPerWish; owned/banked ones are used first
         },
         budgetPerWish: 500000,        // gold per wish (base item + scrolls, failures included)
-        giveUpForMs: 60 * 60 * 1000,  // after a stop (risk/budget/no source) retry in an hour
+        giveUpForMs: 60 * 60 * 1000,  // after a stop (risk/no source/wish budget used up) retry in an hour
+        retryAfterBudgetMs: 10 * 60 * 1000, // ...but only 10 min when we merely lack gold right now
         bankScanEveryMs: 10 * 60 * 1000,
         redeliverAfterMs: 6 * 60 * 60 * 1000, // don't fulfil the same wish for a fighter again within 6 h
         // Grace farming (approved 2026-11-15): before a mid/precious item is risked at a
