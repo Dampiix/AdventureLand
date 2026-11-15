@@ -5,7 +5,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.1.3",
+    version: "1.1.4",
 
     // The character you play in the client. Its CODE starts the others
     // and it is the party leader / tank.

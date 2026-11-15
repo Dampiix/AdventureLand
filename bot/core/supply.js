@@ -41,10 +41,22 @@ module.exports = function createSupply(ctx) {
         return true;
     }
 
+    // Gold first (needs no bag space), then items. A full merchant bag stops
+    // the item part but never the gold part.
     async function handOver(name) {
         handingOver = true;
         try {
-            let sent = 0;
+            const surplus = character.gold - s.goldKeep;
+            if (surplus >= s.goldMinSend) {
+                await send_gold(name, surplus);
+                util.log("supply", "handed " + surplus + " gold to " + name, "green");
+            }
+        } catch (e) {
+            util.log("supply", "gold handover failed: " + util.errReason(e), "red");
+        }
+
+        let sent = 0;
+        try {
             for (;;) {
                 const index = util.findItemIndex(isHandover); // re-locate every time
                 if (index === -1) break;
@@ -52,16 +64,12 @@ module.exports = function createSupply(ctx) {
                 await send_item(name, index, item.q || 1);
                 sent++;
             }
-            const surplus = character.gold - s.goldKeep;
-            if (surplus >= s.goldMinSend) await send_gold(name, surplus);
-            if (sent || surplus >= s.goldMinSend) {
-                util.log("supply", "handed " + sent + " stacks" + (surplus >= s.goldMinSend ? " + " + surplus + " gold" : "") + " to " + name, "green");
-            }
-            lastPickup = Date.now();
         } catch (e) {
             nextHandoverAt = Date.now() + 30 * 1000;
-            util.log("supply", "handover failed: " + util.errReason(e), "red");
+            util.log("supply", "item handover stopped after " + sent + " stacks: " + util.errReason(e), "orange");
         } finally {
+            if (sent) util.log("supply", "handed " + sent + " stacks to " + name, "green");
+            lastPickup = Date.now(); // even a partial handover counts as the routine visit
             handingOver = false;
         }
     }
