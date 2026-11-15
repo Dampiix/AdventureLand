@@ -55,6 +55,7 @@ module.exports = function createFighter(ctx, cls) {
     function handleCombat() {
         const farm = targeting.currentFarm();
         const target = targeting.pick(farm.monster);
+        targeting.reportSearch(!!target);
         party.broadcast(farm, target);
 
         if (!target) {

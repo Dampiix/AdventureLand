@@ -20,7 +20,7 @@ Each character looks itself up in `config.js` and loads its role.
 | `config.js` | 21 `bot_config` | characters, phase, thresholds, sell list |
 | `lib/util.js` | 22 `bot_util` | stateless helpers |
 | `lib/comms.js` | 23 `bot_comms` | CODE messages between own characters (trusted senders only) |
-| `core/targeting.js` | 24 `bot_targeting` | farm target (config override → progression guide → fallback) and target picking |
+| `core/targeting.js` | 24 `bot_targeting` | farm target (config override → hunt → progression guide → fallback), crowded-spot fallback to the guide's next choice, target picking |
 | `core/supply.js` | 25 `bot_supply` | fighter side: hand loot/gold to the merchant, request pickups, buy potions if the merchant is silent |
 | `core/fighter.js` | 26 `bot_fighter` | main loop for fighters |
 | `classes/paladin.js` | 27 `bot_class_paladin` | self-heal, Smash |

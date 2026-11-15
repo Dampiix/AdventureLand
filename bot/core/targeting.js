@@ -22,25 +22,54 @@ module.exports = function createTargeting(ctx) {
     const config = ctx.config;
     const util = ctx.util;
     const party = ctx.party;
+    const cfg = config.targeting;
     let farm = null;
     let nextPickAt = 0;
+    const crowdedUntil = {}; // monster -> timestamp: skip this guide choice until then
+    let idleSince = 0;       // on the farm map without a free target since
 
+    // The guide's farm choices (up to three safe routes, best first), skipping
+    // monsters whose spot was recently found crowded.
     function fromProgression() {
+        let list = [];
         try {
             const advice = get_progression();
             if (!advice) return null;
-            const choice = (advice.choices || []).find(function (c) {
-                return c.kind === "farm" && G.monsters[c.monster];
-            });
-            if (choice) return { monster: choice.monster, map: choice.map, source: "guide" };
-            const row = (advice.rows || []).find(function (r) {
-                return r.action && r.action.kind === "farm" && r.action.route && G.monsters[r.action.route.monster];
-            });
-            if (row) return { monster: row.action.route.monster, map: row.action.route.map, source: "guide task" };
+            list = (advice.choices || [])
+                .filter(function (c) { return c.kind === "farm" && G.monsters[c.monster]; })
+                .map(function (c) { return { monster: c.monster, map: c.map, source: "guide" }; });
+            if (!list.length) {
+                const row = (advice.rows || []).find(function (r) {
+                    return r.action && r.action.kind === "farm" && r.action.route && G.monsters[r.action.route.monster];
+                });
+                if (row) list = [{ monster: row.action.route.monster, map: row.action.route.map, source: "guide task" }];
+            }
         } catch (e) {
             util.log("target", "get_progression failed: " + util.errReason(e), "red");
         }
-        return null;
+        if (!list.length) return null;
+        const now = Date.now();
+        const free = list.find(function (c) { return !(crowdedUntil[c.monster] > now); });
+        if (free) return free;
+        // Every choice is crowded: take the one that frees up first.
+        return list.slice().sort(function (a, b) { return crowdedUntil[a.monster] - crowdedUntil[b.monster]; })[0];
+    }
+
+    // Called by the fighter every combat tick. If we stand on the farm map for
+    // a while without any free target (other players clear the spot), mark the
+    // spot as crowded and move on to the guide's next choice.
+    function reportSearch(found) {
+        if (found || !farm || !String(farm.source).startsWith("guide") || character.map !== farm.map) {
+            idleSince = 0;
+            return;
+        }
+        const now = Date.now();
+        if (!idleSince) idleSince = now;
+        if (now - idleSince < cfg.crowdedAfterMs) return;
+        crowdedUntil[farm.monster] = now + cfg.crowdedForMs;
+        util.log("target", farm.monster + " spot looks crowded - trying another target for " + Math.round(cfg.crowdedForMs / 60000) + " min", "orange");
+        idleSince = 0;
+        nextPickAt = 0; // pick again right away
     }
 
     function currentFarm() {
@@ -124,5 +153,5 @@ module.exports = function createTargeting(ctx) {
         return get_nearest_monster({ type: monster, no_target: true });
     }
 
-    return { currentFarm: currentFarm, pick: pick, isValid: isValid };
+    return { currentFarm: currentFarm, pick: pick, isValid: isValid, reportSearch: reportSearch };
 };
