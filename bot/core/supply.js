@@ -22,7 +22,8 @@ module.exports = function createSupply(ctx) {
     let handingOver = false;   // sending items/gold right now
     let lastRequest = 0;
     let pendingSince = 0;      // first unanswered request
-    let lastPickup = Date.now();
+    // First routine pickup shortly after start, then every pickupEveryMs.
+    let lastPickup = Date.now() - s.pickupEveryMs + s.firstPickupAfterMs;
     let nextHandoverAt = 0;    // back-off after a failed handover (e.g. merchant bag full)
 
     comms.on("coming", function () { pendingSince = 0; });
@@ -127,5 +128,13 @@ module.exports = function createSupply(ctx) {
         return "ok";
     }
 
-    return { tick: tick };
+    // Manual trigger (chat command /pickup): call the merchant right now.
+    function requestNow() {
+        if (!merchant) return false;
+        requestPickup(counts());
+        util.log("supply", "pickup requested from " + merchant, "yellow");
+        return true;
+    }
+
+    return { tick: tick, requestNow: requestNow };
 };

@@ -5,7 +5,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.1.1",
+    version: "1.1.2",
 
     // The character you play in the client. Its CODE starts the others
     // and it is the party leader / tank.
@@ -88,6 +88,7 @@ module.exports = {
         goldMinSend: 50000,              // only send gold when the surplus is at least this
         freeSlotsMin: 6,                 // ask for a pickup when fewer slots are free
         pickupEveryMs: 15 * 60 * 1000,   // ask for a routine pickup this often
+        firstPickupAfterMs: 60 * 1000,   // first routine pickup this long after the bot starts
         requestEveryMs: 60 * 1000,       // don't spam the merchant
         merchantTimeoutMs: 3 * 60 * 1000 // no answer for this long -> buy potions yourself
     },

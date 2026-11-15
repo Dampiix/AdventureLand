@@ -22,6 +22,7 @@ const BOT_CLASS_SLOTS = {
 let botRunner = null;
 let botComms = null;
 let botParty = null;
+let botSupply = null;
 
 function noClassModule() {
     return {
@@ -63,6 +64,7 @@ function startBot() {
         const cls = classSlot ? require_code(classSlot)(ctx) : noClassModule();
         ctx.targeting = require_code("bot_targeting")(ctx);
         ctx.supply = require_code("bot_supply")(ctx);
+        botSupply = ctx.supply;
         botRunner = require_code("bot_fighter")(ctx, cls);
     }
 
@@ -75,6 +77,16 @@ function startBot() {
 // Called by the game when a party invite arrives – bot_party only accepts the leader
 function on_party_invite(name) {
     if (botParty) botParty.onInvite(name);
+}
+
+// Chat commands typed in this character's client, e.g. "/pickup".
+// Returning -1 lets the game handle unknown commands as usual.
+function handle_command(command) {
+    if (command === "pickup" && botSupply) {
+        botSupply.requestNow();
+        return true;
+    }
+    return -1;
 }
 
 // Called by the game when CODE is stopped
