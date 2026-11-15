@@ -89,7 +89,7 @@ and the holiday season (Snowman) starts in December.
 - Mage: Burst / Energize policy.
 - `config.phase = "party"` switches the team on.
 
-### M2 – Monster hunts (v1.2)
+### M2 – Monster hunts (v1.2) — implemented in v1.2.0
 - Leader fetches a hunt when none is active, farms the hunt monster while it is safe
   (same check as the guide's safe routes), turns it in at zero, lets unsafe hunts expire.
 - Hunts are tied to the server that issued them.

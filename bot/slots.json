@@ -12,6 +12,7 @@
     { "file": "classes/mage.js",    "slot": 28, "name": "bot_class_mage" },
     { "file": "classes/priest.js",  "slot": 29, "name": "bot_class_priest" },
     { "file": "roles/merchant.js",  "slot": 30, "name": "bot_merchant" },
-    { "file": "core/party.js",      "slot": 31, "name": "bot_party" }
+    { "file": "core/party.js",      "slot": 31, "name": "bot_party" },
+    { "file": "core/hunts.js",      "slot": 32, "name": "bot_hunts" }
   ]
 }

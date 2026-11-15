@@ -4,9 +4,10 @@
 // Farm choice, in order:
 //   1. per-character override (config.characters[name].farm)
 //   2. global override (config.targeting.farm)
-//   3. the game's progression guide: get_progression().choices
+//   3. an open, safe Monster Hunt of any party fighter (bot_hunts)
+//   4. the game's progression guide: get_progression().choices
 //      (top safe farm routes for this character's current gear)
-//   4. config.targeting.fallback
+//   5. config.targeting.fallback
 // Party members use the leader's farm target instead.
 //
 // Target choice:
@@ -47,14 +48,25 @@ module.exports = function createTargeting(ctx) {
         if (lead && lead.farm) {
             if (!farm || farm.monster !== lead.farm) util.log("target", "farm target: " + lead.farm + " (leader)", "yellow");
             farm = { monster: lead.farm, source: "leader" };
+            nextPickAt = 0;
+            return farm;
+        }
+
+        const own = config.characters[character.name] || {};
+        const override = own.farm || config.targeting.farm;
+
+        // An open, safe Monster Hunt beats the guide's choice (explicit overrides still win).
+        const hunt = !override && ctx.hunts ? ctx.hunts.target() : null;
+        if (hunt) {
+            if (!farm || farm.monster !== hunt.monster) util.log("target", "farm target: " + hunt.monster + " (" + hunt.source + ")", "yellow");
+            farm = hunt;
+            nextPickAt = 0; // re-evaluate the guide as soon as the hunt is over
             return farm;
         }
 
         const now = Date.now();
-        if (farm && farm.source !== "leader" && now < nextPickAt) return farm;
+        if (farm && now < nextPickAt) return farm; // hunt/leader targets reset nextPickAt to 0
 
-        const own = config.characters[character.name] || {};
-        const override = own.farm || config.targeting.farm;
         let next = override ? { monster: override, source: "config" } : fromProgression();
         if (!next) next = { monster: config.targeting.fallback, source: "fallback" };
 

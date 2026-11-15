@@ -28,6 +28,7 @@ Each character looks itself up in `config.js` and loads its role.
 | `classes/priest.js` | 29 `bot_class_priest` | self-heal, heal the most hurt party member |
 | `roles/merchant.js` | 30 `bot_merchant` | sells junk, keeps a potion stock, delivers to fighters |
 | `core/party.js` | 31 `bot_party` | party invites/accept/leave, leader broadcast, following |
+| `core/hunts.js` | 32 `bot_hunts` | Monster Hunts: pick a safe hunt of any party fighter, Daisy trips, turn in |
 
 ## Phases and the party
 
@@ -47,6 +48,14 @@ sturdy targets; Mage Energize to members low on MP; Paladin Guardian's Oath (lev
 `slots.json` holds the same mapping. Modules load each other by slot **name** with
 `require_code()`. Only `main.js` calls `require_code()`; every other module is a factory
 that receives its dependencies (`ctx`), so nothing is evaluated twice.
+
+## Monster hunts
+
+Members report their hunt to the leader. The leader farms the hunt monster of any fighter that is
+on this server, has kills left and is safe according to the progression guide (`config.hunts.allow`
+/ `deny` override this); the hunt expiring first wins. When a hunt is finished, or someone has none
+and nothing is huntable, the leader walks the group to Daisy (at most every 10 minutes) and every
+fighter turns in / takes a hunt there. Unsafe hunts are left to expire.
 
 ## Merchant flow
 

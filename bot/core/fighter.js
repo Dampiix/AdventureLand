@@ -7,6 +7,7 @@
 //   3. loot
 //   4. party management   -> invites / accept / leave wrong party
 //   5. supply             -> merchant handover / pickup / self-resupply
+//   5b. hunts             -> Daisy trips, turn in / take Monster Hunts
 //   6. formation          -> members stay within the leash of the leader
 //   7. class support      -> e.g. Priest heals, Mage energizes
 //   8. combat             -> pick target, class skills, basic attack, move
@@ -81,6 +82,7 @@ module.exports = function createFighter(ctx, cls) {
         loot();
         party.manage();
         if (supply.tick() === "busy") return;
+        if (ctx.hunts.tick() === "busy") return;
         if (party.keepUp()) return;
         if (cls.support()) return;
         handleCombat();

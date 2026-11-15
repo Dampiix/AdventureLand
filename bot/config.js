@@ -5,7 +5,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.1.5",
+    version: "1.2.0",
 
     // The character you play in the client. Its CODE starts the others
     // and it is the party leader / tank.
@@ -42,6 +42,18 @@ module.exports = {
     merchant: "DampiixMerch",
 
     tickMs: 250,
+
+    // Monster Hunts (Daisy). Unsafe hunts are left to expire.
+    hunts: {
+        enabled: true,
+        allow: [],                       // always hunt these, even if the guide calls them unsafe
+        deny: [],                        // never hunt these
+        minRemainingMs: 2 * 60 * 1000,   // skip hunts about to expire
+        visitCooldownMs: 10 * 60 * 1000, // at most one Daisy trip per 10 min
+        waitAtDaisyMs: 6000,             // leader waits so members can talk to Daisy too
+        daisyRange: 200,                 // how close counts as standing at Daisy
+        shareMs: 10000,                  // members report their hunt to the leader this often
+    },
 
     targeting: {
         farm: null,               // e.g. "squigtoad" to force a monster for everyone
