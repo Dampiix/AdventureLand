@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.10.1",
+    version: "1.10.2",
 
     team: {
         leader: "DmpxPalTank",                          // played in the client, starts the others, tanks

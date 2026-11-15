@@ -30,6 +30,7 @@ module.exports = function createHunts(ctx) {
     let nextDaisyAt = 0;
     let busy = false;      // leader: Daisy trip running
     let talking = false;   // interact() running
+    let sticky = null;     // { name, id } – the hunt the team is working on
 
     comms.on("hunt", function (data, from) {
         known[from] = { hunt: data.hunt || null, at: Date.now() };
@@ -58,9 +59,14 @@ module.exports = function createHunts(ctx) {
     function isSafe(monster) {
         if (cfg.deny.includes(monster)) return false;
         if (cfg.allow.includes(monster)) return true;
-        if (!G.monsters[monster]) return false;
+        const def = G.monsters[monster];
+        if (!def) return false;
+        // Trivially weak for us (goos, bees, ...): no need to ask the guide.
+        if (!def.cooperative && def.hp <= character.attack * 5 && def.attack <= character.max_hp * 0.1) return true;
         const cached = safeCache[monster];
-        if (cached && Date.now() - cached.at < 10 * 60 * 1000) return cached.safe;
+        // A "safe" verdict holds for an hour, an "unsafe" one is re-checked after 10 min,
+        // so a hunt target doesn't flip back and forth while we work on it.
+        if (cached && Date.now() - cached.at < (cached.safe ? 60 : 10) * 60 * 1000) return cached.safe;
         let safe = false;
         try {
             const advice = get_progression({ goal: { kind: "farm", monster: monster } });
@@ -76,10 +82,17 @@ module.exports = function createHunts(ctx) {
     }
 
     // Hunts of every fighter we know about (own + fresh member reports).
+    // A member's last report stays usable for a few minutes (a missed message must
+    // not make the leader drop the hunt); its remaining time is aged accordingly.
     function allHunts() {
         const list = [{ name: character.name, hunt: own() }];
+        const now = Date.now();
         Object.keys(known).forEach(function (name) {
-            if (Date.now() - known[name].at < 60 * 1000 && party.inParty(name)) list.push({ name: name, hunt: known[name].hunt });
+            const k = known[name];
+            const age = now - k.at;
+            if (age > 3 * 60 * 1000 || !config.characters[name]) return;
+            const hunt = k.hunt ? Object.assign({}, k.hunt, { ms: k.hunt.ms - age }) : null;
+            list.push({ name: name, hunt: hunt });
         });
         return list;
     }
@@ -94,8 +107,17 @@ module.exports = function createHunts(ctx) {
                 return h && h.c > 0 && h.sn === sn && h.ms > cfg.minRemainingMs && isSafe(h.id);
             })
             .sort(function (a, b) { return a.hunt.ms - b.hunt.ms; });
-        if (!open.length) return null;
-        const pick = open[0];
+        if (!open.length) {
+            sticky = null;
+            return null;
+        }
+        // Stick with the hunt we're on until it is done or no longer open – two hunts
+        // with similar remaining time must not make the team walk back and forth.
+        let pick = sticky && open.find(function (x) { return x.name === sticky.name && x.hunt.id === sticky.id; });
+        if (!pick) {
+            pick = open[0];
+            sticky = { name: pick.name, id: pick.hunt.id };
+        }
         return { monster: pick.hunt.id, source: "hunt of " + pick.name + ", " + pick.hunt.c + " left" };
     }
 
