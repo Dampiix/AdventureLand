@@ -87,7 +87,7 @@ module.exports = function createGear(ctx) {
                 util.log("gear", "wishes: " + wishes.map(function (w) { return w.name + " +" + w.level + (w.stat ? " " + w.stat : ""); }).join(", "), "yellow");
             }
         }
-        comms.send(merchant, "wishes", { list: wishes, worn: worn() });
+        comms.send(merchant, "wishes", { list: wishes, worn: worn(), ctype: character.ctype });
     }
 
     // What we wear, for the merchant's gear goals (config.workshop.gearGoals).

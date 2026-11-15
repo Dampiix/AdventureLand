@@ -63,8 +63,10 @@ module.exports = function createWorkshop(ctx) {
         try { return get(WORN_KEY) || {}; } catch (e) { return {}; }
     })();
 
+    const classes = {}; // fighter -> ctype (sent with its wishes)
     comms.on("wishes", function (data, from) {
         wishes[from] = (data.list || []).filter(function (w) { return w && G.items[w.name]; });
+        if (data.ctype && G.classes[data.ctype]) classes[from] = data.ctype;
         if (data.worn) {
             worn[from] = data.worn;
             try { set(WORN_KEY, worn); } catch (e) { /* storage unavailable */ }
@@ -182,6 +184,7 @@ module.exports = function createWorkshop(ctx) {
             await send_item(fighter, index, 1);
             util.log("workshop", "delivered " + item.name + " +" + (item.level || 0) + " to " + fighter, "green");
             markDelivered(fighter, w);
+            if (G.items[item.name]) filledAt[fighter + "|" + G.items[item.name].type] = Date.now();
             delete earmarks[fighter + "|" + w.name];
             saveEarmarks();
             wishes[fighter] = (wishes[fighter] || []).filter(function (x) { return x !== w; });
@@ -1075,6 +1078,67 @@ module.exports = function createWorkshop(ctx) {
         return false;
     }
 
+    // ---- empty slots ---------------------------------------------------------
+    //
+    // A fighter with an empty slot (no belt, no amulet, ...) gets a fitting piece
+    // from our bag or bank – anything usable beats nothing. The piece is earmarked
+    // for the fighter and goes out with the normal deliveries; the fighter equips it
+    // into the empty slot. Pieces boosting another class's main stat are skipped.
+
+    const SLOTS_BY_TYPE = {
+        weapon: ["mainhand"], shield: ["offhand"], source: ["offhand"], quiver: ["offhand"], misc_offhand: ["offhand"],
+        helmet: ["helmet"], chest: ["chest"], pants: ["pants"], gloves: ["gloves"], shoes: ["shoes"], cape: ["cape"],
+        amulet: ["amulet"], belt: ["belt"], orb: ["orb"], ring: ["ring1", "ring2"], earring: ["earring1", "earring2"],
+    };
+    const MAIN_STATS = ["str", "int", "dex"];
+    const filledAt = {}; // "fighter|type" -> last delivery of such an item
+
+    function usableBy(def, ctype) {
+        const cls = G.classes[ctype] || {};
+        if (def.class && !def.class.includes(ctype)) return false;
+        if (def.type === "weapon") return !!((cls.mainhand || {})[def.wtype] || (cls.doublehand || {})[def.wtype]);
+        if (["shield", "source", "quiver", "misc_offhand"].includes(def.type)) return !!(cls.offhand || {})[def.type];
+        // Jewelry for another class's main stat (e.g. an STR amulet for a priest) is no help.
+        const own = cls.main_stat;
+        return !MAIN_STATS.some(function (s) { return s !== own && def[s] > 0; });
+    }
+
+    function fillEmptySlots() {
+        const fightersList = config.team.fighters.filter(function (f) { return worn[f] && classes[f]; });
+        if (!fightersList.length) return;
+        // Copies we hold, minus those already earmarked.
+        const wished = {};
+        fighters().forEach(function (f) { wishList(f).forEach(function (w) { wished[w.name] = true; }); });
+        const pool = [];
+        character.items.forEach(function (it) { if (it && !it.l && !it.p && !wished[it.name]) pool.push({ name: it.name, level: it.level || 0 }); });
+        (bankSnapshot ? bankSnapshot.items : []).forEach(function (b) { if (!wished[b.name]) pool.push({ name: b.name, level: b.level }); });
+        activeEarmarks().forEach(function (e) {
+            const i = pool.findIndex(function (p) { return p.name === e.name && p.level >= e.level; });
+            if (i !== -1) pool.splice(i, 1);
+        });
+        fightersList.forEach(function (f) {
+            const eq = worn[f];
+            Object.keys(SLOTS_BY_TYPE).forEach(function (type) {
+                // Just delivered something of this type: wait for the fighter's next report.
+                if (Date.now() - (filledAt[f + "|" + type] || 0) < 10 * 60 * 1000) return;
+                const empty = SLOTS_BY_TYPE[type].filter(function (s) { return !eq[s]; }).length;
+                const pending = activeEarmarks().filter(function (e) { return e.fighter === f && G.items[e.name] && G.items[e.name].type === type; }).length;
+                for (let n = pending; n < empty; n++) {
+                    const i = pool.findIndex(function (p) {
+                        const def = G.items[p.name];
+                        return def && def.type === type && usableBy(def, classes[f]) && !isGoalStock(p);
+                    });
+                    if (i === -1) return;
+                    const p = pool.splice(i, 1)[0];
+                    // Key by name: a second copy for the other ring/earring slot waits for the next round.
+                    if (earmarks[f + "|" + p.name]) return;
+                    earmark(f, p.name, p.level);
+                    util.log("workshop", p.name + " +" + p.level + " goes to " + f + " (empty " + type + " slot)", "yellow");
+                }
+            });
+        });
+    }
+
     // ---- main step ----------------------------------------------------------
 
     function openWishes() {
@@ -1113,6 +1177,8 @@ module.exports = function createWorkshop(ctx) {
             await smart_move("bank");
             readBank();
         }
+
+        fillEmptySlots();
 
         // Earmarked items that ended up in the bank come out first; vanished ones are dropped.
         for (const e of activeEarmarks()) {
