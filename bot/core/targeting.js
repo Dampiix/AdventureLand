@@ -15,7 +15,8 @@
 //   leader / solo: current target > monster attacking a party member
 //                  > nearest free farm monster
 //   party member:  current target > monster attacking a party member
-//                  > the leader's target – members never open fights,
+//                  > own monster when the farm target is easy (party.spread)
+//                  > the leader's target – otherwise members never open fights,
 //                  so the tank keeps the aggro
 // =====================================================================
 
@@ -127,6 +128,15 @@ module.exports = function createTargeting(ctx) {
         return name === character.name || party.inParty(name);
     }
 
+    // A monster we can safely handle alone: dies in a few of our hits and barely
+    // scratches us (config.party.spread).
+    function isEasy(type) {
+        const s = config.party.spread;
+        const def = G.monsters[type];
+        if (!s || !s.enabled || !def || def.cooperative) return false;
+        return def.hp <= character.attack * s.maxHits && def.attack <= character.max_hp * s.maxDamageRatio;
+    }
+
     // Cooperative monsters (event bosses, Phoenix, ...) reward every contributor,
     // so fighting them alongside other players is fine.
     function isCoop(t) {
@@ -164,9 +174,16 @@ module.exports = function createTargeting(ctx) {
         if (attacker) return attacker;
 
         if (party.isMember) {
-            // Party member: only assist the leader, never pull new monsters –
-            // and never wander off to a farm spot of our own.
             const lead = party.leaderInfo();
+            // Easy farm targets (e.g. goos for a hunt): everyone fights its own monster,
+            // as long as it stays close to the leader.
+            const own = lead && lead.farm && isEasy(lead.farm) ? get_nearest_monster({ type: lead.farm, no_target: true }) : null;
+            if (own) {
+                const p = util.xy(own);
+                if (Math.hypot(p.x - lead.x, p.y - lead.y) <= config.party.leash * 0.8) return own;
+            }
+            // Otherwise only assist the leader, never pull new monsters –
+            // and never wander off to a farm spot of our own.
             const assist = lead && lead.target ? get_monster(lead.target) : null;
             return isValid(assist) && (assist.target || isCoop(assist)) ? assist : null;
         }

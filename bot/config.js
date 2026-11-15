@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.10.0",
+    version: "1.10.1",
 
     team: {
         leader: "DmpxPalTank",                          // played in the client, starts the others, tanks
@@ -25,6 +25,9 @@ module.exports = {
         leash: 300,           // members drop everything and catch up beyond this
         broadcastMs: 2000,    // leader shares position/target this often
         inviteEveryMs: 10000, // leader re-invites a missing member this often
+        // Easy farm targets: members pick their own monster near the leader instead
+        // of only assisting (e.g. a 500-goo hunt).
+        spread: { enabled: true, maxHits: 3, maxDamageRatio: 0.05 },
     },
 
     tickMs: 250,
