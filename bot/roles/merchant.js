@@ -214,6 +214,17 @@ module.exports = function createMerchant(ctx) {
         }
     }
 
+    // One-per-character items (config.merchantRole.onePerCharacter) the fighter lacks.
+    async function giveOneEach(name) {
+        for (const itemName of workshop.oneEachFor ? workshop.oneEachFor(name) : []) {
+            const index = util.findItemIndex(function (i) { return i.name === itemName; });
+            if (index === -1) continue;
+            await send_item(name, index, 1);
+            workshop.markCarried(name, itemName);
+            util.log("merchant", "gave a " + G.items[itemName].name + " to " + name, "green");
+        }
+    }
+
     async function deliver(name) {
         const req = requests.get(name);
         util.status("delivering to " + name, "orange");
@@ -236,6 +247,7 @@ module.exports = function createMerchant(ctx) {
             await giveTo(name, (requests.get(name) || req).want);
             await giveGifts(name);
             await giveClassItems(name);
+            await giveOneEach(name);
             await workshop.handOver(name);
             if (util.canCast("mluck")) use_skill("mluck", name).catch(function () {});
             util.status("collecting from " + name, "orange");

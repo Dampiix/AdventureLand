@@ -64,9 +64,11 @@ module.exports = function createWorkshop(ctx) {
     })();
 
     const classes = {}; // fighter -> ctype (sent with its wishes)
+    const carries = {}; // fighter -> { item: true/false } for one-per-character items
     comms.on("wishes", function (data, from) {
         wishes[from] = (data.list || []).filter(function (w) { return w && G.items[w.name]; });
         if (data.ctype && G.classes[data.ctype]) classes[from] = data.ctype;
+        if (data.has) carries[from] = data.has;
         if (data.worn) {
             worn[from] = data.worn;
             try { set(WORN_KEY, worn); } catch (e) { /* storage unavailable */ }
@@ -1287,6 +1289,35 @@ module.exports = function createWorkshop(ctx) {
         });
     }
 
+    // ---- one per character ----------------------------------------------------
+    //
+    // config.merchantRole.onePerCharacter (e.g. Tracktrix): every fighter that reports
+    // not carrying one gets one; the merchant always keeps one for itself.
+
+    function oneEachList() {
+        return (config.merchantRole && config.merchantRole.onePerCharacter) || [];
+    }
+
+    // Items we can hand to this fighter now (we keep our own copy).
+    function oneEachFor(fighter) {
+        return oneEachList().filter(function (item) {
+            return carries[fighter] && carries[fighter][item] === false && util.countItem(item) > 1;
+        });
+    }
+
+    // Fetch copies from the bank until we hold one per lacking fighter plus our own.
+    async function stockOneEach() {
+        for (const item of oneEachList()) {
+            const lacking = config.team.fighters.filter(function (f) { return carries[f] && carries[f][item] === false; }).length;
+            if (util.countItem(item) >= lacking + 1) continue;
+            const banked = bankSnapshot && bankSnapshot.items.find(function (b) { return b.name === item; });
+            if (!banked || character.esize < 2) continue;
+            await retrieve(banked);
+            return true;
+        }
+        return false;
+    }
+
     // ---- main step ----------------------------------------------------------
 
     // Fair order: every fighter's most important wish first, then everyone's second,
@@ -1328,7 +1359,7 @@ module.exports = function createWorkshop(ctx) {
         const waiting = {};
         fighters().concat(activeEarmarks().map(function (e) { return e.fighter; })).forEach(function (f) { waiting[f] = true; });
         Object.keys(waiting).forEach(function (fighter) {
-            const ready = readyFor(fighter).length || goalReadyFor(fighter).length;
+            const ready = readyFor(fighter).length || goalReadyFor(fighter).length || oneEachFor(fighter).length;
             if (!ready) { delete readySince[fighter]; return; }
             if (!readySince[fighter]) readySince[fighter] = Date.now();
             if (!stillWorkable || Date.now() - readySince[fighter] >= (cfg.deliveryBatchMs || 0)) comms.send(fighter, "ready", {});
@@ -1340,6 +1371,7 @@ module.exports = function createWorkshop(ctx) {
             readBank();
         }
 
+        if (await stockOneEach()) return;
         fillEmptySlots();
 
         // Earmarked items that ended up in the bank come out first; vanished ones are dropped.
@@ -1399,5 +1431,7 @@ module.exports = function createWorkshop(ctx) {
         work: work, handOver: handOver, isReserved: isReserved, readyFor: readyFor,
         isGoalStock: isGoalStock, isGoalFinished: isGoalFinished,
         classOf: function (fighter) { return classes[fighter] || null; },
+        oneEachFor: oneEachFor,
+        markCarried: function (fighter, item) { (carries[fighter] = carries[fighter] || {})[item] = true; },
     };
 };

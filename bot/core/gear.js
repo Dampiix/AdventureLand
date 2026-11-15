@@ -96,7 +96,10 @@ module.exports = function createGear(ctx) {
                 util.log("gear", "wishes: " + wishes.map(function (w) { return w.name + " +" + w.level + (w.stat ? " " + w.stat : ""); }).join(", "), "yellow");
             }
         }
-        comms.send(merchant, "wishes", { list: wishes, worn: worn(), ctype: character.ctype });
+        // Which one-per-character items (e.g. Tracktrix) we already carry.
+        const has = {};
+        ((config.merchantRole && config.merchantRole.onePerCharacter) || []).forEach(function (n) { has[n] = util.countItem(n) > 0; });
+        comms.send(merchant, "wishes", { list: wishes, worn: worn(), ctype: character.ctype, has: has });
     }
 
     // What we wear, for the merchant's gear goals (config.workshop.gearGoals).
