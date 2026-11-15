@@ -95,7 +95,10 @@ module.exports = function createGear(ctx) {
         return character.items.map(function (i) { return i ? i.name + ":" + (i.level || 0) : "-"; }).join("|");
     }
 
-    // Follow the guide's "equip" rows after the bag changed.
+    // Follow the guide's "equip" rows after the bag changed. The guide only suggests
+    // owned items that add attack or 10+ armor, so a +0 piece for an EMPTY slot
+    // (gloves, amulet, ...) is never equipped by it – we do that ourselves: anything
+    // usable beats an empty slot.
     async function equipPass() {
         equipping = true;
         try {
@@ -106,7 +109,17 @@ module.exports = function createGear(ctx) {
                 if (!item || item.name !== a.name || (item.level || 0) !== (a.level || 0)) continue; // bag changed meanwhile
                 await equip(a.num, a.slot);
                 util.log("gear", "equipped " + a.name + " +" + (a.level || 0) + " -> " + a.slot, "green");
-                break; // the bag changed – re-read the guide next time
+                return; // the bag changed – re-read the guide next time
+            }
+            for (let num = 0; num < character.items.length; num++) {
+                const item = character.items[num];
+                const def = item && G.items[item.name];
+                if (!def || !WEARABLE.includes(def.type) || !usable(def)) continue;
+                const slot = (SLOTS_BY_TYPE[def.type] || []).find(function (s) { return !(character.slots && character.slots[s]); });
+                if (!slot) continue;
+                await equip(num, slot);
+                util.log("gear", "equipped " + item.name + " +" + (item.level || 0) + " -> " + slot + " (slot was empty)", "green");
+                return;
             }
         } catch (e) {
             util.log("gear", "equip failed: " + util.errReason(e), "red");
