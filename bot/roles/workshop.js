@@ -33,6 +33,7 @@ module.exports = function createWorkshop(ctx) {
     const spent = {};       // wish key -> gold spent
     const blockedUntil = {}; // wish key -> timestamp (gave up for a while)
     const reachedOnly = {}; // wish key -> level we stopped at (too risky to go on) – delivered as is
+    let graceSince = Date.now(); // start of the current 24 h grace budget window
     let bankSnapshot = null; // { at, items: [{ pack, index, name, level }] }
 
     // Delivered wishes are not fulfilled again for a while (survives restarts).
@@ -154,11 +155,36 @@ module.exports = function createWorkshop(ctx) {
 
     // ---- develop ----------------------------------------------------------
 
-    function canSpend(k, amount) {
-        return character.gold - amount >= util.goldAmount(config.merchantRole.goldReserve) && (spent[k] || 0) + amount <= cfg.budgetPerWish;
+    // Budget per key: wishes use budgetPerWish, grace keys ("grace:<level>") their own.
+    function budgetFor(k) {
+        return k.indexOf("grace:") === 0 ? cfg.grace.budgetPerLevel : cfg.budgetPerWish;
     }
 
-    function pay(k, amount) { spent[k] = (spent[k] || 0) + amount; }
+    function canSpend(k, amount) {
+        return character.gold - amount >= util.goldAmount(config.merchantRole.goldReserve) && (spent[k] || 0) + amount <= budgetFor(k);
+    }
+
+    function pay(k, amount) {
+        spent[k] = (spent[k] || 0) + amount;
+        if (k.indexOf("grace:") === 0) saveGraceSpent();
+    }
+
+    // Grace spending survives restarts and resets after 24 h.
+    const GRACE_KEY = "workshop_grace_spent";
+    (function loadGraceSpent() {
+        try {
+            const saved = get(GRACE_KEY) || {};
+            if (saved.since && Date.now() - saved.since < 24 * 60 * 60 * 1000) {
+                Object.keys(saved.spent || {}).forEach(function (k) { spent[k] = saved.spent[k]; });
+                graceSince = saved.since;
+            }
+        } catch (e) { /* storage unavailable */ }
+    })();
+    function saveGraceSpent() {
+        const graceSpent = {};
+        Object.keys(spent).forEach(function (k) { if (k.indexOf("grace:") === 0) graceSpent[k] = spent[k]; });
+        try { set(GRACE_KEY, { since: graceSince, spent: graceSpent }); } catch (e) { /* storage unavailable */ }
+    }
 
     function sellerOf(name) {
         const id = Object.keys(G.npcs).find(function (n) {
@@ -422,6 +448,78 @@ module.exports = function createWorkshop(ctx) {
         return true;
     }
 
+    // ---- grace ------------------------------------------------------------------
+    //
+    // A failed upgrade towards +L raises the player's grace for +L (any item),
+    // a success at +L resets it. So before risking a valuable item at +L we fail
+    // cheap shop items (config.workshop.grace.fodder) at +L until the valuable
+    // item's previewed chance reaches its tier – or the grace budget runs out.
+
+    function fodderIndex(maxLevel) {
+        let best = -1;
+        character.items.forEach(function (item, i) {
+            if (!item || item.name !== cfg.grace.fodder || item.l || item.p) return;
+            const lvl = item.level || 0;
+            if (lvl > maxLevel) return;
+            if (best === -1 || lvl > (character.items[best].level || 0)) best = i;
+        });
+        return best;
+    }
+
+    // One upgrade attempt on a fodder copy; returns "success" | "fail".
+    async function fodderAttempt(gk, index) {
+        const item = character.items[index];
+        const scroll = "scroll" + item_grade(item);
+        await ensureScroll(gk, scroll, 1);
+        await goTo("newupgrade");
+        const i = util.findItemIndex(function (x) { return x.name === item.name && (x.level || 0) === (item.level || 0) && !x.l && !x.p; });
+        if (i === -1) throw { reason: "fodder lost track" };
+        const result = await upgrade(i, bagIndex(scroll, 0));
+        return result.success ? "success" : "fail";
+    }
+
+    // Returns the new chance once it reaches minChance, or null when we gave up.
+    async function farmGrace(level, minChance, targetChance) {
+        const gk = "grace:" + level;
+        const fodder = cfg.grace.fodder;
+        const def = G.items[fodder];
+        util.log("workshop", "building grace for +" + level + " with " + fodder + " (need " + pct(minChance) + ")", "yellow");
+        let tries = 0;   // attempts at the target level
+        let stopReason = "attempt limit";
+        for (let step = 0; step < 300 && tries < cfg.grace.maxAttempts; step++) {
+            const chance = await targetChance();
+            if (chance >= minChance) {
+                util.log("workshop", "grace done after " + tries + " attempts: +" + level + " now at " + pct(chance), "green");
+                return chance;
+            }
+            // A fodder copy at +level-1: raise the best one we have, or buy a new one.
+            let index = fodderIndex(level - 1);
+            if (index === -1) {
+                if (character.esize < 2) { stopReason = "bag full"; break; }
+                if (!canSpend(gk, def.g)) { stopReason = "budget used up"; break; }
+                await goTo(sellerOf(fodder));
+                await buy(fodder, 1);
+                pay(gk, def.g);
+                index = fodderIndex(level - 1);
+                if (index === -1) { stopReason = "could not buy " + fodder; break; }
+            }
+            try {
+                if ((character.items[index].level || 0) < level - 1) {
+                    await fodderAttempt(gk, index); // climbing; a failure here just costs a cheap copy
+                    continue;
+                }
+                tries++;
+                const outcome = await fodderAttempt(gk, index);
+                util.log("workshop", "grace attempt " + tries + " at +" + level + ": " + (outcome === "fail" ? "failed (grace up)" : "succeeded (grace reset)"), "white");
+            } catch (e) {
+                stopReason = util.errReason(e); // e.g. "budget" from the scroll purchase
+                break;
+            }
+        }
+        util.log("workshop", "grace for +" + level + " stopped: " + stopReason + " (" + Math.round((spent[gk] || 0) / 1000) + "k spent)", "orange");
+        return null;
+    }
+
     // Upgrade the copy at `index` towards `target`. Returns true on success.
     async function develop(fighter, w) {
         const k = key(fighter, w);
@@ -485,7 +583,16 @@ module.exports = function createWorkshop(ctx) {
             const preview = async function (s) { return (await upgrade(locate(), s, null, true)).chance; };
             let chance = await preview(bagIndex(scroll, 0));
             if (chance < minChance) {
-                const better = await strongerScroll(k, "scroll", grade, minChance, preview);
+                let better = await strongerScroll(k, "scroll", grade, minChance, preview);
+                // Still short on a valuable item at a higher level: build grace with cheap fodder.
+                if (!better && cfg.grace.enabled && level + 1 >= cfg.grace.minLevel && minChance >= cfg.risk.mid) {
+                    const graced = await farmGrace(level + 1, minChance, async function () {
+                        await ensureScroll(k, scroll, 1); // fodder attempts may have used our scrolls
+                        await goTo("newupgrade");
+                        return preview(bagIndex(scroll, 0));
+                    });
+                    if (graced !== null) better = { scroll: scroll, chance: graced };
+                }
                 if (!better) {
                     util.log("workshop", w.name + " +" + level + " -> +" + (level + 1) + " only " + pct(chance) + " (need " + pct(minChance) + ") - stopping at +" + level, "orange");
                     reachedOnly[k] = level; // deliver the copy as it is; the fighter's guide decides whether to wear it

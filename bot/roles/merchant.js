@@ -84,6 +84,8 @@ module.exports = function createMerchant(ctx) {
         if (workshop.isReserved(item)) return false;    // a fighter wishes for it
         const rule = sellRule(item.name);
         if (rule && (item.level || 0) <= rule.maxLevel) return true;
+        // Leftover grace fodder (any level) has done its job.
+        if (config.workshop.grace && item.name === config.workshop.grace.fodder) return true;
         return isBuyableJunk(item);
     }
 

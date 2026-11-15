@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.9.2",
+    version: "1.10.0",
 
     team: {
         leader: "DmpxPalTank",                          // played in the client, starts the others, tanks
@@ -140,6 +140,16 @@ module.exports = {
         giveUpForMs: 60 * 60 * 1000,  // after a stop (risk/budget/no source) retry in an hour
         bankScanEveryMs: 10 * 60 * 1000,
         redeliverAfterMs: 6 * 60 * 60 * 1000, // don't fulfil the same wish for a fighter again within 6 h
+        // Grace farming (approved 2026-11-15): before a mid/precious item is risked at a
+        // level whose chance is too low, cheap shop items are failed at that level to raise
+        // the player's grace for it. The real preview decides when it is enough.
+        grace: {
+            enabled: true,
+            minLevel: 4,             // only for steps to +4 and higher
+            fodder: "helmet",        // cheapest upgradeable shop item (3,200 gold)
+            budgetPerLevel: 300000,  // gold per target level per 24 h (fodder + scrolls)
+            maxAttempts: 25,         // fodder attempts per farming round
+        },
         // Fixed wishes on top of the guide's. Items without a shop are bought with tokens
         // (Monster Tokens at Daisy). Steps below the risk tier are not attempted: the copy
         // is delivered at the level reached and the fighter's guide decides whether to wear it.
