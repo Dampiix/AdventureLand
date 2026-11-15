@@ -19,8 +19,12 @@ module.exports = function createDrops(ctx) {
     const cfg = config.drops;
     const leads = !ctx.party || !ctx.party.isMember;
 
-    let needs = [];          // [{ name, copies }] from the merchant
-    let needsAt = 0;
+    // [{ name, copies }] from the merchant; kept across restarts so a reload doesn't
+    // send the team to the XP spot until the next report arrives.
+    const NEEDS_KEY = "dmpx_drop_needs:" + character.name;
+    const saved = (function () { try { return get(NEEDS_KEY) || {}; } catch (e) { return {}; } })();
+    let needs = saved.list || [];
+    let needsAt = saved.at || 0;
     let routes = [];         // [{ name, copies, monster, map, perCopy }] fastest first
     let nextCheckAt = 0;
     let lastPick = "";
@@ -30,6 +34,7 @@ module.exports = function createDrops(ctx) {
         if (from !== config.merchant) return;
         needs = (data.list || []).filter(function (n) { return n && G.items[n.name] && n.copies > 0; }).slice(0, 8);
         needsAt = Date.now();
+        try { set(NEEDS_KEY, { list: needs, at: needsAt }); } catch (e) { /* storage unavailable */ }
         nextCheckAt = 0; // re-evaluate right away
     });
 
