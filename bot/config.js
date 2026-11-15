@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.9.1",
+    version: "1.9.2",
 
     team: {
         leader: "DmpxPalTank",                          // played in the client, starts the others, tanks
@@ -167,6 +167,14 @@ module.exports = {
         // Items the merchant sells to NPCs.
         // A plain name sells only +0 copies. { name, maxLevel } also sells
         // upgraded copies up to that level. Shiny and locked items are never sold.
+        // Anything an NPC shop sells is not worth storing at +0: sell it (approved
+        // 2026-11-15). Consumables and scrolls are excluded; upgraded copies are kept.
+        sellBuyable: {
+            enabled: true,
+            maxLevel: 0,
+            exceptTypes: ["pot", "uscroll", "cscroll", "pscroll", "offering", "stand", "elixir", "booster", "tome", "qubics"],
+        },
+        // Phoenix and event weapons are never on this list – they can't be bought again.
         sellList: [
             // junk drops
             "whiteegg", "spores", "slimestaff", "mushroomstaff", "stinger",

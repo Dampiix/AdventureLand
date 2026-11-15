@@ -64,11 +64,27 @@ module.exports = function createMerchant(ctx) {
         return null;
     }
 
-    function isSellable(item) {
-        const rule = sellRule(item.name);
-        if (!rule || item.p || item.l) return false; // shiny / locked never
-        if (workshop.isReserved(item)) return false;  // a fighter wishes for it
+    // Items any NPC shop sells (can be bought back at any time).
+    const npcSold = new Set();
+    Object.keys(G.npcs).forEach(function (id) {
+        (Array.isArray(G.npcs[id].items) ? G.npcs[id].items : []).forEach(function (name) { if (name) npcSold.add(name); });
+    });
+
+    // config.merchantRole.sellBuyable: don't store what a shop sells anyway.
+    function isBuyableJunk(item) {
+        const rule = m.sellBuyable;
+        if (!rule || !rule.enabled || !npcSold.has(item.name)) return false;
+        const def = G.items[item.name];
+        if (!def || rule.exceptTypes.includes(def.type) || m.bank.keep.includes(item.name)) return false;
         return (item.level || 0) <= rule.maxLevel;
+    }
+
+    function isSellable(item) {
+        if (item.p || item.l) return false;            // shiny / locked never
+        if (workshop.isReserved(item)) return false;    // a fighter wishes for it
+        const rule = sellRule(item.name);
+        if (rule && (item.level || 0) <= rule.maxLevel) return true;
+        return isBuyableJunk(item);
     }
 
     async function sellJunk() {
