@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.15.4",
+    version: "1.16.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -34,6 +34,11 @@ module.exports = {
     },
 
     tickMs: 250,
+
+    // Client display only (no effect headless).
+    ui: {
+        hideGoldLogs: true,   // drop the game's "123 gold" loot lines from the log
+    },
 
     // Events and world bosses (approved 2026-11-15). "always" or "never" (default).
     events: {
@@ -224,7 +229,11 @@ module.exports = {
 
     // Merchant role
     merchantRole: {
-        stockPerPotion: 1000,                // keep this many of every potion type fighters asked for
+        // Potion stock: potions.target per fighter using a size (at most stockPerPotion),
+        // only built while we have stockFromGold – below that, gold goes to equipment
+        // first and deliveries buy just what is needed.
+        stockPerPotion: 1000,
+        stockFromGold: 100000,
         goldReserve: { ratio: 0.2, min: 0, max: 1000000 }, // never spend below 20% of our gold (max 1M)
         handoverWaitMs: 10000,               // wait next to the fighter for its loot
         // Items the merchant sells to NPCs.

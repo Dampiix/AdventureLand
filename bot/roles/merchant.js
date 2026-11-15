@@ -33,7 +33,12 @@ module.exports = function createMerchant(ctx) {
     comms.on("pickup", function (data, from) {
         const isNew = !requests.has(from);
         requests.set(from, Object.assign({}, data, { at: Date.now() }));
-        Object.keys(data.want || {}).forEach(function (name) { if (G.items[name] && G.items[name].type === "pot") stocked.set(name, Date.now()); });
+        Object.keys(data.want || {}).forEach(function (name) {
+            if (!G.items[name] || G.items[name].type !== "pot") return;
+            stocked.set(name, Date.now());
+            if (!users.has(name)) users.set(name, new Map());
+            users.get(name).set(from, Date.now());
+        });
         if (isNew) util.log("merchant", "pickup requested by " + from, "yellow");
         // Tell the fighter whether we can bring its potions; if not, it buys them itself.
         comms.send(from, "coming", { potions: canSupply(data.want) });
@@ -116,6 +121,7 @@ module.exports = function createMerchant(ctx) {
 
     // Potion types fighters asked for – we keep stockPerPotion of each.
     const stocked = new Map(); // potion -> last time a fighter asked for it
+    const users = new Map();   // potion -> Map(fighter -> last ask)
     const poorLogged = {}; // potion -> last "not enough gold" log
     const startedAt = Date.now();
 
@@ -129,12 +135,26 @@ module.exports = function createMerchant(ctx) {
         return /^(hpot|mpot)\d+$/.test(item.name) && Date.now() - startedAt > 60 * 60 * 1000 && !isWantedPotion(item.name);
     }
 
-    // Buy potions up to the stock (and at least what this delivery needs).
+    // Fighters that asked for this potion size within the last hour.
+    function userCount(name) {
+        const u = users.get(name);
+        if (!u) return 0;
+        let n = 0;
+        u.forEach(function (at) { if (Date.now() - at < 60 * 60 * 1000) n++; });
+        return n;
+    }
+
+    // With `wanted` (a delivery): buy what this delivery needs. Without (chores):
+    // build a stock of potions.target per fighter using the size (max stockPerPotion) –
+    // but only while we have stockFromGold, so equipment wishes get the gold first.
     async function restock(wanted) {
         Object.keys(wanted || {}).forEach(function (name) { if (G.items[name] && G.items[name].type === "pot") stocked.set(name, Date.now()); });
+        if (!wanted && character.gold < (m.stockFromGold || 0)) return;
         for (const name of stocked.keys()) {
             if (!isWantedPotion(name)) continue; // nobody drinks this size any more
-            const target = Math.max(m.stockPerPotion, (wanted && wanted[name]) || 0);
+            const target = wanted
+                ? (wanted[name] || 0)
+                : Math.min(m.stockPerPotion, Math.max(1, userCount(name)) * config.potions.target);
             const missing = target - util.countItem(name);
             if (missing <= 0) continue;
             const price = G.items[name].g;

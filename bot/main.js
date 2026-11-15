@@ -44,12 +44,31 @@ function startTeam() {
     });
 }
 
+// The game logs every gold pickup ("123 gold"). The game has no switch for it, so in
+// the client a filter in front of its log function drops those lines
+// (config.ui.hideGoldLogs). Installed once per window; everything else passes.
+function hideGoldLogs() {
+    try {
+        if (!BOT_CONFIG.ui || !BOT_CONFIG.ui.hideGoldLogs) return;
+        if (typeof parent === "undefined" || !parent || typeof parent.add_log !== "function" || parent.dmpxGoldFilter) return;
+        const original = parent.add_log;
+        parent.add_log = function (message, color) {
+            if (typeof message === "string" && /^[\d,.]+ gold$/i.test(message.replace(/<[^>]*>/g, "").trim())) return;
+            return original.apply(this, arguments);
+        };
+        parent.dmpxGoldFilter = true;
+    } catch (e) {
+        // not in a browser client (headless): nothing to filter
+    }
+}
+
 function startBot() {
     if (typeof code_settings !== "undefined") {
         code_settings.log_cm = false;               // no "received CM" lines
         code_settings.log_smart_move = false;       // no "Searching for a path... / Path found!"
         code_settings.show_smart_move_text = false; // no floating pathfinding text
     }
+    hideGoldLogs();
 
     const me = BOT_CONFIG.characters[character.name];
     if (!me) {
