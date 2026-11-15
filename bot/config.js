@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.24.3",
+    version: "1.24.4",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -55,7 +55,9 @@ module.exports = {
         // "always" only applies once every fighter has reached this level
         minLevel: { phoenix: 40, goobrawl: 20, snowman: 10 },
         search: ["phoenix"],            // roaming bosses the leader looks for
-        searchEveryMs: 10 * 60 * 1000,  // search again this long after a miss or a kill
+        // Search again this long after a miss or a kill (player decision 2026-11-15: 30 min,
+        // the walk costs farm time; the Phoenix respawns ~32 min after its death).
+        searchEveryMs: 30 * 60 * 1000,
         searchSpotMs: 4000,             // look around this long at each spawn area
         // Boss check (bosses only; the guide never calls them safe): from everyone's stats
         // and the game's damage formula. Other players are not counted on.

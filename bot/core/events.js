@@ -25,7 +25,16 @@ module.exports = function createEvents(ctx) {
     let lastLiveKey = "";
     let boss = null;           // { name, seenAt } – roaming boss currently engaged
     let searching = false;
-    const nextSearchAt = {};   // boss -> timestamp
+    // boss -> timestamp; kept across restarts so a reload doesn't send the leader
+    // searching right after a kill.
+    const SEARCH_KEY = "dmpx_boss_search:" + character.name;
+    const nextSearchAt = (function () {
+        try { return get(SEARCH_KEY) || {}; } catch (e) { return {}; }
+    })();
+    function searchLater(name) {
+        nextSearchAt[name] = Date.now() + cfg.searchEveryMs;
+        try { set(SEARCH_KEY, nextSearchAt); } catch (e) { /* storage unavailable */ }
+    }
     let lastJoinTry = 0;
     let joined = null;         // leader: { name, map } after a successful join()
 
@@ -219,10 +228,10 @@ module.exports = function createEvents(ctx) {
                 }
             }
             util.log("event", name + " not found - next search in " + Math.round(cfg.searchEveryMs / 60000) + " min", "white");
-            nextSearchAt[name] = Date.now() + cfg.searchEveryMs;
+            searchLater(name);
         } catch (e) {
             util.log("event", "search for " + name + " failed: " + util.errReason(e), "red");
-            nextSearchAt[name] = Date.now() + cfg.searchEveryMs;
+            searchLater(name);
         } finally {
             searching = false;
         }
@@ -251,7 +260,7 @@ module.exports = function createEvents(ctx) {
         if (boss && Date.now() - boss.seenAt < 30 * 1000) return { name: boss.name, monster: boss.name, dest: boss.name };
         if (boss) {
             util.log("event", boss.name + " gone - back to farming", "white");
-            nextSearchAt[boss.name] = Date.now() + cfg.searchEveryMs;
+            searchLater(boss.name);
             boss = null;
         }
         return null;
