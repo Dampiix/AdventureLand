@@ -49,7 +49,7 @@ module.exports = function createEvents(ctx) {
     //   burst:   every fighter survives config.events.boss.minHits hits
     //   healing: the boss's damage per second on the tank is covered by the
     //            priests' healing (potions may add healCover - 1 on top)
-    //   time:    the team alone kills it within maxFightMinutes
+    //   time:    the team alone kills it within maxFightMinutes (if set)
     // A death while fighting a boss pauses it for pauseAfterDeathMs (persisted).
     const bcfg = cfg.boss || {};
     const stats = {};                // fighter -> { s, at }
@@ -111,8 +111,8 @@ module.exports = function createEvents(ctx) {
             return sum + (f.attack || 0) * (f.frequency || 1) * util.damageMultiplier(def) * hitChance * share;
         }, 0);
         const minutes = m.hp / Math.max(1, dps) / 60;
-        const max = bcfg.maxFightMinutes || 10;
-        if (minutes > max) return { ok: false, why: "the team needs ~" + Math.round(minutes) + " min to kill it (max " + max + ")" };
+        const max = bcfg.maxFightMinutes; // null: no time limit
+        if (max && minutes > max) return { ok: false, why: "the team needs ~" + Math.round(minutes) + " min to kill it (max " + max + ")" };
         return { ok: true, why: "~" + Math.round(minutes) + " min, " + Math.round(incoming) + " damage/s vs " + Math.round(healing) + " healing/s" };
     }
 

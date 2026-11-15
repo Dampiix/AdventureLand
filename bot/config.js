@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.25.1",
+    version: "1.25.2",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -64,7 +64,7 @@ module.exports = {
         boss: {
             minHits: 6,                 // every fighter must survive this many hits in a row
             healCover: 1.5,             // damage/s on the tank <= priests' healing/s x this (potions do the rest)
-            maxFightMinutes: 10,        // the team alone must kill it within this time
+            maxFightMinutes: null,      // kill-time limit for the team alone; null = none (player decision 2026-11-15)
             priestDamageShare: 0.3,     // priests mostly heal: count this share of their damage
             pauseAfterDeathMs: 3 * 60 * 60 * 1000, // a death there pauses the boss this long
         },
