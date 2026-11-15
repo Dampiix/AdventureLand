@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.25.5",
+    version: "1.25.6",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -103,6 +103,9 @@ module.exports = {
         // only offers as a careful trial count once proven – by the guide's own fights, or
         // by 15 min of team farming there without a death (remembered across restarts).
         avoidTrial: true,
+        // The current farm spot is left only when a member's "unsafe" lasts this long
+        // (verdicts near the edge flip back and forth); a death there counts at once.
+        objectionGraceMs: 5 * 60 * 1000,
         refreshMs: 5 * 60 * 1000, // how often to ask the guide again
         crowdedAfterMs: 90 * 1000,    // no free target this long on the farm map -> spot is crowded
         crowdedForMs: 5 * 60 * 1000,  // then use the guide's next choice for this long

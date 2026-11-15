@@ -106,7 +106,7 @@ module.exports = function createTargeting(ctx) {
             if (!config.characters[from]) return;
             reports[from] = { listed: data.listed || null, safe: data.safe || data.list || [], sure: data.sure || data.list || [], at: Date.now() };
             // Our current guide spot is not acceptable for this member: pick again right away.
-            if (farm && String(farm.source).startsWith("guide") && objector(farm.monster, null)) nextPickAt = 0;
+            if (farm && String(farm.source).startsWith("guide") && lastingObjector(farm.monster, null)) nextPickAt = 0;
         });
     }
 
@@ -165,6 +165,25 @@ module.exports = function createTargeting(ctx) {
         return null;
     }
 
+    // Like objector(), but the spot we farm right now is only given up when an
+    // objection lasts objectionGraceMs: a guide verdict near the edge flips with HP,
+    // buffs and gear, and each flip used to send the team across the map. A death
+    // there still counts at once.
+    const objectedSince = {}; // monster -> first objection in the current streak
+    function lastingObjector(monster, own) {
+        const who = objector(monster, own);
+        if (!who) { delete objectedSince[monster]; return null; }
+        const here = farm && farm.monster === monster && String(farm.source).startsWith("guide");
+        if (!here || recentDeath(monster)) return who;
+        const now = Date.now();
+        if (!objectedSince[monster]) {
+            objectedSince[monster] = now;
+            util.log("target", monster + " looks unsafe for " + who + " - staying unless that lasts " +
+                Math.round((cfg.objectionGraceMs || 0) / 60000) + " min", "white");
+        }
+        return now - objectedSince[monster] >= (cfg.objectionGraceMs || 0) ? who : null;
+    }
+
     // For bot_hunts: is this monster safe for the whole team right now?
     function isTeamSafe(monster) {
         return !whyUnsafe(monster);
@@ -189,7 +208,7 @@ module.exports = function createTargeting(ctx) {
             const raw = (advice.choices || [])
                 .filter(function (c) { return c.kind === "farm" && G.monsters[c.monster]; });
             list = raw
-                .filter(function (c) { return !objector(c.monster, own); })
+                .filter(function (c) { return !lastingObjector(c.monster, own); })
                 .map(function (c) { return { monster: c.monster, map: c.map, source: "guide" }; });
             if (raw.length && list.length < raw.length) {
                 // The guide's best pick is too risky for someone: say so once.
