@@ -1298,6 +1298,7 @@ module.exports = function createWorkshop(ctx) {
         if (["shield", "source", "quiver", "misc_offhand"].includes(def.type)) return !!(cls.offhand || {})[def.type];
         // Jewelry for another class's main stat (e.g. an STR amulet for a priest) is no help.
         const own = cls.main_stat;
+        if (def[own] > 0) return true; // e.g. Ring of Small Joys: a bit of every stat
         return !MAIN_STATS.some(function (s) { return s !== own && def[s] > 0; });
     }
 

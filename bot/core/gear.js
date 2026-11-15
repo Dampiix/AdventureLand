@@ -169,6 +169,19 @@ module.exports = function createGear(ctx) {
                 util.log("gear", "equipped " + item.name + " +" + (item.level || 0) + " -> " + slot + " (slot was empty)", "green");
                 return;
             }
+            // Off-stat jewelry we put on earlier: take it off, the merchant passes it on.
+            if (character.esize > 1) {
+                const slot = Object.keys(character.slots || {}).find(function (sl) {
+                    const w = character.slots[sl];
+                    return w && G.items[w.name] && offStat(G.items[w.name]);
+                });
+                if (slot) {
+                    const w = character.slots[slot];
+                    await unequip(slot);
+                    util.log("gear", "took off " + w.name + " +" + (w.level || 0) + " (" + slot + ") - not our main stat", "yellow");
+                    return;
+                }
+            }
         } catch (e) {
             util.log("gear", "equip failed: " + util.errReason(e), "red");
         } finally {
@@ -198,9 +211,20 @@ module.exports = function createGear(ctx) {
         amulet: ["amulet"], belt: ["belt"], orb: ["orb"], ring: ["ring1", "ring2"], earring: ["earring1", "earring2"],
     };
     // Can our class wear it at all (class-bound items, weapon and offhand types)?
+    // Jewelry that only raises another class's main stat (e.g. a DEX earring on a
+    // paladin) is no help, and its copy is worth more to that class (compounds).
+    const JEWELRY = ["ring", "earring", "amulet", "belt", "orb"];
+    const MAIN_STATS = ["str", "int", "dex"];
+    function offStat(def) {
+        if (!JEWELRY.includes(def.type)) return false;
+        const own = (G.classes[character.ctype] || {}).main_stat;
+        if (def[own] > 0) return false;
+        return MAIN_STATS.some(function (s) { return s !== own && def[s] > 0; });
+    }
     function usable(def) {
         const cls = G.classes[character.ctype] || {};
         if (def.class && !def.class.includes(character.ctype)) return false;
+        if (offStat(def)) return false;
         if (def.type === "weapon") return !!((cls.mainhand || {})[def.wtype] || (cls.doublehand || {})[def.wtype]);
         if (["shield", "source", "quiver", "misc_offhand"].includes(def.type)) return !!(cls.offhand || {})[def.type];
         return true;
