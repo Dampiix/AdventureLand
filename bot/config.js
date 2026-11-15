@@ -5,7 +5,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.2.1",
+    version: "1.2.2",
 
     // The character you play in the client. Its CODE starts the others
     // and it is the party leader / tank.
@@ -118,16 +118,16 @@ module.exports = {
         sellList: [
             // junk drops
             "whiteegg", "spores", "slimestaff", "mushroomstaff", "stinger",
-            "wcap", "wshoes", "wattire", "wbreeches", "wgloves",
-            "vitearring", "vitring", "vitscroll",
-            // +0 weapons and books (approved 2026-11-15)
-            "dagger", "fireblade", "firestaff", "wbook0",
+            "wcap", "wshoes", "wattire", "wbreeches", "wgloves", "vitscroll",
+            // +0 weapons (approved 2026-11-15)
+            "dagger", "fireblade", "firestaff",
             // cheap materials (approved 2026-11-15)
             "bfur", "frogt", "crabclaw", "ascale", "carrot", "snowball",
             // V1 upgraded short swords to +4 – no longer needed (approved 2026-11-15)
             { name: "sword", maxLevel: 4 },
-            // basic accessories + the Paladin's old starter gear (approved 2026-11-15)
-            "hpbelt", "hpamulet", "ringsj",
+            // the Paladin's old starter gear (approved 2026-11-15).
+            // Accessories (rings, belts, amulets, earrings) and books are NOT sold:
+            // they are compound/upgrade material the progression guide asks for.
             { name: "helmet", maxLevel: 3 },
             { name: "mace", maxLevel: 2 },
         ],
