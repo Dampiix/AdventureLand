@@ -5,17 +5,30 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.0.1",
+    version: "1.1.0",
 
-    // The character you play in the client. Its CODE starts the others.
+    // The character you play in the client. Its CODE starts the others
+    // and it is the party leader / tank.
     leader: "DmpxPalTank",
 
-    // "solo": leader farms alone (Lone Wolf bonus), merchant supports it.
-    // "party": the whole team runs (party logic follows in v2).
+    // "solo":  leader farms alone (Lone Wolf bonus), merchant supports it.
+    // "party": leader + mage + priest farm together, merchant supports them.
+    // startWithLeader: characters the leader starts in the same client.
+    // party:           fighters that form the party (leader included).
     phase: "solo",
     phases: {
-        solo: { startWithLeader: ["DampiixMerch"] },
-        party: { startWithLeader: ["Dampiix", "DampiixPri", "DampiixMerch"] },
+        solo: { startWithLeader: ["DampiixMerch"], party: [] },
+        party: {
+            startWithLeader: ["Dampiix", "DampiixPri", "DampiixMerch"],
+            party: ["DmpxPalTank", "Dampiix", "DampiixPri"],
+        },
+    },
+
+    party: {
+        followDistance: 80,   // members idle within this distance of the leader
+        leash: 300,           // members drop everything and catch up beyond this
+        broadcastMs: 2000,    // leader shares position/target this often
+        inviteEveryMs: 10000, // leader re-invites a missing member this often
     },
 
     // Only these characters are trusted for CODE messages.
@@ -42,9 +55,22 @@ module.exports = {
     },
 
     classes: {
-        paladin: { selfHealBelow: 0.6, useSmash: true, mpReserve: 150 },
-        priest: { healBelow: 0.75, selfHealBelow: 0.6 },
-        mage: {},
+        paladin: {
+            selfHealBelow: 0.6,
+            useSmash: true, mpReserve: 150, // Smash needs a mace
+            oathBelow: 0.5,                 // Guardian's Oath on allies below 50% HP (lvl 50+)
+        },
+        priest: {
+            healBelow: 0.75, selfHealBelow: 0.6,
+            partyHealBelow: 0.65,           // Party Heal when 2+ members are below this...
+            partyHealDanger: 0.35,          // ...or one member is below this
+            useCurse: true, mpReserveRatio: 0.4,
+        },
+        mage: {
+            energizeAbove: 0.6,             // only give mana while we have more than this
+            energizeBelow: 0.4,             // to a member below this MP ratio
+            useBurst: false,                // Mana Burst empties the whole MP pool
+        },
     },
 
     potions: {

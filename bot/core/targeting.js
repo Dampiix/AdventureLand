@@ -7,11 +7,20 @@
 //   3. the game's progression guide: get_progression().choices
 //      (top safe farm routes for this character's current gear)
 //   4. config.targeting.fallback
+// Party members use the leader's farm target instead.
+//
+// Target choice:
+//   leader / solo: current target > monster attacking a party member
+//                  > nearest free farm monster
+//   party member:  current target > monster attacking a party member
+//                  > the leader's target – members never open fights,
+//                  so the tank keeps the aggro
 // =====================================================================
 
 module.exports = function createTargeting(ctx) {
     const config = ctx.config;
     const util = ctx.util;
+    const party = ctx.party;
     let farm = null;
     let nextPickAt = 0;
 
@@ -34,8 +43,15 @@ module.exports = function createTargeting(ctx) {
     }
 
     function currentFarm() {
+        const lead = party.leaderInfo();
+        if (lead && lead.farm) {
+            if (!farm || farm.monster !== lead.farm) util.log("target", "farm target: " + lead.farm + " (leader)", "yellow");
+            farm = { monster: lead.farm, source: "leader" };
+            return farm;
+        }
+
         const now = Date.now();
-        if (farm && now < nextPickAt) return farm;
+        if (farm && farm.source !== "leader" && now < nextPickAt) return farm;
 
         const own = config.characters[character.name] || {};
         const override = own.farm || config.targeting.farm;
@@ -52,25 +68,45 @@ module.exports = function createTargeting(ctx) {
         return farm;
     }
 
+    function isOurs(name) {
+        return name === character.name || party.inParty(name);
+    }
+
     // A target stays valid while it is visible, alive and not fighting someone else.
     function isValid(t) {
         if (!t || !t.visible || t.dead || t.type !== "monster") return false;
-        if (t.target && t.target !== character.name && !isPartyMember(t.target)) return false;
+        if (t.target && !isOurs(t.target)) return false;
         return true;
     }
 
-    function isPartyMember(name) {
-        const party = get_party() || {};
-        return Object.prototype.hasOwnProperty.call(party, name);
+    // Nearest monster attacking us or any party member (V1's party-aggro priority).
+    function nearestPartyAttacker() {
+        const names = party.memberNames();
+        if (!names.includes(character.name)) names.push(character.name);
+        let best = null;
+        let bestDistance = Infinity;
+        names.forEach(function (name) {
+            const m = get_nearest_monster({ target: name });
+            if (!m) return;
+            const d = util.distanceTo(m);
+            if (d < bestDistance) { best = m; bestDistance = d; }
+        });
+        return best;
     }
 
-    // Priority: current target > monsters attacking us > nearest free farm monster.
     function pick(monster) {
         const current = get_targeted_monster();
         if (isValid(current)) return current;
 
-        const attacker = get_nearest_monster({ target: character.name });
+        const attacker = nearestPartyAttacker();
         if (attacker) return attacker;
+
+        const lead = party.leaderInfo();
+        if (lead) {
+            // Party member: only assist the leader, never pull new monsters.
+            const assist = lead.target ? get_monster(lead.target) : null;
+            return isValid(assist) && assist.target ? assist : null;
+        }
 
         return get_nearest_monster({ type: monster, no_target: true });
     }

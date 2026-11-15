@@ -27,6 +27,22 @@ Each character looks itself up in `config.js` and loads its role.
 | `classes/mage.js` | 28 `bot_class_mage` | basic attacks for now |
 | `classes/priest.js` | 29 `bot_class_priest` | self-heal, heal the most hurt party member |
 | `roles/merchant.js` | 30 `bot_merchant` | sells junk, keeps a potion stock, delivers to fighters |
+| `core/party.js` | 31 `bot_party` | party invites/accept/leave, leader broadcast, following |
+
+## Phases and the party
+
+`config.phase` selects who runs:
+
+- `solo` – the leader farms alone (Lone Wolf bonus) and starts only the merchant.
+- `party` – the leader also starts the mage and priest. The leader invites them, members accept
+  invites from the leader only and leave any other party. Every 2 s the leader broadcasts its
+  position, farm target and current target. Members:
+  - follow the leader (catch up beyond `party.leash`, idle within `party.followDistance`),
+  - attack monsters that attack a party member, otherwise assist the leader's target,
+  - never pull new monsters themselves, so the tank keeps the aggro.
+
+Class behaviour in a party: Priest Party Heal (2+ members hurt or one in danger) and Curse on
+sturdy targets; Mage Energize to members low on MP; Paladin Guardian's Oath (level 50) on hurt allies.
 
 `slots.json` holds the same mapping. Modules load each other by slot **name** with
 `require_code()`. Only `main.js` calls `require_code()`; every other module is a factory
@@ -49,6 +65,14 @@ the fighter walks to town and buys them itself.
 
 ## Deploying
 
-Repo files are the source of truth. After changing a file, save it into its slot
-(currently done through the Adventure Land MCP `save_code` tool) and restart the bot.
-Saving a slot does not change running CODE.
+Repo files are the source of truth. Upload changed files into their slots with
+
+```bash
+node scripts/deploy-bot.mjs            # only files that differ from the slot
+node scripts/deploy-bot.mjs --dry-run  # show what would change
+node scripts/deploy-bot.mjs --all      # upload everything
+```
+
+The script uses the Adventure Land JSON API with the token from `ADVENTURELAND_TOKEN`.
+Saving a slot does not change running CODE: restart `bot_main` on the leader afterwards
+(CODE-only characters keep their old code until they are restarted too).

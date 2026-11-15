@@ -24,7 +24,7 @@ module.exports = function createComms(config, util) {
         }
     }
 
-    character.on("cm", onCm);
+    const listenerId = character.on("cm", onCm);
 
     return {
         on: function (type, handler) { handlers[type] = handler; },
@@ -33,6 +33,6 @@ module.exports = function createComms(config, util) {
                 util.log("comms", "send " + type + " to " + to + " failed: " + util.errReason(e), "red");
             });
         },
-        stop: function () { character.remove("cm", onCm); },
+        stop: function () { character.remove(listenerId); },
     };
 };

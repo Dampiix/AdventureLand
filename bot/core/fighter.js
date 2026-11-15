@@ -5,9 +5,11 @@
 //   1. dead?              -> respawn
 //   2. class survival     -> e.g. Paladin self-heal; else potions
 //   3. loot
-//   4. supply             -> merchant handover / pickup / self-resupply
-//   5. class support      -> e.g. Priest heals a party member
-//   6. combat             -> pick target, class skills, basic attack, move
+//   4. party management   -> invites / accept / leave wrong party
+//   5. supply             -> merchant handover / pickup / self-resupply
+//   6. formation          -> members stay within the leash of the leader
+//   7. class support      -> e.g. Priest heals, Mage energizes
+//   8. combat             -> pick target, class skills, basic attack, move
 //
 // Class modules provide: name, survive(), support(), fight(target).
 // survive/support return true when they used the action for this tick;
@@ -19,6 +21,7 @@ module.exports = function createFighter(ctx, cls) {
     const util = ctx.util;
     const targeting = ctx.targeting;
     const supply = ctx.supply;
+    const party = ctx.party;
 
     let running = false;
     let lastRespawnTry = 0;
@@ -51,8 +54,10 @@ module.exports = function createFighter(ctx, cls) {
     function handleCombat() {
         const farm = targeting.currentFarm();
         const target = targeting.pick(farm.monster);
+        party.broadcast(farm, target);
 
         if (!target) {
+            if (party.idleFollow()) return; // party member: stay with the leader
             travel(farm.monster, "searching " + farm.monster);
             return;
         }
@@ -61,8 +66,7 @@ module.exports = function createFighter(ctx, cls) {
 
         if (!is_in_range(target)) {
             util.status("moving to " + target.mtype, "orange");
-            // Direct line when possible, pathfinding otherwise (xmove does both)
-            if (!is_moving(character)) xmove(target.real_x, target.real_y);
+            if (!is_moving(character)) util.moveToEntity(target);
             return;
         }
 
@@ -75,14 +79,16 @@ module.exports = function createFighter(ctx, cls) {
         if (handleDeath()) return;
         if (!cls.survive()) handlePotions();
         loot();
+        party.manage();
         if (supply.tick() === "busy") return;
+        if (party.keepUp()) return;
         if (cls.support()) return;
         handleCombat();
     }
 
     async function loop() {
         running = true;
-        util.log("bot", "fighter started (" + cls.name + ")", "green");
+        util.log("bot", "fighter started (" + cls.name + (party.enabled ? ", party " + (party.isLeader ? "leader" : "member") : ", solo") + ")", "green");
         while (running) {
             try {
                 tick();

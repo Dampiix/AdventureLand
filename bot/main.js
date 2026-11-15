@@ -5,7 +5,7 @@
 // other characters of the current phase as CODE-only characters in the
 // same client, each running this same slot. Every character looks itself
 // up in bot_config and loads its role:
-//   fighter  -> bot_fighter + its class module + targeting + supply
+//   fighter  -> bot_fighter + its class module + party + targeting + supply
 //   merchant -> bot_merchant
 // =====================================================================
 
@@ -21,6 +21,7 @@ const BOT_CLASS_SLOTS = {
 
 let botRunner = null;
 let botComms = null;
+let botParty = null;
 
 function noClassModule() {
     return {
@@ -56,6 +57,8 @@ function startBot() {
     if (me.role === "merchant") {
         botRunner = require_code("bot_merchant")(ctx);
     } else {
+        ctx.party = require_code("bot_party")(ctx);
+        botParty = ctx.party;
         const classSlot = BOT_CLASS_SLOTS[character.ctype];
         const cls = classSlot ? require_code(classSlot)(ctx) : noClassModule();
         ctx.targeting = require_code("bot_targeting")(ctx);
@@ -67,6 +70,11 @@ function startBot() {
     botRunner.start();
 
     if (character.name === BOT_CONFIG.leader) startTeam();
+}
+
+// Called by the game when a party invite arrives – bot_party only accepts the leader
+function on_party_invite(name) {
+    if (botParty) botParty.onInvite(name);
 }
 
 // Called by the game when CODE is stopped

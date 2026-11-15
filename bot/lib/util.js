@@ -37,10 +37,24 @@ function log(tag, text, color) {
     game_log("[" + tag + "] " + text, color || "white");
 }
 
+// Position of an entity or point. Client entities carry real_x/real_y,
+// Mainframe and plain points only x/y.
+function xy(e) {
+    return {
+        x: e.real_x !== undefined ? e.real_x : e.x,
+        y: e.real_y !== undefined ? e.real_y : e.y,
+    };
+}
+
 function distanceTo(point) {
-    const x = point.real_x !== undefined ? point.real_x : point.x;
-    const y = point.real_y !== undefined ? point.real_y : point.y;
-    return Math.hypot(character.real_x - x, character.real_y - y);
+    const p = xy(point);
+    return Math.hypot(character.x - p.x, character.y - p.y);
+}
+
+// Walk straight to an entity when possible, pathfind otherwise.
+function moveToEntity(e) {
+    const p = xy(e);
+    return xmove(p.x, p.y);
 }
 
 // Same map and within range (entities from other maps are not visible anyway).
@@ -71,7 +85,9 @@ module.exports = {
     errReason: errReason,
     status: status,
     log: log,
+    xy: xy,
     distanceTo: distanceTo,
+    moveToEntity: moveToEntity,
     isNear: isNear,
     countItem: countItem,
     findItemIndex: findItemIndex,

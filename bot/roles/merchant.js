@@ -110,7 +110,8 @@ module.exports = function createMerchant(ctx) {
             // The fighter may have moved on: follow it once if it is visible.
             let fighter = get_player(name);
             if (fighter && !util.isNear(fighter, 200)) {
-                await smart_move({ map: character.map, x: fighter.real_x, y: fighter.real_y });
+                const p = util.xy(fighter);
+                await smart_move({ map: character.map, x: p.x, y: p.y });
                 fighter = get_player(name);
             }
             if (!fighter || !util.isNear(fighter, 250)) {

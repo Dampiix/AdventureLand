@@ -76,8 +76,8 @@ module.exports = function createSupply(ctx) {
         if (!pendingSince) pendingSince = lastRequest;
         comms.send(merchant, "pickup", {
             map: character.map,
-            x: Math.round(character.real_x),
-            y: Math.round(character.real_y),
+            x: Math.round(character.x),
+            y: Math.round(character.y),
             want: {
                 [p.hp]: Math.max(0, p.target - c.hp),
                 [p.mp]: Math.max(0, p.target - c.mp),
