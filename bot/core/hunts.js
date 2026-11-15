@@ -14,9 +14,10 @@
 //     has no hunt and there is nothing to hunt right now
 // At Daisy every fighter turns in a finished hunt and/or takes a new one.
 //
-// "Safe" = the progression guide lists a safe farm route for the monster
-// (get_progression with a farm goal), unless config.hunts.allow/deny
-// overrides it. Unsafe hunts are simply left to expire.
+// A hunt is taken on only if it is safe for the whole team (same check as farm
+// spots in bot_targeting: every fighter's guide agrees, no recent death there;
+// config.hunts.allow/deny override it) and the remaining kills fit into the
+// remaining time at the guide's kill speed. Other hunts are left to expire.
 // =====================================================================
 
 module.exports = function createHunts(ctx) {
@@ -74,29 +75,60 @@ module.exports = function createHunts(ctx) {
         comms.send(config.leader, "hunt", { hunt: own() });
     }
 
+    // Safe = the same team check as farm spots (bot_targeting): every fighter's guide
+    // agrees, trials only once proven, no recent death there. Re-checked every 2 min.
     function isSafe(monster) {
         if (cfg.deny.includes(monster)) return false;
         if (cfg.allow.includes(monster)) return true;
-        const def = G.monsters[monster];
-        if (!def) return false;
-        // Trivially weak for us (goos, bees, ...): no need to ask the guide.
-        if (!def.cooperative && def.hp <= character.attack * 5 && def.attack <= character.max_hp * 0.1) return true;
+        if (!G.monsters[monster]) return false;
         const cached = safeCache[monster];
-        // A "safe" verdict holds for an hour, an "unsafe" one is re-checked after 10 min,
-        // so a hunt target doesn't flip back and forth while we work on it.
-        if (cached && Date.now() - cached.at < (cached.safe ? 60 : 10) * 60 * 1000) return cached.safe;
+        if (cached && Date.now() - cached.at < 2 * 60 * 1000) return cached.safe;
         let safe = false;
         try {
-            const advice = get_progression({ goal: { kind: "farm", monster: monster } });
-            safe = (advice.rows || []).some(function (r) {
-                return r.action && r.action.kind === "farm" && r.action.route && r.action.route.monster === monster;
-            });
+            safe = !!(ctx.targeting && ctx.targeting.isTeamSafe(monster));
         } catch (e) {
             util.log("hunt", "safety check failed for " + monster + ": " + util.errReason(e), "red");
         }
+        if (!safe && (!cached || cached.safe)) util.log("hunt", monster + " is not safe for the whole team - not hunting it", "orange");
         safeCache[monster] = { safe: safe, at: Date.now() };
-        if (!safe) util.log("hunt", monster + " looks unsafe - not hunting it", "orange");
         return safe;
+    }
+
+    // Seconds per kill for the team at this monster, from the leader's guide (fastest
+    // route): the kill part speeds up with the team (config.hunts.teamSpeedup), the
+    // respawn limit of the spot does not. null when the guide has no route.
+    const cycleCache = {};
+    function teamKillSeconds(monster) {
+        const c = cycleCache[monster];
+        if (c && Date.now() - c.at < 5 * 60 * 1000) return c.s;
+        let best = null;
+        try {
+            ((get_progression() || {}).routes || []).forEach(function (r) {
+                if (!r || r.monster !== monster || !(r.cycle > 0)) return;
+                const kill = (r.seconds > 0 ? r.seconds : r.cycle) + 1.5;
+                const spawn = r.cycle > kill + 0.01 ? r.cycle : 0; // spot limited by respawns
+                const s = Math.max(kill / (cfg.teamSpeedup || 1), spawn);
+                if (best === null || s < best) best = s;
+            });
+        } catch (e) { /* guide not ready */ }
+        cycleCache[monster] = { s: best, at: Date.now() };
+        return best;
+    }
+
+    // Can the team finish this hunt before it expires?
+    const timeLogged = {};
+    function fitsInTime(x) {
+        const h = x.hunt;
+        const s = teamKillSeconds(h.id);
+        const ok = s !== null && h.c * s * 1000 <= h.ms;
+        const id = x.name + ":" + h.id;
+        if (!ok && !timeLogged[id]) {
+            timeLogged[id] = true;
+            util.log("hunt", h.id + " hunt of " + x.name + ": " + h.c + " kills" +
+                (s === null ? " - no route from the guide" : " need ~" + Math.round(h.c * s / 60) + " min, " + Math.round(h.ms / 60000) + " min left") +
+                " - skipping it", "orange");
+        }
+        return ok;
     }
 
     // Hunts of every fighter we know about (own + fresh member reports).
@@ -122,7 +154,7 @@ module.exports = function createHunts(ctx) {
         const open = allHunts()
             .filter(function (x) {
                 const h = x.hunt;
-                return h && h.c > 0 && h.sn === sn && h.ms > cfg.minRemainingMs && isSafe(h.id);
+                return h && h.c > 0 && h.sn === sn && h.ms > cfg.minRemainingMs && isSafe(h.id) && fitsInTime(x);
             })
             .sort(function (a, b) { return a.hunt.ms - b.hunt.ms; });
         if (!open.length) {

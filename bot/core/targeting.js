@@ -138,6 +138,13 @@ module.exports = function createTargeting(ctx) {
         }) || null;
     }
 
+    // For bot_hunts: is this monster safe for the whole team right now?
+    function isTeamSafe(monster) {
+        let own = null;
+        try { own = ownSafe(get_progression()); } catch (e) { /* guide not ready */ }
+        return !!own && !objector(monster, own);
+    }
+
     // The guide's farm choices (up to three safe routes, best first) that are safe
     // for the whole team, skipping monsters whose spot was recently found crowded.
     function fromProgression() {
@@ -343,5 +350,5 @@ module.exports = function createTargeting(ctx) {
         return get_nearest_monster({ type: type, no_target: true });
     }
 
-    return { currentFarm: currentFarm, pick: pick, isValid: isValid, reportSearch: reportSearch };
+    return { currentFarm: currentFarm, pick: pick, isValid: isValid, reportSearch: reportSearch, isTeamSafe: isTeamSafe };
 };

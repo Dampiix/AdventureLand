@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.16.1",
+    version: "1.17.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -65,6 +65,7 @@ module.exports = {
         allow: [],                       // always hunt these, even if the guide calls them unsafe
         deny: [],                        // never hunt these
         minRemainingMs: 2 * 60 * 1000,   // skip hunts about to expire
+        teamSpeedup: 2,                  // the team kills ~2x as fast as the leader alone (time check)
         visitCooldownMs: 10 * 60 * 1000, // at most one Daisy trip per 10 min
         waitAtDaisyMs: 6000,             // leader waits so members can talk to Daisy too
         daisyRange: 200,                 // how close counts as standing at Daisy
