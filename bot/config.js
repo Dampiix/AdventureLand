@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.15.3",
+    version: "1.15.4",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -129,8 +129,11 @@ module.exports = {
     // Fighter side of the item/gold flow
     supply: {
         keep: ["tracker", "glolipop"],   // never handed to the merchant
-        goldKeep: { perLevel: 5000, min: 20000, max: 200000 }, // fighters keep level x 5k gold (20k..200k)
-        goldMinSend: 50000,              // only send gold when the surplus is at least this
+        // Fighters only need gold to buy potions themselves when the merchant can't;
+        // the merchant buys all equipment. So they keep a small emergency fund
+        // (100 big potions) and hand everything else over (player decision 2026-11-15).
+        goldKeep: 10000,
+        goldMinSend: 5000,               // only send gold when the surplus is at least this
         freeSlotsMin: 6,                 // ask for a pickup when fewer slots are free
         pickupEveryMs: 15 * 60 * 1000,   // ask for a routine pickup this often
         firstPickupAfterMs: 60 * 1000,   // first routine pickup this long after the bot starts
