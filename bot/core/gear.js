@@ -10,6 +10,8 @@
 //          handed back to the merchant.
 // The merchant pings us with "ready" when something waits for us; we then
 //          request a pickup right away.
+// Worn:    the wishes message also carries what we wear, so the merchant
+//          can work on gear goals (stronger copies of our worn pieces).
 // =====================================================================
 
 const WEARABLE = [
@@ -76,7 +78,17 @@ module.exports = function createGear(ctx) {
                 util.log("gear", "wishes: " + wishes.map(function (w) { return w.name + " +" + w.level; }).join(", "), "yellow");
             }
         }
-        comms.send(merchant, "wishes", { list: wishes });
+        comms.send(merchant, "wishes", { list: wishes, worn: worn() });
+    }
+
+    // What we wear, for the merchant's gear goals (config.workshop.gearGoals).
+    function worn() {
+        const out = {};
+        Object.keys(character.slots || {}).forEach(function (slot) {
+            const item = character.slots[slot];
+            if (item && item.name) out[slot] = { name: item.name, level: item.level || 0, stat: item.stat_type || null };
+        });
+        return out;
     }
 
     function bagKey() {
@@ -116,7 +128,13 @@ module.exports = function createGear(ctx) {
 
     // Items the supply module must not hand to the merchant.
     function isReserved(item) {
-        return wishes.some(function (w) { return w.name === item.name && (item.level || 0) >= w.level; });
+        if (wishes.some(function (w) { return w.name === item.name && (item.level || 0) >= w.level; })) return true;
+        // A stronger copy of something we wear (e.g. a finished gear goal) stays
+        // with us until the equip pass puts it on.
+        const slots = character.slots || {};
+        return Object.keys(slots).some(function (s) {
+            return slots[s] && slots[s].name === item.name && (item.level || 0) > (slots[s].level || 0);
+        });
     }
 
     return { tick: tick, isReserved: isReserved };

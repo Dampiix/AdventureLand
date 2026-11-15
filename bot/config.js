@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.11.2",
+    version: "1.12.0",
 
     team: {
         leader: "DmpxPalTank",                          // played in the client, starts the others, tanks
@@ -149,7 +149,7 @@ module.exports = {
         grace: {
             enabled: true,
             minLevel: 4,             // only for steps to +4 and higher
-            fodder: "helmet",        // cheapest upgradeable shop item (3,200 gold)
+            fodder: "mace",          // cheap upgradeable shop item no gear goal uses (3,700 gold)
             budgetPerLevel: 300000,  // gold per target level per 24 h (fodder + scrolls)
             maxAttempts: 25,         // fodder attempts per farming round
             batch: 5,                // helmets prepared at once, then attempted back to back
@@ -162,6 +162,24 @@ module.exports = {
             { name: "fireblade", upTo: 7, spares: 3 },
             { name: "firestaff", upTo: 7, spares: 3 },
         ],
+        // Gear goals (approved 2026-11-15): when idle, the merchant pushes the fighters' worn
+        // shop armor and selected weapons to `upTo`. Shop armor is re-buyable, so every
+        // attempt is made whatever its chance: a failure only costs gold and raises the
+        // grace for that level (for every item), a success is a finished piece. The finished
+        // copy gets the fighter's stat scroll (str/int/dex) and is delivered; the fighter's
+        // guide equips it and the old piece comes back as a base for the next copy.
+        // Weapons are not re-buyable: only a spare copy one level below `upTo` is risked,
+        // and only once grace has raised its chance to `minChance`.
+        gearGoals: {
+            enabled: true,
+            upTo: 8,
+            slots: ["helmet", "pants", "shoes", "gloves"], // coats are +8 already; +9 costs far more
+            weapons: [{ name: "fireblade", minChance: 0.18 }], // 14% at +8, ~19% with full grace
+            // Daily budget from income (player decision 2026-11-15): a share of the merchant's
+            // net gold gain over the last 24 h; the gear goals' own spending is not counted
+            // as a loss. `total` caps everything ever spent on gear goals.
+            budget: { incomeShare: 0.5, total: 5000000 },
+        },
         // Fixed wishes on top of the guide's. Items without a shop are bought with tokens
         // (Monster Tokens at Daisy). Steps below the risk tier are not attempted: the copy
         // is delivered at the level reached and the fighter's guide decides whether to wear it.

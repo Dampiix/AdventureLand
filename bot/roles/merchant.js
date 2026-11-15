@@ -82,6 +82,7 @@ module.exports = function createMerchant(ctx) {
     function isSellable(item) {
         if (item.p || item.l) return false;            // shiny / locked never
         if (workshop.isReserved(item)) return false;    // a fighter wishes for it
+        if (workshop.isGoalStock(item)) return false;   // a gear-goal copy (worn piece, level 1+)
         const rule = sellRule(item.name);
         if (rule && (item.level || 0) <= rule.maxLevel) return true;
         // Leftover grace fodder (any level) has done its job.
@@ -186,7 +187,7 @@ module.exports = function createMerchant(ctx) {
 
     // Everything that is neither sold, kept, part of the potion stock nor a gift.
     function isBankable(item) {
-        if (!item || isSellable(item) || workshop.isReserved(item)) return false;
+        if (!item || isSellable(item) || workshop.isReserved(item) || workshop.isGoalFinished(item)) return false;
         if (G.items[item.name] && G.items[item.name].type === "pot") return false; // potion stock stays with us
         if (m.bank.keep.includes(item.name)) return false;
         const gifts = [].concat.apply([], Object.values(m.give || {}));

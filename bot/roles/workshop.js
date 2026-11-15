@@ -16,7 +16,9 @@
 // step; compound items (rings, earrings, books, ...) are built from three
 // matching copies per level out of bag and bank (copies can't be bought).
 // Without open wishes, spare compound items are combined up to
-// config.workshop.compound.autoUpTo (same chance/budget rules), then
+// config.workshop.compound.autoUpTo (same chance/budget rules), spare copies
+// are upgraded (config.workshop.stock), the fighters' worn gear is pushed to
+// config.workshop.gearGoals.upTo with an income-based budget, then
 // boxes/gems/seashells from config.workshop.exchange.items are exchanged.
 // We only ever work on our own copies – worn gear is never risked.
 // Finished items are handed over on the next delivery; the fighter gets a
@@ -50,8 +52,18 @@ module.exports = function createWorkshop(ctx) {
         return Date.now() - (delivered[fighter + ":" + name] || 0) < cfg.redeliverAfterMs;
     }
 
+    // What each fighter wears (sent with its wishes; survives restarts) – for gear goals.
+    const WORN_KEY = "workshop_worn";
+    const worn = (function () {
+        try { return get(WORN_KEY) || {}; } catch (e) { return {}; }
+    })();
+
     comms.on("wishes", function (data, from) {
         wishes[from] = (data.list || []).filter(function (w) { return w && G.items[w.name]; });
+        if (data.worn) {
+            worn[from] = data.worn;
+            try { set(WORN_KEY, worn); } catch (e) { /* storage unavailable */ }
+        }
     });
 
     function key(fighter, w) { return fighter + ":" + w.name + ":" + w.level; }
@@ -119,6 +131,14 @@ module.exports = function createWorkshop(ctx) {
             markDelivered(fighter, w.name);
             wishes[fighter] = (wishes[fighter] || []).filter(function (x) { return x !== w; });
         }
+        // Finished gear-goal copies (indexes stay valid: sending only empties a slot).
+        for (const a of goalReadyFor(fighter)) {
+            const item = character.items[a.index];
+            if (!item || item.name !== a.need.name) continue;
+            await send_item(fighter, a.index, 1);
+            goalSentAt[fighter + ":" + a.need.slot] = Date.now();
+            util.log("workshop", "delivered " + item.name + " +" + (item.level || 0) + " to " + fighter + " (gear goal)", "green");
+        }
     }
 
     // ---- bank -------------------------------------------------------------
@@ -161,12 +181,62 @@ module.exports = function createWorkshop(ctx) {
     }
 
     function canSpend(k, amount) {
-        return character.gold - amount >= util.goldAmount(config.merchantRole.goldReserve) && (spent[k] || 0) + amount <= budgetFor(k);
+        if (character.gold - amount < util.goldAmount(config.merchantRole.goldReserve)) return false;
+        if (k === GOALS) return goalBudget().allowed >= amount;
+        return (spent[k] || 0) + amount <= budgetFor(k);
     }
 
     function pay(k, amount) {
+        if (k === GOALS) {
+            income.spends.push({ t: Date.now(), a: amount });
+            income.total += amount;
+            saveIncome();
+            return;
+        }
         spent[k] = (spent[k] || 0) + amount;
         if (k.indexOf("grace:") === 0) saveGraceSpent();
+    }
+
+    // ---- income-based budget for gear goals ---------------------------------
+    //
+    // The merchant's gold is sampled every 10 minutes; one sample older than 24 h
+    // stays as the baseline. Net income = gold now - baseline gold + what the gear
+    // goals spent since then (their own spending is not a loss of income). Gear
+    // goals may spend incomeShare of that, minus what they already spent – so the
+    // daily budget follows what the team currently earns.
+    const GOALS = "goals"; // budget key of the gear goals
+    const INCOME_KEY = "workshop_income";
+    const DAY = 24 * 60 * 60 * 1000;
+    const income = (function () {
+        try {
+            const saved = get(INCOME_KEY);
+            if (saved && Array.isArray(saved.samples) && Array.isArray(saved.spends)) return saved;
+        } catch (e) { /* storage unavailable */ }
+        return { samples: [], spends: [], total: 0 };
+    })();
+    function saveIncome() {
+        try { set(INCOME_KEY, income); } catch (e) { /* storage unavailable */ }
+    }
+
+    function sampleIncome() {
+        const now = Date.now();
+        const last = income.samples[income.samples.length - 1];
+        if (last && now - last.t < 10 * 60 * 1000) return;
+        income.samples.push({ t: now, gold: character.gold });
+        while (income.samples.length > 2 && now - income.samples[1].t >= DAY) income.samples.shift();
+        const since = income.samples[0].t;
+        income.spends = income.spends.filter(function (s) { return s.t >= since; });
+        saveIncome();
+    }
+
+    function goalBudget() {
+        const b = cfg.gearGoals.budget;
+        if (!income.samples.length) return { allowed: 0, earned: 0, spent: 0, hours: 0 };
+        const base = income.samples[0];
+        const spentInWindow = income.spends.reduce(function (sum, s) { return sum + s.a; }, 0);
+        const earned = character.gold - base.gold + spentInWindow;
+        const allowed = Math.min(Math.max(0, earned * b.incomeShare - spentInWindow), Math.max(0, b.total - income.total));
+        return { allowed: allowed, earned: earned, spent: spentInWindow, hours: (Date.now() - base.t) / 3600000 };
     }
 
     // Grace spending survives restarts and resets after 24 h.
@@ -594,9 +664,10 @@ module.exports = function createWorkshop(ctx) {
     }
 
     // opts.replaceable overrides the shop check (e.g. a spare we hold many copies of);
-    // opts.spare: no stronger scrolls and no grace farming for this item.
+    // opts.spare: no stronger scrolls and no grace farming for this item;
+    // opts.minChance overrides the risk tier; opts.budgetKey spends from another budget.
     async function develop(fighter, w, opts) {
-        const k = key(fighter, w);
+        const k = (opts && opts.budgetKey) || key(fighter, w);
         const def = G.items[w.name];
         if (!def.upgrade) {
             if (def.compound) return developCompound(fighter, w);
@@ -643,7 +714,7 @@ module.exports = function createWorkshop(ctx) {
             const grade = item_grade(item);
             // Re-buyable from an NPC = replaceable; token/bank-only copies are precious.
             const replaceable = opts && opts.replaceable !== undefined ? opts.replaceable : !!sellerOf(w.name);
-            const minChance = minChanceFor(item, replaceable, 1);
+            const minChance = opts && opts.minChance !== undefined ? opts.minChance : minChanceFor(item, replaceable, 1);
             let scroll = "scroll" + grade;
             await ensureScroll(k, scroll, w.level - level);
             await goTo("newupgrade");
@@ -689,6 +760,202 @@ module.exports = function createWorkshop(ctx) {
         }
     }
 
+    // ---- gear goals -------------------------------------------------------------
+    //
+    // config.workshop.gearGoals: stronger copies of what the fighters wear.
+    // Shop armor is pushed to upTo whatever the chance: a failure costs only gold
+    // and raises the grace for that level (shared by every item), a success is a
+    // finished piece. A weapon is only tried from a spare copy at upTo-1, once
+    // grace has raised its previewed chance to the rule's minChance (armor
+    // failures at the same level do that). Finished copies get the fighter's stat
+    // scroll and are delivered; spending follows the income budget above.
+
+    const goalSentAt = {};      // "fighter:slot" -> delivered at (until the new worn report arrives)
+    const weaponWaitUntil = {}; // weapon name -> timestamp (chance too low, waiting for grace)
+    let goalsPausedUntil = 0;
+    let lastBudgetLog = 0;
+
+    function goalsOn() {
+        return !!(cfg.gearGoals && cfg.gearGoals.enabled);
+    }
+
+    // What each fighter should get, in team order (leader first).
+    function goalNeeds() {
+        const g = cfg.gearGoals;
+        const now = Date.now();
+        const list = [];
+        config.team.fighters.forEach(function (f) {
+            const eq = worn[f];
+            if (!eq) return;
+            g.slots.forEach(function (slot) {
+                const w = eq[slot];
+                const def = w && G.items[w.name];
+                if (!def || !def.upgrade || !sellerOf(w.name) || (w.level || 0) >= g.upTo) return;
+                list.push({ fighter: f, slot: slot, name: w.name, stat: def.stat ? w.stat : null, weapon: null });
+            });
+            const main = eq.mainhand;
+            (g.weapons || []).forEach(function (rule) {
+                if (main && main.name === rule.name && (main.level || 0) < g.upTo) {
+                    list.push({ fighter: f, slot: "mainhand", name: rule.name, stat: null, weapon: rule });
+                }
+            });
+        });
+        return list.filter(function (n) { return now - (goalSentAt[n.fighter + ":" + n.slot] || 0) > 15 * 60 * 1000; });
+    }
+
+    function goalNames() {
+        const names = new Set();
+        Object.keys(worn).forEach(function (f) {
+            cfg.gearGoals.slots.forEach(function (slot) { if (worn[f][slot]) names.add(worn[f][slot].name); });
+        });
+        (cfg.gearGoals.weapons || []).forEach(function (rule) { names.add(rule.name); });
+        return names;
+    }
+
+    // Finished bag copies matched to needs (right stat), in priority order.
+    function goalAssignments(needs) {
+        const upTo = cfg.gearGoals.upTo;
+        const taken = new Set();
+        const out = [];
+        needs.forEach(function (need) {
+            const index = character.items.findIndex(function (item, i) {
+                return item && !taken.has(i) && !item.l && item.name === need.name && (item.level || 0) >= upTo &&
+                    (!need.stat || item.stat_type === need.stat);
+            });
+            if (index === -1) return;
+            taken.add(index);
+            out.push({ need: need, index: index });
+        });
+        return out;
+    }
+
+    function goalReadyFor(fighter) {
+        if (!goalsOn()) return [];
+        return goalAssignments(goalNeeds()).filter(function (a) { return a.need.fighter === fighter; });
+    }
+
+    // Copies of gear-goal items (level 1+) are worth keeping: never sold.
+    function isGoalStock(item) {
+        return goalsOn() && !!item && (item.level || 0) >= 1 && goalNames().has(item.name);
+    }
+
+    // Finished copies stay in the bag until they are delivered.
+    function isGoalFinished(item) {
+        return goalsOn() && !!item && (item.level || 0) >= cfg.gearGoals.upTo && goalNames().has(item.name);
+    }
+
+    function kGold(x) {
+        return Math.round(x / 1000) + "k";
+    }
+
+    function logBudget() {
+        if (Date.now() - lastBudgetLog < 30 * 60 * 1000) return;
+        lastBudgetLog = Date.now();
+        const b = goalBudget();
+        util.log("workshop", "gear goals wait for income: " + kGold(b.allowed) + " left (earned " + kGold(b.earned) + " in " +
+            b.hours.toFixed(1) + " h, spent " + kGold(b.spent) + ", " + kGold(income.total) + " in total)", "orange");
+    }
+
+    // Apply the fighter's stat scroll (str/int/dex) to a finished copy.
+    async function applyStat(index, stat) {
+        const item = character.items[index];
+        const scroll = stat + "scroll";
+        if (!G.items[scroll] || G.items[scroll].type !== "pscroll") throw { reason: "no stat scroll for " + stat };
+        const need = [1, 10, 100, 1000][item_grade(item)] || 9999; // scrolls needed by item grade
+        const missing = need - util.countItem(scroll);
+        if (missing > 0) {
+            const cost = missing * G.items[scroll].g;
+            if (!canSpend(GOALS, cost)) throw { reason: "budget" };
+            await goTo(sellerOf(scroll));
+            await buy(scroll, missing);
+            pay(GOALS, cost);
+        }
+        await goTo("newupgrade");
+        const i = util.findItemIndex(function (x) {
+            return x.name === item.name && (x.level || 0) === (item.level || 0) && x.stat_type === item.stat_type && !x.l;
+        });
+        if (i === -1) throw { reason: "finished copy lost track" };
+        await upgrade(i, bagIndex(scroll, 0));
+        util.log("workshop", item.name + " +" + (item.level || 0) + " now has " + stat + " (" + need + " scrolls)", "green");
+    }
+
+    function bestBagLevel(name, below) {
+        let best = -1;
+        character.items.forEach(function (item) {
+            if (item && item.name === name && !item.l && (item.level || 0) < below) best = Math.max(best, item.level || 0);
+        });
+        return best;
+    }
+
+    // One unit of gear-goal work. Returns true when something was done.
+    async function workOnGoals() {
+        if (!goalsOn() || Date.now() < goalsPausedUntil) return false;
+        const g = cfg.gearGoals;
+        const needs = goalNeeds();
+        const assigned = goalAssignments(needs);
+        const takenIdx = new Set(assigned.map(function (a) { return a.index; }));
+        // Weapons first: they are only tried when grace allows (else they wait 30 min),
+        // so a long armor queue never keeps them from a good moment.
+        const open = needs.filter(function (n) { return !assigned.some(function (a) { return a.need === n; }); })
+            .sort(function (a, b) { return (b.weapon ? 1 : 0) - (a.weapon ? 1 : 0); });
+        if (!open.length || character.esize < 3) return false;
+
+        const now = Date.now();
+        try {
+            for (const need of open) {
+                // 1. A finished copy without the right stat: scroll it for this fighter.
+                const finished = character.items.findIndex(function (item, i) {
+                    return item && !takenIdx.has(i) && !item.l && item.name === need.name && (item.level || 0) >= g.upTo;
+                });
+                if (finished !== -1 && need.stat) {
+                    util.status("stat scroll for " + need.name, "orange");
+                    await applyStat(finished, need.stat);
+                    return true;
+                }
+                // 2. A finished copy in the bank.
+                const bankedDone = bankFind(need.name, function (l) { return l >= g.upTo; });
+                if (bankedDone) {
+                    await retrieve(bankedDone);
+                    return true;
+                }
+
+                const w = { name: need.name, level: g.upTo };
+                if (need.weapon) {
+                    // 3. Weapon: a spare copy at upTo-1, only with enough grace.
+                    if (weaponWaitUntil[need.name] > now) continue;
+                    const below = g.upTo - 1;
+                    if (totalCopies(need.name) < 2 || !totalCopies(need.name, function (l) { return l === below; })) continue;
+                    if (bestBagLevel(need.name, g.upTo) < below) await retrieve(bankFind(need.name, function (l) { return l === below; }));
+                    util.status("trying " + need.name + " +" + g.upTo, "orange");
+                    await develop("_goal", w, { budgetKey: GOALS, minChance: need.weapon.minChance, spare: true });
+                    if (reachedOnly[GOALS] !== undefined) {
+                        delete reachedOnly[GOALS];
+                        weaponWaitUntil[need.name] = Date.now() + 30 * 60 * 1000; // armor failures raise the grace meanwhile
+                    }
+                    return true;
+                }
+
+                // 4. Shop armor: continue with the best copy we have, else buy one.
+                const banked = bankFind(need.name, function (l) { return l < g.upTo; });
+                if (banked && banked.level > bestBagLevel(need.name, g.upTo)) await retrieve(banked);
+                util.status("gear goal: " + need.name + " +" + g.upTo + " for " + need.fighter, "orange");
+                await develop("_goal", w, { budgetKey: GOALS, minChance: 0, spare: true });
+                return true;
+            }
+        } catch (e) {
+            const reason = util.errReason(e);
+            if (reason === "budget") {
+                logBudget();
+                goalsPausedUntil = Date.now() + 15 * 60 * 1000;
+            } else {
+                util.log("workshop", "gear goals: " + reason, "orange");
+                goalsPausedUntil = Date.now() + 5 * 60 * 1000;
+            }
+            return true;
+        }
+        return false;
+    }
+
     // ---- main step ----------------------------------------------------------
 
     function openWishes() {
@@ -708,8 +975,9 @@ module.exports = function createWorkshop(ctx) {
         if (!cfg.enabled) return;
 
         // Ping fighters that have finished items waiting.
+        sampleIncome();
         fighters().forEach(function (fighter) {
-            if (readyFor(fighter).length) comms.send(fighter, "ready", {});
+            if (readyFor(fighter).length || goalReadyFor(fighter).length) comms.send(fighter, "ready", {});
         });
 
         if (!bankSnapshot || Date.now() - bankSnapshot.at > cfg.bankScanEveryMs) {
@@ -722,6 +990,7 @@ module.exports = function createWorkshop(ctx) {
         if (!open.length) {
             if (await autoCompound()) return;
             if (await stockUpgrade()) return;
+            if (await workOnGoals()) return;
             await autoExchange();
             return;
         }
@@ -743,5 +1012,8 @@ module.exports = function createWorkshop(ctx) {
         }
     }
 
-    return { work: work, handOver: handOver, isReserved: isReserved, readyFor: readyFor };
+    return {
+        work: work, handOver: handOver, isReserved: isReserved, readyFor: readyFor,
+        isGoalStock: isGoalStock, isGoalFinished: isGoalFinished,
+    };
 };

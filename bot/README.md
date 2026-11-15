@@ -93,7 +93,7 @@ earrings, books) are built from three matching copies per level out of bag and b
 wishes the merchant also combines spare copies up to `workshop.compound.autoUpTo` (same 70 % rule),
 and then exchanges Armor Boxes, gems and seashells (`workshop.exchange.items`) in batches of 10 while
 at least 8 bag slots are free. Rewards go through the normal sell / bank / compound / wish rules. Before a mid-value or precious item is risked at +4 or higher with too low a chance, the merchant
-builds **grace**: it fails cheap shop helmets at that level (the player's grace per level rises on
+builds **grace**: it fails cheap shop maces at that level (the player's grace per level rises on
 failures and resets on success) until the real preview reaches the tier, within 300k per level per
 day (`workshop.grace`). Leftover fodder is sold. Items no NPC sells are bought with tokens (e.g. the
 Concord Mace for 12 Monster Tokens at Daisy). `workshop.wishes` adds fixed wishes on top of the guide's.
@@ -107,6 +107,21 @@ delivery; the fighter follows its guide's "equip" advice and hands the old piece
 else to do, the merchant upgrades the best spare below `upTo` with the usual risk rules; while more than
 `spares` copies exist, failures (which use up surplus copies) are acceptable. Budget: `budgetPerWish` per
 item per session.
+
+## Gear goals
+
+`workshop.gearGoals` pushes what the fighters wear to `upTo` (+8) when there is nothing else to do.
+Fighters report their worn gear with their wishes.
+- **Shop armor** (`slots`: helmet, pants, shoes, gloves) is re-buyable. Every attempt is made
+  whatever its chance: a failure only costs gold and raises the grace for that level, which every
+  item shares. A success is a finished piece. Old pieces that come back are used as bases.
+- **Finished copies** get the fighter's stat scroll (str/int/dex; 10 scrolls at +8) and are
+  delivered. The fighter keeps stronger copies of its worn items until its guide equips them.
+- **Weapons** (`weapons`) are not re-buyable. Only a spare copy at `upTo`-1 is risked, and only once
+  armor failures have raised the grace enough that the preview reaches `minChance`.
+- **Budget** follows income. The merchant samples its gold every 10 minutes. Gear goals may spend
+  `incomeShare` of the net gain over the last 24 h; their own spending is not counted as a loss.
+  `total` caps everything ever spent. Without income data nothing is spent.
 
 ## Merchant flow
 
