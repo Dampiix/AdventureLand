@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.21.2",
+    version: "1.22.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -116,16 +116,21 @@ module.exports = {
             selfHealBelow: 0.6,
             useSmash: true, mpReserve: 150, // Smash needs a mace
             oathBelow: 0.5,                 // Guardian's Oath on allies below 50% HP (lvl 50+)
+            useCleansingLight: true,        // lift poison/curse/burn/... from allies (lvl 30+)
+            // Mana Shield: damage drains MP instead of HP while on
+            manaShield: { onBelow: 0.35, offAbove: 0.7, minMp: 0.25 },
         },
         priest: {
             healBelow: 0.75, selfHealBelow: 0.6,
             partyHealBelow: 0.65,           // Party Heal when 2+ members are below this...
             partyHealDanger: 0.35,          // ...or one member is below this
             useCurse: true, mpReserveRatio: 0.4,
+            useRevive: true,                // revive fallen members (consumes an Essence of Life)
         },
         ranger: {
             sturdyHits: 3,                  // Hunter's Mark / Supershot only on targets needing 3+ hits
             mpReserveRatio: 0.3,
+            usePoisonArrow: true,           // consumes a Poison Sack
         },
         mage: {
             energizeAbove: 0.6,             // only give mana while we have more than this
@@ -146,6 +151,7 @@ module.exports = {
     // Fighter side of the item/gold flow
     supply: {
         keep: ["tracker", "glolipop"],   // never handed to the merchant
+        keepByClass: { priest: ["essenceoflife"], ranger: ["poison"] }, // skill ingredients
         // Fighters only need gold to buy potions themselves when the merchant can't;
         // the merchant buys all equipment. So they keep a small emergency fund
         // (100 big potions) and hand everything else over (player decision 2026-11-15).
@@ -179,6 +185,7 @@ module.exports = {
             buyStrongerScrolls: true, // only within budgetPerWish; owned/banked ones are used first
         },
         budgetPerWish: 500000,        // gold per wish (base item + scrolls, failures included)
+        massSkills: true,             // Mass Production / Mass Exchange before upgrades and exchanges
         giveUpForMs: 60 * 60 * 1000,  // after a stop (risk/no source/wish budget used up) retry in an hour
         retryAfterBudgetMs: 10 * 60 * 1000, // ...but only 10 min when we merely lack gold right now
         bankScanEveryMs: 10 * 60 * 1000,
@@ -284,6 +291,8 @@ module.exports = {
         // Items the merchant hands to a fighter on its next delivery (one-off gifts).
         give: {
         },
+        // Skill ingredients go to the class that uses them on every delivery.
+        classItems: { priest: ["essenceoflife"], ranger: ["poison"] },
         // Bank: when the bag runs low on space, everything that is neither sold
         // nor kept below goes into the bank (auto placement, stacks merge).
         // New bank packs are never bought automatically.
@@ -292,6 +301,7 @@ module.exports = {
             keep: [
                 "tracker", "glolipop",
                 "scroll0", "scroll1", "scroll2", "cscroll0", "cscroll1", "cscroll2",
+                "essenceoflife", "poison", // skill ingredients for priests / rangers
             ],
         },
     },

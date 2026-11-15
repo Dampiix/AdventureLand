@@ -113,6 +113,15 @@ module.exports = function createWorkshop(ctx) {
         await smart_move(p);
     }
 
+    // Mass Production (lvl 30, -50%; "pp" from lvl 60, -90%) before an upgrade or compound,
+    // Mass Exchange (lvl 40 / 70) before an exchange: the next one finishes faster.
+    async function boost(skill) {
+        if (!cfg.massSkills || (character.s && (character.s[skill] || character.s[skill + "pp"]))) return;
+        const pick = util.canCast(skill + "pp") ? skill + "pp" : util.canCast(skill) ? skill : null;
+        if (!pick) return;
+        try { await use_skill(pick); } catch (e) { /* not worth failing the upgrade for */ }
+    }
+
     function bagIndex(name, minLevel) {
         let best = -1;
         character.items.forEach(function (item, i) {
@@ -523,6 +532,7 @@ module.exports = function createWorkshop(ctx) {
             chance = better.chance;
         }
         const c = bagCopies(name, level);
+        await boost("massproduction");
         const result = await compound(c[0], c[1], c[2], bagIndex(scroll, 0));
         if (result.success) {
             util.log("workshop", "compounded 3x " + name + " +" + level + " -> +" + (level + 1) + " (" + pct(chance) + ")", "green");
@@ -679,6 +689,7 @@ module.exports = function createWorkshop(ctx) {
                 const index = exchangeStack(name, need);
                 if (index === -1) break;
                 try {
+                    await boost("massexchange");
                     const result = await exchange(index);
                     rewards.push(result && result.reward ? result.reward : "?");
                 } catch (e) {
@@ -757,6 +768,7 @@ module.exports = function createWorkshop(ctx) {
         await goTo("newupgrade");
         const i = util.findItemIndex(function (x) { return x.name === item.name && (x.level || 0) === (item.level || 0) && !x.l && !x.p; });
         if (i === -1) throw { reason: "fodder lost track" };
+        await boost("massproduction");
         const result = await upgrade(i, bagIndex(scroll, 0));
         return result.success ? "success" : "fail";
     }
@@ -971,6 +983,7 @@ module.exports = function createWorkshop(ctx) {
                 scroll = better.scroll;
                 chance = better.chance;
             }
+            await boost("massproduction");
             const result = await upgrade(locate(), bagIndex(scroll, 0));
             if (result.success) {
                 util.log("workshop", w.name + " is now +" + result.level + " (" + pct(chance) + ", " + scroll + ")", "green");
@@ -1103,6 +1116,7 @@ module.exports = function createWorkshop(ctx) {
             return x.name === item.name && (x.level || 0) === (item.level || 0) && x.stat_type === item.stat_type && !x.l;
         });
         if (i === -1) throw { reason: "finished copy lost track" };
+        await boost("massproduction");
         await upgrade(i, bagIndex(scroll, 0));
         util.log("workshop", item.name + " +" + (item.level || 0) + " now has " + stat + " (" + need + " scrolls)", "green");
     }
@@ -1348,5 +1362,6 @@ module.exports = function createWorkshop(ctx) {
     return {
         work: work, handOver: handOver, isReserved: isReserved, readyFor: readyFor,
         isGoalStock: isGoalStock, isGoalFinished: isGoalFinished,
+        classOf: function (fighter) { return classes[fighter] || null; },
     };
 };

@@ -3,6 +3,7 @@
 //   fight: Hunter's Mark (+10% damage taken) on sturdy targets,
 //          Supershot (1.5x, 30 s cooldown, needs a bow) on sturdy targets,
 //          3-Shot (level 60, needs a bow) when 3+ monsters attack the team,
+//          Poison Arrow (consumes a Poison Sack) on sturdy targets,
 //          always keeping an MP reserve
 // Bow requirements are checked by util.canCast via the skill's wtype.
 // =====================================================================
@@ -50,6 +51,12 @@ module.exports = function createRanger(ctx) {
             }
             if (sturdy(target) && util.canCast("supershot") && mpLeftAfter("supershot") >= reserve) {
                 use_skill("supershot", target).catch(function () {});
+            }
+            // Poison Arrow (consumes a Poison Sack): poisoned monsters attack 10% slower
+            // and heal less.
+            if (c.usePoisonArrow && sturdy(target) && !(target.s && target.s.poisoned) &&
+                util.countItem("poison") > 0 && util.canCast("poisonarrow") && mpLeftAfter("poisonarrow") >= reserve) {
+                use_skill("poisonarrow", target).catch(function () {});
             }
             return false;
         },

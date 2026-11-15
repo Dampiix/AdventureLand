@@ -6,6 +6,8 @@
 //            (heal shares the attack cooldown, so it replaces an attack)
 //   fight:   Curse (400 MP, 5 s) on sturdy targets – they take 20% more
 //            damage and deal 20% less
+//   revive:  with an Essence of Life in the bag, a fallen member's gravestone
+//            is healed to full and revived (the member waits for it)
 // Works solo too: without a party the priest only looks at itself.
 // =====================================================================
 
@@ -48,6 +50,32 @@ module.exports = function createPriest(ctx) {
         return true;
     }
 
+    // Revive (consumes an Essence of Life): heal a fallen member's gravestone to full,
+    // then revive it. The dead fighter is told to wait instead of respawning in town.
+    let lastWaitSent = 0;
+    function tryRevive() {
+        if (!c.useRevive || util.countItem("essenceoflife") < 1) return false;
+        const dead = ctx.party.memberNames()
+            .filter(function (n) { return n !== character.name; })
+            .map(function (n) { return get_player(n); })
+            .find(function (p) { return p && p.rip; });
+        if (!dead) return false;
+        if (Date.now() - lastWaitSent > 5000) {
+            lastWaitSent = Date.now();
+            ctx.comms.send(dead.name, "revive_wait", {});
+        }
+        if (!is_in_range(dead, "revive")) {
+            if (!is_moving(character)) util.moveToEntity(dead);
+            return true;
+        }
+        if (dead.hp < dead.max_hp) return tryHeal(dead, true);
+        if (util.canCast("revive")) {
+            use_skill("revive", dead.name).catch(function () {});
+            util.log("priest", "reviving " + dead.name, "green");
+        }
+        return true;
+    }
+
     return {
         name: "priest",
 
@@ -57,6 +85,7 @@ module.exports = function createPriest(ctx) {
         },
 
         support: function () {
+            if (tryRevive()) return true;
             const hurt = hurtMembers();
             if (tryPartyHeal(hurt)) return false; // Party Heal is a skill: the heal/attack stays available
             const worst = hurt[0];

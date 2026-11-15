@@ -200,6 +200,20 @@ module.exports = function createMerchant(ctx) {
         }
     }
 
+    // Skill ingredients (config.merchantRole.classItems) for this fighter's class.
+    async function giveClassItems(name) {
+        const ctype = workshop.classOf ? workshop.classOf(name) : null;
+        for (const itemName of (ctype && m.classItems && m.classItems[ctype]) || []) {
+            for (;;) {
+                const index = util.findItemIndex(function (i) { return i.name === itemName; });
+                if (index === -1) break;
+                const q = character.items[index].q || 1;
+                await send_item(name, index, q);
+                util.log("merchant", "gave " + q + "x " + itemName + " to " + name, "green");
+            }
+        }
+    }
+
     async function deliver(name) {
         const req = requests.get(name);
         util.status("delivering to " + name, "orange");
@@ -221,6 +235,7 @@ module.exports = function createMerchant(ctx) {
 
             await giveTo(name, (requests.get(name) || req).want);
             await giveGifts(name);
+            await giveClassItems(name);
             await workshop.handOver(name);
             if (util.canCast("mluck")) use_skill("mluck", name).catch(function () {});
             util.status("collecting from " + name, "orange");

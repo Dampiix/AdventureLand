@@ -33,7 +33,7 @@ function combatStats() {
         attack: c.attack || 0, heal: c.heal || 0, frequency: c.frequency || 1,
         armor: c.armor || 0, resistance: c.resistance || 0,
         apiercing: c.apiercing || 0, rpiercing: c.rpiercing || 0,
-        damage_type: c.damage_type || (G.classes[c.ctype] || {}).damage_type || "physical",
+        damage_type: c.damage_type || ((G.classes && G.classes[c.ctype]) || {}).damage_type || "physical",
     };
 }
 

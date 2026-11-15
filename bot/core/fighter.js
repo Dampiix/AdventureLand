@@ -31,8 +31,16 @@ module.exports = function createFighter(ctx, cls) {
     let lastFarm = null;   // remembered for the leader broadcast while busy
     let lastTarget = null;
 
+    // A priest with an Essence of Life is on its way: don't respawn in town meanwhile.
+    let reviveWaitUntil = 0;
+    ctx.comms.on("revive_wait", function () { reviveWaitUntil = Date.now() + 30 * 1000; });
+
     function handleDeath() {
         if (!character.rip) return false;
+        if (Date.now() < reviveWaitUntil) {
+            util.status("dead - a priest is reviving me", "yellow");
+            return true;
+        }
         util.status("dead - waiting to respawn", "red");
         if (Date.now() - lastRespawnTry > 5000) {
             lastRespawnTry = Date.now();
