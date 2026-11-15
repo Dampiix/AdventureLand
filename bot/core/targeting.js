@@ -31,17 +31,84 @@ module.exports = function createTargeting(ctx) {
     const crowdedUntil = {}; // monster -> timestamp: skip this guide choice until then
     let idleSince = 0;       // on the farm map without a free target since
 
-    // The guide's farm choices (up to three safe routes, best first), skipping
-    // monsters whose spot was recently found crowded.
+    // ---- team safety ------------------------------------------------------------
+    // The guide judges a route only for the character asking (the leader, usually
+    // the tank). Every member reports the monsters its own guide calls safe; with
+    // config.targeting.avoidTrial, routes the guide only offers as a careful trial
+    // don't count until our own fights have proven them. The leader only farms
+    // where everyone agrees.
+    const comms = ctx.comms;
+    const reports = {};   // member -> { list, at }
+    let lastReport = 0;
+    let lastSkipLog = "";
+
+    if (comms) {
+        comms.on("safe", function (data, from) {
+            if (!config.characters[from]) return;
+            reports[from] = { list: data.list || [], at: Date.now() };
+            // Our current guide spot is unsafe for this member: pick again right away.
+            if (farm && String(farm.source).startsWith("guide") && !reports[from].list.includes(farm.monster)) nextPickAt = 0;
+        });
+    }
+
+    // Monsters our own guide calls safe, or null when the guide has no route data.
+    function ownSafe(advice) {
+        const routes = advice && advice.routes;
+        if (!Array.isArray(routes)) return null;
+        return new Set(routes
+            .filter(function (r) { return r && r.safe && (!cfg.avoidTrial || !r.trial || r.proven); })
+            .map(function (r) { return r.monster; }));
+    }
+
+    function shareSafe() {
+        if (!party.isMember || !comms || Date.now() - lastReport < 60 * 1000) return;
+        lastReport = Date.now();
+        let set = null;
+        try { set = ownSafe(get_progression()); } catch (e) { /* guide not ready */ }
+        if (set) comms.send(config.leader, "safe", { list: Array.from(set) });
+    }
+
+    // Who (if anyone) considers this monster unsafe.
+    function objector(monster, own) {
+        if (own && !own.has(monster)) return character.name;
+        const now = Date.now();
+        return Object.keys(reports).find(function (name) {
+            const r = reports[name];
+            return party.inParty(name) && now - r.at < 3 * 60 * 1000 && !r.list.includes(monster);
+        }) || null;
+    }
+
+    // The guide's farm choices (up to three safe routes, best first) that are safe
+    // for the whole team, skipping monsters whose spot was recently found crowded.
     function fromProgression() {
         let list = [];
         try {
             const advice = get_progression();
             if (!advice) return null;
-            list = (advice.choices || [])
-                .filter(function (c) { return c.kind === "farm" && G.monsters[c.monster]; })
+            const own = ownSafe(advice);
+            const raw = (advice.choices || [])
+                .filter(function (c) { return c.kind === "farm" && G.monsters[c.monster]; });
+            list = raw
+                .filter(function (c) { return !objector(c.monster, own); })
                 .map(function (c) { return { monster: c.monster, map: c.map, source: "guide" }; });
-            if (!list.length) {
+            if (raw.length && list.length < raw.length) {
+                // The guide's best pick is too risky for someone: say so once.
+                const first = raw[0];
+                const who = objector(first.monster, own);
+                const msg = who ? first.monster + " is not safe for " + who + (list.length ? " - " + list[0].monster + " instead" : "") : "";
+                if (msg && msg !== lastSkipLog) { lastSkipLog = msg; util.log("target", msg, "orange"); }
+            }
+            if (!list.length && Array.isArray(advice.routes)) {
+                // None of the top three is safe for everyone: best other safe route.
+                const seen = {};
+                list = advice.routes
+                    .filter(function (r) { return r && r.safe && G.monsters[r.monster] && !objector(r.monster, own); })
+                    .sort(function (a, b) { return (b.xp || 0) - (a.xp || 0); })
+                    .filter(function (r) { if (seen[r.monster]) return false; seen[r.monster] = true; return true; })
+                    .slice(0, 3)
+                    .map(function (r) { return { monster: r.monster, map: r.map, source: "guide, team-safe" }; });
+            }
+            if (!list.length && !raw.length) {
                 const row = (advice.rows || []).find(function (r) {
                     return r.action && r.action.kind === "farm" && r.action.route && G.monsters[r.action.route.monster];
                 });
@@ -77,6 +144,7 @@ module.exports = function createTargeting(ctx) {
     }
 
     function currentFarm() {
+        shareSafe(); // members: tell the leader where we can fight safely
         // Events and world bosses come first (bot_events; members get it from the leader).
         const ev = ctx.events ? ctx.events.current() : null;
         if (ev) {
