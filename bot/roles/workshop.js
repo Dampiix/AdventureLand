@@ -1190,10 +1190,11 @@ module.exports = function createWorkshop(ctx) {
         const needs = goalNeeds();
         const assigned = goalAssignments(needs);
         const takenIdx = new Set(assigned.map(function (a) { return a.index; }));
-        // Weapons first: they are only tried when grace allows (else they wait 30 min),
-        // so a long armor queue never keeps them from a good moment.
+        // Weapons first (player request 2026-11-15): the risky spare weapons when grace
+        // allows (else they wait 30 min), then the worn shop weapons, armor only after that.
+        function rank(n) { return n.weapon ? 0 : n.slot === "mainhand" ? 1 : 2; }
         const open = needs.filter(function (n) { return !assigned.some(function (a) { return a.need === n; }); })
-            .sort(function (a, b) { return (b.weapon ? 1 : 0) - (a.weapon ? 1 : 0); });
+            .sort(function (a, b) { return rank(a) - rank(b); });
         if (!open.length || character.esize < 3) return false;
 
         const now = Date.now();

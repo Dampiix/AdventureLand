@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.24.2",
+    version: "1.24.3",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -223,7 +223,8 @@ module.exports = {
             enabled: true,
             // Since 2026-11-15 (player request): don't let armor and weapons wait while the guide
             // works on accessories – worn shop armor and shop weapons go to +7 (the end of the
-            // guide's lessons) in parallel, with the class's main stat.
+            // guide's lessons) in parallel, with the class's main stat. Weapons come first,
+            // armor follows once no weapon step is open (player request 2026-11-15).
             fromLevel: 0,
             upTo: 7,
             everyMs: 3 * 60 * 1000,   // one gear-goal step this often even while wishes are open
