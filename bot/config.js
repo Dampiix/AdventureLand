@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.13.0",
+    version: "1.13.1",
 
     team: {
         leader: "DmpxPalTank",                          // played in the client, starts the others, tanks
@@ -184,6 +184,7 @@ module.exports = {
         // and only once grace has raised its chance to `minChance`.
         gearGoals: {
             enabled: true,
+            fromLevel: 7,  // only pieces worn at +7 or more: below, the guide's lessons decide
             upTo: 8,
             slots: ["helmet", "pants", "shoes", "gloves"], // coats are +8 already; +9 costs far more
             weapons: [{ name: "fireblade", minChance: 0.18 }], // 14% at +8, ~19% with full grace

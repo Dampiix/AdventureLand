@@ -39,7 +39,8 @@ module.exports = function createWorkshop(ctx) {
     let bankSnapshot = null; // { at, items: [{ pack, index, name, level }] }
 
     // Delivered wishes are not fulfilled again for a while (survives restarts).
-    const DELIVERED_KEY = "workshop_delivered";
+    // Storage is shared by every character in the client: keys carry the merchant's name.
+    const DELIVERED_KEY = "workshop_delivered:" + character.name;
     function loadDelivered() {
         try { return get(DELIVERED_KEY) || {}; } catch (e) { return {}; }
     }
@@ -53,7 +54,7 @@ module.exports = function createWorkshop(ctx) {
     }
 
     // What each fighter wears (sent with its wishes; survives restarts) – for gear goals.
-    const WORN_KEY = "workshop_worn";
+    const WORN_KEY = "workshop_worn:" + character.name;
     const worn = (function () {
         try { return get(WORN_KEY) || {}; } catch (e) { return {}; }
     })();
@@ -205,7 +206,7 @@ module.exports = function createWorkshop(ctx) {
     // goals may spend incomeShare of that, minus what they already spent – so the
     // daily budget follows what the team currently earns.
     const GOALS = "goals"; // budget key of the gear goals
-    const INCOME_KEY = "workshop_income";
+    const INCOME_KEY = "workshop_income:" + character.name;
     const DAY = 24 * 60 * 60 * 1000;
     const income = (function () {
         try {
@@ -240,7 +241,7 @@ module.exports = function createWorkshop(ctx) {
     }
 
     // Grace spending survives restarts and resets after 24 h.
-    const GRACE_KEY = "workshop_grace_spent";
+    const GRACE_KEY = "workshop_grace_spent:" + character.name;
     (function loadGraceSpent() {
         try {
             const saved = get(GRACE_KEY) || {};
@@ -839,7 +840,8 @@ module.exports = function createWorkshop(ctx) {
             g.slots.forEach(function (slot) {
                 const w = eq[slot];
                 const def = w && G.items[w.name];
-                if (!def || !def.upgrade || !sellerOf(w.name) || (w.level || 0) >= g.upTo) return;
+                // Below fromLevel the guide's lessons (+3, +5, +7) are in charge.
+                if (!def || !def.upgrade || !sellerOf(w.name) || (w.level || 0) < g.fromLevel || (w.level || 0) >= g.upTo) return;
                 list.push({ fighter: f, slot: slot, name: w.name, stat: def.stat ? w.stat : null, weapon: null });
             });
             const main = eq.mainhand;
@@ -854,8 +856,11 @@ module.exports = function createWorkshop(ctx) {
 
     function goalNames() {
         const names = new Set();
-        Object.keys(worn).forEach(function (f) {
-            cfg.gearGoals.slots.forEach(function (slot) { if (worn[f][slot]) names.add(worn[f][slot].name); });
+        config.team.fighters.forEach(function (f) {
+            cfg.gearGoals.slots.forEach(function (slot) {
+                const w = worn[f] && worn[f][slot];
+                if (w && (w.level || 0) >= cfg.gearGoals.fromLevel) names.add(w.name);
+            });
         });
         (cfg.gearGoals.weapons || []).forEach(function (rule) { names.add(rule.name); });
         return names;
