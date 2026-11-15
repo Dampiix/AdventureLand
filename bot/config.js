@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.24.4",
+    version: "1.25.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -213,6 +213,16 @@ module.exports = {
             { name: "fireblade", upTo: 7, spares: 3 },
             { name: "firestaff", upTo: 7, spares: 3 },
         ],
+        // Drop weapons (player decision 2026-11-15): a Phoenix weapon we hold that beats a
+        // fighter's worn weapon goes to that fighter; if none does yet, the best copy is
+        // upgraded to the first level that would (at most maxLevel). A failure only costs
+        // a drop – the fighter keeps its shop weapon. Gear-goal budget, normal scrolls.
+        betterWeapons: {
+            enabled: true,
+            names: ["fireblade", "firestaff", "firebow"],
+            maxLevel: 7,
+            margin: 0.03,   // at least 3% stronger than the worn weapon
+        },
         // Gear goals (approved 2026-11-15): when idle, the merchant pushes the fighters' worn
         // shop armor and selected weapons to `upTo`. Shop armor is re-buyable, so every
         // attempt is made whatever its chance: a failure only costs gold and raises the

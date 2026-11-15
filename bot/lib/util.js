@@ -159,8 +159,43 @@ function goldAmount(spec) {
     return Math.max(spec.min || 0, Math.min(spec.max !== undefined ? spec.max : Infinity, Math.floor(base)));
 }
 
+// Attack of a weapon at a level. The game's own formula when the client offers it,
+// else the per-level upgrade bonus with the game's multipliers for high levels.
+const UPGRADE_MULT = { 7: 1.25, 8: 1.5, 9: 2, 10: 3, 11: 1.25, 12: 1.25 };
+function weaponAttack(name, level) {
+    try {
+        if (typeof calculate_item_properties === "function") {
+            const props = calculate_item_properties({ name: name, level: level });
+            if (props && typeof props.attack === "number") return props.attack;
+        }
+    } catch (e) { /* other signature: use our estimate */ }
+    const def = G.items[name] || {};
+    let attack = def.attack || 0;
+    for (let i = 1; i <= level; i++) attack += ((def.upgrade || {}).attack || 0) * (UPGRADE_MULT[i] || 1);
+    return attack;
+}
+
+// How strong a weapon is in a class's hands: attack with the class's weapon-type
+// modifiers (e.g. a paladin deals 5% less with a short sword). 0 = can't wield it.
+function weaponPower(name, level, ctype) {
+    const def = G.items[name];
+    const cls = (G.classes && G.classes[ctype]) || {};
+    if (!def || def.type !== "weapon" || (def.class && !def.class.includes(ctype))) return 0;
+    const mod = (cls.mainhand || {})[def.wtype] || (cls.doublehand || {})[def.wtype];
+    if (!mod) return 0;
+    return weaponAttack(name, level || 0) * (1 + (mod.output || 0) / 100) * (1 + (mod.frequency || 0) / 100);
+}
+
+function isDoublehand(name, ctype) {
+    const def = G.items[name];
+    const cls = (G.classes && G.classes[ctype]) || {};
+    return !!(def && (cls.doublehand || {})[def.wtype] && !(cls.mainhand || {})[def.wtype]);
+}
+
 module.exports = {
     deriveTeam: deriveTeam,
+    weaponPower: weaponPower,
+    isDoublehand: isDoublehand,
     potionNames: potionNames,
     goldAmount: goldAmount,
     hpRatio: hpRatio,

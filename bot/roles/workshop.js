@@ -1078,6 +1078,8 @@ module.exports = function createWorkshop(ctx) {
                 const w = eq[slot];
                 const def = w && G.items[w.name];
                 if (!def || !def.upgrade || !sellerOf(w.name) || (w.level || 0) < g.fromLevel || (w.level || 0) >= g.upTo) return;
+                // A drop weapon is being readied for this fighter: its shop weapon stays as it is.
+                if (slot === "mainhand" && weaponPlans().some(function (p) { return p.fighter === f; })) return;
                 // Stat armor: the worn piece's stat, else the fighter's main stat.
                 const cls = classes[f] && G.classes[classes[f]];
                 const stat = def.stat ? (w.stat || (cfg.mainStatOnArmor && cls ? cls.main_stat : null)) : null;
@@ -1353,6 +1355,88 @@ module.exports = function createWorkshop(ctx) {
         });
     }
 
+    // ---- better weapons (drops) -------------------------------------------------
+    //
+    // config.workshop.betterWeapons: drop weapons (e.g. Phoenix) are compared with the
+    // fighters' worn weapons. A copy that is already stronger goes out; otherwise the best
+    // copy is upgraded to the first level that beats the worn weapon.
+
+    // Mainhand power of a fighter's worn weapon (0 = nothing worn).
+    function wornPower(f) {
+        const m = worn[f] && worn[f].mainhand;
+        return m ? util.weaponPower(m.name, m.level || 0, classes[f]) : 0;
+    }
+
+    // Can fighter f wield this weapon (a two-handed one only with an empty offhand)?
+    function canWield(f, name) {
+        if (!classes[f] || !util.weaponPower(name, 0, classes[f])) return false;
+        return !util.isDoublehand(name, classes[f]) || !(worn[f] && worn[f].offhand);
+    }
+
+    // { fighter, name, need } per drop weapon we hold: the fighter it helps most and the
+    // first level (<= maxLevel) at which it beats that fighter's worn weapon.
+    function weaponPlans() {
+        const bw = cfg.betterWeapons;
+        if (!bw || !bw.enabled) return [];
+        const plans = [];
+        (bw.names || []).forEach(function (name) {
+            if (!G.items[name] || !unlockedCopies(name).length) return;
+            let plan = null;
+            config.team.fighters.forEach(function (f) {
+                if (!worn[f] || !canWield(f, name)) return;
+                const m = worn[f].mainhand;
+                if (m && m.name === name) return; // already wears one: gear goals take over
+                const bar = wornPower(f) * (1 + (bw.margin || 0));
+                for (let level = 0; level <= bw.maxLevel; level++) {
+                    if (util.weaponPower(name, level, classes[f]) <= bar) continue;
+                    if (!plan || level < plan.need) plan = { fighter: f, name: name, need: level };
+                    break;
+                }
+            });
+            if (plan) plans.push(plan);
+        });
+        return plans;
+    }
+
+    // Earmark copies that are already strong enough.
+    function deliverBetterWeapons() {
+        weaponPlans().forEach(function (plan) {
+            const f = plan.fighter;
+            if (earmarks[f + "|" + plan.name]) return;
+            if (activeEarmarks().some(function (e) { return e.fighter === f && G.items[e.name] && G.items[e.name].type === "weapon"; })) return;
+            if (Date.now() - (filledAt[f + "|weapon"] || 0) < 10 * 60 * 1000) return;
+            const levels = unlockedCopies(plan.name).filter(function (l) { return l >= plan.need; });
+            if (!levels.length) return;
+            const level = Math.max.apply(null, levels);
+            const m = worn[f].mainhand;
+            earmark(f, plan.name, level);
+            util.log("workshop", plan.name + " +" + level + " goes to " + f + " (stronger than its " +
+                (m ? m.name + " +" + (m.level || 0) : "empty hand") + ")", "yellow");
+        });
+    }
+
+    // One upgrade run for a drop weapon that isn't strong enough yet.
+    async function workOnBetterWeapons() {
+        const now = Date.now();
+        for (const plan of weaponPlans()) {
+            const k = key("_better", { name: plan.name, level: plan.need });
+            if (blockedUntil[k] > now || earmarks[plan.fighter + "|" + plan.name]) continue;
+            if (unlockedCopies(plan.name).some(function (l) { return l >= plan.need; })) continue; // ready to deliver
+            if (character.esize < 3) return false;
+            util.status("upgrading " + plan.name + " for " + plan.fighter, "orange");
+            util.log("workshop", "upgrading " + plan.name + " to +" + plan.need + " - then it beats " + plan.fighter + "'s weapon", "yellow");
+            try {
+                await develop("_better", { name: plan.name, level: plan.need }, { budgetKey: GOALS, replaceable: true, spare: true, minChance: 0 });
+            } catch (e) {
+                const reason = util.errReason(e);
+                util.log("workshop", plan.name + " +" + plan.need + ": " + reason, "orange");
+                blockedUntil[k] = Date.now() + pauseAfter(k, reason);
+            }
+            return true;
+        }
+        return false;
+    }
+
     // ---- one per character ----------------------------------------------------
     //
     // config.merchantRole.onePerCharacter (e.g. Tracktrix): every fighter that reports
@@ -1438,6 +1522,7 @@ module.exports = function createWorkshop(ctx) {
 
         if (await stockOneEach()) return;
         fillEmptySlots();
+        deliverBetterWeapons();
 
         // Earmarked items that ended up in the bank come out first; vanished ones are dropped.
         for (const e of activeEarmarks()) {
@@ -1458,6 +1543,7 @@ module.exports = function createWorkshop(ctx) {
             if (await autoCompound()) return;
             if (await stockUpgrade()) return;
             lastGoalStep = Date.now();
+            if (await workOnBetterWeapons()) return;
             if (await workOnGoals()) return;
             await autoExchange();
             return;
@@ -1466,6 +1552,7 @@ module.exports = function createWorkshop(ctx) {
         // and weapons keep growing while the guide waits on accessories.
         if (goalsOn() && Date.now() - lastGoalStep >= (cfg.gearGoals.everyMs || 0)) {
             lastGoalStep = Date.now();
+            if (await workOnBetterWeapons()) return;
             if (await workOnGoals()) return;
         }
 

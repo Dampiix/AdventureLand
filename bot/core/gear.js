@@ -150,6 +150,15 @@ module.exports = function createGear(ctx) {
                 util.log("gear", "equipped " + item.name + " +" + (item.level || 0) + (item.stat_type ? " " + item.stat_type : "") + " -> " + slot + " (better copy)", "green");
                 return;
             }
+            // A stronger weapon (e.g. a Phoenix weapon the merchant upgraded for us): the
+            // guide only suggests weapons it planned itself.
+            for (let num = 0; num < character.items.length; num++) {
+                const item = character.items[num];
+                if (!item || !strongerWeapon(item)) continue;
+                await equip(num, "mainhand");
+                util.log("gear", "equipped " + item.name + " +" + (item.level || 0) + " -> mainhand (stronger weapon)", "green");
+                return;
+            }
             for (let num = 0; num < character.items.length; num++) {
                 const item = character.items[num];
                 const def = item && G.items[item.name];
@@ -196,6 +205,17 @@ module.exports = function createGear(ctx) {
         if (["shield", "source", "quiver", "misc_offhand"].includes(def.type)) return !!(cls.offhand || {})[def.type];
         return true;
     }
+    // A bag weapon clearly stronger in our hands than the worn one (same rule as the
+    // merchant's config.workshop.betterWeapons).
+    function strongerWeapon(item) {
+        const def = G.items[item.name];
+        if (!def || def.type !== "weapon" || !usable(def)) return false;
+        if (util.isDoublehand(item.name, character.ctype) && character.slots && character.slots.offhand) return false;
+        const m = character.slots && character.slots.mainhand;
+        const bw = config.workshop && config.workshop.betterWeapons;
+        const bar = (m ? util.weaponPower(m.name, m.level || 0, character.ctype) : 0) * (1 + ((bw && bw.margin) || 0));
+        return util.weaponPower(item.name, item.level || 0, character.ctype) > bar;
+    }
     function fillsEmptySlot(def) {
         const slots = SLOTS_BY_TYPE[def.type] || [];
         return slots.some(function (s) { return !(character.slots && character.slots[s]); });
@@ -225,6 +245,7 @@ module.exports = function createGear(ctx) {
             if (w.stat_type && item.stat_type !== w.stat_type) return false; // would lose the stat
             return (item.level || 0) > (w.level || 0) || ((item.level || 0) === (w.level || 0) && !!item.stat_type && !w.stat_type);
         })) return true;
+        if (strongerWeapon(item)) return true;
         // Equipment for a slot we leave empty, or that just arrived (the merchant's
         // delivery may no longer be among our top wishes): give the equip pass a chance.
         const def = G.items[item.name];
