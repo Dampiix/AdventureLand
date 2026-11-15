@@ -2,8 +2,10 @@
 // bot_merchant – the merchant supports the fighters.
 //
 // Idle (in town near the potion shop):
-//   - sell items from config.merchantRole.sellList (never upgraded,
-//     shiny or locked items)
+//   - sell items from config.merchantRole.sellList (shiny and locked
+//     items never; upgraded ones only up to the entry's maxLevel)
+//   - bag running full -> store everything else in the bank
+//     (config.merchantRole.bank), never buying new bank packs
 //   - keep a potion stock (config.merchantRole.stock), never spending
 //     below goldReserve
 // Delivery (a fighter sent a "pickup" request):
@@ -154,6 +156,46 @@ module.exports = function createMerchant(ctx) {
         }
     }
 
+    // Everything that is neither sold, kept, part of the potion stock nor a gift.
+    function isBankable(item) {
+        if (!item || isSellable(item)) return false;
+        if (m.stock[item.name] !== undefined) return false;
+        if (m.bank.keep.includes(item.name)) return false;
+        const gifts = [].concat.apply([], Object.values(m.give || {}));
+        return !gifts.includes(item.name);
+    }
+
+    // Walk into the bank and store what we can. Returns the number of stacks stored.
+    async function bankTrip() {
+        util.status("banking", "yellow");
+        await smart_move("bank");
+        let stored = 0;
+        let full = false;
+        // Walk the bag once from the end; each index is checked right before storing.
+        for (let index = character.items.length - 1; index >= 0; index--) {
+            const item = character.items[index];
+            if (!isBankable(item)) continue;
+            try {
+                await bank_store(index); // auto placement, merges into existing stacks
+                stored++;
+            } catch (e) {
+                if (util.errReason(e) === "bank_full") full = true; // stackable items may still fit – keep going
+                else util.log("merchant", "could not bank " + item.name + ": " + util.errReason(e), "orange");
+            }
+        }
+        util.log("merchant", "banked " + stored + " stacks" + (full ? " - bank is full, a new pack is needed" : ""), full ? "orange" : "green");
+        return stored;
+    }
+
+    let nextBankTripAt = 0;
+    async function bankIfNeeded() {
+        if (character.esize >= m.bank.whenFreeBelow || Date.now() < nextBankTripAt) return;
+        if (!character.items.some(isBankable)) return;
+        const stored = await bankTrip();
+        // Nothing fit: don't run back and forth – try again in 10 minutes.
+        nextBankTripAt = Date.now() + (stored ? 60 * 1000 : 10 * 60 * 1000);
+    }
+
     async function work() {
         if (busy) return;
         busy = true;
@@ -168,6 +210,8 @@ module.exports = function createMerchant(ctx) {
             if (Date.now() >= nextChoresAt) {
                 nextChoresAt = Date.now() + 30 * 1000;
                 await sellJunk();
+                await bankIfNeeded();
+                await goHome();
                 await restock();
             }
             util.status("ready in town", "white");

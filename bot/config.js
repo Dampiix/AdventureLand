@@ -5,7 +5,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.1.4",
+    version: "1.1.5",
 
     // The character you play in the client. Its CODE starts the others
     // and it is the party leader / tank.
@@ -112,10 +112,24 @@ module.exports = {
             "bfur", "frogt", "crabclaw", "ascale", "carrot", "snowball",
             // V1 upgraded short swords to +4 – no longer needed (approved 2026-11-15)
             { name: "sword", maxLevel: 4 },
+            // basic accessories + the Paladin's old starter gear (approved 2026-11-15)
+            "hpbelt", "hpamulet", "ringsj",
+            { name: "helmet", maxLevel: 3 },
+            { name: "mace", maxLevel: 2 },
         ],
         // Items the merchant hands to a fighter on its next delivery (one-off gifts).
         give: {
             DmpxPalTank: ["glolipop"], // Lolipop Mace – lets the Paladin use Smash
+        },
+        // Bank: when the bag runs low on space, everything that is neither sold
+        // nor kept below goes into the bank (auto placement, stacks merge).
+        // New bank packs are never bought automatically.
+        bank: {
+            whenFreeBelow: 6,
+            keep: [
+                "tracker", "glolipop",
+                "scroll0", "scroll1", "scroll2", "cscroll0", "cscroll1", "cscroll2",
+            ],
         },
     },
 };
