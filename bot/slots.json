@@ -1,0 +1,16 @@
+{
+  "_comment": "Mapping of repo files to in-game CODE slots. Modules load each other by slot NAME via require_code().",
+  "slots": [
+    { "file": "main.js",            "slot": 20, "name": "bot_main" },
+    { "file": "config.js",          "slot": 21, "name": "bot_config" },
+    { "file": "lib/util.js",        "slot": 22, "name": "bot_util" },
+    { "file": "lib/comms.js",       "slot": 23, "name": "bot_comms" },
+    { "file": "core/targeting.js",  "slot": 24, "name": "bot_targeting" },
+    { "file": "core/supply.js",     "slot": 25, "name": "bot_supply" },
+    { "file": "core/fighter.js",    "slot": 26, "name": "bot_fighter" },
+    { "file": "classes/paladin.js", "slot": 27, "name": "bot_class_paladin" },
+    { "file": "classes/mage.js",    "slot": 28, "name": "bot_class_mage" },
+    { "file": "classes/priest.js",  "slot": 29, "name": "bot_class_priest" },
+    { "file": "roles/merchant.js",  "slot": 30, "name": "bot_merchant" }
+  ]
+}
