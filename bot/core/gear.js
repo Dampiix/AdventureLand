@@ -208,7 +208,10 @@ module.exports = function createGear(ctx) {
         // with us until the equip pass puts it on.
         const slots = character.slots || {};
         if (Object.keys(slots).some(function (s) {
-            return slots[s] && slots[s].name === item.name && (item.level || 0) > (slots[s].level || 0);
+            const w = slots[s];
+            if (!w || w.name !== item.name) return false;
+            if (w.stat_type && item.stat_type !== w.stat_type) return false; // would lose the stat
+            return (item.level || 0) > (w.level || 0) || ((item.level || 0) === (w.level || 0) && !!item.stat_type && !w.stat_type);
         })) return true;
         // Equipment for a slot we leave empty, or that just arrived (the merchant's
         // delivery may no longer be among our top wishes): give the equip pass a chance.

@@ -81,7 +81,17 @@ module.exports = function createWorkshop(ctx) {
         ((cfg.wishes || {})[fighter] || []).forEach(function (w) {
             if (G.items[w.name] && !list.some(function (x) { return x.name === w.name && x.level >= w.level; })) list.push(w);
         });
-        return list.filter(function (w) { return !recentlyDelivered(fighter, w); });
+        return list.map(function (w) { return withMainStat(fighter, w); })
+            .filter(function (w) { return !recentlyDelivered(fighter, w); });
+    }
+
+    // Armor that can carry a stat always gets the fighter's main stat (str/int/dex),
+    // even when the guide's wish names none: a piece without it would never replace
+    // a worn piece that has one, and the guide's lessons want it anyway.
+    function withMainStat(fighter, w) {
+        if (w.stat || !cfg.mainStatOnArmor || !G.items[w.name] || !G.items[w.name].stat) return w;
+        const cls = classes[fighter] && G.classes[classes[fighter]];
+        return cls && cls.main_stat ? Object.assign({}, w, { stat: cls.main_stat }) : w;
     }
 
     function fighters() {

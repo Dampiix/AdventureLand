@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.22.1",
+    version: "1.22.2",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -186,6 +186,7 @@ module.exports = {
         },
         budgetPerWish: 500000,        // gold per wish (base item + scrolls, failures included)
         massSkills: true,             // Mass Production / Mass Exchange before upgrades and exchanges
+        mainStatOnArmor: true,        // wished armor always gets the class's main stat scroll
         deliveryBatchMs: 10 * 60 * 1000, // finish the open wishes first; a ready item waits at most this long
         giveUpForMs: 60 * 60 * 1000,  // after a stop (risk/no source/wish budget used up) retry in an hour
         retryAfterBudgetMs: 10 * 60 * 1000, // ...but only 10 min when we merely lack gold right now
