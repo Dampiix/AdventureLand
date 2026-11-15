@@ -1,6 +1,9 @@
 // =====================================================================
 // bot_hunts – Monster Hunts from Daisy (character.s.monsterhunt).
 //
+// Hunts start once every fighter has config.hunts.minLevel (Daisy hands out the
+// server's highest-level monster, not one that fits our level).
+//
 // Hunt state: { id: monster key, c: kills remaining, sn: server, ms: time left }
 //
 // Members share their hunt with the leader every few seconds. The leader:
@@ -35,6 +38,21 @@ module.exports = function createHunts(ctx) {
     comms.on("hunt", function (data, from) {
         known[from] = { hunt: data.hunt || null, at: Date.now() };
     });
+
+    // Hunts start once the whole team has reached cfg.minLevel: Daisy hands out the
+    // server's highest-level monster, not one that fits our level.
+    let loggedWait = false;
+    function active() {
+        if (!cfg.enabled) return false;
+        const lvl = leads ? util.teamLevel(config) : character.level;
+        const ok = lvl >= (cfg.minLevel || 0);
+        if (!ok && !loggedWait && leads) {
+            loggedWait = true;
+            util.log("hunt", "hunts start at level " + cfg.minLevel + " (team is " + lvl + ")", "white");
+        }
+        if (ok) loggedWait = false;
+        return ok;
+    }
 
     function serverName() {
         return server.region + " " + server.id;
@@ -99,7 +117,7 @@ module.exports = function createHunts(ctx) {
 
     // Leader: the hunt monster to farm right now, or null.
     function target() {
-        if (!cfg.enabled || !leads) return null;
+        if (!leads || !active()) return null;
         const sn = serverName();
         const open = allHunts()
             .filter(function (x) {
@@ -122,7 +140,7 @@ module.exports = function createHunts(ctx) {
     }
 
     function wantsDaisy() {
-        if (!cfg.enabled || !leads || Date.now() < nextDaisyAt) return false;
+        if (!leads || Date.now() < nextDaisyAt || !active()) return false;
         const hunts = allHunts();
         const finished = hunts.some(function (x) { return x.hunt && x.hunt.c === 0; });
         const missing = hunts.some(function (x) { return !x.hunt; });
@@ -177,7 +195,7 @@ module.exports = function createHunts(ctx) {
 
     // Called every fighter tick. Returns "busy" while the leader is on a Daisy trip.
     function tick() {
-        if (!cfg.enabled) return "ok";
+        if (!active()) return "ok";
         share();
         if (!talking && needsDaisy(own()) && nearDaisy()) talk(); // members piggyback on the leader's trip
         if (busy) return "busy";

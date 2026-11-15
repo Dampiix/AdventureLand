@@ -3,6 +3,18 @@
 // =====================================================================
 
 function hpRatio() { return character.hp / character.max_hp; }
+
+// Lowest level among us and the party's fighters (from get_party()).
+function teamLevel(config) {
+    let level = character.level;
+    const p = get_party() || {};
+    Object.keys(p).forEach(function (name) {
+        if (config.characters[name] && config.characters[name].role === "fighter" && p[name] && p[name].level) {
+            level = Math.min(level, p[name].level);
+        }
+    });
+    return level;
+}
 function mpRatio() { return character.mp / character.max_mp; }
 
 // Weapon type of the equipped mainhand, or null.
@@ -119,6 +131,7 @@ module.exports = {
     potionNames: potionNames,
     goldAmount: goldAmount,
     hpRatio: hpRatio,
+    teamLevel: teamLevel,
     mpRatio: mpRatio,
     canCast: canCast,
     mainhandType: mainhandType,

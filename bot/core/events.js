@@ -29,16 +29,8 @@ module.exports = function createEvents(ctx) {
     let lastJoinTry = 0;
     let joined = null;         // leader: { name, map } after a successful join()
 
-    // Lowest level in the team (leader + party members we know about).
     function teamLevel() {
-        let level = character.level;
-        const p = get_party() || {};
-        Object.keys(p).forEach(function (name) {
-            if (config.characters[name] && config.characters[name].role === "fighter" && p[name] && p[name].level) {
-                level = Math.min(level, p[name].level);
-            }
-        });
-        return level;
+        return util.teamLevel(config);
     }
 
     const skippedForLevel = {};
