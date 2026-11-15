@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.16.0",
+    version: "1.16.1",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -87,7 +87,8 @@ module.exports = {
         farm: null,              // e.g. "squigtoad" to force a monster for everyone (null = guide)
         fallback: "goo",          // used when the progression guide has no answer
         // Farm only where every fighter's own guide calls the spot safe; routes the guide
-        // only offers as a careful trial count once our own fights proved them.
+        // only offers as a careful trial count once proven – by the guide's own fights, or
+        // by 15 min of team farming there without a death (remembered across restarts).
         avoidTrial: true,
         refreshMs: 5 * 60 * 1000, // how often to ask the guide again
         crowdedAfterMs: 90 * 1000,    // no free target this long on the farm map -> spot is crowded

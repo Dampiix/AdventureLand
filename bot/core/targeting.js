@@ -33,48 +33,108 @@ module.exports = function createTargeting(ctx) {
 
     // ---- team safety ------------------------------------------------------------
     // The guide judges a route only for the character asking (the leader, usually
-    // the tank). Every member reports the monsters its own guide calls safe; with
-    // config.targeting.avoidTrial, routes the guide only offers as a careful trial
-    // don't count until our own fights have proven them. The leader only farms
-    // where everyone agrees.
+    // the tank). It also offers borderline routes as a careful "trial" and only
+    // counts them as proven from fights it watched since CODE started – a restart
+    // forgets that. So:
+    //  - every member reports its "safe" monsters (trials included) and its "sure"
+    //    ones (safe and not a mere trial),
+    //  - the leader remembers the team's own experience (survives restarts): a
+    //    monster farmed for 15+ minutes without anyone dying counts as proven,
+    //    a death there wipes that,
+    //  - a spot needs everyone's "safe", and everyone's "sure" or our own proof
+    //    (config.targeting.avoidTrial).
     const comms = ctx.comms;
-    const reports = {};   // member -> { list, at }
+    const reports = {};   // member -> { safe, sure, at }
     let lastReport = 0;
     let lastSkipLog = "";
+
+    const PROVEN_MS = 15 * 60 * 1000;
+    const EXP_KEY = "dmpx_farm_experience:" + character.name;
+    const experience = (function () { // monster -> { ms, at, bad }
+        try { return get(EXP_KEY) || {}; } catch (e) { return {}; }
+    })();
+    let lastClock = 0;
+    let lastSave = 0;
+
+    function saveExperience() {
+        try { set(EXP_KEY, experience); } catch (e) { /* storage unavailable */ }
+    }
+    function provenByUs(monster) {
+        const e = experience[monster];
+        return !!e && e.ms >= PROVEN_MS && Date.now() - e.at < 24 * 60 * 60 * 1000;
+    }
+    function recentDeath(monster) {
+        const e = experience[monster];
+        return !!e && !!e.bad && Date.now() - e.bad < 60 * 60 * 1000;
+    }
+
+    // Leader: count the time spent on the current farm target; a death wipes it.
+    function clock() {
+        const now = Date.now();
+        const dt = lastClock ? Math.min(5000, now - lastClock) : 0;
+        lastClock = now;
+        if (party.isMember || !farm || !farm.monster || farm.any) return;
+        const e = experience[farm.monster] || (experience[farm.monster] = { ms: 0, at: now });
+        const dead = [character.name].concat(party.memberNames()).find(function (n) {
+            const p = n === character.name ? character : get_player(n);
+            return p && p.rip;
+        });
+        if (dead) {
+            if (!(e.bad && now - e.bad < 60 * 1000)) {
+                util.log("target", dead + " died while farming " + farm.monster + " - not counted as safe for an hour", "red");
+                experience[farm.monster] = { ms: 0, at: now, bad: now };
+                saveExperience();
+                nextPickAt = 0;
+            }
+            return;
+        }
+        if (farm.map && character.map !== farm.map) return; // still travelling
+        const before = e.ms;
+        e.ms += dt;
+        e.at = now;
+        if (before < PROVEN_MS && e.ms >= PROVEN_MS) util.log("target", farm.monster + ": 15 min without deaths - counts as safe for the team", "green");
+        if (now - lastSave > 60 * 1000) { lastSave = now; saveExperience(); }
+    }
 
     if (comms) {
         comms.on("safe", function (data, from) {
             if (!config.characters[from]) return;
-            reports[from] = { list: data.list || [], at: Date.now() };
-            // Our current guide spot is unsafe for this member: pick again right away.
-            if (farm && String(farm.source).startsWith("guide") && !reports[from].list.includes(farm.monster)) nextPickAt = 0;
+            reports[from] = { safe: data.safe || data.list || [], sure: data.sure || data.list || [], at: Date.now() };
+            // Our current guide spot is not acceptable for this member: pick again right away.
+            if (farm && String(farm.source).startsWith("guide") && objector(farm.monster, null)) nextPickAt = 0;
         });
     }
 
-    // Monsters our own guide calls safe, or null when the guide has no route data.
+    // Monsters our own guide calls safe (trials included) and sure (no mere trial),
+    // or null when the guide has no route data.
     function ownSafe(advice) {
         const routes = advice && advice.routes;
         if (!Array.isArray(routes)) return null;
-        return new Set(routes
-            .filter(function (r) { return r && r.safe && (!cfg.avoidTrial || !r.trial || r.proven); })
-            .map(function (r) { return r.monster; }));
+        const safe = routes.filter(function (r) { return r && r.safe; });
+        return {
+            safe: new Set(safe.map(function (r) { return r.monster; })),
+            sure: new Set(safe.filter(function (r) { return !r.trial || r.proven; }).map(function (r) { return r.monster; })),
+        };
     }
 
     function shareSafe() {
         if (!party.isMember || !comms || Date.now() - lastReport < 60 * 1000) return;
         lastReport = Date.now();
-        let set = null;
-        try { set = ownSafe(get_progression()); } catch (e) { /* guide not ready */ }
-        if (set) comms.send(config.leader, "safe", { list: Array.from(set) });
+        let own = null;
+        try { own = ownSafe(get_progression()); } catch (e) { /* guide not ready */ }
+        if (own) comms.send(config.leader, "safe", { safe: Array.from(own.safe), sure: Array.from(own.sure) });
     }
 
-    // Who (if anyone) considers this monster unsafe.
+    // Who (if anyone) is not safe at this monster.
     function objector(monster, own) {
-        if (own && !own.has(monster)) return character.name;
+        if (recentDeath(monster)) return "the team (recent death)";
+        const proven = !cfg.avoidTrial || provenByUs(monster);
+        if (own && (!own.safe.has(monster) || (!proven && !own.sure.has(monster)))) return character.name;
         const now = Date.now();
         return Object.keys(reports).find(function (name) {
             const r = reports[name];
-            return party.inParty(name) && now - r.at < 3 * 60 * 1000 && !r.list.includes(monster);
+            if (!party.inParty(name) || now - r.at > 3 * 60 * 1000) return false;
+            return !r.safe.includes(monster) || (!proven && !r.sure.includes(monster));
         }) || null;
     }
 
@@ -145,6 +205,7 @@ module.exports = function createTargeting(ctx) {
 
     function currentFarm() {
         shareSafe(); // members: tell the leader where we can fight safely
+        clock();     // leader: our own experience with the current farm target
         // Events and world bosses come first (bot_events; members get it from the leader).
         const ev = ctx.events ? ctx.events.current() : null;
         if (ev) {
