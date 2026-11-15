@@ -33,8 +33,109 @@ module.exports = function createEvents(ctx) {
         return util.teamLevel(config);
     }
 
+    // ---- boss check -----------------------------------------------------------
+    // The guide never calls a boss safe ("group" monster), and other players are
+    // rarely around, so the leader judges a boss itself from everyone's stats
+    // (members report them every minute), with the game's damage formula:
+    //   burst:   every fighter survives config.events.boss.minHits hits
+    //   healing: the boss's damage per second on the tank is covered by the
+    //            priests' healing (potions may add healCover - 1 on top)
+    //   time:    the team alone kills it within maxFightMinutes
+    // A death while fighting a boss pauses it for pauseAfterDeathMs (persisted).
+    const bcfg = cfg.boss || {};
+    const stats = {};                // fighter -> { s, at }
+    let lastStatsSent = 0;
+    const PAUSE_KEY = "dmpx_boss_pause:" + character.name;
+    const paused = (function () { try { return get(PAUSE_KEY) || {}; } catch (e) { return {}; } })();
+    const verdicts = {};             // boss -> { ok, why, at }
+
+    ctx.comms.on("stats", function (data, from) {
+        if (config.characters[from] && data && data.max_hp) stats[from] = { s: data, at: Date.now() };
+    });
+
+    function shareStats() {
+        if (leads || Date.now() - lastStatsSent < 60 * 1000) return;
+        lastStatsSent = Date.now();
+        ctx.comms.send(config.leader, "stats", util.combatStats());
+    }
+
+    function teamStats() {
+        const list = [util.combatStats()];
+        const now = Date.now();
+        Object.keys(stats).forEach(function (name) {
+            if (party.inParty(name) && now - stats[name].at < 3 * 60 * 1000) list.push(stats[name].s);
+        });
+        return list;
+    }
+
+    function assessBoss(name) {
+        const m = G.monsters[name];
+        const team = teamStats();
+        const expected = config.team.fighters.filter(function (f) { return f === character.name || party.inParty(f); }).length;
+        if (team.length < expected) return { ok: false, why: "waiting for the team's stats" };
+        const minHits = bcfg.minHits || 6;
+        const hitOn = function (f) {
+            const def = m.damage_type === "physical" ? (f.armor || 0) - (m.apiercing || 0) : (f.resistance || 0) - (m.rpiercing || 0);
+            return m.attack * 1.1 * util.damageMultiplier(def);
+        };
+        // 1. Burst: every fighter survives minHits hits.
+        for (const f of team) {
+            const hits = f.max_hp / hitOn(f);
+            if (hits < minHits) return { ok: false, why: f.name + " survives only " + hits.toFixed(1) + " hits (need " + minHits + ")" };
+        }
+        // 2. Healing vs. damage on the tank (the leader takes the hits).
+        const tank = team[0];
+        const incoming = hitOn(tank) * (m.frequency || 1);
+        const healing = team.reduce(function (sum, f) {
+            return sum + (f.ctype === "priest" ? (f.heal || f.attack) * f.frequency : 0);
+        }, 0);
+        const cover = bcfg.healCover || 1.5;
+        if (incoming > healing * cover) {
+            return { ok: false, why: Math.round(incoming) + " damage/s on " + tank.name + " vs " + Math.round(healing) + " healing/s" };
+        }
+        // 3. Kill time with the team alone (priests mostly heal).
+        const dps = team.reduce(function (sum, f) {
+            const physical = f.damage_type === "physical";
+            const def = physical ? (m.armor || 0) - (f.apiercing || 0) : (m.resistance || 0) - (f.rpiercing || 0);
+            const hitChance = Math.max(0.1, 1 - (physical ? (m.evasion || 0) : (m.reflection || 0)) / 100);
+            const share = f.ctype === "priest" ? (bcfg.priestDamageShare || 0.3) : 1;
+            return sum + (f.attack || 0) * (f.frequency || 1) * util.damageMultiplier(def) * hitChance * share;
+        }, 0);
+        const minutes = m.hp / Math.max(1, dps) / 60;
+        const max = bcfg.maxFightMinutes || 10;
+        if (minutes > max) return { ok: false, why: "the team needs ~" + Math.round(minutes) + " min to kill it (max " + max + ")" };
+        return { ok: true, why: "~" + Math.round(minutes) + " min, " + Math.round(incoming) + " damage/s vs " + Math.round(healing) + " healing/s" };
+    }
+
+    // Cached for a minute; logs when the verdict changes.
+    function canBeat(name) {
+        if (paused[name] > Date.now()) return false;
+        const v = verdicts[name];
+        if (v && Date.now() - v.at < 60 * 1000) return v.ok;
+        const r = assessBoss(name);
+        if (!v || v.ok !== r.ok) util.log("event", name + (r.ok ? " looks doable: " : " not doable yet: ") + r.why, r.ok ? "green" : "white");
+        verdicts[name] = { ok: r.ok, why: r.why, at: Date.now() };
+        return r.ok;
+    }
+
+    // Leader: a death while fighting a boss pauses that boss.
+    function watchBossDeaths() {
+        if (!leads || !current || current.join || !current.monster || !G.monsters[current.monster]) return;
+        const dead = [character.name].concat(party.memberNames()).find(function (n) {
+            const p = n === character.name ? character : get_player(n);
+            return p && p.rip;
+        });
+        if (!dead || paused[current.monster] > Date.now()) return;
+        paused[current.monster] = Date.now() + (bcfg.pauseAfterDeathMs || 3 * 60 * 60 * 1000);
+        try { set(PAUSE_KEY, paused); } catch (e) { /* storage unavailable */ }
+        util.log("event", dead + " died fighting " + current.monster + " - pausing it for " +
+            Math.round((bcfg.pauseAfterDeathMs || 3 * 60 * 60 * 1000) / 3600000) + " h", "red");
+        boss = null;
+    }
+
     const skippedForLevel = {};
-    // "always" only counts once every fighter reaches the event's minimum level.
+    // "always" only counts once every fighter reaches the event's minimum level and,
+    // for a boss monster, once the boss check says the team can beat it.
     function policy(name) {
         const p = (cfg.policy && cfg.policy[name]) || "never";
         const min = (cfg.minLevel && cfg.minLevel[name]) || 0;
@@ -46,6 +147,7 @@ module.exports = function createEvents(ctx) {
             return "never";
         }
         skippedForLevel[name] = false;
+        if (p === "always" && G.monsters[name] && !(G.events[name] && G.events[name].join) && !canBeat(name)) return "never";
         return p;
     }
 
@@ -158,6 +260,8 @@ module.exports = function createEvents(ctx) {
     // Called every fighter tick. Returns "busy" while travelling/joining/searching.
     function tick() {
         if (!cfg.enabled) return "ok";
+        shareStats();
+        watchBossDeaths();
         if (searching) return "busy";
 
         if (!leads) {

@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.19.2",
+    version: "1.20.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -57,6 +57,15 @@ module.exports = {
         search: ["phoenix"],            // roaming bosses the leader looks for
         searchEveryMs: 10 * 60 * 1000,  // search again this long after a miss or a kill
         searchSpotMs: 4000,             // look around this long at each spawn area
+        // Boss check (bosses only; the guide never calls them safe): from everyone's stats
+        // and the game's damage formula. Other players are not counted on.
+        boss: {
+            minHits: 6,                 // every fighter must survive this many hits in a row
+            healCover: 1.5,             // damage/s on the tank <= priests' healing/s x this (potions do the rest)
+            maxFightMinutes: 10,        // the team alone must kill it within this time
+            priestDamageShare: 0.3,     // priests mostly heal: count this share of their damage
+            pauseAfterDeathMs: 3 * 60 * 60 * 1000, // a death there pauses the boss this long
+        },
     },
 
     // Monster Hunts (Daisy). Unsafe hunts are left to expire.

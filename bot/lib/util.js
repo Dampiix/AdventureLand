@@ -4,6 +4,39 @@
 
 function hpRatio() { return character.hp / character.max_hp; }
 
+// The game's damage multiplier for a defense value (armor or resistance minus the
+// attacker's piercing) – same formula as the game's damage_multiplier().
+function damageMultiplier(defense) {
+    const d = defense;
+    const m = 1 - (
+        Math.max(0, Math.min(100, d)) * 0.00100 +
+        Math.max(0, Math.min(100, d - 100)) * 0.00100 +
+        Math.max(0, Math.min(100, d - 200)) * 0.00095 +
+        Math.max(0, Math.min(100, d - 300)) * 0.00090 +
+        Math.max(0, Math.min(100, d - 400)) * 0.00082 +
+        Math.max(0, Math.min(100, d - 500)) * 0.00070 +
+        Math.max(0, Math.min(100, d - 600)) * 0.00060 +
+        Math.max(0, Math.min(100, d - 700)) * 0.00050 +
+        Math.max(0, d - 800) * 0.00040
+    ) + Math.max(0, Math.min(50, 0 - d)) * 0.00100 +
+        Math.max(0, Math.min(50, -50 - d)) * 0.00075 +
+        Math.max(0, Math.min(50, -100 - d)) * 0.00050 +
+        Math.max(0, -150 - d) * 0.00025;
+    return Math.min(1.32, Math.max(0.05, m));
+}
+
+// Our combat stats, as the leader's boss check needs them.
+function combatStats() {
+    const c = character;
+    return {
+        name: c.name, ctype: c.ctype, level: c.level, max_hp: c.max_hp,
+        attack: c.attack || 0, heal: c.heal || 0, frequency: c.frequency || 1,
+        armor: c.armor || 0, resistance: c.resistance || 0,
+        apiercing: c.apiercing || 0, rpiercing: c.rpiercing || 0,
+        damage_type: c.damage_type || (G.classes[c.ctype] || {}).damage_type || "physical",
+    };
+}
+
 // Lowest level among us and the party's fighters (from get_party()).
 function teamLevel(config) {
     let level = character.level;
@@ -132,6 +165,8 @@ module.exports = {
     goldAmount: goldAmount,
     hpRatio: hpRatio,
     teamLevel: teamLevel,
+    damageMultiplier: damageMultiplier,
+    combatStats: combatStats,
     mpRatio: mpRatio,
     canCast: canCast,
     mainhandType: mainhandType,
