@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.38.0",
+    version: "1.39.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -194,6 +194,9 @@ module.exports = {
         // not reach is wished, a piece of a later step (e.g. a lucky drop) counts for the
         // earlier ones and is equipped over them. A slot holding something outside the
         // entry is left alone. Not counted as gear goals (no further upgrades).
+        // Paused for every class (player decision 2026-11-16): until all shop armor is +9,
+        // that is the only gear progression. The lists below stay for later.
+        classWishesEnabled: false,
         classWishes: {
             all: [
                 { name: "cape", level: 0 },      // 40 Leather -> exchange (wolves, boars)
@@ -267,6 +270,7 @@ module.exports = {
         // as spares; the best copy below upTo is upgraded, failures use up surplus copies,
         // never going below `spares` copies in total. Normal scrolls only: rare scrolls
         // and grace farming are reserved for the fighters' wishes.
+        stockEnabled: false, // paused 2026-11-16 (shop +9 first)
         stock: [
             { name: "fireblade", upTo: 7, spares: 3 },
             { name: "firestaff", upTo: 7, spares: 3 },
@@ -282,7 +286,7 @@ module.exports = {
             margin: 0.03,   // at least 3% stronger than the worn weapon
             // Bought with tokens when we hold none (player decision 2026-11-16: the Concord
             // Mace first – a paladin's mace beats the fireblade +7 already at +4).
-            buy: ["concordmace"],
+            buy: [], // concordmace paused 2026-11-16 (no paladin; shop +9 first)
             // Token weapons are not cheap to lose: each step needs this chance.
             minChance: { concordmace: 0.5 },   // = risk.rare
         },

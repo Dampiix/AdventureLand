@@ -95,6 +95,8 @@ module.exports = function createGear(ctx) {
     // chain that reached its step level (e.g. +7) is equipped over what is worn, and the
     // merchant delivers such a wish only complete (full), never at a lower level.
     function classChains() {
+        // Paused for every class while the shop gear goes to +9 (player decision 2026-11-16).
+        if (cfg.classWishesEnabled === false) return [];
         const table = cfg.classWishes || {};
         return (table.all || []).concat(table[character.ctype] || []).map(function (e) {
             const steps = (e && e.steps ? e.steps : [e]).filter(function (s) {

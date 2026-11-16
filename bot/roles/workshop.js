@@ -951,6 +951,7 @@ module.exports = function createWorkshop(ctx) {
     }
 
     async function stockUpgrade() {
+        if (cfg.stockEnabled === false) return false; // paused (player decision 2026-11-16)
         const now = Date.now();
         for (const rule of cfg.stock || []) {
             const k = key("_stock", { name: rule.name, level: rule.upTo });
