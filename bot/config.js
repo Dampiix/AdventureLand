@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.25.6",
+    version: "1.26.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -234,6 +234,9 @@ module.exports = {
         // guide equips it and the old piece comes back as a base for the next copy.
         // Weapons are not re-buyable: only a spare copy one level below `upTo` is risked,
         // and only once grace has raised its chance to `minChance`.
+        // The workshop (wishes, gear goals, grace) never spends below this (player
+        // decision 2026-11-16, together with the income-based gear-goal budget).
+        keepGold: 5000000,
         gearGoals: {
             enabled: true,
             // Since 2026-11-15 (player request): don't let armor and weapons wait while the guide
@@ -247,8 +250,11 @@ module.exports = {
             weapons: [{ name: "fireblade", minChance: 0.18 }], // 14% at +8, ~19% with full grace
             // Daily budget from income (player decision 2026-11-15): a share of the merchant's
             // net gold gain over the last 24 h; the gear goals' own spending is not counted
-            // as a loss. `total` caps everything ever spent on gear goals.
-            budget: { incomeShare: 0.5, total: 5000000 },
+            // as a loss. Gold moved by hand (a jump of transferAbove or more within 10 min)
+            // is not income. No fixed total since 2026-11-16 (player decision): long-term
+            // positive cash flow, with workshop.keepGold as the floor. `total` (optional)
+            // would cap everything ever spent on gear goals.
+            budget: { incomeShare: 0.5, transferAbove: 3000000 },
         },
         // Fixed wishes on top of the guide's. Items without a shop are bought with tokens
         // (Monster Tokens at Daisy). Steps below the risk tier are not attempted: the copy

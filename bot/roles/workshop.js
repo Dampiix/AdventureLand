@@ -279,7 +279,9 @@ module.exports = function createWorkshop(ctx) {
     }
 
     function canSpend(k, amount) {
-        if (character.gold - amount < util.goldAmount(config.merchantRole.goldReserve)) return false;
+        // Never below the floor: the larger of the potion reserve and workshop.keepGold.
+        const floor = Math.max(util.goldAmount(config.merchantRole.goldReserve), cfg.keepGold || 0);
+        if (character.gold - amount < floor) return false;
         if (k === GOALS) return goalBudget().allowed >= amount;
         return (spent[k] || 0) + amount <= budgetFor(k);
     }
@@ -301,7 +303,9 @@ module.exports = function createWorkshop(ctx) {
     // stays as the baseline. Net income = gold now - baseline gold + what the gear
     // goals spent since then (their own spending is not a loss of income). Gear
     // goals may spend incomeShare of that, minus what they already spent – so the
-    // daily budget follows what the team currently earns.
+    // daily budget follows what the team currently earns. Gold moved by hand (e.g.
+    // from the bank) shows up as one big jump between two samples: it is a transfer,
+    // not income (budget.transferAbove), so the budget stays tied to real cash flow.
     const GOALS = "goals"; // budget key of the gear goals
     const INCOME_KEY = "workshop_income:" + character.name;
     const DAY = 24 * 60 * 60 * 1000;
@@ -327,14 +331,31 @@ module.exports = function createWorkshop(ctx) {
         saveIncome();
     }
 
+    // Gold moved in or out by hand since the baseline: jumps of at least transferAbove
+    // between two samples (gear-goal spending in between taken out).
+    function transfers() {
+        const limit = cfg.gearGoals.budget.transferAbove || Infinity;
+        const points = income.samples.concat([{ t: Date.now(), gold: character.gold }]);
+        let sum = 0;
+        for (let i = 1; i < points.length; i++) {
+            const a = points[i - 1], b = points[i];
+            const between = income.spends.reduce(function (x, s) { return s.t > a.t && s.t <= b.t ? x + s.a : x; }, 0);
+            const step = b.gold - a.gold + between;
+            if (Math.abs(step) >= limit) sum += step;
+        }
+        return sum;
+    }
+
     function goalBudget() {
         const b = cfg.gearGoals.budget;
-        if (!income.samples.length) return { allowed: 0, earned: 0, spent: 0, hours: 0 };
+        if (!income.samples.length) return { allowed: 0, earned: 0, spent: 0, hours: 0, moved: 0 };
         const base = income.samples[0];
         const spentInWindow = income.spends.reduce(function (sum, s) { return sum + s.a; }, 0);
-        const earned = character.gold - base.gold + spentInWindow;
-        const allowed = Math.min(Math.max(0, earned * b.incomeShare - spentInWindow), Math.max(0, b.total - income.total));
-        return { allowed: allowed, earned: earned, spent: spentInWindow, hours: (Date.now() - base.t) / 3600000 };
+        const moved = transfers();
+        const earned = character.gold - base.gold + spentInWindow - moved;
+        let allowed = Math.max(0, earned * b.incomeShare - spentInWindow);
+        if (b.total) allowed = Math.min(allowed, Math.max(0, b.total - income.total));
+        return { allowed: allowed, earned: earned, spent: spentInWindow, hours: (Date.now() - base.t) / 3600000, moved: moved };
     }
 
     // Grace spending survives restarts and resets after 24 h.
@@ -1169,7 +1190,7 @@ module.exports = function createWorkshop(ctx) {
         lastBudgetLog = Date.now();
         const b = goalBudget();
         util.log("workshop", "gear goals wait for income: " + kGold(b.allowed) + " left (earned " + kGold(b.earned) + " in " +
-            b.hours.toFixed(1) + " h, spent " + kGold(b.spent) + ", " + kGold(income.total) + " in total)", "orange");
+            b.hours.toFixed(1) + " h, spent " + kGold(b.spent) + (b.moved ? ", " + kGold(b.moved) + " moved by hand not counted" : "") + ")", "orange");
     }
 
     // Apply the fighter's stat scroll (str/int/dex) to a finished copy.
