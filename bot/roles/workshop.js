@@ -277,7 +277,7 @@ module.exports = function createWorkshop(ctx) {
     // budgetPerWish may be split { shop, rare }: shop gear vs token/drop items, whose
     // higher scrolls are worth more than a lost copy (player decision 2026-11-16).
     function budgetFor(k) {
-        if (k.indexOf("grace:") === 0) return cfg.grace.budgetPerLevel;
+        if (k.indexOf("grace:") === 0) return graceBudget();
         const b = cfg.budgetPerWish;
         if (typeof b !== "object") return b;
         const name = k.split(":")[1];
@@ -366,6 +366,18 @@ module.exports = function createWorkshop(ctx) {
         let allowed = Math.max(0, earned * b.incomeShare + extra - spentInWindow);
         if (b.total) allowed = Math.min(allowed, Math.max(0, b.total - income.total));
         return { allowed: allowed, earned: earned, spent: spentInWindow, hours: (Date.now() - base.t) / 3600000, moved: moved };
+    }
+
+    // Grace budget per target level and 24 h (player decision 2026-11-16): a share of the
+    // merchant's net income over the last 24 h (grace.incomeShare, like the gear goals),
+    // never below grace.budgetPerLevel. Grace spending itself is not a loss of income.
+    function graceBudget() {
+        const g = cfg.grace;
+        if (!g.incomeShare) return g.budgetPerLevel;
+        let graceSpent = 0;
+        Object.keys(spent).forEach(function (k) { if (k.indexOf("grace:") === 0) graceSpent += spent[k] || 0; });
+        const earned = goalBudget().earned + graceSpent;
+        return Math.max(g.budgetPerLevel || 0, Math.round(earned * g.incomeShare));
     }
 
     // Grace spending survives restarts and resets after 24 h.
@@ -950,7 +962,8 @@ module.exports = function createWorkshop(ctx) {
         const gk = "grace:" + level;
         const fodder = cfg.grace.fodder;
         const def = G.items[fodder];
-        util.log("workshop", "building grace for +" + level + " with " + fodder + " (need " + pct(minChance) + ")", "yellow");
+        util.log("workshop", "building grace for +" + level + " with " + fodder + " (need " + pct(minChance) + ", budget " +
+            Math.round(((spent[gk] || 0)) / 1000) + "k of " + Math.round(budgetFor(gk) / 1000) + "k today)", "yellow");
         let tries = 0;   // attempts at the target level
         let stopReason = "attempt limit";
         // How many grace stacks are realistic is decided by the fodder's own chance (player

@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.48.1",
+    version: "1.48.2",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -301,7 +301,11 @@ module.exports = {
             enabled: true,
             minLevel: 4,             // only for steps to +4 and higher
             fodder: "wbasher",       // cheap upgradeable shop item no gear goal uses (Wooden Basher, 4,900 gold)
-            budgetPerLevel: 300000,  // gold per target level per 24 h (fodder + scrolls)
+            // Gold per target level per 24 h (fodder + scrolls): incomeShare of the merchant's
+            // net income over 24 h (player decision 2026-11-16; ~15M/day -> ~750k), at least
+            // budgetPerLevel.
+            incomeShare: 0.05,
+            budgetPerLevel: 300000,
             maxAttempts: 25,         // fodder attempts per farming round
             // Grace stacks only while the fodder itself would fail more likely than not: stop
             // when its own chance at the target level is above this - now, or by the time the
