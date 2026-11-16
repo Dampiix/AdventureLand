@@ -281,6 +281,28 @@ module.exports = function createTargeting(ctx) {
         }
         return v.ok;
     }
+    // Where to walk for a farm target: the spawn pack on its map (guide routes name one),
+    // else the biggest pack of that monster anywhere. smart_move("cgoo") picked the nearest
+    // spawn, through the vampire rats at the underground entrance, while 32 CGoos wait in
+    // the arena right next to town.
+    function spotFor(type, mapName) {
+        let best = null;
+        Object.keys(G.maps).forEach(function (m) {
+            const map = G.maps[m];
+            if (map.ignore || map.instance) return;
+            (map.monsters || []).forEach(function (pack) {
+                if (pack.type !== type) return;
+                const boxes = pack.boundaries ? pack.boundaries : pack.boundary ? [[m].concat(pack.boundary)] : [];
+                boxes.forEach(function (b) {
+                    const spot = { map: b[0], x: Math.round((b[1] + b[3]) / 2), y: Math.round((b[2] + b[4]) / 2), count: pack.count || 1 };
+                    const score = (mapName && spot.map === mapName ? 1000 : 0) + spot.count;
+                    if (!best || score > best.score) best = Object.assign(spot, { score: score });
+                });
+            });
+        });
+        return best ? { map: best.map, x: best.x, y: best.y } : null;
+    }
+
     // Nearest free monster of this type that we may hit (damage return, live level check).
     function nearestSafe(type) {
         let best = null;
@@ -664,5 +686,5 @@ module.exports = function createTargeting(ctx) {
     }
 
     return { currentFarm: currentFarm, pick: pick, isValid: isValid, reportSearch: reportSearch, isTeamSafe: isTeamSafe, whyUnsafe: whyUnsafe,
-        teamModelOn: teamModelOn, teamVerdict: teamVerdict, safetyReport: safetyReport, diedAt: diedAt, deathAt: deathAt };
+        teamModelOn: teamModelOn, teamVerdict: teamVerdict, safetyReport: safetyReport, diedAt: diedAt, deathAt: deathAt, spotFor: spotFor };
 };

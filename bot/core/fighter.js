@@ -42,7 +42,18 @@ module.exports = function createFighter(ctx, cls) {
         if (!character.rip) { deathReported = false; return false; }
         if (!deathReported) {
             deathReported = true;
-            const monster = lastFarm && !lastFarm.any ? lastFarm.monster : null;
+            // Blame the killer, not the farm target: a death on the way (e.g. vampire rats at
+            // the underground entrance on the way to the CGoos) must not close the farm spot.
+            // Monsters on us first, else the nearest one close by; the farm target only when
+            // one of its kind is near.
+            const near = Object.values(parent.entities || {}).filter(function (e) {
+                return e && e.type === "monster" && !e.dead && G.monsters[e.mtype] && !G.monsters[e.mtype].cooperative;
+            }).sort(function (a, b) { return util.distanceTo(a) - util.distanceTo(b); });
+            const onMe = near.find(function (e) { return e.target === character.name; });
+            const close = near.find(function (e) { return util.distanceTo(e) < 250; });
+            const farmType = lastFarm && !lastFarm.any ? lastFarm.monster : null;
+            const farmNear = farmType && near.find(function (e) { return e.mtype === farmType && util.distanceTo(e) < 500; });
+            const monster = onMe ? onMe.mtype : close ? close.mtype : farmNear ? farmType : null;
             if (monster) {
                 if (party.isMember) ctx.comms.send(config.leader, "died", { monster: monster });
                 else targeting.diedAt(monster, character.name);
@@ -89,7 +100,7 @@ module.exports = function createFighter(ctx, cls) {
         if (!target) {
             if (party.idleFollow()) return; // party member: stay with the leader
             if (farm.any) { util.status("waiting for monsters (" + farm.source + ")", "white"); return; }
-            travel(farm.dest || farm.monster, "searching " + farm.monster);
+            travel(farm.dest || targeting.spotFor(farm.monster, farm.map) || farm.monster, "searching " + farm.monster);
             return;
         }
 
