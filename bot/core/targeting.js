@@ -217,6 +217,8 @@ module.exports = function createTargeting(ctx) {
     // Who (if anyone) is not safe at this monster.
     function objector(monster, own) {
         if (recentDeath(monster)) return "the team (recent death)";
+        // A melee leader cannot farm a damage-return monster at all (members just stand by).
+        if (util.tooSpiky(config, monster)) return character.name + " (melee vs. damage return)";
         // Team model: the party as a whole can take it – no single member's veto.
         if (teamModelOn() && teamVerdict(monster).ok) return null;
         // A "trial" spot only waits for proof when it could hurt: a monster every fighter
@@ -490,6 +492,7 @@ module.exports = function createTargeting(ctx) {
     // A target stays valid while it is visible, alive and not fighting someone else.
     function isValid(t) {
         if (!t || !t.visible || t.dead || t.type !== "monster") return false;
+        if (util.tooSpiky(config, t)) return false; // melee vs. damage return: our own hit kills us
         if (t.target && !isOurs(t.target) && !isCoop(t)) return false;
         return true;
     }
@@ -514,7 +517,7 @@ module.exports = function createTargeting(ctx) {
         if (isValid(current)) return current;
 
         const attacker = nearestPartyAttacker();
-        if (attacker) return attacker;
+        if (attacker && !util.tooSpiky(config, attacker)) return attacker;
 
         // Join event (e.g. Goo Brawl): anything in the event map is fair game, and
         // everyone picks its own nearest monster – waiting for the leader's pick
@@ -539,7 +542,7 @@ module.exports = function createTargeting(ctx) {
             // Easy farm targets (e.g. goos for a hunt): everyone fights its own monster,
             // as long as it stays close to the leader.
             const own = lead && lead.farm && isEasy(lead.farm) ? get_nearest_monster({ type: lead.farm, no_target: true }) : null;
-            if (own) {
+            if (own && !util.tooSpiky(config, own)) {
                 const p = util.xy(own);
                 if (Math.hypot(p.x - lead.x, p.y - lead.y) <= config.party.leash * 0.8) return own;
             }
@@ -554,7 +557,8 @@ module.exports = function createTargeting(ctx) {
             const boss = get_nearest_monster({ type: type });
             if (isValid(boss)) return boss;
         }
-        return get_nearest_monster({ type: type, no_target: true });
+        const m = get_nearest_monster({ type: type, no_target: true });
+        return m && !util.tooSpiky(config, m) ? m : null;
     }
 
     return { currentFarm: currentFarm, pick: pick, isValid: isValid, reportSearch: reportSearch, isTeamSafe: isTeamSafe, whyUnsafe: whyUnsafe,

@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.44.1",
+    version: "1.45.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -109,6 +109,9 @@ module.exports = {
         // only offers as a careful trial count once proven – by the guide's own fights, or
         // by 15 min of team farming there without a death (remembered across restarts).
         avoidTrial: true,
+        // Melee classes never hit monsters returning this much damage (dreturn in %, porcupine
+        // 4800 = 48x back – one hit kills a warrior; armadillo 30 is fine). Ranged ones farm them.
+        melee: { classes: ["warrior", "paladin", "rogue"], maxDreturn: 100 },
         // The current farm spot is left only when a member's "unsafe" lasts this long
         // (verdicts near the edge flip back and forth); a death there counts at once.
         objectionGraceMs: 5 * 60 * 1000,

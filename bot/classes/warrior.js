@@ -40,9 +40,17 @@ module.exports = function createWarrior(ctx) {
         if (!names.includes(character.name)) names.push(character.name);
         return Object.values(parent.entities || {}).filter(function (e) {
             if (!e || e.type !== "monster" || e.dead || !e.visible || util.distanceTo(e) > range) return false;
+            if (util.tooSpiky(ctx.config, e)) return false; // Cleave/Stomp would hit a porcupine
             if (attackingOnly && !names.includes(e.target)) return false;
             // Never pull monsters that fight other players.
             return !e.target || names.includes(e.target);
+        });
+    }
+
+    // Cleave and Stomp hit everything around us: never with a damage-return monster in reach.
+    function spikyNear(range) {
+        return Object.values(parent.entities || {}).some(function (e) {
+            return e && e.type === "monster" && !e.dead && util.distanceTo(e) <= range + 20 && util.tooSpiky(ctx.config, e);
         });
     }
 
@@ -123,11 +131,11 @@ module.exports = function createWarrior(ctx) {
             if (sturdy && util.canCast("warcry") && mpLeftAfter("warcry") >= reserve() && ctx.party.enabled) {
                 use_skill("warcry").catch(function () {});
             }
-            if (util.canCast("cleave") && mpLeftAfter("cleave") >= reserve() &&
+            if (util.canCast("cleave") && mpLeftAfter("cleave") >= reserve() && !spikyNear(G.skills.cleave.range) &&
                 around(G.skills.cleave.range, false).length >= (c.cleaveFrom || 3)) {
                 use_skill("cleave").catch(function () {});
             }
-            if (util.canCast("stomp") && mpLeftAfter("stomp") >= reserve() &&
+            if (util.canCast("stomp") && mpLeftAfter("stomp") >= reserve() && !spikyNear(G.skills.stomp.range) &&
                 around(G.skills.stomp.range, true).length >= (c.stompFrom || 2)) {
                 use_skill("stomp").catch(function () {});
             }

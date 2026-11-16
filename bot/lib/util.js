@@ -203,7 +203,18 @@ function teamCycle(route, speedup) {
     return Math.max(kill / (speedup || 1), spawn);
 }
 
+// Monsters that return melee damage (porcupines: dreturn 4800 = 48x the damage back) kill
+// a melee fighter with its own first hit. Ranged classes are not affected. `m` is a
+// monster entity or a G.monsters key; `ctype` defaults to our own class.
+function tooSpiky(config, m, ctype) {
+    const def = G.monsters[typeof m === "string" ? m : m && m.mtype];
+    const mc = (config.targeting && config.targeting.melee) || {};
+    if (!def || !(def.dreturn >= (mc.maxDreturn || 100))) return false;
+    return (mc.classes || ["warrior", "paladin", "rogue"]).includes(ctype || character.ctype);
+}
+
 module.exports = {
+    tooSpiky: tooSpiky,
     teamCycle: teamCycle,
     deriveTeam: deriveTeam,
     weaponPower: weaponPower,
