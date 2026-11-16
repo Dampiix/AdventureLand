@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.26.1",
+    version: "1.27.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -174,6 +174,24 @@ module.exports = {
         enabled: true,
         wishEveryMs: 5 * 60 * 1000, // re-read the guide and resend wishes this often
         maxWishes: 8,   // a longer list shifts less (the merchant works through it one by one)
+        // Wishes per class ("all" = every class) for slots the guide leaves empty. Each one
+        // is sent only while its slot is empty or holds a lower copy of the same item;
+        // anything else worn there wins. Not counted as gear goals (no further upgrades).
+        classWishes: {
+            all: [
+                { name: "cape", level: 0 },      // 40 Leather -> exchange (wolves, boars)
+            ],
+            paladin: [
+                { name: "orbofstr", level: 0 },  // Fire Spirit drop
+            ],
+            priest: [
+                { name: "orbofint", level: 0 },  // Pom Pom drop
+            ],
+            ranger: [
+                { name: "quiver", level: 0 },    // Cole: 1 Armadillo Scale + 200 Beewings; scorpion drop
+                { name: "orbofdex", level: 0 },  // Fire Spirit drop
+            ],
+        },
     },
 
     // Merchant: fulfil wishes from bag, bank or by upgrading own copies (approved 2026-11-15)
@@ -268,7 +286,9 @@ module.exports = {
         // Exchange (approved 2026-11-15: everything except seasonal items).
         exchange: {
             enabled: true,
-            items: ["gem0", "gem1", "seashell"], // armor boxes stopped 2026-11-15 (their rewards only filled the bank)
+            // armor boxes stopped 2026-11-15 (their rewards only filled the bank);
+            // leather (40 -> mostly a Cape) added 2026-11-16 for the cape class wish
+            items: ["gem0", "gem1", "seashell", "leather"],
             batch: 10,     // exchanges per round, so deliveries are not delayed for long
             keepFree: 8,   // stop while fewer bag slots are free (rewards need room)
         },

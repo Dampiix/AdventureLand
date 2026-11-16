@@ -85,10 +85,36 @@ module.exports = function createGear(ctx) {
         return list.slice(0, cfg.maxWishes);
     }
 
+    // Fixed wishes for our class (config.gear.classWishes, "all" for every class) that
+    // the guide does not ask for. They only fill a slot that is empty or holds a lower
+    // copy of the same item – anything else we wear there stays our choice.
+    function classWishes(have) {
+        const table = cfg.classWishes || {};
+        const list = [];
+        (table.all || []).concat(table[character.ctype] || []).forEach(function (w) {
+            const def = w && G.items[w.name];
+            if (!def || !usable(def) || have.some(function (x) { return x.name === w.name; })) return;
+            const level = w.level || 0;
+            const slots = SLOTS_BY_TYPE[def.type] || [];
+            if (!slots.length) return;
+            const open = slots.some(function (s) {
+                const worn = character.slots && character.slots[s];
+                return !worn || (worn.name === w.name && (worn.level || 0) < level);
+            });
+            if (!open) return;
+            const mainStat = config.workshop && config.workshop.mainStatOnArmor && G.classes[character.ctype]
+                ? G.classes[character.ctype].main_stat : null;
+            const stat = def.stat ? mainStat : null;
+            list.push(stat ? { name: w.name, level: level, stat: stat } : { name: w.name, level: level });
+        });
+        return list;
+    }
+
     function sendWishes() {
         if (!merchant || !cfg.enabled || Date.now() < nextWishAt) return;
         nextWishAt = Date.now() + cfg.wishEveryMs;
         wishes = readWishes(guide());
+        wishes = wishes.concat(classWishes(wishes));
         const key = JSON.stringify(wishes);
         if (key !== lastWishSent) {
             lastWishSent = key;
