@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.50.1",
+    version: "1.50.2",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -463,6 +463,10 @@ module.exports = {
             { name: "quiver", maxLevel: 2 },
             // Lollipop Maces from the archive (player decision 2026-11-16): weak tier-0 maces.
             { name: "glolipop", maxLevel: 10 },
+            // Materials without a plan (player decision 2026-11-16). Kept on purpose: green
+            // slime, ashleaf (Thistle Quiver), bat wings, spores (Oathplate), reef glass,
+            // carrots (Carrot Sword).
+            "snakefang", "embercoal",
             // Rugged and Heavy armor (armor boxes) are no longer sold since the fresh start:
             // craft bases (Oathplate, Resolute Sallet, class boots) and upgrades (2026-11-16).
         ],
