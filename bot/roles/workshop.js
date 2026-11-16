@@ -1868,6 +1868,34 @@ module.exports = function createWorkshop(ctx) {
     // One unit of work. Returns the fighters that now have something waiting.
     const readySince = {}; // fighter -> since when something waits for it
     let lastGoalStep = 0;  // last gear-goal unit of work
+    // config.workshop.bruteForce (player decision 2026-11-16): spare copies of high-grade
+    // drop weapons at `from` are tried on `to` right away with the normal scroll – their
+    // chance can't be raised (grace -1 on them), so waiting gains nothing. Never a worn
+    // copy, never while a copy of that item is earmarked for a fighter.
+    async function bruteForceSpares() {
+        const now = Date.now();
+        for (const r of cfg.bruteForce || []) {
+            const k = key("_brute", { name: r.name, level: r.to });
+            if (blockedUntil[k] > now) continue;
+            if (activeEarmarks().some(function (e) { return e.name === r.name; })) continue;
+            const inBag = util.findItemIndex(function (i) { return i.name === r.name && (i.level || 0) === r.from && !i.l; });
+            const banked = inBag === -1 ? bankFind(r.name, function (l) { return l === r.from; }) : null;
+            if (inBag === -1 && !banked) continue;
+            if (character.esize < 3) return false;
+            util.status("trying " + r.name + " +" + r.to + " with a spare +" + r.from, "orange");
+            try {
+                if (banked) await retrieve(banked);
+                await develop("_brute", { name: r.name, level: r.to }, { budgetKey: GOALS, minChance: 0, spare: true });
+            } catch (e) {
+                const why = util.errReason(e);
+                util.log("workshop", r.name + " +" + r.to + ": " + why, "orange");
+                blockedUntil[k] = Date.now() + pauseAfter(k, why);
+            }
+            return true;
+        }
+        return false;
+    }
+
     async function work() {
         if (!cfg.enabled) return;
 
@@ -1923,6 +1951,7 @@ module.exports = function createWorkshop(ctx) {
             if (await stockUpgrade()) return;
             lastGoalStep = Date.now();
             if (await workOnBetterWeapons()) return;
+            if (await bruteForceSpares()) return;
             if (await workOnGoals()) return;
             await autoExchange();
             return;
@@ -1932,6 +1961,7 @@ module.exports = function createWorkshop(ctx) {
         if (goalsOn() && Date.now() - lastGoalStep >= (cfg.gearGoals.everyMs || 0)) {
             lastGoalStep = Date.now();
             if (await workOnBetterWeapons()) return;
+            if (await bruteForceSpares()) return;
             if (await workOnGoals()) return;
         }
 

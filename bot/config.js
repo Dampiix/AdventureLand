@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.49.0",
+    version: "1.49.1",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -320,6 +320,10 @@ module.exports = {
         // never going below `spares` copies in total. Normal scrolls only: rare scrolls
         // and grace farming are reserved for the fighters' wishes.
         stockEnabled: false, // paused 2026-11-16 (shop +9 first)
+        // Brute force (player decision 2026-11-16): spare copies at `from` are tried on `to`
+        // with the normal scroll at once (grace can't lift high-grade items; fireblade +8 ~14%).
+        // The worn copies are never touched; a +8 then replaces the weaker worn one.
+        bruteForce: [{ name: "fireblade", from: 7, to: 8 }],
         stock: [
             { name: "fireblade", upTo: 7, spares: 3 },
             { name: "firestaff", upTo: 7, spares: 3 },
@@ -371,7 +375,7 @@ module.exports = {
             everyMs: 3 * 60 * 1000,   // one gear-goal step this often even while wishes are open
             slots: ["helmet", "chest", "pants", "shoes", "gloves", "mainhand"],
             weapons: [
-                { name: "fireblade", minChance: 0.18 }, // 14% at +8, ~19% with full grace
+                { name: "fireblade", minChance: 0 }, // brute force like the other fire weapons
                 // Fire weapons in hand below upTo: build a +upTo copy from a spare one (bank or
                 // bag); the worn copy stays on the fighter. Brute force (player decision
                 // 2026-11-16): grace barely helps high-grade items (grace -1 on them), so every
