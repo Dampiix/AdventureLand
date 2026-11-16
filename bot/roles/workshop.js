@@ -1395,14 +1395,19 @@ module.exports = function createWorkshop(ctx) {
                     util.log("workshop", p.name + " +" + p.level + " goes to " + f + " (empty " + type + " slot)", "yellow");
                 }
             });
-            // Dual wield (warrior): an empty offhand next to a one-handed weapon gets the
-            // strongest offhand-capable weapon we hold. Waits while a weapon is on its way.
+            // Dual wield (warrior): an empty offhand next to a one-handed weapon – or one
+            // holding a clearly weaker weapon (e.g. the guide's blade) – gets the strongest
+            // offhand-capable weapon we hold. Waits while a weapon is on its way.
             const cls = G.classes[classes[f]] || {};
             const offTypes = cls.offhand || {};
-            if (eq.offhand || !eq.mainhand || util.isDoublehand(eq.mainhand.name, classes[f])) return;
+            if (!eq.mainhand || util.isDoublehand(eq.mainhand.name, classes[f])) return;
+            const off = eq.offhand;
+            if (off && !(G.items[off.name] && G.items[off.name].type === "weapon")) return; // a shield etc. stays
+            const bw = cfg.betterWeapons || {};
+            const bar = off ? util.weaponPower(off.name, off.level || 0, classes[f]) * (1 + (bw.margin || 0)) : 0;
             if (Date.now() - (filledAt[f + "|offhand"] || 0) < 10 * 60 * 1000) return;
             if (activeEarmarks().some(function (e) { return e.fighter === f && G.items[e.name] && G.items[e.name].type === "weapon"; })) return;
-            let best = -1, bestPower = 0;
+            let best = -1, bestPower = bar;
             pool.forEach(function (p, i) {
                 const def = G.items[p.name];
                 if (!def || def.type !== "weapon" || !offTypes[def.wtype] || earmarks[f + "|" + p.name]) return;
@@ -1413,7 +1418,8 @@ module.exports = function createWorkshop(ctx) {
             const p = pool.splice(best, 1)[0];
             earmark(f, p.name, p.level);
             filledAt[f + "|offhand"] = Date.now();
-            util.log("workshop", p.name + " +" + p.level + " goes to " + f + " (empty offhand - dual wield)", "yellow");
+            util.log("workshop", p.name + " +" + p.level + " goes to " + f + " (" +
+                (off ? "stronger than its offhand " + off.name + " +" + (off.level || 0) : "empty offhand") + " - dual wield)", "yellow");
         });
         deliverBetterCopies(fightersList, wished);
     }
