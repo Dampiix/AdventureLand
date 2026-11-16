@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.40.1",
+    version: "1.41.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -208,12 +208,20 @@ module.exports = {
         // not reach is wished, a piece of a later step (e.g. a lucky drop) counts for the
         // earlier ones and is equipped over them. A slot holding something outside the
         // entry is left alone. Not counted as gear goals (no further upgrades).
-        // Paused for every class (player decision 2026-11-16): until all shop armor is +9,
-        // that is the only gear progression. The lists below stay for later.
-        classWishesEnabled: false,
+        // Active again since 2026-11-16 (player decision). Rugged armor (armor boxes) comes
+        // after the shop armor: wished only once ALL shop gear is done (+8 armor, +7 weapon),
+        // kept by the merchant until +7 and then worn over the shop piece (replace).
+        // Helmet, gloves, pants first: most common in boxes, and 3 pieces give +20/+20.
+        // The Monster Hunter sets are long-term and stay out for now.
+        classWishesEnabled: true,
         classWishes: {
             all: [
                 { name: "cape", level: 0 },      // 40 Leather -> exchange (wolves, boars)
+                { steps: [{ name: "helmet1", level: 7 }], replace: true },
+                { steps: [{ name: "gloves1", level: 7 }], replace: true },
+                { steps: [{ name: "pants1", level: 7 }], replace: true },
+                { steps: [{ name: "coat1", level: 7 }], replace: true },
+                { steps: [{ name: "shoes1", level: 7 }], replace: true },
             ],
             // Orbs: Orb of Beginnings (Cole: ascale + pleather + cscale + Bee Fur) to +1 first
             // (+3 to every main stat, 3 copies), then the class orb (+4 main stat already at +0).
@@ -224,16 +232,9 @@ module.exports = {
                 { steps: [{ name: "orbg", level: 0 }, { name: "orbg", level: 1 }, { name: "orbofint", level: 0 }] }, // big Pom Pom (level2n)
             ],
             // The offhand is a second weapon (dual wield, handled by gear/workshop).
-            // Monster Hunter Warrior set first (player decision 2026-11-16): bought with
-            // tokens in this order (7 + 8 + 11 = 26 of our 29 now; armor 12 and boots 15
-            // as tokens come in). The set is wished only once ALL shop gear is +7; each
-            // piece is kept by the merchant until it is +7 itself, then worn over it (replace).
+            // Monster Hunter Warrior set: long-term, paused (entries: mwhelmet 7, mwgloves 8,
+            // mwpants 11, mwarmor 12, mwboots 15 tokens; replace at +7).
             warrior: [
-                { steps: [{ name: "mwhelmet", level: 7 }], replace: true },
-                { steps: [{ name: "mwgloves", level: 7 }], replace: true },
-                { steps: [{ name: "mwpants", level: 7 }], replace: true },
-                { steps: [{ name: "mwarmor", level: 7 }], replace: true },
-                { steps: [{ name: "mwboots", level: 7 }], replace: true },
                 { steps: [{ name: "orbg", level: 0 }, { name: "orbg", level: 1 }, { name: "orbofstr", level: 0 }] }, // Fire Spirit
             ],
             ranger: [
@@ -256,6 +257,8 @@ module.exports = {
             compound: 0.35,        // compound items (three copies from drops)
             rare: 0.5,             // token / drop items (Hunter set, Phoenix weapons, ...)
             graceWindow: 0.1,      // grace farming only when the chance is at most this far below the floor
+            // No floor either (like shop gear): copies come from boxes we hold in numbers.
+            free: ["helmet1", "gloves1", "pants1", "coat1", "shoes1"],
             maxScrollGrade: 2,     // try up to Rare scrolls when the normal one falls short
             buyStrongerScrolls: true, // only within budgetPerWish; owned/banked ones are used first
         },
@@ -295,9 +298,13 @@ module.exports = {
         // a drop – the fighter keeps its shop weapon. Gear-goal budget, normal scrolls.
         betterWeapons: {
             enabled: true,
-            names: ["fireblade", "firestaff", "firebow", "concordmace"],
+            names: ["fireblade", "firestaff", "firebow", "concordmace", "maceofthedead", "staffofthedead", "bowofthedead"],
             maxLevel: 7,
             margin: 0.03,   // at least 3% stronger than the worn weapon
+            // Next weapon step (player decision 2026-11-16): once a fighter's weapon (shop or
+            // fire) is at gearGoals.upTo, its "of the Dead" weapon is crafted (Bones from
+            // Zombies + a shop weapon + fee) and upgraded until it is stronger.
+            craft: ["maceofthedead", "staffofthedead", "bowofthedead"],
             // Bought with tokens when we hold none (player decision 2026-11-16: the Concord
             // Mace first – a paladin's mace beats the fireblade +7 already at +4).
             buy: [], // concordmace paused 2026-11-16 (no paladin; shop +9 first)
@@ -359,6 +366,9 @@ module.exports = {
             // armor boxes stopped 2026-11-15 (their rewards only filled the bank);
             // leather (40 -> mostly a Cape) added 2026-11-16 for the cape class wish
             items: ["gem0", "gem1", "seashell", "leather"],
+            // Opened only when a wished item comes out of them (Rugged armor), a few at a
+            // time and only while the bank has room for the other rewards (2026-11-16).
+            onDemand: ["armorbox"], onDemandBatch: 3, onDemandBankFree: 10,
             batch: 10,     // exchanges per round, so deliveries are not delayed for long
             keepFree: 8,   // stop while fewer bag slots are free (rewards need room)
         },

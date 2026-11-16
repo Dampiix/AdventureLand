@@ -127,9 +127,12 @@ module.exports = function createGear(ctx) {
     function shopGearDone() {
         const goals = config.workshop && config.workshop.gearGoals;
         if (!goals || !goals.enabled) return true;
+        // Armor counts as done at the last stage (e.g. +8), the mainhand at upTo (+7).
+        const lastStage = goals.stages && goals.stages.length ? Math.max.apply(null, goals.stages) : (goals.upTo || 7);
         return (goals.slots || []).every(function (s) {
             const w = character.slots && character.slots[s];
-            return !!w && (!npcSold.has(w.name) || (w.level || 0) >= (goals.upTo || 7));
+            const need = s === "mainhand" ? (goals.upTo || 7) : lastStage;
+            return !!w && (!npcSold.has(w.name) || (w.level || 0) >= need);
         });
     }
     // Does this piece reach one of the chain's steps (name and level)?

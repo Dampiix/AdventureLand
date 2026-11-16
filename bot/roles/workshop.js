@@ -519,6 +519,8 @@ module.exports = function createWorkshop(ctx) {
     // take longest to replace.
     function minChanceFor(item, replaceable, copies) {
         const r = cfg.risk;
+        // Items whose copies we can always make again (e.g. Rugged from armor boxes): like shop gear.
+        if ((r.free || []).includes(item.name)) return r.shop;
         if ((copies || 1) >= 3 || (G.items[item.name] && G.items[item.name].compound)) return r.compound;
         return replaceable ? r.shop : r.rare;
     }
@@ -677,7 +679,8 @@ module.exports = function createWorkshop(ctx) {
         Object.keys(shortages).forEach(function (name) {
             const s = shortages[name];
             const target = s.forItem || name; // ingredients count while the crafted item is wished
-            const wished = fighters().some(function (f) { return wishList(f).some(function (w) { return w.name === target; }); });
+            const wished = fighters().some(function (f) { return wishList(f).some(function (w) { return w.name === target; }); }) ||
+                weaponPlans().some(function (p) { return p.name === target; }); // e.g. Bones for a Dead weapon
             // Reported as long as it is wished and copies are missing – not only for a while
             // after the last failed attempt (that made the team hop between farm spots).
             const fresh = wished;
@@ -732,6 +735,47 @@ module.exports = function createWorkshop(ctx) {
 
     function exchangeStack(name, need) {
         return util.findItemIndex(function (i) { return i.name === name && (i.q || 1) >= need; });
+    }
+
+    // A wished item that only comes out of something we hold (e.g. Rugged armor from
+    // Armor Boxes): open one batch of that source. Sources listed in
+    // config.workshop.exchange.onDemand only, while the bank keeps room for the rewards.
+    async function openSourceFor(name) {
+        const ex = cfg.exchange || {};
+        const sources = (ex.onDemand || []).filter(function (src) {
+            const t = G.drops[src];
+            return Array.isArray(t) && t.some(function (d) { return d && d[1] === name; }) && G.items[src];
+        });
+        if (!sources.length) return false;
+        if (bankSnapshot && bankSnapshot.free < (ex.onDemandBankFree || 10)) {
+            util.log("workshop", "would open " + sources[0] + " for " + name + " but the bank is nearly full", "orange");
+            return false;
+        }
+        if (character.esize < (ex.keepFree || 8)) return false;
+        for (const src of sources) {
+            const need = G.items[src].e || 1;
+            if (exchangeStack(src, need) === -1) {
+                const banked = bankSnapshot && bankSnapshot.items.find(function (b) { return b.name === src && b.q >= need; });
+                if (!banked) continue;
+                await retrieve(banked);
+            }
+            const npc = exchangeNpc(src);
+            if (!npc) continue;
+            await goTo(npc);
+            const rewards = [];
+            for (let n = 0; n < (ex.onDemandBatch || 3) && character.esize >= (ex.keepFree || 8); n++) {
+                const index = exchangeStack(src, need);
+                if (index === -1) break;
+                const result = await exchange(index);
+                rewards.push(result && result.reward ? result.reward : "?");
+                if (rewards.includes(name)) break; // got what we wanted
+            }
+            if (rewards.length) {
+                util.log("workshop", "opened " + rewards.length + "x " + src + " for " + name + ": " + rewards.join(", "), "green");
+                return true;
+            }
+        }
+        return false;
     }
 
     // Without wishes or compound work: exchange boxes, gems, seashells ...
@@ -1019,6 +1063,8 @@ module.exports = function createWorkshop(ctx) {
                     blockedUntil[k] = Date.now() + cfg.giveUpForMs;
                     return false;
                 }
+            } else if (await openSourceFor(w.name)) {
+                return false; // a box/exchange was opened – its reward is random, look again next round
             } else if (!(await buyWithTokens(w.name))) {
                 util.log("workshop", "no copy of " + w.name + " and no shop or token offer for it", "orange");
                 if (!tokenOffer(w.name)) noteShortage(w.name, 0); // drop-only item: the team can farm it
@@ -1526,12 +1572,16 @@ module.exports = function createWorkshop(ctx) {
         (bw.names || []).forEach(function (name) {
             // Names on bw.buy (e.g. the Concord Mace) are bought with tokens when we hold none.
             const buyable = (bw.buy || []).includes(name) && !!tokenOffer(name);
-            if (!G.items[name] || (!unlockedCopies(name).length && !buyable)) return;
+            // Names on bw.craft (the "of the Dead" weapons) are crafted when we hold none – the
+            // next weapon step once a fighter's weapon (shop or fire) is at gearGoals.upTo.
+            const craftable = (bw.craft || []).includes(name) && !!crafterOf(name);
+            if (!G.items[name] || (!unlockedCopies(name).length && !buyable && !craftable)) return;
             let plan = null;
             config.team.fighters.forEach(function (f) {
                 if (!worn[f] || !canWield(f, name)) return;
                 const m = worn[f].mainhand;
                 if (m && m.name === name) return; // already wears one: gear goals take over
+                if ((bw.craft || []).includes(name) && (!m || (m.level || 0) < cfg.gearGoals.upTo)) return; // not yet
                 const bar = wornPower(f) * (1 + (bw.margin || 0));
                 for (let level = 0; level <= bw.maxLevel; level++) {
                     if (util.weaponPower(name, level, classes[f]) <= bar) continue;
@@ -1570,6 +1620,23 @@ module.exports = function createWorkshop(ctx) {
             if (unlockedCopies(plan.name).some(function (l) { return l >= plan.need; })) continue; // ready to deliver
             if (character.esize < 3) return false;
             const bw = cfg.betterWeapons;
+            if (!unlockedCopies(plan.name).length && (bw.craft || []).includes(plan.name)) {
+                // A bw.craft weapon we don't hold yet: craft the +0 copy (missing ingredients,
+                // e.g. Bones, are reported to the leader's drop routes).
+                util.status("crafting " + plan.name + " for " + plan.fighter, "orange");
+                try {
+                    const r = await craftItem(GOALS, plan.name);
+                    if (!r.ok) {
+                        util.log("workshop", "can't craft " + plan.name + " yet - missing " + r.missing.map(function (m) { return (m.need - m.have) + "x " + m.name; }).join(", "), "orange");
+                        r.missing.forEach(function (m) { noteIngredientShortage(m.name, m.level, m.need, plan.name); });
+                        blockedUntil[k] = Date.now() + cfg.giveUpForMs;
+                    }
+                } catch (e) {
+                    util.log("workshop", "crafting " + plan.name + ": " + util.errReason(e), "orange");
+                    blockedUntil[k] = Date.now() + pauseAfter(k, util.errReason(e));
+                }
+                return true;
+            }
             if (!unlockedCopies(plan.name).length) {
                 // A bw.buy weapon we don't hold yet: buy the +0 copy with tokens first.
                 util.status("buying " + plan.name + " for " + plan.fighter, "orange");
