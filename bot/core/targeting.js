@@ -349,6 +349,15 @@ module.exports = function createTargeting(ctx) {
         nextPickAt = 0; // pick again right away
     }
 
+    // Monster types an event spawns in waves (G.events[name].waves), or null for "anything".
+    function eventMonsters(name) {
+        const waves = G.events[name] && G.events[name].waves;
+        if (!Array.isArray(waves)) return null;
+        const types = {};
+        waves.forEach(function (w) { Object.keys((w && w[1]) || {}).forEach(function (t) { types[t] = true; }); });
+        return Object.keys(types);
+    }
+
     function currentFarm() {
         shareSafe(); // members: tell the leader where we can fight safely
         clock();     // leader: our own experience with the current farm target
@@ -356,7 +365,7 @@ module.exports = function createTargeting(ctx) {
         const ev = ctx.events ? ctx.events.current() : null;
         if (ev) {
             const next = ev.join
-                ? { monster: null, any: true, source: "event " + ev.name }
+                ? { monster: null, any: true, types: eventMonsters(ev.name), source: "event " + ev.name }
                 : { monster: ev.monster || ev.name, dest: ev.dest || ev.monster || ev.name, source: "event " + ev.name };
             if (!farm || farm.source !== next.source) util.log("target", "now: " + next.source, "yellow");
             farm = next;
@@ -465,6 +474,16 @@ module.exports = function createTargeting(ctx) {
         // everyone picks its own nearest monster – waiting for the leader's pick
         // (a melee paladin) left most kills to other players.
         if (farmTarget.any) {
+            // Events with waves (e.g. Graveyard Rising in Spooky Town) share the map with other
+            // monsters (mummies): only the event's own monsters count.
+            if (farmTarget.types && farmTarget.types.length) {
+                let best = null;
+                farmTarget.types.forEach(function (type) {
+                    const m = get_nearest_monster({ type: type });
+                    if (isValid(m) && (!best || util.distanceTo(m) < util.distanceTo(best))) best = m;
+                });
+                return best;
+            }
             const m = get_nearest_monster({});
             return isValid(m) ? m : null;
         }

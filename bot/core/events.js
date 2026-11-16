@@ -3,7 +3,7 @@
 //
 // Live state comes from server.status: every entry whose key is a G.events
 // event or a G.monsters boss and that is not marked live:false counts as
-// live. Seasons (type "seasonal") are not activities and are ignored.
+// live. Seasonal events (type "seasonal") count only with policy "always".
 //
 // Policy per name in config.events.policy: "always" | "never" (default).
 //   join events  (G.events[name].join) -> join(name); every member joins too
@@ -170,7 +170,8 @@ module.exports = function createEvents(ctx) {
             const ev = G.events[name];
             const isBoss = !!G.monsters[name];
             if (!ev && !isBoss) return;
-            if (ev && ev.type === "seasonal") return;
+            // Seasonal events (e.g. Halloween's Graveyard Rising) only when the policy says "always".
+            if (ev && ev.type === "seasonal" && (cfg.policy || {})[name] !== "always") return;
             if (s.live === false || s.active === false) return;
             list.push({ name: name, join: !!(ev && ev.join), map: s.map, x: s.x, y: s.y, boss: isBoss });
         });

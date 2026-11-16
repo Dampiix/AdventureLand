@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.41.1",
+    version: "1.42.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -52,10 +52,11 @@ module.exports = {
             goobrawl: "always",         // daily goo fight
             phoenix: "always",          // roaming coop boss, weak hits, 180k XP, fire weapons
             crabxx: "never", franky: "never", icegolem: "never",
-            horseman: "never", graveyard: "never", abtesting: "never",
+            horseman: "never", abtesting: "never",
+            graveyard: "always",          // Halloween: zombies/ghouls in Spooky Town's graveyard – Bones (2026-11-16)
         },
         // "always" only applies once every fighter has reached this level
-        minLevel: { phoenix: 40, goobrawl: 20, snowman: 10 },
+        minLevel: { phoenix: 40, goobrawl: 20, snowman: 10, graveyard: 40 },
         search: ["phoenix"],            // roaming bosses the leader looks for
         // Search again this long after a miss or a kill (player decision 2026-11-15: 30 min,
         // the walk costs farm time; the Phoenix respawns ~32 min after its death).
