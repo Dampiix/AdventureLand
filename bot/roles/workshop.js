@@ -31,7 +31,17 @@ module.exports = function createWorkshop(ctx) {
     const comms = ctx.comms;
     const cfg = config.workshop;
 
-    const wishes = {};      // fighter -> [{ name, level }] from its progression guide
+    // fighter -> [{ name, level }] from its progression guide. Kept across restarts (up to
+    // 6 h): right after a merchant restart the wishes were empty, so isReserved() let the
+    // sell list sell the HP belts the warrior wishes for (2026-11-17).
+    const WISHES_KEY = "workshop_wishes:" + character.name;
+    const wishes = (function () {
+        try {
+            const saved = get(WISHES_KEY) || {};
+            if (saved.at && Date.now() - saved.at < 6 * 60 * 60 * 1000) return saved.list || {};
+        } catch (e) { /* storage unavailable */ }
+        return {};
+    })();
     const spent = {};       // wish key -> gold spent
     const blockedUntil = {}; // wish key -> timestamp (gave up for a while)
     const reachedOnly = {}; // wish key -> level we stopped at (too risky to go on) – delivered as is
@@ -67,6 +77,7 @@ module.exports = function createWorkshop(ctx) {
     const carries = {}; // fighter -> { item: true/false } for one-per-character items
     comms.on("wishes", function (data, from) {
         wishes[from] = (data.list || []).filter(function (w) { return w && G.items[w.name]; });
+        try { set(WISHES_KEY, { at: Date.now(), list: wishes }); } catch (e) { /* storage unavailable */ }
         if (data.ctype && G.classes[data.ctype]) classes[from] = data.ctype;
         if (data.has) carries[from] = data.has;
         if (data.worn) {
