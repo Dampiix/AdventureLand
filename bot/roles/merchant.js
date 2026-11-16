@@ -99,6 +99,7 @@ module.exports = function createMerchant(ctx) {
         if (item.p || item.l) return false;            // shiny / locked never
         if (workshop.isReserved(item)) return false;    // a fighter wishes for it
         if (workshop.isGoalStock(item)) return false;   // a gear-goal copy (worn piece, level 1+)
+        if (workshop.isOutgrownGoalCopy(item)) return true; // shop gear below a finished gear goal
         const rule = sellRule(item.name);
         if (rule && (item.level || 0) <= rule.maxLevel) return true;
         // Leftover grace fodder (any level) has done its job.

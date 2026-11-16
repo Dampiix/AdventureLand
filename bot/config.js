@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.29.1",
+    version: "1.30.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -334,13 +334,16 @@ module.exports = {
             { name: "sword", maxLevel: 4 },
             // the Paladin's old starter gear (approved 2026-11-15).
             // Accessories (rings, belts, amulets, earrings) and books are NOT sold:
-            // they are compound/upgrade material the progression guide asks for.
+            // they are compound/upgrade material the progression guide asks for –
+            // except the HP/VIT ones no class or guide wants (approved 2026-11-16; any
+            // level: compounding them first loses gold on average). Worn copies stay.
+            { name: "hpamulet", maxLevel: 10 },
+            { name: "vitearring", maxLevel: 10 },
+            { name: "hpbelt", maxLevel: 10 },
             { name: "helmet", maxLevel: 3 },
             { name: "mace", maxLevel: 2 },
-            // armor box rewards: tier-1 and heavy armor at +0 – useless for a level-60 team
-            // (approved 2026-11-15; X-armor, Fury and Starkillers are kept)
-            "coat1", "helmet1", "pants1", "gloves1", "shoes1",
-            "hhelmet", "harmor", "hpants", "hgloves", "hboots",
+            // Rugged and Heavy armor (armor boxes) are no longer sold since the fresh start:
+            // craft bases (Oathplate, Resolute Sallet, class boots) and upgrades (2026-11-16).
         ],
         // Items the merchant hands to a fighter on its next delivery (one-off gifts).
         give: {

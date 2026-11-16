@@ -1181,9 +1181,32 @@ module.exports = function createWorkshop(ctx) {
         return goalAssignments(goalNeeds()).filter(function (a) { return a.need.fighter === fighter; });
     }
 
-    // Copies of gear-goal items (level 1+) are worth keeping: never sold.
+    // Copies of gear-goal items (level 1+) are worth keeping: never sold – until the
+    // goal is done for that item (player decision 2026-11-16): once every fighter
+    // wearing it has it at upTo, the lower copies are outgrown shop gear.
     function isGoalStock(item) {
-        return goalsOn() && !!item && (item.level || 0) >= 1 && goalNames().has(item.name);
+        if (!goalsOn() || !item || (item.level || 0) < 1 || !goalNames().has(item.name)) return false;
+        return !isOutgrownGoalCopy(item);
+    }
+    function goalDoneFor(name) {
+        const upTo = cfg.gearGoals.upTo;
+        if ((cfg.gearGoals.weapons || []).some(function (r) { return r.name === name; })) return false;
+        if (config.team.fighters.some(function (f) { return shopWeaponGoal(f) === name; })) return false;
+        let wearers = 0;
+        const open = config.team.fighters.some(function (f) {
+            if (!worn[f]) return true; // unknown yet: not done
+            return cfg.gearGoals.slots.some(function (slot) {
+                const w = worn[f][slot];
+                if (!w || w.name !== name) return false;
+                wearers++;
+                return (w.level || 0) < upTo;
+            });
+        });
+        return wearers > 0 && !open;
+    }
+    function isOutgrownGoalCopy(item) {
+        return goalsOn() && !!item && !!sellerOf(item.name) && (item.level || 0) < cfg.gearGoals.upTo &&
+            goalNames().has(item.name) && goalDoneFor(item.name);
     }
 
     // Finished copies stay in the bag until they are delivered.
@@ -1641,7 +1664,7 @@ module.exports = function createWorkshop(ctx) {
 
     return {
         work: work, handOver: handOver, isReserved: isReserved, readyFor: readyFor,
-        isGoalStock: isGoalStock, isGoalFinished: isGoalFinished,
+        isGoalStock: isGoalStock, isGoalFinished: isGoalFinished, isOutgrownGoalCopy: isOutgrownGoalCopy,
         classOf: function (fighter) { return classes[fighter] || null; },
         oneEachFor: oneEachFor,
         markCarried: function (fighter, item) { (carries[fighter] = carries[fighter] || {})[item] = true; },
