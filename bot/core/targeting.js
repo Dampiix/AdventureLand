@@ -279,7 +279,35 @@ module.exports = function createTargeting(ctx) {
             const hits = me.max_hp / Math.max(1, (e.attack || def.attack || 0) * 1.1 * util.damageMultiplier(d));
             return hits >= (lcfg.ownHits || 6) ? { ok: true } : { ok: false, why: "I survive " + hits.toFixed(1) + " of its hits (need " + (lcfg.ownHits || 6) + ")" };
         };
-        let v = teamModelOn() ? teamVerdict(e.mtype, e) : ownCheck();
+        // Alone (no party): the fight must be survivable over its whole length – the
+        // monster's real damage per second against what we heal ourselves (a potion per
+        // cooldown, a priest's own heals, lifesteal), for as long as it takes us to kill it.
+        // A level-12 CGoo (800 attack, 1.6 hits/s) killed the solo warrior though he
+        // survives 12 of its single hits (2026-11-16).
+        const soloCheck = function () {
+            const first = ownCheck();
+            if (!first.ok) return first;
+            const me = util.combatStats();
+            const d = def.damage_type === "physical" ? (me.armor || 0) - (def.apiercing || 0)
+                : def.damage_type === "magical" ? (me.resistance || 0) - (def.rpiercing || 0) : 0;
+            const pull = (def.aggro || 0) >= 1 ? Math.max(1, densePack(e.mtype)) : 1;
+            const incoming = (e.attack || def.attack || 0) * 1.1 * util.damageMultiplier(d) * (e.frequency || def.frequency || 1) * pull;
+            const cd = ((G.skills.use_hp && G.skills.use_hp.cooldown) || 2000) / 1000;
+            const potName = util.potionNames(config.potions).hp;
+            const potGives = ((G.items[potName] && G.items[potName].gives) || []).find(function (x) { return x[0] === "hp"; });
+            let sustain = (potGives ? potGives[1] : 200) / cd;
+            if (me.ctype === "priest") sustain += (me.heal || me.attack || 0) * (me.frequency || 1) * 0.5; // half its actions heal
+            const myDef = me.damage_type === "physical" ? (def.armor || 0) - (me.apiercing || 0) : (def.resistance || 0) - (me.rpiercing || 0);
+            const myDps = Math.max(1, (me.attack || 0) * (me.frequency || 1) * util.damageMultiplier(myDef));
+            sustain += myDps * ((character.lifesteal || 0) / 100);
+            const killSec = (e.hp || e.max_hp || def.hp) * pull / myDps;
+            const lost = Math.max(0, incoming - sustain) * killSec;
+            const budget = me.max_hp * (lcfg.soloHpUse || 0.5);
+            return lost <= budget ? { ok: true }
+                : { ok: false, why: Math.round(incoming) + " dmg/s vs " + Math.round(sustain) + " healed/s for ~" + Math.round(killSec) +
+                    " s: I'd lose " + Math.round(lost) + " HP (max " + Math.round(budget) + ")" };
+        };
+        let v = teamModelOn() ? teamVerdict(e.mtype, e) : (party.enabled ? ownCheck() : soloCheck());
         // Team stats not in yet (right after a restart, or a member was away): the level-1
         // monster passed the team check already, so only a big level jump is refused.
         if (!v.ok && /waiting for the team/.test(v.why || "")) v = ratioCheck(lcfg.waitTolerance || 2.5);
@@ -696,5 +724,5 @@ module.exports = function createTargeting(ctx) {
     }
 
     return { currentFarm: currentFarm, pick: pick, isValid: isValid, reportSearch: reportSearch, isTeamSafe: isTeamSafe, whyUnsafe: whyUnsafe,
-        teamModelOn: teamModelOn, teamVerdict: teamVerdict, safetyReport: safetyReport, diedAt: diedAt, deathAt: deathAt, spotFor: spotFor };
+        teamModelOn: teamModelOn, teamVerdict: teamVerdict, safetyReport: safetyReport, diedAt: diedAt, deathAt: deathAt, spotFor: spotFor, liveSafe: liveSafe };
 };

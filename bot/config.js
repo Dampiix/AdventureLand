@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.55.2",
+    version: "1.56.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -150,6 +150,10 @@ module.exports = {
         live: {
             fromLevel: 2,
             ownHits: 6,           // members/solo picking their own target: survive this many real hits
+            // Solo: the HP lost over the whole fight (real damage/s minus own healing: a potion
+            // per cooldown, priest self-heals, lifesteal, for the time we need to kill it) must
+            // stay below this share of max HP.
+            soloHpUse: 0.5,
             waitTolerance: 2.5,   // leader while the team stats are not in yet (level-5 CGoo: 1.9x)
         },
         refreshMs: 5 * 60 * 1000, // how often to ask the guide again
