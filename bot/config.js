@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.33.0",
+    version: "1.34.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -138,6 +138,19 @@ module.exports = {
             sturdyHits: 3,                  // Hunter's Mark / Supershot only on targets needing 3+ hits
             mpReserveRatio: 0.3,
             usePoisonArrow: true,           // consumes a Poison Sack
+        },
+        warrior: {
+            mpReserveRatio: 0.2,
+            // Taunt a monster off an ally that is below allyHpBelow, or that hits for at
+            // least hitRatio of the ally's max HP per hit ("harder targets").
+            taunt: { enabled: true, allyHpBelow: 0.8, hitRatio: 0.05 },
+            agitateFrom: 3,                 // Agitate (lvl 68) when this many monsters are on allies
+            cleaveFrom: 3,                  // Cleave (lvl 52, axe/scythe) with this many monsters around
+            stompFrom: 2,                   // Stomp (lvl 52, basher) with this many attackers
+            sturdyHits: 4,                  // War Cry (lvl 70) on targets needing this many hits
+            hardShell: { enabled: true, below: 0.45 }, // lvl 60, against physical hits
+            useCharge: true, chargeFrom: 150,          // +30 speed on walks and longer chases
+            dash: { enabled: true, from: 120, max: 150 }, // jump the last gap to a target (straight line only)
         },
         mage: {
             energizeAbove: 0.6,             // only give mana while we have more than this

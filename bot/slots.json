@@ -18,6 +18,7 @@
     { "file": "roles/workshop.js",  "slot": 34, "name": "bot_workshop" },
     { "file": "core/events.js",     "slot": 35, "name": "bot_events" },
     { "file": "classes/ranger.js",  "slot": 36, "name": "bot_class_ranger" },
-    { "file": "core/drops.js",      "slot": 37, "name": "bot_drops" }
+    { "file": "core/drops.js",      "slot": 37, "name": "bot_drops" },
+    { "file": "classes/warrior.js", "slot": 38, "name": "bot_class_warrior" }
   ]
 }

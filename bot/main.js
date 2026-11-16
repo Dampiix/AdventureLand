@@ -19,6 +19,7 @@ const BOT_CLASS_SLOTS = {
     mage: "bot_class_mage",
     priest: "bot_class_priest",
     ranger: "bot_class_ranger",
+    warrior: "bot_class_warrior",
 };
 
 let botRunner = null;

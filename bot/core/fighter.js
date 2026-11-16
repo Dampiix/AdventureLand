@@ -14,7 +14,9 @@
 //   7. class support      -> e.g. Priest heals, Mage energizes
 //   8. combat             -> pick target, class skills, basic attack, move
 //
-// Class modules provide: name, survive(), support(), fight(target).
+// Class modules provide: name, survive(), support(), fight(target), and
+// optionally move(target) – called while walking (target null on a route);
+// true means it moved us itself this tick (e.g. Warrior Dash).
 // survive/support return true when they used the action for this tick;
 // fight returns true when the basic attack should be skipped.
 // =====================================================================
@@ -61,6 +63,8 @@ module.exports = function createFighter(ctx, cls) {
             smart_move(destination).catch(function (e) {
                 util.log("move", "route to " + JSON.stringify(destination) + " failed: " + util.errReason(e), "red");
             });
+        } else if (cls.move) {
+            cls.move(null); // e.g. Warrior Charge on the way
         }
     }
 
@@ -82,6 +86,7 @@ module.exports = function createFighter(ctx, cls) {
 
         if (!is_in_range(target)) {
             util.status("moving to " + target.mtype, "orange");
+            if (cls.move && cls.move(target)) return; // e.g. Warrior Dash closed the gap
             if (!is_moving(character)) util.moveToEntity(target);
             return;
         }

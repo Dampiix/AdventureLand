@@ -37,6 +37,7 @@ rogue) fight with basic attacks.
 | `classes/mage.js` | 28 `bot_class_mage` | basic attacks for now |
 | `classes/priest.js` | 29 `bot_class_priest` | self-heal, heal the most hurt party member, Party Heal, Curse |
 | `classes/ranger.js` | 36 `bot_class_ranger` | Hunter's Mark, Supershot, 3-Shot |
+| `classes/warrior.js` | 38 `bot_class_warrior` | Taunt/Agitate for allies, Cleave, Stomp, Hard Shell, War Cry, Charge and Dash on the move |
 | `roles/merchant.js` | 30 `bot_merchant` | sells junk, keeps a potion stock, delivers to fighters |
 | `core/party.js` | 31 `bot_party` | party invites/accept/leave, leader broadcast, following |
 | `core/hunts.js` | 32 `bot_hunts` | Monster Hunts: pick a safe hunt of any party fighter, Daisy trips, turn in |
