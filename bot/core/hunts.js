@@ -10,9 +10,12 @@
 //   - farms the hunt monster of any party fighter (own or a member's) that
 //     is on this server, has kills left, enough time left and is safe –
 //     the one expiring first wins
-//   - takes the group to Daisy when a hunt is finished (c = 0) or someone
-//     has no hunt and there is nothing to hunt right now
-// At Daisy every fighter turns in a finished hunt and/or takes a new one.
+//   - takes the group to Daisy when a hunt is finished (c = 0) – right away, the
+//     trip cooldown only limits trips for new hunts – or someone has no hunt and
+//     there is nothing to hunt right now
+// At Daisy every fighter turns in a finished hunt and/or takes a new one: members
+// that need her walk up to her while the leader is there, and the leader waits
+// (up to waitAtDaisyMaxMs) until every member's report shows it is done.
 //
 // A hunt is taken on only if it is safe for the whole team (same check as farm
 // spots in bot_targeting: every fighter's guide agrees, no recent death there;
@@ -31,7 +34,8 @@ module.exports = function createHunts(ctx) {
     const known = {};      // member name -> { hunt, at }
     const safeCache = {};  // monster -> { safe, at }
     let lastShare = 0;
-    let nextDaisyAt = 0;
+    let nextDaisyAt = 0;   // trips for new hunts only
+    let lastTripAt = 0;    // any trip (a finished hunt retries after finishedRetryMs)
     let busy = false;      // leader: Daisy trip running
     let talking = false;   // interact() running
     let sticky = null;     // { name, id } – the hunt the team is working on
@@ -69,8 +73,8 @@ module.exports = function createHunts(ctx) {
         return !h || h.c === 0;
     }
 
-    function share() {
-        if (!party.isMember || Date.now() - lastShare < cfg.shareMs) return;
+    function share(now) {
+        if (!party.isMember || (!now && Date.now() - lastShare < cfg.shareMs)) return;
         lastShare = Date.now();
         comms.send(config.leader, "hunt", { hunt: own() });
     }
@@ -170,18 +174,33 @@ module.exports = function createHunts(ctx) {
         return { monster: pick.hunt.id, source: "hunt of " + pick.name + ", " + pick.hunt.c + " left" };
     }
 
+    // A finished hunt goes to Daisy at once (its token is lost when the hunt expires);
+    // the trip cooldown only applies to fetching new hunts.
     function wantsDaisy() {
-        if (!leads || Date.now() < nextDaisyAt || !active()) return false;
+        if (!leads || !active()) return false;
+        const now = Date.now();
         const hunts = allHunts();
-        const finished = hunts.some(function (x) { return x.hunt && x.hunt.c === 0; });
+        const finished = hunts.some(function (x) { return x.hunt && x.hunt.c === 0 && x.hunt.ms > 0; });
+        if (finished && now - lastTripAt >= (cfg.finishedRetryMs || 60 * 1000)) return true;
         const missing = hunts.some(function (x) { return !x.hunt; });
-        return finished || (missing && !target());
+        return now >= nextDaisyAt && missing && !target();
+    }
+
+    function daisyPos() {
+        const npc = (G.maps.main.npcs || []).find(function (n) { return n.id === "monsterhunter"; });
+        return npc ? { x: npc.position[0], y: npc.position[1] } : null;
+    }
+
+    // Leader at Daisy: members still waiting to turn in or to take a hunt (fresh reports).
+    function membersPending() {
+        return allHunts().filter(function (x) {
+            return x.name !== character.name && party.inParty(x.name) && needsDaisy(x.hunt);
+        }).map(function (x) { return x.name; });
     }
 
     function nearDaisy() {
-        if (character.map !== "main") return false;
-        const npc = (G.maps.main.npcs || []).find(function (n) { return n.id === "monsterhunter"; });
-        return !!npc && util.distanceTo({ x: npc.position[0], y: npc.position[1] }) < cfg.daisyRange;
+        const p = daisyPos();
+        return character.map === "main" && !!p && util.distanceTo(p) < cfg.daisyRange;
     }
 
     // Turn in a finished hunt and/or take a new one. Needs to stand at Daisy.
@@ -202,6 +221,7 @@ module.exports = function createHunts(ctx) {
                 const fresh = own();
                 if (fresh) util.log("hunt", "new hunt: " + fresh.c + "x " + fresh.id, "yellow");
             }
+            share(true); // tell the leader right away (it waits for us at Daisy)
         } catch (e) {
             util.log("hunt", "Daisy: " + util.errReason(e), "orange");
         } finally {
@@ -215,11 +235,21 @@ module.exports = function createHunts(ctx) {
             util.status("visiting Daisy", "yellow");
             await smart_move("monsterhunter");
             await talk();
-            await sleep(cfg.waitAtDaisyMs); // members arrive and talk to her too
+            // Members arrive and talk to her too: wait until each one reports it is done.
+            const start = Date.now();
+            await sleep(cfg.waitAtDaisyMs);
+            let pending = membersPending();
+            while (pending.length && Date.now() - start < (cfg.waitAtDaisyMaxMs || 45000)) {
+                util.status("at Daisy, waiting for " + pending.join(", "), "yellow");
+                await sleep(1000);
+                pending = membersPending();
+            }
+            if (pending.length) util.log("hunt", "left Daisy - still pending: " + pending.join(", "), "orange");
         } catch (e) {
             util.log("hunt", "trip to Daisy failed: " + util.errReason(e), "red");
         } finally {
             nextDaisyAt = Date.now() + cfg.visitCooldownMs;
+            lastTripAt = Date.now();
             busy = false;
         }
     }
@@ -228,7 +258,22 @@ module.exports = function createHunts(ctx) {
     function tick() {
         if (!active()) return "ok";
         share();
-        if (!talking && needsDaisy(own()) && nearDaisy()) talk(); // members piggyback on the leader's trip
+        // Members piggyback on the leader's trip: while the leader stands at Daisy, walk
+        // up to her (following alone may stop just outside her range) and talk.
+        if (party.isMember && needsDaisy(own())) {
+            const lead = party.leaderInfo();
+            const d = daisyPos();
+            if (lead && d && lead.map === "main" && Math.hypot(lead.x - d.x, lead.y - d.y) < cfg.daisyRange + 50) {
+                if (nearDaisy()) { if (!talking) talk(); return "busy"; }
+                util.status("walking to Daisy", "yellow");
+                if (!is_moving(character)) {
+                    if (character.map === "main") xmove(d.x, d.y + 30);
+                    else smart_move({ map: "main", x: d.x, y: d.y + 30 }).catch(function () {});
+                }
+                return "busy";
+            }
+        }
+        if (!talking && needsDaisy(own()) && nearDaisy()) talk();
         if (busy) return "busy";
         if (wantsDaisy()) {
             visitDaisy();
