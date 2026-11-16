@@ -145,7 +145,9 @@ module.exports = function createDrops(ctx) {
             if (r.perCopy > limit) {
                 if (Date.now() - (slowLogged[need.name] || 0) < 60 * 60 * 1000) return;
                 slowLogged[need.name] = Date.now();
-                util.log("drops", need.name + ": ~" + hours(r.perCopy) + " per copy at " + r.monster + " - too slow, not farming it", "white");
+                // Lottery chains (e.g. a belt from a Glitch from xscorpions) give absurd numbers.
+                const est = r.perCopy > 1000 * 3600 ? "practically never (over 1000 h per copy)" : "~" + hours(r.perCopy) + " per copy";
+                util.log("drops", need.name + ": " + est + " at " + r.monster + " - too slow, not farming it", "white");
                 return;
             }
             found.push(Object.assign({ name: need.name, copies: need.copies }, r));
