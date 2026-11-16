@@ -643,16 +643,26 @@ module.exports = function createWorkshop(ctx) {
     // Wished items we can't build for lack of copies (and config.drops.want) are
     // reported to the leader, whose guide finds the drop route (bot_drops).
 
-    const shortages = {}; // name -> { level, at }
+    // Survives restarts: otherwise the leader drops a drop target (e.g. Porcupine Leather)
+    // after every merchant restart until the next failed craft notes it again.
+    const SHORT_KEY = "workshop_shortages:" + character.name;
+    const shortages = (function () { // name -> { level, at, need?, forItem? }
+        try { return get(SHORT_KEY) || {}; } catch (e) { return {}; }
+    })();
+    function saveShortages() {
+        try { set(SHORT_KEY, shortages); } catch (e) { /* storage unavailable */ }
+    }
     let nextDropReportAt = 0;
 
     function noteShortage(name, level) {
         shortages[name] = { level: level, at: Date.now() };
+        saveShortages();
     }
 
     // A craft ingredient we lack: `need` in total, for the wished item `forItem`.
     function noteIngredientShortage(name, level, need, forItem) {
         shortages[name] = { level: level, at: Date.now(), need: need, forItem: forItem };
+        saveShortages();
     }
 
     function unlockedCopies(name) {
@@ -677,6 +687,8 @@ module.exports = function createWorkshop(ctx) {
         // Counts include the bank: right after a restart, before the first bank scan,
         // everything would look missing (e.g. "50 armor boxes missing" with 130 banked).
         if (!bankSnapshot) return;
+        // ...and the fighters' wishes: unknown wishes would drop every shortage.
+        if (config.team.fighters.some(function (f) { return !wishes[f]; })) return;
         nextDropReportAt = Date.now() + d.reportMs;
         const list = [];
         Object.keys(shortages).forEach(function (name) {
@@ -689,7 +701,7 @@ module.exports = function createWorkshop(ctx) {
             const fresh = wished;
             const missing = !fresh ? 0 : s.need ? s.need - ingredientCount(name, s.level) : copiesMissing(name, s.level);
             if (missing > 0) list.push({ name: name, copies: missing });
-            else delete shortages[name];
+            else { delete shortages[name]; saveShortages(); }
         });
         (d.want || []).forEach(function (w) {
             // Stackable items (e.g. Armor Boxes) count by quantity, not by stacks.
