@@ -114,6 +114,22 @@ module.exports = function createGear(ctx) {
         });
         return best;
     }
+    // Items any NPC sells (shop gear).
+    const npcSold = new Set();
+    Object.keys(G.npcs || {}).forEach(function (id) {
+        (Array.isArray(G.npcs[id].items) ? G.npcs[id].items : []).forEach(function (n) { if (n) npcSold.add(n); });
+    });
+    // Is the whole shop progression done? Every gear-goal slot (helmet, chest, pants,
+    // shoes, gloves, mainhand) holds something, and every shop piece in them is at
+    // gearGoals.upTo. Pieces that aren't shop gear (e.g. a fireblade) count as done.
+    function shopGearDone() {
+        const goals = config.workshop && config.workshop.gearGoals;
+        if (!goals || !goals.enabled) return true;
+        return (goals.slots || []).every(function (s) {
+            const w = character.slots && character.slots[s];
+            return !!w && (!npcSold.has(w.name) || (w.level || 0) >= (goals.upTo || 7));
+        });
+    }
     // Does this piece reach one of the chain's steps (name and level)?
     function reachedStep(steps, item) {
         return steps.some(function (s) { return s.name === item.name && (item.level || 0) >= (s.level || 0); });
@@ -135,9 +151,8 @@ module.exports = function createGear(ctx) {
                 let p = worn ? chainProgress(steps, worn) : 0;
                 if (p < 0 && !steps.replace) return;
                 // Replace chains come after the shop progression (player decision
-                // 2026-11-16): only once the worn piece reached the gear goals' level.
-                const goals = config.workshop && config.workshop.gearGoals;
-                if (p < 0 && goals && goals.enabled && (worn.level || 0) < (goals.upTo || 7)) return;
+                // 2026-11-16): only once ALL shop gear is at the gear goals' level.
+                if (p < 0 && !shopGearDone()) return;
                 if (progress === null || p < progress) progress = p;
             });
             if (progress === null || progress >= steps.length) return;

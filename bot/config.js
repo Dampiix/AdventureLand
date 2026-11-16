@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.36.1",
+    version: "1.36.2",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -209,8 +209,8 @@ module.exports = {
             // The offhand is a second weapon (dual wield, handled by gear/workshop).
             // Monster Hunter Warrior set first (player decision 2026-11-16): bought with
             // tokens in this order (7 + 8 + 11 = 26 of our 29 now; armor 12 and boots 15
-            // as tokens come in). Each piece is wished only once the shop piece in its slot
-            // is +7, kept by the merchant until it is +7 itself, and then worn over it (replace).
+            // as tokens come in). The set is wished only once ALL shop gear is +7; each
+            // piece is kept by the merchant until it is +7 itself, then worn over it (replace).
             warrior: [
                 { steps: [{ name: "mwhelmet", level: 7 }], replace: true },
                 { steps: [{ name: "mwgloves", level: 7 }], replace: true },
