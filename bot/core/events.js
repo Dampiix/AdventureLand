@@ -262,7 +262,12 @@ module.exports = function createEvents(ctx) {
 
         // Roaming bosses: engaged while visible (or seen in the last 30 s).
         (cfg.search || []).forEach(function (name) {
-            if (policy(name) === "always" && get_nearest_monster({ type: name })) boss = { name: name, seenAt: Date.now() };
+            if (policy(name) === "always" && get_nearest_monster({ type: name })) {
+                // Engaged: the next search is due searchEveryMs from now (stored), so a
+                // restart right after the kill does not send us searching at once.
+                if (!boss || boss.name !== name) searchLater(name);
+                boss = { name: name, seenAt: Date.now() };
+            }
         });
         if (boss && Date.now() - boss.seenAt < 30 * 1000) return { name: boss.name, monster: boss.name, dest: boss.name };
         if (boss) {
