@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.37.1",
+    version: "1.38.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -304,7 +304,12 @@ module.exports = {
             // guide's lessons) in parallel, with the class's main stat. Weapons come first,
             // armor follows once no weapon step is open (player request 2026-11-15).
             fromLevel: 0,
-            upTo: 7,
+            upTo: 7,                  // weapons and the "shop gear done" mark for class wishes
+            // Armor in stages (player decision 2026-11-16): ALL of a fighter's shop armor
+            // reaches a stage before any piece goes on to the next. From +7 each level adds
+            // +3 main stat. Guide estimate per piece from scratch: +8 ~170 copies / 1.1M,
+            // +9 ~2400 copies / 17M, +10 ~100,000 copies / 770M (not included).
+            stages: [7, 8, 9],
             everyMs: 3 * 60 * 1000,   // one gear-goal step this often even while wishes are open
             slots: ["helmet", "chest", "pants", "shoes", "gloves", "mainhand"],
             weapons: [{ name: "fireblade", minChance: 0.18 }], // 14% at +8, ~19% with full grace

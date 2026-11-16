@@ -1132,37 +1132,60 @@ module.exports = function createWorkshop(ctx) {
         return util.weaponPower(name, cfg.gearGoals.upTo, ctype) > bar ? name : null;
     }
 
-    function goalNeeds() {
+    // Staged armor goals (player decision 2026-11-16): ALL of a fighter's shop armor
+    // reaches one stage before any piece goes on to the next (gearGoals.stages, e.g.
+    // 7 -> 8 -> 9). Returns the stage this fighter's armor is working on, or null.
+    function armorStage(f) {
         const g = cfg.gearGoals;
-        const now = Date.now();
+        const stages = (g.stages && g.stages.length ? g.stages : [g.upTo]).slice().sort(function (a, b) { return a - b; });
+        const levels = g.slots.filter(function (s) { return s !== "mainhand"; }).map(function (s) {
+            const w = worn[f] && worn[f][s];
+            return w && sellerOf(w.name) && G.items[w.name] && G.items[w.name].upgrade ? (w.level || 0) : null;
+        }).filter(function (l) { return l !== null; });
+        if (!levels.length) return null;
+        const low = Math.min.apply(null, levels);
+        return stages.find(function (s) { return low < s; }) || null;
+    }
+    function finalStage() {
+        const g = cfg.gearGoals;
+        return g.stages && g.stages.length ? Math.max.apply(null, g.stages) : g.upTo;
+    }
+
+    function goalNeeds() {
+        return goalNeedsAll().filter(function (n) { return Date.now() - (goalSentAt[n.fighter + ":" + n.slot] || 0) > 15 * 60 * 1000; });
+    }
+    function goalNeedsAll() {
+        const g = cfg.gearGoals;
         const list = [];
         config.team.fighters.forEach(function (f) {
             const eq = worn[f];
             if (!eq) return;
+            const stage = armorStage(f);
             // A drop weapon in hand (e.g. a Phoenix weapon): the class's shop weapon at
             // upTo may beat it – build that, the fighter switches, and the drop weapon is
             // then upgraded until it wins again (betterWeapons). Player idea 2026-11-15.
             const shopWeapon = shopWeaponGoal(f);
-            if (shopWeapon) list.push({ fighter: f, slot: "mainhand", name: shopWeapon, stat: null, weapon: null });
+            if (shopWeapon) list.push({ fighter: f, slot: "mainhand", name: shopWeapon, stat: null, weapon: null, level: g.upTo });
             g.slots.forEach(function (slot) {
                 const w = eq[slot];
                 const def = w && G.items[w.name];
-                if (!def || !def.upgrade || !sellerOf(w.name) || (w.level || 0) < g.fromLevel || (w.level || 0) >= g.upTo) return;
+                const target = slot === "mainhand" ? g.upTo : stage;
+                if (!target || !def || !def.upgrade || !sellerOf(w.name) || (w.level || 0) < g.fromLevel || (w.level || 0) >= target) return;
                 // A drop weapon is being readied for this fighter: its shop weapon stays as it is.
                 if (slot === "mainhand" && weaponPlans().some(function (p) { return p.fighter === f; })) return;
                 // Stat armor: the worn piece's stat, else the fighter's main stat.
                 const cls = classes[f] && G.classes[classes[f]];
                 const stat = def.stat ? (w.stat || (cfg.mainStatOnArmor && cls ? cls.main_stat : null)) : null;
-                list.push({ fighter: f, slot: slot, name: w.name, stat: stat, weapon: null });
+                list.push({ fighter: f, slot: slot, name: w.name, stat: stat, weapon: null, level: target });
             });
             const main = eq.mainhand;
             (g.weapons || []).forEach(function (rule) {
                 if (main && main.name === rule.name && (main.level || 0) < g.upTo) {
-                    list.push({ fighter: f, slot: "mainhand", name: rule.name, stat: null, weapon: rule });
+                    list.push({ fighter: f, slot: "mainhand", name: rule.name, stat: null, weapon: rule, level: g.upTo });
                 }
             });
         });
-        return list.filter(function (n) { return now - (goalSentAt[n.fighter + ":" + n.slot] || 0) > 15 * 60 * 1000; });
+        return list;
     }
 
     function goalNames() {
@@ -1180,12 +1203,11 @@ module.exports = function createWorkshop(ctx) {
 
     // Finished bag copies matched to needs (right stat), in priority order.
     function goalAssignments(needs) {
-        const upTo = cfg.gearGoals.upTo;
         const taken = new Set();
         const out = [];
         needs.forEach(function (need) {
             const index = character.items.findIndex(function (item, i) {
-                return item && !taken.has(i) && !item.l && item.name === need.name && (item.level || 0) >= upTo &&
+                return item && !taken.has(i) && !item.l && item.name === need.name && (item.level || 0) >= need.level &&
                     (!need.stat || item.stat_type === need.stat);
             });
             if (index === -1) return;
@@ -1208,7 +1230,7 @@ module.exports = function createWorkshop(ctx) {
         return !isOutgrownGoalCopy(item);
     }
     function goalDoneFor(name) {
-        const upTo = cfg.gearGoals.upTo;
+        const upTo = finalStage(); // lower copies are bases for the next stage until the last one
         if ((cfg.gearGoals.weapons || []).some(function (r) { return r.name === name; })) return false;
         if (config.team.fighters.some(function (f) { return shopWeaponGoal(f) === name; })) return false;
         let wearers = 0;
@@ -1224,13 +1246,14 @@ module.exports = function createWorkshop(ctx) {
         return wearers > 0 && !open;
     }
     function isOutgrownGoalCopy(item) {
-        return goalsOn() && !!item && !!sellerOf(item.name) && (item.level || 0) < cfg.gearGoals.upTo &&
+        return goalsOn() && !!item && !!sellerOf(item.name) && (item.level || 0) < finalStage() &&
             goalNames().has(item.name) && goalDoneFor(item.name);
     }
 
     // Finished copies stay in the bag until they are delivered.
     function isGoalFinished(item) {
-        return goalsOn() && !!item && (item.level || 0) >= cfg.gearGoals.upTo && goalNames().has(item.name);
+        if (!goalsOn() || !item || !goalNames().has(item.name)) return false;
+        return goalNeedsAll().some(function (n) { return n.name === item.name && (item.level || 0) >= n.level; });
     }
 
     function kGold(x) {
@@ -1300,7 +1323,7 @@ module.exports = function createWorkshop(ctx) {
                 if (activeEarmarks().some(function (e) { return e.name === need.name; })) continue;
                 // 1. A finished copy without the right stat: scroll it for this fighter.
                 const finished = character.items.findIndex(function (item, i) {
-                    return item && !takenIdx.has(i) && !item.l && item.name === need.name && (item.level || 0) >= g.upTo;
+                    return item && !takenIdx.has(i) && !item.l && item.name === need.name && (item.level || 0) >= need.level;
                 });
                 if (finished !== -1 && need.stat) {
                     util.status("stat scroll for " + need.name, "orange");
@@ -1308,13 +1331,13 @@ module.exports = function createWorkshop(ctx) {
                     return true;
                 }
                 // 2. A finished copy in the bank.
-                const bankedDone = bankFind(need.name, function (l) { return l >= g.upTo; });
+                const bankedDone = bankFind(need.name, function (l) { return l >= need.level; });
                 if (bankedDone) {
                     await retrieve(bankedDone);
                     return true;
                 }
 
-                const w = { name: need.name, level: g.upTo };
+                const w = { name: need.name, level: need.level };
                 if (need.weapon) {
                     // 3. Weapon: a spare copy at upTo-1, only with enough grace.
                     if (weaponWaitUntil[need.name] > now) continue;
@@ -1331,9 +1354,9 @@ module.exports = function createWorkshop(ctx) {
                 }
 
                 // 4. Shop armor: continue with the best copy we have, else buy one.
-                const banked = bankFind(need.name, function (l) { return l < g.upTo; });
-                if (banked && banked.level > bestBagLevel(need.name, g.upTo)) await retrieve(banked);
-                util.status("gear goal: " + need.name + " +" + g.upTo + " for " + need.fighter, "orange");
+                const banked = bankFind(need.name, function (l) { return l < need.level; });
+                if (banked && banked.level > bestBagLevel(need.name, need.level)) await retrieve(banked);
+                util.status("gear goal: " + need.name + " +" + need.level + " for " + need.fighter, "orange");
                 await develop("_goal", w, { budgetKey: GOALS, minChance: 0, spare: true, stat: need.stat });
                 return true;
             }
