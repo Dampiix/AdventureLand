@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.35.1",
+    version: "1.35.2",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -205,6 +205,10 @@ module.exports = {
             ],
             priest: [
                 { steps: [{ name: "orbg", level: 0 }, { name: "orbg", level: 1 }, { name: "orbofint", level: 0 }] }, // big Pom Pom (level2n)
+            ],
+            // The offhand is a second weapon (dual wield, handled by gear/workshop).
+            warrior: [
+                { steps: [{ name: "orbg", level: 0 }, { name: "orbg", level: 1 }, { name: "orbofstr", level: 0 }] }, // Fire Spirit
             ],
             ranger: [
                 // Cole: 1 Armadillo Scale + 200 Beewings (scorpions drop it too). The +7 is built on

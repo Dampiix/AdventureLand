@@ -46,9 +46,31 @@ its stat goal. Main finding: **tier-2 armor at +7 has the same main stat as shop
 tougher (harder spots, bosses), while attack and healing come from weapons, orbs,
 offhands and levels.
 
-Monster Tokens: 24 in the bank (+2 carried). Allocation still to be decided.
+Monster Tokens: 29 in the bank (+1 carried). The Concord Mace (12) is no longer needed
+since the paladin left the team – allocation between the Hunter sets still to be decided.
 
-### Paladin (attack; wears fireblade +7 = 54 attack)
+### Warrior (attack, tank; DmpxWar since 2026-11-16, dual fireblade +7 = 54 + 54)
+Warrior hands: no penalty for short swords (fireblade), mace -8 % frequency, two-handed
+axes -10 %, bashers -12 %. "Power" = attack x class modifiers, at +7.
+1. **Dual wield** (done): two Fireblades +7. Single-target upgrades per hand: Fireblade
+   above +7 (budget), Sword of the Dead (Bones + Sword from weapon boxes: 60), Brinefang
+   (Blade +7 + 120 reefglass + cshell + 180k: 61), Hammer (weapon box 0.2 %: 71).
+2. **Orb chain** (class wish): Orb of Beginnings -> Orb of Strength (Fire Spirit).
+3. **Monster Hunter Warrior set** (tokens: helmet 7, gloves 8, pants 11, armor 12,
+   boots 15 = 53): +7 has the shop's +10 STR but 50–64 armor and ~50 resistance per piece.
+   Set: 2 pieces +2 STR, 3 pieces +3 STR +1 speed, 4 pieces +40 armor piercing, 5 crit +5.
+   As the party's tank this is the most useful token buy.
+4. **Rime Boots** (Rugged Shoes +6 + frostcore – 9 in stock – + 8 essence of frost + 12 Bee
+   Fur + 280k) and **Reef Vest** (Rugged Coat +7 + 200 reefglass + 2 cshell + 400k).
+5. Cape (class wish).
+6. **Cleave (level 52) needs an axe or scythe – all two-handed**, so it costs the dual
+   wield: Wooden Axe (shop) +7 73 power, Tunnel Axe (Cave of Many Dreams craft) +7 97,
+   Ghastly Battle Axe (crypt key + Wooden Basher +7 + essence of life) +7 104, T3 Axe /
+   Scythe ~121 (rare). Two fireblades +7 give 108 single-target. Decision for later:
+   stay dual (single target, bosses) or switch to an axe on group spots (needs a
+   weapon swap the bot doesn't do yet). Stomp (52) needs a basher (shop Wooden Basher).
+
+### Paladin (inactive since 2026-11-16 – replaced by the warrior)
 1. **Concord Mace** (12 tokens, Oathkeeper set) – +7: 70 attack (+30 %). Alternative
    Mace of the Dead (Wooden Basher + Bones + 240k): +7 69 attack, +6 STR, -8 VIT.
 2. **Orb chain** (already a class wish): Orb of Beginnings -> Orb of Strength (+3: 13 STR).
