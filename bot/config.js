@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.39.0",
+    version: "1.40.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -108,6 +108,20 @@ module.exports = {
         // The current farm spot is left only when a member's "unsafe" lasts this long
         // (verdicts near the edge flip back and forth); a death there counts at once.
         objectionGraceMs: 5 * 60 * 1000,
+        // Team model (prepared 2026-11-16, off until the warrior joins the party): a spot
+        // counts as safe when the party can take it together – the tank survives tankHits
+        // volleys of `pull` monsters (pullAggressive for monsters that attack on sight),
+        // the priests' healing covers that damage x healCover, everyone else survives
+        // otherHits hits until the tank's Taunt pulls the monster. Spots are then ranked by
+        // the guide's XP. Off: every member's own guide must call the spot safe alone.
+        // "/safety [map]" in the leader's client logs both verdicts per monster.
+        teamSafety: {
+            enabled: false,
+            tankClasses: ["warrior", "paladin"],
+            tankHits: 6, otherHits: 3, healCover: 1.5,
+            pull: 2, pullAggressive: 3,
+            abilities: [],                 // monster abilities we accept (others: the guide decides)
+        },
         refreshMs: 5 * 60 * 1000, // how often to ask the guide again
         crowdedAfterMs: 90 * 1000,    // no free target this long on the farm map -> spot is crowded
         crowdedForMs: 5 * 60 * 1000,  // then use the guide's next choice for this long

@@ -118,7 +118,9 @@ module.exports = function createDrops(ctx) {
         const teamSafe = function (m) { return !ctx.targeting || ctx.targeting.isTeamSafe(m); };
         let best = null;
         routesNow.forEach(function (r) {
-            if (!r || !rates[r.monster] || !(r.cycle > 0) || r.safe !== true || !teamSafe(r.monster)) return;
+            // The guide's own "safe" (for the leader alone) is not needed once the team model judges spots.
+            const teamModel = ctx.targeting && ctx.targeting.teamModelOn && ctx.targeting.teamModelOn();
+            if (!r || !rates[r.monster] || !(r.cycle > 0) || (r.safe !== true && !teamModel) || !teamSafe(r.monster)) return;
             const perCopy = teamCycle(r) / rates[r.monster];
             if (!best || perCopy < best.perCopy) best = { monster: r.monster, map: r.map, perCopy: perCopy };
         });

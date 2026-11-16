@@ -144,9 +144,81 @@ module.exports = function createTargeting(ctx) {
         if (own) comms.send(config.leader, "safe", { listed: Array.from(own.listed), safe: Array.from(own.safe), sure: Array.from(own.sure) });
     }
 
+    // ---- team model (config.targeting.teamSafety) -----------------------------------
+    // The per-member rule above asks every fighter's guide whether it could farm the
+    // monster ALONE – so a tank changes nothing. The team model judges the party like
+    // the boss check does, from everyone's stats (members report them every minute)
+    // and the game's damage formula:
+    //   tank:    survives tankHits volleys of `pull` monsters (pullAggressive for monsters
+    //            that attack on sight) and the priests' healing covers that damage per
+    //            second (x healCover; potions do the rest)
+    //   others:  survive otherHits hits of one monster – the tank's Taunt pulls it off
+    // Monsters with special abilities are left to the guide (teamSafety.abilities lists
+    // the ones we accept).
+    const ts = cfg.teamSafety || {};
+    function teamModelOn() {
+        return !!ts.enabled && party.enabled && !party.isMember;
+    }
+    function teamVerdict(monster) {
+        const m = G.monsters[monster];
+        if (!m || m.cooperative) return { ok: false, why: "no data / cooperative" };
+        const odd = Object.keys(m.abilities || {}).filter(function (a) { return !(ts.abilities || []).includes(a); });
+        if (odd.length) return { ok: false, why: "abilities: " + odd.join(", ") };
+        const team = ctx.events && ctx.events.teamStats ? ctx.events.teamStats() : [util.combatStats()];
+        const expected = config.team.fighters.filter(function (f) { return f === character.name || party.inParty(f); }).length;
+        if (team.length < expected) return { ok: false, why: "waiting for the team's stats" };
+        const tank = team.filter(function (f) { return (ts.tankClasses || []).includes(f.ctype); })
+            .sort(function (a, b) { return b.max_hp - a.max_hp; })[0];
+        if (!tank) return { ok: false, why: "no tank in the party" };
+        const hitOn = function (f) {
+            let def = 0;
+            if (m.damage_type === "physical") def = (f.armor || 0) - (m.apiercing || 0);
+            else if (m.damage_type === "magical") def = (f.resistance || 0) - (m.rpiercing || 0);
+            return (m.attack || 0) * 1.1 * util.damageMultiplier(def);
+        };
+        const pull = (m.aggro || 0) >= 1 ? (ts.pullAggressive || 3) : (ts.pull || 2);
+        const volley = hitOn(tank) * pull;
+        const tankHits = tank.max_hp / Math.max(1, volley);
+        if (tankHits < (ts.tankHits || 6)) return { ok: false, why: tank.name + " survives " + tankHits.toFixed(1) + " volleys of " + pull + " (need " + (ts.tankHits || 6) + ")" };
+        const incoming = volley * (m.frequency || 1);
+        const healing = team.reduce(function (s, f) { return s + (f.ctype === "priest" ? (f.heal || f.attack || 0) * (f.frequency || 1) : 0); }, 0);
+        if (incoming > healing * (ts.healCover || 1.5)) return { ok: false, why: Math.round(incoming) + " dmg/s on " + tank.name + " vs " + Math.round(healing) + " healing/s" };
+        for (const f of team) {
+            if (f === tank) continue;
+            const hits = f.max_hp / Math.max(1, hitOn(f));
+            if (hits < (ts.otherHits || 3)) return { ok: false, why: f.name + " survives " + hits.toFixed(1) + " hits (need " + (ts.otherHits || 3) + ")" };
+        }
+        return { ok: true, why: tank.name + " tanks " + pull + " (" + tankHits.toFixed(1) + " volleys, " + Math.round(incoming) + " dmg/s vs " + Math.round(healing) + " healing/s)" };
+    }
+
+    // Leader command "/safety [map]": every monster of the map (default: ours) with each
+    // member's own guide verdict and the team model's verdict – to see why a spot is closed.
+    function safetyReport(mapName) {
+        const mapId = (mapName || "").trim() || character.map;
+        const map = G.maps[mapId];
+        if (!map) { util.log("safety", "unknown map " + mapId, "orange"); return; }
+        let own = null;
+        try { own = ownSafe(get_progression()); } catch (e) { /* guide not ready */ }
+        const types = Array.from(new Set((map.monsters || []).map(function (p) { return p.type; }))).filter(function (t) { return G.monsters[t]; });
+        util.log("safety", mapId + ": " + types.length + " monster types" + (ts.enabled ? "" : " (team model is off)"), "yellow");
+        types.forEach(function (t) {
+            const members = [];
+            if (own) members.push(character.name + ":" + (own.safe.has(t) ? (own.sure.has(t) ? "safe" : "trial") : own.listed.has(t) ? "UNSAFE" : "?"));
+            Object.keys(reports).forEach(function (n) {
+                const r = reports[n];
+                if (!party.inParty(n)) return;
+                members.push(n + ":" + (r.safe.includes(t) ? (r.sure.includes(t) ? "safe" : "trial") : r.listed && r.listed.includes(t) ? "UNSAFE" : "?"));
+            });
+            const v = teamVerdict(t);
+            util.log("safety", t + " | " + members.join(" ") + " | team: " + (v.ok ? "OK - " : "no - ") + v.why, v.ok ? "green" : "white");
+        });
+    }
+
     // Who (if anyone) is not safe at this monster.
     function objector(monster, own) {
         if (recentDeath(monster)) return "the team (recent death)";
+        // Team model: the party as a whole can take it – no single member's veto.
+        if (teamModelOn() && teamVerdict(monster).ok) return null;
         const proven = !cfg.avoidTrial || provenByUs(monster);
         let unlisted = 0; // fighters whose guide doesn't know the monster
         if (own) {
@@ -205,6 +277,21 @@ module.exports = function createTargeting(ctx) {
             const advice = get_progression();
             if (!advice) return null;
             const own = ownSafe(advice);
+            // Team model: the guide's routes (for the leader alone) ranked by XP, keeping
+            // every monster the team can take – also ones the guide calls unsafe solo.
+            if (teamModelOn() && Array.isArray(advice.routes)) {
+                const seen = {};
+                const teamList = advice.routes
+                    .filter(function (r) { return r && G.monsters[r.monster] && !lastingObjector(r.monster, own); })
+                    .sort(function (a, b) { return (b.xp || 0) - (a.xp || 0); })
+                    .filter(function (r) { if (seen[r.monster]) return false; seen[r.monster] = true; return true; })
+                    .slice(0, 3)
+                    .map(function (r) { return { monster: r.monster, map: r.map, source: "guide, team model" }; });
+                if (teamList.length) {
+                    const now = Date.now();
+                    return teamList.find(function (c) { return !(crowdedUntil[c.monster] > now); }) || teamList[0];
+                }
+            }
             const raw = (advice.choices || [])
                 .filter(function (c) { return c.kind === "farm" && G.monsters[c.monster]; });
             list = raw
@@ -405,5 +492,6 @@ module.exports = function createTargeting(ctx) {
         return get_nearest_monster({ type: type, no_target: true });
     }
 
-    return { currentFarm: currentFarm, pick: pick, isValid: isValid, reportSearch: reportSearch, isTeamSafe: isTeamSafe, whyUnsafe: whyUnsafe };
+    return { currentFarm: currentFarm, pick: pick, isValid: isValid, reportSearch: reportSearch, isTeamSafe: isTeamSafe, whyUnsafe: whyUnsafe,
+        teamModelOn: teamModelOn, teamVerdict: teamVerdict, safetyReport: safetyReport };
 };

@@ -26,6 +26,7 @@ let botRunner = null;
 let botComms = null;
 let botParty = null;
 let botSupply = null;
+let botTargeting = null;
 
 function noClassModule() {
     return {
@@ -99,6 +100,7 @@ function startBot() {
         const classSlot = BOT_CLASS_SLOTS[character.ctype];
         const cls = classSlot ? require_code(classSlot)(ctx) : noClassModule();
         ctx.targeting = require_code("bot_targeting")(ctx);
+        botTargeting = ctx.targeting;
         ctx.gear = require_code("bot_gear")(ctx);
         ctx.supply = require_code("bot_supply")(ctx);
         botSupply = ctx.supply;
@@ -118,9 +120,14 @@ function on_party_invite(name) {
 
 // Chat commands typed in this character's client, e.g. "/pickup".
 // Returning -1 lets the game handle unknown commands as usual.
-function handle_command(command) {
+function handle_command(command, args) {
     if (command === "pickup" && botSupply) {
         botSupply.requestNow();
+        return true;
+    }
+    // "/safety [map]": per-member guide verdicts and the team model for every monster there.
+    if (command === "safety" && botTargeting) {
+        botTargeting.safetyReport(Array.isArray(args) ? args.join(" ") : (args || ""));
         return true;
     }
     return -1;
