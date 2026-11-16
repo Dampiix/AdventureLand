@@ -928,22 +928,24 @@ module.exports = function createWorkshop(ctx) {
         return best;
     }
 
-    // Grace from failed fodder only lifted items of the fodder's grade (2026-11-16: 875k of
-    // Wooden Basher failures at +6, normal grade, moved the firebow +5, high grade, by 0%).
-    // So grace is farmed only when the fodder at +level has the item's grade, and a
-    // (fodder, item, level) that gained nothing is not tried again for a day.
+    // Game source (server.js upgrade): every failed attempt at +L adds 1 player grace for +L,
+    // whatever the item; it counts as min(3, fails / 4.5) plus the upgraded item's own
+    // grace and a fixed term by its base grade (normal +1, high -1, rare -2), and is then
+    // divided by L and 4.8 minus a threshold. So fodder grace only lifts items of normal
+    // base grade (shop gear); high/rare items (fire weapons) gain ~0-1% (2026-11-16: 875k
+    // of Wooden Basher failures moved the firebow +5 by 0%). A run that gained nothing
+    // blocks that item and level for a day.
     const noGraceUntil = {}; // "item:level" -> timestamp
     function graceHelps(item, level) {
-        const fodder = cfg.grace.fodder;
         const k = item.name + ":" + level;
         if (noGraceUntil[k] > Date.now()) return false;
-        const same = item_grade({ name: fodder, level: level }) === item_grade({ name: item.name, level: level });
-        if (!same) {
+        const normal = item_grade({ name: item.name, level: 0 }) === 0;
+        if (!normal) {
             noGraceUntil[k] = Date.now() + 24 * 60 * 60 * 1000;
-            util.log("workshop", "no grace for " + item.name + " +" + level + " -> +" + (level + 1) + ": " + fodder +
-                " has another grade there (grace only helps the same grade)", "orange");
+            util.log("workshop", "no grace for " + item.name + " +" + level + " -> +" + (level + 1) +
+                ": not a normal-grade item (grace -1/-2 on it, fodder grace barely helps)", "orange");
         }
-        return same;
+        return normal;
     }
 
     function fodderIndex(maxLevel) {

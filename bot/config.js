@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.48.8",
+    version: "1.49.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -372,10 +372,13 @@ module.exports = {
             slots: ["helmet", "chest", "pants", "shoes", "gloves", "mainhand"],
             weapons: [
                 { name: "fireblade", minChance: 0.18 }, // 14% at +8, ~19% with full grace
-                // Fire weapons in hand below upTo: build a +upTo copy from a spare one (bank
-                // or bag, normal risk floors and grace); the worn copy stays on the fighter.
-                { name: "firebow", full: true },
-                { name: "firestaff", full: true },
+                // Fire weapons in hand below upTo: build a +upTo copy from a spare one (bank or
+                // bag); the worn copy stays on the fighter. Brute force (player decision
+                // 2026-11-16): grace barely helps high-grade items (grace -1 on them), so every
+                // spare copy is tried right away with the normal scroll - no floor, no grace,
+                // no stronger scrolls; a lost copy waits for the next drop or craft.
+                { name: "firebow", full: true, minChance: 0 },
+                { name: "firestaff", full: true, minChance: 0 },
             ],
             // Daily budget from income (player decision 2026-11-15): a share of the merchant's
             // net gold gain over the last 24 h; the gear goals' own spending is not counted
