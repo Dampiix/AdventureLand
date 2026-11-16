@@ -439,8 +439,19 @@ module.exports = function createGear(ctx) {
         const def = G.items[item.name];
         if (!def || !WEARABLE.includes(def.type) || !usable(def)) return false;
         if (fillsEmptySlot(def)) return true;
+        // A new piece is held only while the guide would put it on (plus a short moment
+        // for the guide to see it). Holding every wearable drop for 3 min – and again after
+        // each restart – kept Rings of Joy, HP belts and the old helmet from the merchant.
         const seen = firstSeen[item.name + ":" + (item.level || 0)];
-        return !seen || Date.now() - seen < 3 * 60 * 1000;
+        if (!seen || Date.now() - seen < 20 * 1000) return true;
+        return guideWantsOn(item);
+    }
+    let equipRows = { at: 0, rows: [] };
+    function guideWantsOn(item) {
+        if (Date.now() - equipRows.at > 5000) {
+            equipRows = { at: Date.now(), rows: (guide().rows || []).filter(function (r) { return r.action && r.action.kind === "equip"; }) };
+        }
+        return equipRows.rows.some(function (r) { return r.action.name === item.name && (r.action.level || 0) === (item.level || 0); });
     }
 
     return { tick: tick, isReserved: isReserved };
