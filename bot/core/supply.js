@@ -61,6 +61,11 @@ module.exports = function createSupply(ctx) {
 
     // Gold first (needs no bag space), then items. A full merchant bag stops
     // the item part but never the gold part.
+    // Only stop for a handover when there is something to give: passing the merchant in
+    // town with nothing to hand over stopped every route again (2026-11-17).
+    function somethingToHandOver() {
+        return character.gold - util.goldAmount(s.goldKeep) >= s.goldMinSend || util.findItemIndex(isHandover) !== -1;
+    }
     async function handOver(name) {
         handingOver = true;
         if (is_moving(character)) stop();
@@ -89,6 +94,7 @@ module.exports = function createSupply(ctx) {
         } finally {
             if (sent) util.log("supply", "handed " + sent + " stacks to " + name, "green");
             lastPickup = Date.now(); // even a partial handover counts as the routine visit
+            nextHandoverAt = Math.max(nextHandoverAt, Date.now() + 15 * 1000); // no stop-and-go while passing by
             handingOver = false;
         }
     }
@@ -143,7 +149,7 @@ module.exports = function createSupply(ctx) {
         const c = counts();
         const now = Date.now();
 
-        if (merchant && !handingOver && now >= nextHandoverAt) {
+        if (merchant && !handingOver && now >= nextHandoverAt && somethingToHandOver()) {
             const m = get_player(merchant);
             if (m && util.isNear(m, 250)) handOver(merchant); // runs async, guarded by handingOver
         }
