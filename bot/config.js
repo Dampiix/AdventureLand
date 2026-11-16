@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.27.0",
+    version: "1.28.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -174,22 +174,26 @@ module.exports = {
         enabled: true,
         wishEveryMs: 5 * 60 * 1000, // re-read the guide and resend wishes this often
         maxWishes: 8,   // a longer list shifts less (the merchant works through it one by one)
-        // Wishes per class ("all" = every class) for slots the guide leaves empty. Each one
-        // is sent only while its slot is empty or holds a lower copy of the same item;
-        // anything else worn there wins. Not counted as gear goals (no further upgrades).
+        // Wishes per class ("all" = every class) for slots the guide leaves empty. An entry
+        // is one item or a chain { steps: [...] }: only the first step the worn piece does
+        // not reach is wished, a piece of a later step (e.g. a lucky drop) counts for the
+        // earlier ones and is equipped over them. A slot holding something outside the
+        // entry is left alone. Not counted as gear goals (no further upgrades).
         classWishes: {
             all: [
                 { name: "cape", level: 0 },      // 40 Leather -> exchange (wolves, boars)
             ],
+            // Orbs: Orb of Beginnings (Cole: ascale + pleather + cscale + bfur) to +2 first
+            // (+4 to every main stat), then the class orb at +1 (+7 main stat) – +0 only ties.
             paladin: [
-                { name: "orbofstr", level: 0 },  // Fire Spirit drop
+                { steps: [{ name: "orbg", level: 0 }, { name: "orbg", level: 2 }, { name: "orbofstr", level: 1 }] }, // Fire Spirit
             ],
             priest: [
-                { name: "orbofint", level: 0 },  // Pom Pom drop
+                { steps: [{ name: "orbg", level: 0 }, { name: "orbg", level: 2 }, { name: "orbofint", level: 1 }] }, // big Pom Pom (level2n)
             ],
             ranger: [
                 { name: "quiver", level: 0 },    // Cole: 1 Armadillo Scale + 200 Beewings; scorpion drop
-                { name: "orbofdex", level: 0 },  // Fire Spirit drop
+                { steps: [{ name: "orbg", level: 0 }, { name: "orbg", level: 2 }, { name: "orbofdex", level: 1 }] }, // Fire Spirit
             ],
         },
     },

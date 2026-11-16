@@ -86,28 +86,79 @@ module.exports = function createGear(ctx) {
     }
 
     // Fixed wishes for our class (config.gear.classWishes, "all" for every class) that
-    // the guide does not ask for. They only fill a slot that is empty or holds a lower
-    // copy of the same item – anything else we wear there stays our choice.
-    function classWishes(have) {
+    // the guide does not ask for. An entry is one item ({ name, level }) or a chain of
+    // steps ({ steps: [...] }, e.g. Orb of Beginnings +0 -> +2 -> Orb of Strength +1):
+    // only the first step the worn piece doesn't reach yet is wished. A piece of a later
+    // step counts for all earlier ones, so a lucky drop skips ahead. Anything worn there
+    // that is not part of the chain stays our choice (no wish).
+    function classChains() {
         const table = cfg.classWishes || {};
-        const list = [];
-        (table.all || []).concat(table[character.ctype] || []).forEach(function (w) {
-            const def = w && G.items[w.name];
-            if (!def || !usable(def) || have.some(function (x) { return x.name === w.name; })) return;
-            const level = w.level || 0;
-            const slots = SLOTS_BY_TYPE[def.type] || [];
-            if (!slots.length) return;
-            const open = slots.some(function (s) {
-                const worn = character.slots && character.slots[s];
-                return !worn || (worn.name === w.name && (worn.level || 0) < level);
+        return (table.all || []).concat(table[character.ctype] || []).map(function (e) {
+            return (e && e.steps ? e.steps : [e]).filter(function (s) {
+                return s && G.items[s.name] && usable(G.items[s.name]);
             });
-            if (!open) return;
-            const mainStat = config.workshop && config.workshop.mainStatOnArmor && G.classes[character.ctype]
-                ? G.classes[character.ctype].main_stat : null;
-            const stat = def.stat ? mainStat : null;
-            list.push(stat ? { name: w.name, level: level, stat: stat } : { name: w.name, level: level });
+        }).filter(function (steps) { return steps.length; });
+    }
+    // How many steps of the chain this piece covers (0 = none or not part of it).
+    function chainProgress(steps, item) {
+        if (!item) return 0;
+        let best = -1;
+        steps.forEach(function (s, i) {
+            if (s.name !== item.name) return;
+            best = Math.max(best, (item.level || 0) >= (s.level || 0) ? i + 1 : i);
+        });
+        return best;
+    }
+    function chainOf(name) {
+        return classChains().find(function (steps) { return steps.some(function (s) { return s.name === name; }); }) || null;
+    }
+    function classWishes(have) {
+        const list = [];
+        const mainStat = config.workshop && config.workshop.mainStatOnArmor && G.classes[character.ctype]
+            ? G.classes[character.ctype].main_stat : null;
+        classChains().forEach(function (steps) {
+            const slots = SLOTS_BY_TYPE[G.items[steps[0].name].type] || [];
+            // The least advanced slot of this type (an empty one first); a slot holding
+            // something outside the chain is left alone.
+            let progress = null;
+            slots.forEach(function (s) {
+                const worn = character.slots && character.slots[s];
+                const p = worn ? chainProgress(steps, worn) : 0;
+                if (p < 0) return;
+                if (progress === null || p < progress) progress = p;
+            });
+            if (progress === null || progress >= steps.length) return;
+            const w = steps[progress];
+            if (have.some(function (x) { return x.name === w.name; })) return;
+            const stat = G.items[w.name].stat ? mainStat : null;
+            list.push(stat ? { name: w.name, level: w.level || 0, stat: stat } : { name: w.name, level: w.level || 0 });
         });
         return list;
+    }
+    // A bag piece that is further along a class chain than the worn one: { num, slot }.
+    function chainUpgrade() {
+        for (let num = 0; num < character.items.length; num++) {
+            const item = character.items[num];
+            const steps = item && chainOf(item.name);
+            if (!steps) continue;
+            const mine = chainProgress(steps, item);
+            const slot = (SLOTS_BY_TYPE[G.items[item.name].type] || []).find(function (s) {
+                const worn = character.slots && character.slots[s];
+                if (!worn) return false;
+                const p = chainProgress(steps, worn);
+                return p >= 0 && worn.name !== item.name && mine > p;
+            });
+            if (slot) return { num: num, slot: slot };
+        }
+        return null;
+    }
+    // Would equipping this piece step back on a class chain (guide rows don't know them)?
+    function chainDowngrade(item, slot) {
+        const worn = character.slots && character.slots[slot];
+        const steps = worn && chainOf(worn.name);
+        if (!steps) return false;
+        const p = chainProgress(steps, item);
+        return p >= 0 && p < chainProgress(steps, worn);
     }
 
     function sendWishes() {
@@ -154,6 +205,7 @@ module.exports = function createGear(ctx) {
                 const a = row.action;
                 const item = character.items[a.num];
                 if (!item || item.name !== a.name || (item.level || 0) !== (a.level || 0)) continue; // bag changed meanwhile
+                if (chainDowngrade(item, a.slot)) continue;
                 await equip(a.num, a.slot);
                 util.log("gear", "equipped " + a.name + " +" + (a.level || 0) + " -> " + a.slot, "green");
                 return; // the bag changed – re-read the guide next time
@@ -174,6 +226,15 @@ module.exports = function createGear(ctx) {
                 if (!slot) continue;
                 await equip(num, slot);
                 util.log("gear", "equipped " + item.name + " +" + (item.level || 0) + (item.stat_type ? " " + item.stat_type : "") + " -> " + slot + " (better copy)", "green");
+                return;
+            }
+            // A piece further along a class wish chain (e.g. Orb of Strength +1 over
+            // Orb of Beginnings +2): the guide doesn't know our chains.
+            const up = chainUpgrade();
+            if (up) {
+                const item = character.items[up.num];
+                await equip(up.num, up.slot);
+                util.log("gear", "equipped " + item.name + " +" + (item.level || 0) + " -> " + up.slot + " (next class wish step)", "green");
                 return;
             }
             // A stronger weapon (e.g. a Phoenix weapon the merchant upgraded for us): the
@@ -296,6 +357,14 @@ module.exports = function createGear(ctx) {
             return (item.level || 0) > (w.level || 0) || ((item.level || 0) === (w.level || 0) && !!item.stat_type && !w.stat_type);
         })) return true;
         if (strongerWeapon(item)) return true;
+        // Further along a class wish chain than what we wear: the equip pass takes it.
+        const steps = chainOf(item.name);
+        if (steps && Object.keys(slots).some(function (s) {
+            const w = slots[s];
+            if (!w || w.name === item.name) return false;
+            const p = chainProgress(steps, w);
+            return p >= 0 && chainProgress(steps, item) > p;
+        })) return true;
         // Equipment for a slot we leave empty, or that just arrived (the merchant's
         // delivery may no longer be among our top wishes): give the equip pass a chance.
         const def = G.items[item.name];

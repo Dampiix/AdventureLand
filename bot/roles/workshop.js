@@ -612,6 +612,16 @@ module.exports = function createWorkshop(ctx) {
                 return false; // one roll per work() round; the next round continues
             }
         }
+        // Craftable (e.g. Orb of Beginnings at Cole): make another +0 copy.
+        if (crafterOf(w.name) && copiesMissing(w.name, w.level) > 0) {
+            const r = await craftItem(k, w.name);
+            if (r.ok) return false; // the next round compounds or crafts again
+            util.log("workshop", "can't craft " + w.name + " yet - missing " +
+                r.missing.map(function (m) { return (m.need - m.have) + "x " + m.name; }).join(", "), "orange");
+            r.missing.forEach(function (m) { noteIngredientShortage(m.name, m.level, m.need, w.name); });
+            blockedUntil[k] = Date.now() + cfg.giveUpForMs;
+            return false;
+        }
         util.log("workshop", "not enough copies to build " + w.name + " +" + w.level + " yet", "orange");
         noteShortage(w.name, w.level);
         blockedUntil[k] = Date.now() + cfg.giveUpForMs;

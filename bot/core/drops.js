@@ -50,16 +50,70 @@ module.exports = function createDrops(ctx) {
         let best = null;
         const consider = function (a) {
             if (!a || a.kind !== "farm" || !a.route || a.blocked || !G.monsters[a.route.monster]) return;
+            // The guide's plain XP row (no item, no rate) says nothing about this drop.
+            if (!(a.rate > 0) && !(a.meanSeconds > 0)) return;
             // Seconds per copy: the route's kill cycle divided by the drop rate (guide's own numbers).
             const perCopy = a.rate > 0 && a.route.cycle > 0
                 ? a.route.cycle / a.rate
-                : (a.meanSeconds || Infinity) / Math.max(1, need.copies);
+                : a.meanSeconds / Math.max(1, need.copies);
             if (!best || perCopy < best.perCopy) best = { monster: a.route.monster, map: a.route.map, perCopy: perCopy };
         };
         (advice && advice.rows || []).forEach(function (row) {
             consider(row.action);
             const tree = row.plan && row.plan.tree;
             if (tree) (tree.alternatives || []).forEach(consider);
+        });
+        // The guide has no drop route for some items (e.g. a Cape from 40 Leather, or
+        // books when it counts other copies): use the game's drop tables ourselves.
+        const own = tableRoute(need.name);
+        if (own && (!best || own.perCopy < best.perCopy)) best = own;
+        return best;
+    }
+
+    // Per-kill chance of `name` from each monster: direct drops plus one exchange step
+    // (e.g. 40 Leather -> Cape with 20 of 21.5 weight). { monster: rate }
+    function dropRates(name) {
+        const rates = {};
+        const add = function (monster, rate) { if (rate > 0) rates[monster] = (rates[monster] || 0) + rate; };
+        const monsters = (G.drops && G.drops.monsters) || {};
+        const perKill = function (item) {
+            const out = {};
+            Object.keys(monsters).forEach(function (m) {
+                (monsters[m] || []).forEach(function (d) {
+                    if (d && d[1] === item) out[m] = (out[m] || 0) + d[0] * (typeof d[2] === "number" ? d[2] : 1);
+                });
+            });
+            return out;
+        };
+        const direct = perKill(name);
+        Object.keys(direct).forEach(function (m) { add(m, direct[m]); });
+        Object.keys(G.drops || {}).forEach(function (source) {
+            const table = G.drops[source];
+            const def = G.items[source];
+            if (!Array.isArray(table) || !def || !def.e) return;
+            const total = table.reduce(function (s, d) { return s + (d && d[0] > 0 ? d[0] : 0); }, 0);
+            const weight = table.reduce(function (s, d) { return s + (d && d[1] === name ? d[0] : 0); }, 0);
+            if (!(total > 0) || !(weight > 0)) return;
+            const share = weight / total / def.e;
+            const from = perKill(source);
+            Object.keys(from).forEach(function (m) { add(m, from[m] * share); });
+        });
+        return rates;
+    }
+
+    // Fastest safe guide route among the monsters that drop `name`, or null.
+    function tableRoute(name) {
+        const rates = dropRates(name);
+        if (!Object.keys(rates).length) return null;
+        let routesNow = [];
+        try { routesNow = (get_progression() || {}).routes || []; } catch (e) { return null; }
+        // Same safety rule as any farm target: safe for every member, trials only once proven.
+        const teamSafe = function (m) { return !ctx.targeting || ctx.targeting.isTeamSafe(m); };
+        let best = null;
+        routesNow.forEach(function (r) {
+            if (!r || !rates[r.monster] || !(r.cycle > 0) || r.safe !== true || !teamSafe(r.monster)) return;
+            const perCopy = r.cycle / rates[r.monster];
+            if (!best || perCopy < best.perCopy) best = { monster: r.monster, map: r.map, perCopy: perCopy };
         });
         return best;
     }
@@ -73,7 +127,12 @@ module.exports = function createDrops(ctx) {
         const found = [];
         needs.forEach(function (need) {
             const r = routeFor(need);
-            if (!r) return;
+            if (!r) {
+                if (Date.now() - (slowLogged[need.name] || 0) < 60 * 60 * 1000) return;
+                slowLogged[need.name] = Date.now();
+                util.log("drops", need.name + ": no safe spot drops it yet - not farming it", "white");
+                return;
+            }
             if (r.perCopy > limit) {
                 if (Date.now() - (slowLogged[need.name] || 0) < 60 * 60 * 1000) return;
                 slowLogged[need.name] = Date.now();
