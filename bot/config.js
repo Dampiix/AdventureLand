@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.26.0",
+    version: "1.26.1",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -155,7 +155,7 @@ module.exports = {
 
     // Fighter side of the item/gold flow
     supply: {
-        keep: ["tracker", "glolipop"],   // never handed to the merchant
+        keep: ["tracker"],               // never handed to the merchant
         keepByClass: { priest: ["essenceoflife"], ranger: ["poison"] }, // skill ingredients
         // Fighters only need gold to buy potions themselves when the merchant can't;
         // the merchant buys all equipment. So they keep a small emergency fund
@@ -330,7 +330,7 @@ module.exports = {
         bank: {
             whenFreeBelow: 6,
             keep: [
-                "tracker", "glolipop",
+                "tracker",
                 "scroll0", "scroll1", "scroll2", "cscroll0", "cscroll1", "cscroll2",
                 "essenceoflife", "poison", // skill ingredients for priests / rangers
             ],
