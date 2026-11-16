@@ -274,6 +274,12 @@ module.exports = function createMerchant(ctx) {
     async function bankTrip() {
         util.status("banking", "yellow");
         await smart_move("bank");
+        // smart_move can end outside the bank (interrupted by another move, e.g. a pickup
+        // call): then every store fails with not_in_bank – try again on the next round.
+        if (!character.bank) {
+            util.log("merchant", "not inside the bank after the walk - banking later", "white");
+            return 0;
+        }
         let stored = 0;
         let full = false;
         // Walk the bag once from the end; each index is checked right before storing.
@@ -284,8 +290,10 @@ module.exports = function createMerchant(ctx) {
                 await bank_store(index); // auto placement, merges into existing stacks
                 stored++;
             } catch (e) {
-                if (util.errReason(e) === "bank_full") full = true; // stackable items may still fit – keep going
-                else util.log("merchant", "could not bank " + item.name + ": " + util.errReason(e), "orange");
+                const why = util.errReason(e);
+                if (why === "bank_full") full = true; // stackable items may still fit – keep going
+                else if (why === "not_in_bank") break; // left the bank meanwhile: next round
+                else util.log("merchant", "could not bank " + item.name + ": " + why, "orange");
             }
         }
         util.log("merchant", "banked " + stored + " stacks" + (full ? " - bank is full, a new pack is needed" : ""), full ? "orange" : "green");
