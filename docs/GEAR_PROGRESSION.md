@@ -20,6 +20,15 @@ heal 848/1000. The remaining lessons add little (+6 to +15 each), so the shop pa
 alone does not reach 1000 for the fighters – what the guide does after the last
 lesson is unknown until a character gets there.
 
+The in-game guide window (screenshot 2026-11-16) shows only 8 of these lessons:
+`rings2` (stat rings +2) is not listed there, but its farm suggestion (Water Spirit
+for Ring of Strength) still appears in the "Move" list. The last lesson, "Build a
+lasting equipment foundation", covers spare +7 armor/weapons and books from bats for
+offhands, and says level gains may finish the goal without another costly upgrade –
+so after the lessons the guide expects levels to close the gap to 1000 attack.
+"Bring both earrings to +2" says to develop spare earrings while keeping both ears
+equipped (we never compound worn copies – decided 2026-11-16).
+
 With an explicit goal the guide plans beyond the shop:
 - `{ kind: "set", name: "oathkeeper" }` (paladin): Concord Mace +5 via 12 monster
   tokens, +82 attack (expected scroll gold ~3.2M); Vowkeeper Gloves +3 STR alone
