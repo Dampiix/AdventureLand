@@ -216,7 +216,7 @@ module.exports = function createGear(ctx) {
                 const item = character.items[num];
                 const def = item && G.items[item.name];
                 if (!def || !WEARABLE.includes(def.type) || !usable(def)) continue;
-                const slot = (SLOTS_BY_TYPE[def.type] || []).find(function (s) {
+                const slot = slotsFor(def).find(function (s) {
                     const w = character.slots && character.slots[s];
                     if (!w || w.name !== item.name) return false;
                     const lvl = item.level || 0, wl = w.level || 0;
@@ -246,11 +246,19 @@ module.exports = function createGear(ctx) {
                 util.log("gear", "equipped " + item.name + " +" + (item.level || 0) + " -> mainhand (stronger weapon)", "green");
                 return;
             }
+            // Dual wield (warrior): a bag weapon clearly stronger than the one in the offhand.
+            for (let num = 0; num < character.items.length; num++) {
+                const item = character.items[num];
+                if (!item || !strongerOffhand(item)) continue;
+                await equip(num, "offhand");
+                util.log("gear", "equipped " + item.name + " +" + (item.level || 0) + " -> offhand (stronger weapon)", "green");
+                return;
+            }
             for (let num = 0; num < character.items.length; num++) {
                 const item = character.items[num];
                 const def = item && G.items[item.name];
                 if (!def || !WEARABLE.includes(def.type) || !usable(def)) continue;
-                const slot = (SLOTS_BY_TYPE[def.type] || []).find(function (s) { return !(character.slots && character.slots[s]); });
+                const slot = slotsFor(def).find(function (s) { return !(character.slots && character.slots[s]); });
                 if (!slot) continue;
                 await equip(num, slot);
                 util.log("gear", "equipped " + item.name + " +" + (item.level || 0) + " -> " + slot + " (slot was empty)", "green");
@@ -327,9 +335,29 @@ module.exports = function createGear(ctx) {
         const bar = (m ? util.weaponPower(m.name, m.level || 0, character.ctype) : 0) * (1 + ((bw && bw.margin) || 0));
         return util.weaponPower(item.name, item.level || 0, character.ctype) > bar;
     }
+    // Slots this item can go into for our class: a warrior also carries a sword, short
+    // sword, fist or mace in the offhand (dual wield) – not next to a two-handed weapon.
+    function slotsFor(def) {
+        const slots = (SLOTS_BY_TYPE[def.type] || []).slice();
+        const cls = G.classes[character.ctype] || {};
+        if (def.type === "weapon" && (cls.offhand || {})[def.wtype]) {
+            const m = character.slots && character.slots.mainhand;
+            if (!(m && util.isDoublehand(m.name, character.ctype))) slots.push("offhand");
+        }
+        return slots;
+    }
+    // A bag weapon clearly stronger than the weapon in our offhand (dual wield).
+    function strongerOffhand(item) {
+        const def = G.items[item.name];
+        const o = character.slots && character.slots.offhand;
+        if (!def || def.type !== "weapon" || !o || !G.items[o.name] || G.items[o.name].type !== "weapon") return false;
+        if (!slotsFor(def).includes("offhand")) return false;
+        const bw = config.workshop && config.workshop.betterWeapons;
+        const bar = util.weaponPower(o.name, o.level || 0, character.ctype) * (1 + ((bw && bw.margin) || 0));
+        return util.weaponPower(item.name, item.level || 0, character.ctype) > bar;
+    }
     function fillsEmptySlot(def) {
-        const slots = SLOTS_BY_TYPE[def.type] || [];
-        return slots.some(function (s) { return !(character.slots && character.slots[s]); });
+        return slotsFor(def).some(function (s) { return !(character.slots && character.slots[s]); });
     }
 
     function tick() {
@@ -356,7 +384,7 @@ module.exports = function createGear(ctx) {
             if (w.stat_type && item.stat_type !== w.stat_type) return false; // would lose the stat
             return (item.level || 0) > (w.level || 0) || ((item.level || 0) === (w.level || 0) && !!item.stat_type && !w.stat_type);
         })) return true;
-        if (strongerWeapon(item)) return true;
+        if (strongerWeapon(item) || strongerOffhand(item)) return true;
         // Further along a class wish chain than what we wear: the equip pass takes it.
         const steps = chainOf(item.name);
         if (steps && Object.keys(slots).some(function (s) {

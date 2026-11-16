@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.34.1",
+    version: "1.35.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -298,7 +298,11 @@ module.exports = {
             // is not income. No fixed total since 2026-11-16 (player decision): long-term
             // positive cash flow, with workshop.keepGold as the floor. `total` (optional)
             // would cap everything ever spent on gear goals.
-            budget: { incomeShare: 0.5, transferAbove: 3000000 },
+            budget: {
+                incomeShare: 0.5, transferAbove: 3000000,
+                // Player decision 2026-11-16: +5M for 5 h to gear up the new warrior.
+                extra: { amount: 5000000, until: "2026-11-16T18:20:00Z" },
+            },
         },
         // Fixed wishes on top of the guide's. Items without a shop are bought with tokens
         // (Monster Tokens at Daisy). Steps below the risk tier are not attempted: the copy

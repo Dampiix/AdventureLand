@@ -353,7 +353,11 @@ module.exports = function createWorkshop(ctx) {
         const spentInWindow = income.spends.reduce(function (sum, s) { return sum + s.a; }, 0);
         const moved = transfers();
         const earned = character.gold - base.gold + spentInWindow - moved;
-        let allowed = Math.max(0, earned * b.incomeShare - spentInWindow);
+        // A player-granted extra (budget.extra: { amount, until }) on top of the income share,
+        // e.g. to gear up a new character faster. What it pays for still counts as spent in
+        // the 24 h window, so after it expires the income share has to catch up first.
+        const extra = b.extra && b.extra.amount && Date.now() < Date.parse(b.extra.until) ? b.extra.amount : 0;
+        let allowed = Math.max(0, earned * b.incomeShare + extra - spentInWindow);
         if (b.total) allowed = Math.min(allowed, Math.max(0, b.total - income.total));
         return { allowed: allowed, earned: earned, spent: spentInWindow, hours: (Date.now() - base.t) / 3600000, moved: moved };
     }
@@ -1391,6 +1395,25 @@ module.exports = function createWorkshop(ctx) {
                     util.log("workshop", p.name + " +" + p.level + " goes to " + f + " (empty " + type + " slot)", "yellow");
                 }
             });
+            // Dual wield (warrior): an empty offhand next to a one-handed weapon gets the
+            // strongest offhand-capable weapon we hold. Waits while a weapon is on its way.
+            const cls = G.classes[classes[f]] || {};
+            const offTypes = cls.offhand || {};
+            if (eq.offhand || !eq.mainhand || util.isDoublehand(eq.mainhand.name, classes[f])) return;
+            if (Date.now() - (filledAt[f + "|offhand"] || 0) < 10 * 60 * 1000) return;
+            if (activeEarmarks().some(function (e) { return e.fighter === f && G.items[e.name] && G.items[e.name].type === "weapon"; })) return;
+            let best = -1, bestPower = 0;
+            pool.forEach(function (p, i) {
+                const def = G.items[p.name];
+                if (!def || def.type !== "weapon" || !offTypes[def.wtype] || earmarks[f + "|" + p.name]) return;
+                const power = util.weaponPower(p.name, p.level, classes[f]);
+                if (power > bestPower) { best = i; bestPower = power; }
+            });
+            if (best === -1) return;
+            const p = pool.splice(best, 1)[0];
+            earmark(f, p.name, p.level);
+            filledAt[f + "|offhand"] = Date.now();
+            util.log("workshop", p.name + " +" + p.level + " goes to " + f + " (empty offhand - dual wield)", "yellow");
         });
         deliverBetterCopies(fightersList, wished);
     }
