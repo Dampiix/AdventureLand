@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.36.2",
+    version: "1.37.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -231,13 +231,14 @@ module.exports = {
     // Merchant: fulfil wishes from bag, bank or by upgrading own copies (approved 2026-11-15)
     workshop: {
         enabled: true,
-        // Minimum success chance per step, by what is at risk (approved 2026-11-15):
+        // Minimum success chance per step, by how the item is replaced (player decision
+        // 2026-11-16, replaces the 40/60/70 % value tiers of 2026-11-15: losses are part
+        // of the game, progression must not stall at +4..+6):
         risk: {
-            cheapBelow: 100000,    // value of the copy (x3 for compounds) below this is "cheap"
-            midBelow: 1000000,     // ...below this "mid"; above, or not re-buyable from an NPC: "precious"
-            cheap: 0.4,
-            mid: 0.6,
-            precious: 0.7,
+            shop: 0,               // re-buyable from an NPC: no floor (the budgets cap the gold)
+            compound: 0.35,        // compound items (three copies from drops)
+            rare: 0.5,             // token / drop items (Hunter set, Phoenix weapons, ...)
+            graceWindow: 0.1,      // grace farming only when the chance is at most this far below the floor
             maxScrollGrade: 2,     // try up to Rare scrolls when the normal one falls short
             buyStrongerScrolls: true, // only within budgetPerWish; owned/banked ones are used first
         },
@@ -249,7 +250,7 @@ module.exports = {
         retryAfterBudgetMs: 10 * 60 * 1000, // ...but only 10 min when we merely lack gold right now
         bankScanEveryMs: 10 * 60 * 1000,
         redeliverAfterMs: 6 * 60 * 60 * 1000, // don't fulfil the same wish for a fighter again within 6 h
-        // Grace farming (approved 2026-11-15): before a mid/precious item is risked at a
+        // Grace farming (approved 2026-11-15): before a compound/rare item is risked at a
         // level whose chance is too low, cheap shop items are failed at that level to raise
         // the player's grace for it. The real preview decides when it is enough.
         grace: {
@@ -281,7 +282,7 @@ module.exports = {
             // Mace first – a paladin's mace beats the fireblade +7 already at +4).
             buy: ["concordmace"],
             // Token weapons are not cheap to lose: each step needs this chance.
-            minChance: { concordmace: 0.7 },
+            minChance: { concordmace: 0.5 },   // = risk.rare
         },
         // Gear goals (approved 2026-11-15): when idle, the merchant pushes the fighters' worn
         // shop armor and selected weapons to `upTo`. Shop armor is re-buyable, so every

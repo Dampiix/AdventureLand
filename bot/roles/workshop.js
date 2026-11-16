@@ -8,8 +8,8 @@
 //   3. develop: take the best lower copy (bag/bank) or buy a +0 copy from
 //               an NPC, then upgrade it step by step at Cue
 // Rules (config.workshop): only steps with a previewed success chance of at
-// least the risk tier's chance (config.workshop.risk: cheap re-buyable items
-// 40 %, mid-value 60 %, precious/irreplaceable 70 %; a higher scroll grade is
+// least the risk tier's chance (config.workshop.risk: shop items no floor,
+// compounds 35 %, token/drop items 50 %; a higher scroll grade is
 // tried when the normal one falls short), never spend below the gold reserve,
 // at most budgetPerWish
 // per wish, no offerings, no shells. Upgradeable items are upgraded step by
@@ -507,16 +507,14 @@ module.exports = function createWorkshop(ctx) {
 
     // ---- risk -------------------------------------------------------------------
 
-    // Minimum success chance for risking `item` (`copies` of it, 3 for compounds).
-    // Cheap, re-buyable things may fail more often; irreplaceable ones may not.
+    // Minimum success chance for risking `item` (`copies` of it, 3 for compounds), by how
+    // it is replaced (player decision 2026-11-16): shop gear is simply bought again,
+    // compound copies come from drops, token/drop items (Hunter set, Phoenix weapons)
+    // take longest to replace.
     function minChanceFor(item, replaceable, copies) {
         const r = cfg.risk;
-        let value;
-        try { value = item_value(item) * (copies || 1); } catch (e) { value = Infinity; }
-        if (!replaceable) value = Math.max(value, r.midBelow);
-        if (value < r.cheapBelow) return r.cheap;
-        if (value < r.midBelow) return r.mid;
-        return r.precious;
+        if ((copies || 1) >= 3 || (G.items[item.name] && G.items[item.name].compound)) return r.compound;
+        return replaceable ? r.shop : r.rare;
     }
 
     function pct(x) { return Math.round(x * 100) + "%"; }
@@ -1044,7 +1042,7 @@ module.exports = function createWorkshop(ctx) {
             }
 
             const grade = item_grade(item);
-            // Re-buyable from an NPC = replaceable; token/bank-only copies are precious.
+            // Re-buyable from an NPC = replaceable (risk.shop); token/drop copies are risk.rare.
             const replaceable = opts && opts.replaceable !== undefined ? opts.replaceable : !!sellerOf(w.name);
             const minChance = opts && opts.minChance !== undefined ? opts.minChance : minChanceFor(item, replaceable, 1);
             let scroll = "scroll" + grade;
@@ -1064,8 +1062,10 @@ module.exports = function createWorkshop(ctx) {
                 // Spare upgrades use normal scrolls only – rare scrolls and grace are kept for wishes.
                 const spare = !!(opts && opts.spare);
                 let better = spare ? null : await strongerScroll(k, "scroll", grade, minChance, preview);
-                // Still short on a valuable item at a higher level: build grace with cheap fodder.
-                if (!better && !spare && cfg.grace.enabled && level + 1 >= cfg.grace.minLevel && minChance >= cfg.risk.mid) {
+                // Still short on a valuable item at a higher level, but close (risk.graceWindow):
+                // build grace with cheap fodder. Far below the floor, grace costs too much.
+                const close = chance >= minChance - (cfg.risk.graceWindow || 0.1);
+                if (!better && !spare && close && minChance > 0 && cfg.grace.enabled && level + 1 >= cfg.grace.minLevel) {
                     const graced = await farmGrace(level + 1, minChance, async function () {
                         await ensureScroll(k, scroll, 1); // fodder attempts may have used our scrolls
                         await goTo("newupgrade");
