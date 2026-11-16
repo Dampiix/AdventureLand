@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.34.0",
+    version: "1.34.1",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -150,7 +150,7 @@ module.exports = {
             sturdyHits: 4,                  // War Cry (lvl 70) on targets needing this many hits
             hardShell: { enabled: true, below: 0.45 }, // lvl 60, against physical hits
             useCharge: true, chargeFrom: 150,          // +30 speed on walks and longer chases
-            dash: { enabled: true, from: 120, max: 150 }, // jump the last gap to a target (straight line only)
+            dash: { enabled: true, from: 120, max: 150, everyMs: 2000 }, // jump the last gap (straight line only, 120 MP, no cooldown)
         },
         mage: {
             energizeAbove: 0.6,             // only give mana while we have more than this

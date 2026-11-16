@@ -54,12 +54,15 @@ module.exports = function createWarrior(ctx) {
         return p.hp / p.max_hp < (t.allyHpBelow || 0.8) || (m.attack || 0) >= p.max_hp * (t.hitRatio || 0.05);
     }
 
-    // Dash: a short jump towards a point. Needs a free straight line; a failure
-    // (unknown target format, blocked) pauses it instead of retrying every tick.
+    // Dash: a short jump towards a point ([x, y]). It has no cooldown, so we space the
+    // jumps ourselves (dash.everyMs) – otherwise every tick jumps and drains the MP.
+    // A failure pauses it instead of retrying every tick.
     let dashPausedUntil = 0;
+    let lastDash = 0;
     function tryDash(target) {
         const d = c.dash || {};
-        if (!d.enabled || Date.now() < dashPausedUntil || !util.canCast("dash")) return false;
+        if (!d.enabled || Date.now() < dashPausedUntil || Date.now() - lastDash < (d.everyMs || 2000)) return false;
+        if (!util.canCast("dash")) return false;
         if (mpLeftAfter("dash") < reserve()) return false;
         const dist = util.distanceTo(target);
         if (dist < (d.from || 120)) return false;
@@ -70,6 +73,7 @@ module.exports = function createWarrior(ctx) {
         if (step < 40) return false;
         const k = step / dist;
         const to = [character.real_x + (p.x - character.real_x) * k, character.real_y + (p.y - character.real_y) * k];
+        lastDash = Date.now();
         use_skill("dash", to).catch(function (e) {
             dashPausedUntil = Date.now() + 60 * 1000;
             util.log("warrior", "dash failed: " + util.errReason(e) + " - pausing it for a minute", "orange");
