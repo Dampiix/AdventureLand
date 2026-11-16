@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.48.5",
+    version: "1.48.6",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -306,6 +306,8 @@ module.exports = {
             // budgetPerLevel.
             incomeShare: 0.05,
             budgetPerLevel: 300000,
+            // Player decision 2026-11-16: +1M per level until the gear goal extra ends.
+            extra: { amount: 1000000, until: "2026-11-17T06:15:44Z" },
             maxAttempts: 25,         // fodder attempts per farming round
             // Grace stacks only while the fodder itself would fail more likely than not: stop
             // when its own chance at the target level is above this - now, or by the time the

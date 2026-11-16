@@ -377,7 +377,9 @@ module.exports = function createWorkshop(ctx) {
         let graceSpent = 0;
         Object.keys(spent).forEach(function (k) { if (k.indexOf("grace:") === 0) graceSpent += spent[k] || 0; });
         const earned = goalBudget().earned + graceSpent;
-        return Math.max(g.budgetPerLevel || 0, Math.round(earned * g.incomeShare));
+        // A player-granted extra per level (grace.extra: { amount, until }), like the gear goals.
+        const extra = g.extra && g.extra.amount && Date.now() < Date.parse(g.extra.until) ? g.extra.amount : 0;
+        return Math.max(g.budgetPerLevel || 0, Math.round(earned * g.incomeShare)) + extra;
     }
 
     // Grace spending survives restarts and resets after 24 h.
