@@ -230,6 +230,7 @@ module.exports = function createEvents(ctx) {
                 await sleep(cfg.searchSpotMs);
                 if (get_nearest_monster({ type: name })) {
                     boss = { name: name, seenAt: Date.now() };
+                    searchLater(name); // next search counts from now (survives a restart)
                     util.log("event", name + " found on " + character.map, "green");
                     return;
                 }
