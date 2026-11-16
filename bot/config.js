@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.51.0",
+    version: "1.51.1",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -236,21 +236,24 @@ module.exports = {
         // after the shop armor: wished only once ALL shop gear is done (+8 armor, +7 weapon),
         // kept by the merchant until +7 and then worn over the shop piece (replace).
         // Helmet, gloves, pants first: most common in boxes, and 3 pieces give +20/+20.
+        // Tanks only (player decision 2026-11-16): Rugged +7 has 10 main stat, shop +8 has 12,
+        // so the priest and ranger keep their shop +8 (damage/healing); the warrior trades
+        // 2 STR per piece for ~3x the armor and resistance.
         // The Monster Hunter sets are long-term and stay out for now.
         classWishesEnabled: true,
         classWishes: {
             all: [
                 { name: "cape", level: 0 },      // 40 Leather -> exchange (wolves, boars)
-                { steps: [{ name: "helmet1", level: 7 }], replace: true },
-                { steps: [{ name: "gloves1", level: 7 }], replace: true },
-                { steps: [{ name: "pants1", level: 7 }], replace: true },
-                { steps: [{ name: "coat1", level: 7 }], replace: true },
-                { steps: [{ name: "shoes1", level: 7 }], replace: true },
             ],
             // Orbs: Orb of Beginnings (Cole: ascale + pleather + cscale + Bee Fur) to +1 first
             // (+3 to every main stat, 3 copies), then the class orb (+4 main stat already at +0).
             paladin: [
                 { steps: [{ name: "orbg", level: 0 }, { name: "orbg", level: 1 }, { name: "orbofstr", level: 0 }] }, // Fire Spirit
+                { steps: [{ name: "helmet1", level: 7 }], replace: true },
+                { steps: [{ name: "gloves1", level: 7 }], replace: true },
+                { steps: [{ name: "pants1", level: 7 }], replace: true },
+                { steps: [{ name: "coat1", level: 7 }], replace: true },
+                { steps: [{ name: "shoes1", level: 7 }], replace: true },
             ],
             priest: [
                 { steps: [{ name: "orbg", level: 0 }, { name: "orbg", level: 1 }, { name: "orbofint", level: 0 }] }, // big Pom Pom (level2n)
@@ -260,6 +263,11 @@ module.exports = {
             // mwpants 11, mwarmor 12, mwboots 15 tokens; replace at +7).
             warrior: [
                 { steps: [{ name: "orbg", level: 0 }, { name: "orbg", level: 1 }, { name: "orbofstr", level: 0 }] }, // Fire Spirit
+                { steps: [{ name: "helmet1", level: 7 }], replace: true },
+                { steps: [{ name: "gloves1", level: 7 }], replace: true },
+                { steps: [{ name: "pants1", level: 7 }], replace: true },
+                { steps: [{ name: "coat1", level: 7 }], replace: true },
+                { steps: [{ name: "shoes1", level: 7 }], replace: true },
             ],
             ranger: [
                 // Cole: 1 Armadillo Scale + 200 Beewings (scorpions drop it too). The +7 is built on
