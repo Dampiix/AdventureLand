@@ -1868,27 +1868,42 @@ module.exports = function createWorkshop(ctx) {
     // One unit of work. Returns the fighters that now have something waiting.
     const readySince = {}; // fighter -> since when something waits for it
     let lastGoalStep = 0;  // last gear-goal unit of work
-    // config.workshop.bruteForce (player decision 2026-11-16): spare copies of high-grade
-    // drop weapons at `from` are tried on `to` right away with the normal scroll – their
-    // chance can't be raised (grace -1 on them), so waiting gains nothing. Never a worn
-    // copy, never while a copy of that item is earmarked for a fighter.
+    // Weapon ladder (config.workshop.bruteForce, player decision 2026-11-16): high-grade
+    // drop weapons (fire weapons) can't be helped by grace (-1 on them), so spare copies
+    // are tried right away with the normal scroll – but only one level above the WEAKEST
+    // worn copy of that item in the team (a warrior's two fireblades both count). A spare
+    // that gets there is delivered (deliverBetterCopies swaps it in), the old worn copy
+    // comes back as the next spare, and only once every worn copy is at the top level does
+    // the next level start. Worn copies are never risked; nothing happens while a copy
+    // of that item is on its way to a fighter.
     async function bruteForceSpares() {
+        const bf = cfg.bruteForce;
+        if (!bf || !bf.names) return false;
         const now = Date.now();
-        for (const r of cfg.bruteForce || []) {
-            const k = key("_brute", { name: r.name, level: r.to });
+        for (const name of bf.names) {
+            const levels = [];
+            config.team.fighters.forEach(function (f) {
+                const eq = worn[f];
+                if (!eq) return;
+                ["mainhand", "offhand"].forEach(function (s) { if (eq[s] && eq[s].name === name) levels.push(eq[s].level || 0); });
+            });
+            if (!levels.length) continue; // nobody wears it: spares wait
+            const target = Math.min.apply(null, levels) + 1;
+            if (target > (bf.maxLevel || 9)) continue;
+            const k = key("_brute", { name: name, level: target });
             if (blockedUntil[k] > now) continue;
-            if (activeEarmarks().some(function (e) { return e.name === r.name; })) continue;
-            const inBag = util.findItemIndex(function (i) { return i.name === r.name && (i.level || 0) === r.from && !i.l; });
-            const banked = inBag === -1 ? bankFind(r.name, function (l) { return l === r.from; }) : null;
-            if (inBag === -1 && !banked) continue;
+            if (activeEarmarks().some(function (e) { return e.name === name; })) continue; // a better copy is on its way
+            const spares = unlockedCopies(name);
+            if (!spares.length || spares.some(function (l) { return l >= target; })) continue; // none, or one ready to deliver
             if (character.esize < 3) return false;
-            util.status("trying " + r.name + " +" + r.to + " with a spare +" + r.from, "orange");
+            const best = Math.max.apply(null, spares);
+            util.status("upgrading a spare " + name + " +" + best + " towards +" + target, "orange");
+            util.log("workshop", "spare " + name + " +" + best + " -> +" + target + " (weakest worn +" + (target - 1) + ")", "white");
             try {
-                if (banked) await retrieve(banked);
-                await develop("_brute", { name: r.name, level: r.to }, { budgetKey: GOALS, minChance: 0, spare: true });
+                await develop("_brute", { name: name, level: target }, { budgetKey: GOALS, minChance: 0, spare: true });
             } catch (e) {
                 const why = util.errReason(e);
-                util.log("workshop", r.name + " +" + r.to + ": " + why, "orange");
+                util.log("workshop", name + " +" + target + ": " + why, "orange");
                 blockedUntil[k] = Date.now() + pauseAfter(k, why);
             }
             return true;

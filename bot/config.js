@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.49.1",
+    version: "1.50.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -320,10 +320,13 @@ module.exports = {
         // never going below `spares` copies in total. Normal scrolls only: rare scrolls
         // and grace farming are reserved for the fighters' wishes.
         stockEnabled: false, // paused 2026-11-16 (shop +9 first)
-        // Brute force (player decision 2026-11-16): spare copies at `from` are tried on `to`
-        // with the normal scroll at once (grace can't lift high-grade items; fireblade +8 ~14%).
-        // The worn copies are never touched; a +8 then replaces the weaker worn one.
-        bruteForce: [{ name: "fireblade", from: 7, to: 8 }],
+        // Weapon ladder (player decision 2026-11-16): grace can't lift high-grade items, so
+        // spare copies of these are upgraded at once with the normal scroll - always to one
+        // level above the WEAKEST worn copy in the team (both of the warrior's fireblades
+        // count). A spare that gets there is swapped in, the old one becomes the next spare;
+        // the next level starts only once every worn copy is at the top. Worn copies are never
+        // risked; items nobody wears are left alone.
+        bruteForce: { names: ["fireblade", "firebow", "firestaff"], maxLevel: 9 },
         stock: [
             { name: "fireblade", upTo: 7, spares: 3 },
             { name: "firestaff", upTo: 7, spares: 3 },
@@ -374,16 +377,7 @@ module.exports = {
             stages: [7, 8],
             everyMs: 3 * 60 * 1000,   // one gear-goal step this often even while wishes are open
             slots: ["helmet", "chest", "pants", "shoes", "gloves", "mainhand"],
-            weapons: [
-                { name: "fireblade", minChance: 0 }, // brute force like the other fire weapons
-                // Fire weapons in hand below upTo: build a +upTo copy from a spare one (bank or
-                // bag); the worn copy stays on the fighter. Brute force (player decision
-                // 2026-11-16): grace barely helps high-grade items (grace -1 on them), so every
-                // spare copy is tried right away with the normal scroll - no floor, no grace,
-                // no stronger scrolls; a lost copy waits for the next drop or craft.
-                { name: "firebow", full: true, minChance: 0 },
-                { name: "firestaff", full: true, minChance: 0 },
-            ],
+            weapons: [], // fire weapons: workshop.bruteForce (weapon ladder) since 2026-11-16
             // Daily budget from income (player decision 2026-11-15): a share of the merchant's
             // net gold gain over the last 24 h; the gear goals' own spending is not counted
             // as a loss. Gold moved by hand (a jump of transferAbove or more within 10 min)
