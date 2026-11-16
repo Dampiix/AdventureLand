@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.50.0",
+    version: "1.50.1",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -454,7 +454,15 @@ module.exports = {
             { name: "vitearring", maxLevel: 10 },
             { name: "hpbelt", maxLevel: 10 },
             { name: "helmet", maxLevel: 3 },
-            { name: "mace", maxLevel: 2 },
+            // Shop weapons and the old quiver that did their job (player decision 2026-11-16):
+            // fire weapons replaced them, the ranger wears a quiver +8. A copy a fighter or
+            // its guide wishes for is never sold (isReserved).
+            { name: "mace", maxLevel: 7 },
+            { name: "staff", maxLevel: 7 },
+            { name: "blade", maxLevel: 5 },
+            { name: "quiver", maxLevel: 2 },
+            // Lollipop Maces from the archive (player decision 2026-11-16): weak tier-0 maces.
+            { name: "glolipop", maxLevel: 10 },
             // Rugged and Heavy armor (armor boxes) are no longer sold since the fresh start:
             // craft bases (Oathplate, Resolute Sallet, class boots) and upgrades (2026-11-16).
         ],
