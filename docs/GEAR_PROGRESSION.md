@@ -36,6 +36,56 @@ With an explicit goal the guide plans beyond the shop:
 - `{ kind: "item", name: "mace", level: 8 }`: about 170 mace copies and ~1.1M gold on
   average.
 
+## Draft gear lists per class (2026-11-16, not implemented)
+
+Basis: stats from the game's own item calculation (`calculate_item_properties`),
+candidate at +7 (compound items +3) against what each fighter wears now. Item goals
+in the guide give the way and the cost, but no gain – the gain is only computed for
+its stat goal. Main finding: **tier-2 armor at +7 has the same main stat as shop +7**
+(about +10 vs +9) but 3–6x the armor and resistance. Armor therefore makes the team
+tougher (harder spots, bosses), while attack and healing come from weapons, orbs,
+offhands and levels.
+
+Monster Tokens: 24 in the bank (+2 carried). Allocation still to be decided.
+
+### Paladin (attack; wears fireblade +7 = 54 attack)
+1. **Concord Mace** (12 tokens, Oathkeeper set) – +7: 70 attack (+30 %). Alternative
+   Mace of the Dead (Wooden Basher + Bones + 240k): +7 69 attack, +6 STR, -8 VIT.
+2. **Orb chain** (already a class wish): Orb of Beginnings -> Orb of Strength (+3: 13 STR).
+3. **Oathkeeper armor** – Vowkeeper Gloves (Cole, cheap), Oathplate (Rugged Coat +
+   4 pleather + 2 ascale + 20 spores + 180k), Resolute Sallet (Rugged Helmet + 12 dstones
+   + 4 rfangs + 240k). Set bonus 2/3/4/5 pieces: HP/MP, then +15/25/35 armor & resistance,
+   fortitude. Dawnward Aegis (5th piece, Skeletor 2 %) would replace the book (-21 INT).
+4. **Rime Boots** (Rugged Shoes +6 + frostcore + 8 essence of frost + 12 Bee Fur + 280k).
+5. Cape (40 Leather, class wish).
+
+### Priest (heal; wears firestaff +7 = 75 attack)
+1. **Firestaff higher than +7** (budget) – nothing obtainable beats it yet (Priest's Mace
+   +7 69 attack + 23 INT, weapon box 5 %; Hand of the Dead needs scroll2 from +0).
+2. **Orb chain**: Orb of Beginnings -> Orb of Intelligence (big Pom Pom, not safe yet).
+3. **Monster Hunter Priest set** (tokens: hat 7, gloves 8, pants 11, armor 12, shoes 15 =
+   53) – 2 pieces +3 INT, 3 pieces +3 INT +2 speed, 4 pieces +120 resistance piercing.
+4. **Cinder Boots** (Rugged Shoes +6 + embercore + 8 essence of fire + 20 ashleaf + 280k).
+5. Offhand: Book of Knowledge +3 (in stock); later Scribe Orb (+3: 34 INT; needs void
+   thread) or Book of Secrets (Gold Earring +2 exchange, 80 %).
+6. Cape.
+
+### Ranger (attack; wears bow +7 = 61 attack)
+1. **Firebow to +7** (merchant is on it: 76 attack, +25 %). Later Crossbow (+7 103 attack,
+   -36 % frequency, +120 armor piercing) or Artisan's Bow (+7 91) from weapon boxes.
+2. **Quiver chain to +7** (class wish, running): +9 DEX, 25 armor. Later Thistle Quiver
+   (Quiver +5 + 10 pleather + 40 ashleaf + 5 essence of nature + 140k: +25 armor piercing).
+3. **Monster Hunter Ranger set** (tokens, 53) – 2 pieces +3 DEX, 3 pieces +2 speed,
+   4 pieces +60 armor piercing. Its gloves (+6) are the base for **Thundergrips**
+   (+80 stormfeather – we hold 574 – + 12 essence of ether + 800k): +3 % frequency.
+4. Orb chain (Orb of Dexterity), cape. Bogwalkers / Bog Crown need verdant cores (later).
+
+### What the bot still needs for these lists
+- Per-class ordered item goals, worked one after another (like the class wish chains).
+- Armor boxes opened on demand for Rugged bases (keep 1 per piece, Heavy always).
+- Crafts whose ingredient is itself an upgraded item (e.g. Rugged Shoes +6).
+- Token spending decided per item (which piece gets the next tokens).
+
 ## Tiers at a glance
 
 | Tier | Examples | Armor (helmet/chest) | Source |
