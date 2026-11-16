@@ -73,7 +73,7 @@ module.exports = function createDrops(ctx) {
             const perCopy = a.rate > 0 && cycle
                 ? cycle / a.rate
                 : a.meanSeconds * (cycle && a.route.cycle > 0 ? cycle / a.route.cycle : 1) / Math.max(1, need.copies);
-            list.push({ monster: a.route.monster, map: a.route.map, perCopy: perCopy });
+            list.push({ monster: a.route.monster, map: a.route.map, perCopy: perCopy, xp: a.route.xp || 0 });
         };
         (advice && advice.rows || []).forEach(function (row) {
             consider(row.action);
@@ -162,7 +162,7 @@ module.exports = function createDrops(ctx) {
             // The guide's own "safe" (for the leader alone) is not needed once the team model judges spots.
             const teamModel = ctx.targeting && ctx.targeting.teamModelOn && ctx.targeting.teamModelOn();
             if (!(rate > 0) || !(r.cycle > 0) || (r.safe !== true && !teamModel) || !teamSafe(r.monster)) return;
-            out.push({ monster: r.monster, map: r.map, perCopy: teamCycle(r) / rate });
+            out.push({ monster: r.monster, map: r.map, perCopy: teamCycle(r) / rate, xp: r.xp || 0 });
         });
         return out.sort(function (a, b) { return a.perCopy - b.perCopy; });
     }
@@ -195,7 +195,11 @@ module.exports = function createDrops(ctx) {
                 found.push(Object.assign({ name: need.name, copies: need.copies }, c));
             });
         });
-        routes = found.sort(function (a, b) { return a.perCopy - b.perCopy; });
+        // Every route here is fast enough (maxHoursPerCopy): take the one with the best XP,
+        // not the fastest copy – a map drop (HP belts on the main map) sent the solo warrior
+        // to the crabs (quickest kills, a third of the XP) instead of the crocs (2026-11-17).
+        // Crowded spots are skipped by target(), so the next one follows.
+        routes = found.sort(function (a, b) { return (b.xp || 0) - (a.xp || 0) || a.perCopy - b.perCopy; });
     }
 
     function hours(seconds) {
