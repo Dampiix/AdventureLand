@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.44.0",
+    version: "1.44.1",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -112,7 +112,7 @@ module.exports = {
         // The current farm spot is left only when a member's "unsafe" lasts this long
         // (verdicts near the edge flip back and forth); a death there counts at once.
         objectionGraceMs: 5 * 60 * 1000,
-        // Team model (prepared 2026-11-16, off until the warrior joins the party): a spot
+        // Team model (on since 2026-11-16, a test with the warrior as tank): a spot
         // counts as safe when the party can take it together – the tank survives tankHits
         // volleys of `pull` monsters (pullAggressive for monsters that attack on sight),
         // the priests' healing covers that damage x healCover, everyone else survives
@@ -120,7 +120,7 @@ module.exports = {
         // the guide's XP. Off: every member's own guide must call the spot safe alone.
         // "/safety [map]" in the leader's client logs both verdicts per monster.
         teamSafety: {
-            enabled: false,
+            enabled: true,
             tankClasses: ["warrior", "paladin"],
             tankHits: 6, otherHits: 3, healCover: 1.5,
             pull: 2, pullAggressive: 3,
