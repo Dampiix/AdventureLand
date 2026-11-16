@@ -63,6 +63,7 @@ module.exports = function createSupply(ctx) {
     // the item part but never the gold part.
     async function handOver(name) {
         handingOver = true;
+        if (is_moving(character)) stop();
         try {
             const surplus = character.gold - util.goldAmount(s.goldKeep);
             if (surplus >= s.goldMinSend) {
@@ -136,6 +137,9 @@ module.exports = function createSupply(ctx) {
 
     function tick() {
         if (busy) return "busy";
+        // Stand still while items go over: walking or chasing out of range cut handovers
+        // short (2026-11-17). Potions still run (they come before this in the tick).
+        if (handingOver) return "busy";
         const c = counts();
         const now = Date.now();
 
