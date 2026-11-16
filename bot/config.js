@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.46.2",
+    version: "1.47.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -357,7 +357,13 @@ module.exports = {
             stages: [7, 8],
             everyMs: 3 * 60 * 1000,   // one gear-goal step this often even while wishes are open
             slots: ["helmet", "chest", "pants", "shoes", "gloves", "mainhand"],
-            weapons: [{ name: "fireblade", minChance: 0.18 }], // 14% at +8, ~19% with full grace
+            weapons: [
+                { name: "fireblade", minChance: 0.18 }, // 14% at +8, ~19% with full grace
+                // Fire weapons in hand below upTo: build a +upTo copy from a spare one (bank
+                // or bag, normal risk floors and grace); the worn copy stays on the fighter.
+                { name: "firebow", full: true },
+                { name: "firestaff", full: true },
+            ],
             // Daily budget from income (player decision 2026-11-15): a share of the merchant's
             // net gold gain over the last 24 h; the gear goals' own spending is not counted
             // as a loss. Gold moved by hand (a jump of transferAbove or more within 10 min)

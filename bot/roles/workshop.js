@@ -1173,6 +1173,19 @@ module.exports = function createWorkshop(ctx) {
     // What each fighter should get, in team order (leader first).
     // The shop weapon to build for a fighter that wears a drop weapon, or null: the
     // class's starting weapon (staff, mace, bow), if at upTo it beats the worn one.
+    // "Weapon done" for the full +7 gate: the worn weapon is at gearGoals.upTo, or at
+    // least as strong as the class's shop weapon at upTo (a fire weapon at +5 can be).
+    function weaponAtGoal(f) {
+        const m = worn[f] && worn[f].mainhand;
+        const ctype = classes[f];
+        if (!m) return false;
+        if ((m.level || 0) >= cfg.gearGoals.upTo) return true;
+        const base = ctype && G.classes[ctype] && G.classes[ctype].base_slots && G.classes[ctype].base_slots.mainhand;
+        const name = base && base.name;
+        if (!name || !G.items[name]) return false;
+        return util.weaponPower(m.name, m.level || 0, ctype) >= util.weaponPower(name, cfg.gearGoals.upTo, ctype);
+    }
+
     function shopWeaponGoal(f) {
         const m = worn[f] && worn[f].mainhand;
         const ctype = classes[f];
@@ -1390,6 +1403,18 @@ module.exports = function createWorkshop(ctx) {
                 }
 
                 const w = { name: need.name, level: need.level };
+                if (need.weapon && need.weapon.full) {
+                    // 3a. Fire weapon to upTo: develop the best spare copy (not the worn one).
+                    if (weaponWaitUntil[need.name] > now) continue;
+                    if (!totalCopies(need.name, function (l) { return l < need.level; })) continue;
+                    util.status("upgrading " + need.name + " to +" + need.level + " for " + need.fighter, "orange");
+                    await develop("_goal", w, { budgetKey: GOALS, minChance: need.weapon.minChance });
+                    if (reachedOnly[GOALS] !== undefined) {
+                        delete reachedOnly[GOALS];
+                        weaponWaitUntil[need.name] = Date.now() + 30 * 60 * 1000;
+                    }
+                    return true;
+                }
                 if (need.weapon) {
                     // 3. Weapon: a spare copy at upTo-1, only with enough grace.
                     if (weaponWaitUntil[need.name] > now) continue;
@@ -1590,7 +1615,7 @@ module.exports = function createWorkshop(ctx) {
                 // the first stage (player decision 2026-11-16).
                 if ((bw.craft || []).includes(name)) {
                     const stage = armorStage(f);
-                    if (!m || (m.level || 0) < cfg.gearGoals.upTo || (stage !== null && stage <= cfg.gearGoals.upTo)) return;
+                    if (!weaponAtGoal(f) || (stage !== null && stage <= cfg.gearGoals.upTo)) return;
                 }
                 const bar = wornPower(f) * (1 + (bw.margin || 0));
                 for (let level = 0; level <= bw.maxLevel; level++) {
