@@ -219,7 +219,10 @@ module.exports = function createTargeting(ctx) {
         if (recentDeath(monster)) return "the team (recent death)";
         // Team model: the party as a whole can take it – no single member's veto.
         if (teamModelOn() && teamVerdict(monster).ok) return null;
-        const proven = !cfg.avoidTrial || provenByUs(monster);
+        // A "trial" spot only waits for proof when it could hurt: a monster every fighter
+        // survives 20+ hits of (e.g. armadillos, 20 attack) is fine to try right away –
+        // otherwise such a spot is never farmed and so never proven.
+        const proven = !cfg.avoidTrial || provenByUs(monster) || harmless(monster);
         let unlisted = 0; // fighters whose guide doesn't know the monster
         if (own) {
             if (!own.listed.has(monster)) unlisted++;
