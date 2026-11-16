@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.55.1",
+    version: "1.55.2",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -162,7 +162,7 @@ module.exports = {
     },
 
     combat: {
-        potionHpBelow: 0.45,     // urgent: HP first
+        potionHpBelow: 0.8,      // below this: an HP potion on every cooldown (player decision 2026-11-16, was 0.45)
         potionMpBelow: 0.3,
         // Otherwise drink as soon as a whole potion's worth is missing (HP before MP), i.e.
         // on every cooldown in a long fight (player request 2026-11-16).
