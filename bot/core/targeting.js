@@ -422,7 +422,7 @@ module.exports = function createTargeting(ctx) {
         }
 
         const lead = party.leaderInfo();
-        if (lead && lead.farm) {
+        if (lead && lead.farm && !party.detached()) {
             if (!farm || farm.monster !== lead.farm) util.log("target", "farm target: " + lead.farm + " (leader)", "yellow");
             farm = { monster: lead.farm, source: "leader" };
             nextPickAt = 0;
@@ -537,7 +537,7 @@ module.exports = function createTargeting(ctx) {
             return isValid(m) ? m : null;
         }
 
-        if (party.isMember) {
+        if (party.isMember && !party.detached()) {
             const lead = party.leaderInfo();
             // Easy farm targets (e.g. goos for a hunt): everyone fights its own monster,
             // as long as it stays close to the leader.

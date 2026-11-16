@@ -99,11 +99,26 @@ module.exports = function createParty(ctx) {
         }
     }
 
+    // Members: the leader farms a monster we must not hit (melee vs. damage return, e.g.
+    // porcupines for pleather) - then we farm on our own (own guide pick, no leash) until
+    // the leader moves on. Events and bosses still bring everyone together.
+    let wasDetached = false;
+    function detached() {
+        const lead = leaderInfo();
+        const now = !!(lead && !lead.event && lead.farm && util.tooSpiky(config, lead.farm));
+        if (now !== wasDetached) {
+            wasDetached = now;
+            util.log("party", now ? leader + " farms " + lead.farm + " (damage return, not for melee) - farming on my own meanwhile"
+                : "back with " + leader, "yellow");
+        }
+        return now;
+    }
+
     // Members: hard leash. Returns true when we must move instead of fighting.
     // `loose` (join events): on the leader's map we roam freely after our own targets.
     function keepUp(loose) {
         const lead = leaderInfo();
-        if (!lead) return false;
+        if (!lead || detached()) return false;
         if (loose && character.map === lead.map) return false;
         if (character.map !== lead.map || util.distanceTo(lead) > cfg.leash) {
             moveTowards(lead, "following " + leader);
@@ -116,7 +131,7 @@ module.exports = function createParty(ctx) {
     // broadcast (e.g. right after a restart) use the leader if it is visible,
     // otherwise wait where we are – never wander off alone.
     function idleFollow() {
-        if (!enabled || isLeader) return false;
+        if (!enabled || isLeader || detached()) return false;
         let lead = leaderInfo();
         if (!lead) {
             const visible = get_player(leader);
@@ -146,5 +161,6 @@ module.exports = function createParty(ctx) {
         leaderInfo: leaderInfo,
         keepUp: keepUp,
         idleFollow: idleFollow,
+        detached: detached,
     };
 };
