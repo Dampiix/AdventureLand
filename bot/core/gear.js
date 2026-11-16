@@ -103,6 +103,7 @@ module.exports = function createGear(ctx) {
                 return s && G.items[s.name] && usable(G.items[s.name]);
             });
             steps.replace = !!(e && e.replace);
+            steps.anytime = !!(e && e.anytime); // replace right away, not only after the shop gear
             return steps;
         }).filter(function (steps) { return steps.length; });
     }
@@ -157,7 +158,7 @@ module.exports = function createGear(ctx) {
                 if (p < 0 && !steps.replace) return;
                 // Replace chains come after the shop progression (player decision
                 // 2026-11-16): only once ALL shop gear is at the gear goals' level.
-                if (p < 0 && !shopGearDone()) return;
+                if (p < 0 && !steps.anytime && !shopGearDone()) return;
                 if (progress === null || p < progress) progress = p;
             });
             if (progress === null || progress >= steps.length) return;

@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.56.1",
+    version: "1.57.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -264,6 +264,10 @@ module.exports = {
         // 2 STR per piece for ~3x the armor and resistance.
         // The Monster Hunter sets are long-term and stay out for now.
         classWishesEnabled: true,
+        // Rings (player decision 2026-11-16): two stat rings +2 in the class's main stat
+        // (+6) replace the Rings of Small Joys +2 (+3 STR/INT/DEX, +15 resistance) – at +0/+1
+        // they are no better. Delivered only complete (+2), worn over a Ring of Joy right away
+        // (anytime: no wait for the shop gear). Copies: Winterland map drop (statring table).
         classWishes: {
             all: [
                 { name: "cape", level: 0 },      // 40 Leather -> exchange (wolves, boars)
@@ -272,6 +276,7 @@ module.exports = {
             // (+3 to every main stat, 3 copies), then the class orb (+4 main stat already at +0).
             paladin: [
                 { steps: [{ name: "orbg", level: 0 }, { name: "orbg", level: 1 }, { name: "orbofstr", level: 0 }] }, // Fire Spirit
+                { steps: [{ name: "strring", level: 2 }], replace: true, anytime: true },
                 { steps: [{ name: "helmet1", level: 7 }], replace: true },
                 { steps: [{ name: "gloves1", level: 7 }], replace: true },
                 { steps: [{ name: "pants1", level: 7 }], replace: true },
@@ -280,12 +285,14 @@ module.exports = {
             ],
             priest: [
                 { steps: [{ name: "orbg", level: 0 }, { name: "orbg", level: 1 }, { name: "orbofint", level: 0 }] }, // big Pom Pom (level2n)
+                { steps: [{ name: "intring", level: 2 }], replace: true, anytime: true },
             ],
             // The offhand is a second weapon (dual wield, handled by gear/workshop).
             // Monster Hunter Warrior set: long-term, paused (entries: mwhelmet 7, mwgloves 8,
             // mwpants 11, mwarmor 12, mwboots 15 tokens; replace at +7).
             warrior: [
                 { steps: [{ name: "orbg", level: 0 }, { name: "orbg", level: 1 }, { name: "orbofstr", level: 0 }] }, // Fire Spirit
+                { steps: [{ name: "strring", level: 2 }], replace: true, anytime: true },
                 { steps: [{ name: "helmet1", level: 7 }], replace: true },
                 { steps: [{ name: "gloves1", level: 7 }], replace: true },
                 { steps: [{ name: "pants1", level: 7 }], replace: true },
@@ -297,6 +304,7 @@ module.exports = {
                 // a second copy; the worn +0 stays until it is done.
                 { steps: [{ name: "quiver", level: 0 }, { name: "quiver", level: 7 }] },
                 { steps: [{ name: "orbg", level: 0 }, { name: "orbg", level: 1 }, { name: "orbofdex", level: 0 }] }, // Fire Spirit
+                { steps: [{ name: "dexring", level: 2 }], replace: true, anytime: true },
             ],
         },
     },
