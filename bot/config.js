@@ -7,21 +7,23 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.32.0",
+    version: "1.33.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
         // Dampiiix are an item archive: never list them here, the bot would hand their
         // items to the merchant.
-        leader: "DmpxPala",                             // played in the client, starts the others, tanks
-        fighters: ["DmpxPala", "DmpxPriest", "DmpxRanger"],
+        // 2026-11-16: the paladin DmpxPala is replaced by the warrior DmpxWar (taunt, cleave).
+        // DmpxWar levels solo first; then the priest becomes the party leader.
+        leader: "DmpxWar",                              // played in the client, starts the others
+        fighters: ["DmpxWar", "DmpxPriest", "DmpxRanger"],
         merchant: "DampiixMerch",                       // null for no merchant
         farm: {},                                       // optional per-character farm override, e.g. { DmpxRanger: "bee" }
     },
 
     // "solo":  only the leader fights (Lone Wolf bonus); the merchant still supports it.
     // "party": all fighters form a party around the leader.
-    phase: "party",
+    phase: "solo",
 
     party: {
         followDistance: 80,   // members idle within this distance of the leader
