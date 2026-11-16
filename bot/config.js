@@ -16,7 +16,7 @@ module.exports = {
         // 2026-11-16: the paladin DmpxPala is replaced by the warrior DmpxWar (taunt, cleave).
         // Party since 2026-11-16: the priest leads (picks the spots, ranged), the warrior
         // tanks with Taunt.
-        leader: "DmpxPriest",                           // played in the client, starts the others
+        leader: "DmpxWar",                              // XP TEST 2026-11-16 (solo, Lone Wolf) – was DmpxPriest
         fighters: ["DmpxPriest", "DmpxWar", "DmpxRanger"],
         merchant: "DampiixMerch",                       // null for no merchant
         farm: {},                                       // optional per-character farm override, e.g. { DmpxRanger: "bee" }
@@ -24,7 +24,7 @@ module.exports = {
 
     // "solo":  only the leader fights (Lone Wolf bonus); the merchant still supports it.
     // "party": all fighters form a party around the leader.
-    phase: "party",
+    phase: "solo",                                      // XP TEST 2026-11-16 – was "party"
 
     party: {
         followDistance: 80,   // members idle within this distance of the leader
@@ -63,7 +63,7 @@ module.exports = {
         },
         // "always" only applies once every fighter has reached this level
         minLevel: { phoenix: 40, goobrawl: 20, snowman: 10, graveyard: 40, mvampire: 50 },
-        search: ["phoenix", "mvampire"], // roaming bosses the leader looks for
+        search: [],                     // XP TEST 2026-11-16 – was ["phoenix", "mvampire"]
         // Search again this long after a miss or a kill (player decision 2026-11-15: 30 min,
         // the walk costs farm time; the Phoenix respawns ~32 min after its death).
         searchEveryMs: 30 * 60 * 1000,
@@ -81,7 +81,7 @@ module.exports = {
 
     // Monster Hunts (Daisy). Unsafe hunts are left to expire.
     hunts: {
-        enabled: true,
+        enabled: false,                  // XP TEST 2026-11-16 – was true
         minLevel: 20,                    // only once every fighter has this level (Daisy ignores our level)
         allow: [],                       // always hunt these, even if the guide calls them unsafe
         deny: [],                        // never hunt these
@@ -110,7 +110,7 @@ module.exports = {
     },
 
     targeting: {
-        farm: null,              // e.g. "squigtoad" to force a monster for everyone (null = guide)
+        farm: "croc",              // XP TEST 2026-11-16 – was null; e.g. "squigtoad" to force a monster for everyone (null = guide)
         fallback: "goo",          // used when the progression guide has no answer
         // Farm only where every fighter's own guide calls the spot safe; routes the guide
         // only offers as a careful trial count once proven – by the guide's own fights, or
