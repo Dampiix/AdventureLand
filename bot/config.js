@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.47.1",
+    version: "1.48.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -275,7 +275,9 @@ module.exports = {
             shop: 0,               // re-buyable from an NPC: no floor (the budgets cap the gold)
             compound: 0.35,        // compound items (three copies from drops)
             rare: 0.5,             // token / drop items (Hunter set, Phoenix weapons, ...)
-            graceWindow: 0.1,      // grace farming only when the chance is at most this far below the floor
+            // Grace farming only when the chance is at most this far below the floor, by target
+            // level (player decision 2026-11-16): to +5 about 1-2 grace stacks, from +6 ~3.
+            graceWindow: { default: 0.1, 6: 0.15 },
             // No floor either (like shop gear): copies come from boxes we hold in numbers.
             free: ["helmet1", "gloves1", "pants1", "coat1", "shoes1"],
             maxScrollGrade: 2,     // try up to Rare scrolls when the normal one falls short
@@ -300,6 +302,9 @@ module.exports = {
             fodder: "wbasher",       // cheap upgradeable shop item no gear goal uses (Wooden Basher, 4,900 gold)
             budgetPerLevel: 300000,  // gold per target level per 24 h (fodder + scrolls)
             maxAttempts: 25,         // fodder attempts per farming round
+            // Stop when the fodder itself would succeed with more than this at the target level:
+            // a success resets the grace, so another stack would be unlikely.
+            maxFodderChance: 0.5,
             batch: 5,                // helmets prepared at once, then attempted back to back
         },
         // Spare copies to upgrade when idle (approved 2026-11-15): Phoenix weapons are kept

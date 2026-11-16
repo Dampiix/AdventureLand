@@ -898,6 +898,22 @@ module.exports = function createWorkshop(ctx) {
     // cheap shop items (config.workshop.grace.fodder) at +L until the valuable
     // item's previewed chance reaches its tier – or the grace budget runs out.
 
+    // How far below the floor grace farming may start, by target level (risk.graceWindow:
+    // a number, or { default, <level>: window } – the highest listed level <= target wins).
+    // Player decision 2026-11-16: +5 1-2 grace stacks, from +6 more (~3).
+    function graceWindowFor(target) {
+        const w = cfg.risk.graceWindow;
+        if (typeof w === "number") return w;
+        if (!w) return 0.1;
+        let best = w.default !== undefined ? w.default : 0.1;
+        let bestLevel = -1;
+        Object.keys(w).forEach(function (k) {
+            const l = Number(k);
+            if (!isNaN(l) && l <= target && l > bestLevel) { bestLevel = l; best = w[k]; }
+        });
+        return best;
+    }
+
     function fodderIndex(maxLevel) {
         let best = -1;
         character.items.forEach(function (item, i) {
@@ -911,13 +927,19 @@ module.exports = function createWorkshop(ctx) {
 
     // One upgrade attempt on a fodder copy; returns "success" | "fail".
     // bulk: how many scrolls to buy if we have none (one trip for a whole batch).
-    async function fodderAttempt(gk, index, bulk) {
+    // cap: at the target level, skip ("capped") when the fodder itself would succeed with
+    // more than this chance – a success resets the grace, so another stack is unlikely.
+    async function fodderAttempt(gk, index, bulk, cap) {
         const item = character.items[index];
         const scroll = "scroll" + item_grade(item);
         await ensureScroll(gk, scroll, bulk || 1);
         await goTo("newupgrade");
         const i = util.findItemIndex(function (x) { return x.name === item.name && (x.level || 0) === (item.level || 0) && !x.l && !x.p; });
         if (i === -1) throw { reason: "fodder lost track" };
+        if (cap) {
+            const own = (await upgrade(i, bagIndex(scroll, 0), null, true)).chance;
+            if (own > cap) return { capped: own };
+        }
         await boost("massproduction");
         const result = await upgrade(i, bagIndex(scroll, 0));
         return result.success ? "success" : "fail";
@@ -977,8 +999,12 @@ module.exports = function createWorkshop(ctx) {
 
                 // 2. Attempt the whole batch in a row, re-checking the real preview after each one.
                 while (readyCount() && tries < cfg.grace.maxAttempts) {
+                    const outcome = await fodderAttempt(gk, fodderIndex(level - 1), readyCount(), cfg.grace.maxFodderChance);
+                    if (outcome && outcome.capped !== undefined) {
+                        stopReason = "fodder already succeeds with " + pct(outcome.capped) + " - another grace stack is unlikely";
+                        break;
+                    }
                     tries++;
-                    const outcome = await fodderAttempt(gk, fodderIndex(level - 1), readyCount());
                     util.log("workshop", "grace attempt " + tries + " at +" + level + ": " + (outcome === "fail" ? "failed (grace up)" : "succeeded (grace reset)"), "white");
                     if (outcome === "fail") {
                         chance = await targetChance();
@@ -1134,7 +1160,7 @@ module.exports = function createWorkshop(ctx) {
                 let better = spare ? null : await strongerScroll(k, "scroll", grade, minChance, preview);
                 // Still short on a valuable item at a higher level, but close (risk.graceWindow):
                 // build grace with cheap fodder. Far below the floor, grace costs too much.
-                const close = chance >= minChance - (cfg.risk.graceWindow || 0.1);
+                const close = chance >= minChance - graceWindowFor(level + 1);
                 if (!better && !spare && close && minChance > 0 && cfg.grace.enabled && level + 1 >= cfg.grace.minLevel) {
                     const graced = await farmGrace(level + 1, minChance, async function () {
                         await ensureScroll(k, scroll, 1); // fodder attempts may have used our scrolls
