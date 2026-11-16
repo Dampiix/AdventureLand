@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.37.0",
+    version: "1.37.1",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -242,7 +242,9 @@ module.exports = {
             maxScrollGrade: 2,     // try up to Rare scrolls when the normal one falls short
             buyStrongerScrolls: true, // only within budgetPerWish; owned/banked ones are used first
         },
-        budgetPerWish: 500000,        // gold per wish (base item + scrolls, failures included)
+        // Gold per wish (base item + scrolls, failures included): shop gear vs token/drop
+        // items (player decision 2026-11-16: room for Rare scrolls, 1.6M each).
+        budgetPerWish: { shop: 1000000, rare: 4000000 },
         massSkills: true,             // Mass Production / Mass Exchange before upgrades and exchanges
         mainStatOnArmor: true,        // wished armor always gets the class's main stat scroll
         deliveryBatchMs: 10 * 60 * 1000, // finish the open wishes first; a ready item waits at most this long

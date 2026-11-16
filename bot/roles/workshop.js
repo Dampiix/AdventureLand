@@ -274,8 +274,14 @@ module.exports = function createWorkshop(ctx) {
     }
 
     // Budget per key: wishes use budgetPerWish, grace keys ("grace:<level>") their own.
+    // budgetPerWish may be split { shop, rare }: shop gear vs token/drop items, whose
+    // higher scrolls are worth more than a lost copy (player decision 2026-11-16).
     function budgetFor(k) {
-        return k.indexOf("grace:") === 0 ? cfg.grace.budgetPerLevel : cfg.budgetPerWish;
+        if (k.indexOf("grace:") === 0) return cfg.grace.budgetPerLevel;
+        const b = cfg.budgetPerWish;
+        if (typeof b !== "object") return b;
+        const name = k.split(":")[1];
+        return G.items[name] && !sellerOf(name) ? b.rare : b.shop;
     }
 
     function canSpend(k, amount) {
