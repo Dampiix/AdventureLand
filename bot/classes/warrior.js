@@ -121,7 +121,6 @@ module.exports = function createWarrior(ctx) {
             const m = others.find(function (e) { return util.distanceTo(e) <= G.skills.taunt.range && worthTaunting(e); });
             if (m) {
                 use_skill("taunt", m).catch(function () {});
-                util.log("warrior", "Taunt: " + m.mtype + " off " + m.target, "yellow");
             }
             return false; // taunting doesn't use the attack
         },
