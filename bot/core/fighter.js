@@ -71,10 +71,25 @@ module.exports = function createFighter(ctx, cls) {
         return true;
     }
 
+    // HP and MP potions share one cooldown (2 s). Below the thresholds they are urgent; on
+    // top of that a potion is drunk as soon as a whole one's worth is missing (combat.
+    // potionWhenMissing) – waiting for 45 % let a solo warrior sink against the Phoenix,
+    // one sip per dip below the line instead of one every cooldown (2026-11-16).
+    function potionGives(kind) {
+        const name = util.potionNames(config.potions)[kind];
+        const g = G.items[name] && G.items[name].gives;
+        const e = g && g.find(function (x) { return x[0] === kind; });
+        return e ? e[1] : (kind === "hp" ? 200 : 300);
+    }
     function handlePotions() {
-        if (is_on_cooldown("use_hp")) return; // HP and MP potions share a cooldown
-        if (util.hpRatio() < config.combat.potionHpBelow) use_skill("use_hp").catch(function () {});
-        else if (util.mpRatio() < config.combat.potionMpBelow) use_skill("use_mp").catch(function () {});
+        if (is_on_cooldown("use_hp")) return;
+        const c = config.combat;
+        const hpMissing = character.max_hp - character.hp;
+        const mpMissing = character.max_mp - character.mp;
+        if (util.hpRatio() < c.potionHpBelow) use_skill("use_hp").catch(function () {});
+        else if (util.mpRatio() < c.potionMpBelow) use_skill("use_mp").catch(function () {});
+        else if (c.potionWhenMissing && hpMissing >= potionGives("hp")) use_skill("use_hp").catch(function () {});
+        else if (c.potionWhenMissing && mpMissing >= potionGives("mp")) use_skill("use_mp").catch(function () {});
     }
 
     function travel(destination, label) {

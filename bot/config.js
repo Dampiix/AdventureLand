@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.55.0",
+    version: "1.55.1",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -162,8 +162,11 @@ module.exports = {
     },
 
     combat: {
-        potionHpBelow: 0.45,
+        potionHpBelow: 0.45,     // urgent: HP first
         potionMpBelow: 0.3,
+        // Otherwise drink as soon as a whole potion's worth is missing (HP before MP), i.e.
+        // on every cooldown in a long fight (player request 2026-11-16).
+        potionWhenMissing: true,
     },
 
     classes: {
