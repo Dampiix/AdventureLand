@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.53.2",
+    version: "1.53.3",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -144,7 +144,8 @@ module.exports = {
         // second must stay within tolerance x the level-1 monster's).
         live: {
             fromLevel: 2,
-            tolerance: 1.5,
+            tolerance: 1.5,       // members picking their own easy targets
+            waitTolerance: 2.5,   // leader while the team stats are not in yet (level-5 CGoo: 1.9x)
         },
         refreshMs: 5 * 60 * 1000, // how often to ask the guide again
         crowdedAfterMs: 90 * 1000,    // no free target this long on the farm map -> spot is crowded

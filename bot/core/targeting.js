@@ -266,13 +266,14 @@ module.exports = function createTargeting(ctx) {
             liveChecked[e.id] = { level: e.level, ok: true, at: now };
             return true;
         }
-        const ratioCheck = function () {
+        const ratioCheck = function (tolerance) {
             const ratio = ((e.attack || def.attack) * (e.frequency || def.frequency || 1)) / Math.max(1, def.attack * (def.frequency || 1));
-            return ratio <= (lcfg.tolerance || 1.5) ? { ok: true } : { ok: false, why: "hits " + ratio.toFixed(1) + "x as hard as at level 1" };
+            return ratio <= tolerance ? { ok: true } : { ok: false, why: "hits " + ratio.toFixed(1) + "x as hard as at level 1" };
         };
-        let v = teamModelOn() ? teamVerdict(e.mtype, e) : ratioCheck();
-        // Team stats not in yet (right after a restart): judge by the level difference alone.
-        if (!v.ok && /waiting for the team/.test(v.why || "")) v = ratioCheck();
+        let v = teamModelOn() ? teamVerdict(e.mtype, e) : ratioCheck(lcfg.tolerance || 1.5);
+        // Team stats not in yet (right after a restart, or a member was away): the level-1
+        // monster passed the team check already, so only a big level jump is refused.
+        if (!v.ok && /waiting for the team/.test(v.why || "")) v = ratioCheck(lcfg.waitTolerance || 2.5);
         liveChecked[e.id] = { level: e.level, ok: v.ok, at: now };
         const k = e.mtype + ":" + e.level;
         if (!v.ok && now - (liveLogged[k] || 0) > 10 * 60 * 1000) {
