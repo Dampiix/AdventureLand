@@ -273,6 +273,7 @@ module.exports = function createTargeting(ctx) {
     // for the whole team, skipping monsters whose spot was recently found crowded.
     function fromProgression() {
         let list = [];
+        let spare = []; // other safe routes, for when every choice is crowded
         try {
             const advice = get_progression();
             if (!advice) return null;
@@ -314,6 +315,14 @@ module.exports = function createTargeting(ctx) {
                     .slice(0, 3)
                     .map(function (r) { return { monster: r.monster, map: r.map, source: "guide, team-safe" }; });
             }
+            if (Array.isArray(advice.routes)) {
+                const seen = {};
+                spare = advice.routes
+                    .filter(function (r) { return r && r.safe && G.monsters[r.monster] && !objector(r.monster, own); })
+                    .sort(function (a, b) { return (b.xp || 0) - (a.xp || 0); })
+                    .filter(function (r) { if (seen[r.monster]) return false; seen[r.monster] = true; return true; })
+                    .map(function (r) { return { monster: r.monster, map: r.map, source: "guide, next free spot" }; });
+            }
             if (!list.length && !raw.length) {
                 const row = (advice.rows || []).find(function (r) {
                     return r.action && r.action.kind === "farm" && r.action.route && G.monsters[r.action.route.monster];
@@ -327,7 +336,10 @@ module.exports = function createTargeting(ctx) {
         const now = Date.now();
         const free = list.find(function (c) { return !(crowdedUntil[c.monster] > now); });
         if (free) return free;
-        // Every choice is crowded: take the one that frees up first.
+        // Every choice is crowded: the best other safe route that isn't...
+        const other = spare.find(function (c) { return !(crowdedUntil[c.monster] > now); });
+        if (other) return other;
+        // ...else the one that frees up first.
         return list.slice().sort(function (a, b) { return crowdedUntil[a.monster] - crowdedUntil[b.monster]; })[0];
     }
 
