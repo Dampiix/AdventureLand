@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.42.3",
+    version: "1.43.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -96,7 +96,9 @@ module.exports = {
         refreshMs: 5 * 60 * 1000,   // leader re-asks the guide this often
         reportMs: 5 * 60 * 1000,    // merchant reports shortages this often
         // Extra stock to collect even without a wish: { name, copies } (bag + bank, any level)
-        want: [],
+        // Armor Boxes for the Rugged step (2026-11-16): below 50 in stock the team farms
+        // their best source – Irradiated Goo (gems -> 21 % box) – if it is safe and fast enough.
+        want: [{ name: "armorbox", copies: 50 }],
     },
 
     targeting: {

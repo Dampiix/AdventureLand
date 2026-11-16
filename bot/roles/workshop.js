@@ -689,7 +689,9 @@ module.exports = function createWorkshop(ctx) {
             else delete shortages[name];
         });
         (d.want || []).forEach(function (w) {
-            const missing = (w.copies || 1) - unlockedCopies(w.name).length;
+            // Stackable items (e.g. Armor Boxes) count by quantity, not by stacks.
+            const have = stackable(w.name) ? ingredientCount(w.name, 0) : unlockedCopies(w.name).length;
+            const missing = (w.copies || 1) - have;
             if (G.items[w.name] && missing > 0 && !list.some(function (x) { return x.name === w.name; })) list.push({ name: w.name, copies: missing });
         });
         comms.send(config.leader, "drops", { list: list });
