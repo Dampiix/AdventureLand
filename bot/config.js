@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.28.0",
+    version: "1.28.1",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -183,17 +183,17 @@ module.exports = {
             all: [
                 { name: "cape", level: 0 },      // 40 Leather -> exchange (wolves, boars)
             ],
-            // Orbs: Orb of Beginnings (Cole: ascale + pleather + cscale + bfur) to +2 first
-            // (+4 to every main stat), then the class orb at +1 (+7 main stat) – +0 only ties.
+            // Orbs: Orb of Beginnings (Cole: ascale + pleather + cscale + Bee Fur) to +1 first
+            // (+3 to every main stat, 3 copies), then the class orb (+4 main stat already at +0).
             paladin: [
-                { steps: [{ name: "orbg", level: 0 }, { name: "orbg", level: 2 }, { name: "orbofstr", level: 1 }] }, // Fire Spirit
+                { steps: [{ name: "orbg", level: 0 }, { name: "orbg", level: 1 }, { name: "orbofstr", level: 0 }] }, // Fire Spirit
             ],
             priest: [
-                { steps: [{ name: "orbg", level: 0 }, { name: "orbg", level: 2 }, { name: "orbofint", level: 1 }] }, // big Pom Pom (level2n)
+                { steps: [{ name: "orbg", level: 0 }, { name: "orbg", level: 1 }, { name: "orbofint", level: 0 }] }, // big Pom Pom (level2n)
             ],
             ranger: [
                 { name: "quiver", level: 0 },    // Cole: 1 Armadillo Scale + 200 Beewings; scorpion drop
-                { steps: [{ name: "orbg", level: 0 }, { name: "orbg", level: 2 }, { name: "orbofdex", level: 1 }] }, // Fire Spirit
+                { steps: [{ name: "orbg", level: 0 }, { name: "orbg", level: 1 }, { name: "orbofdex", level: 0 }] }, // Fire Spirit
             ],
         },
     },
