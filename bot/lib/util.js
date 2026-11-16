@@ -192,7 +192,19 @@ function isDoublehand(name, ctype) {
     return !!(def && (cls.doublehand || {})[def.wtype] && !(cls.mainhand || {})[def.wtype]);
 }
 
+// Seconds per kill for the whole team on one of the guide's routes. The guide plans
+// for the leader alone: `seconds` is its kill time, `cycle` adds waiting for
+// respawns. The team kills `speedup` times as fast, but never faster than the spot
+// respawns. null without a usable route.
+function teamCycle(route, speedup) {
+    if (!route || !(route.cycle > 0)) return null;
+    const kill = (route.seconds > 0 ? route.seconds : route.cycle) + 1.5;
+    const spawn = route.cycle > kill + 0.01 ? route.cycle : 0; // spot limited by respawns
+    return Math.max(kill / (speedup || 1), spawn);
+}
+
 module.exports = {
+    teamCycle: teamCycle,
     deriveTeam: deriveTeam,
     weaponPower: weaponPower,
     isDoublehand: isDoublehand,

@@ -105,11 +105,9 @@ module.exports = function createHunts(ctx) {
         let best = null;
         try {
             ((get_progression() || {}).routes || []).forEach(function (r) {
-                if (!r || r.monster !== monster || !(r.cycle > 0)) return;
-                const kill = (r.seconds > 0 ? r.seconds : r.cycle) + 1.5;
-                const spawn = r.cycle > kill + 0.01 ? r.cycle : 0; // spot limited by respawns
-                const s = Math.max(kill / (cfg.teamSpeedup || 1), spawn);
-                if (best === null || s < best) best = s;
+                if (!r || r.monster !== monster) return;
+                const s = util.teamCycle(r, cfg.teamSpeedup);
+                if (s !== null && (best === null || s < best)) best = s;
             });
         } catch (e) { /* guide not ready */ }
         cycleCache[monster] = { s: best, at: Date.now() };

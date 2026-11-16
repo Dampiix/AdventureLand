@@ -38,6 +38,11 @@ module.exports = function createDrops(ctx) {
         nextCheckAt = 0; // re-evaluate right away
     });
 
+    // The guide plans kill times for the leader alone; the team is faster (config.hunts.teamSpeedup).
+    function teamCycle(route) {
+        return util.teamCycle(route, config.hunts && config.hunts.teamSpeedup);
+    }
+
     // The guide's farm advice for one missing item, or null.
     function routeFor(need) {
         let advice;
@@ -52,10 +57,12 @@ module.exports = function createDrops(ctx) {
             if (!a || a.kind !== "farm" || !a.route || a.blocked || !G.monsters[a.route.monster]) return;
             // The guide's plain XP row (no item, no rate) says nothing about this drop.
             if (!(a.rate > 0) && !(a.meanSeconds > 0)) return;
-            // Seconds per copy: the route's kill cycle divided by the drop rate (guide's own numbers).
-            const perCopy = a.rate > 0 && a.route.cycle > 0
-                ? a.route.cycle / a.rate
-                : a.meanSeconds / Math.max(1, need.copies);
+            // Seconds per copy: the team's kill cycle divided by the drop rate (guide's own
+            // numbers; one roll per kill, however many of us hit it).
+            const cycle = teamCycle(a.route);
+            const perCopy = a.rate > 0 && cycle
+                ? cycle / a.rate
+                : a.meanSeconds * (cycle && a.route.cycle > 0 ? cycle / a.route.cycle : 1) / Math.max(1, need.copies);
             if (!best || perCopy < best.perCopy) best = { monster: a.route.monster, map: a.route.map, perCopy: perCopy };
         };
         (advice && advice.rows || []).forEach(function (row) {
@@ -112,7 +119,7 @@ module.exports = function createDrops(ctx) {
         let best = null;
         routesNow.forEach(function (r) {
             if (!r || !rates[r.monster] || !(r.cycle > 0) || r.safe !== true || !teamSafe(r.monster)) return;
-            const perCopy = r.cycle / rates[r.monster];
+            const perCopy = teamCycle(r) / rates[r.monster];
             if (!best || perCopy < best.perCopy) best = { monster: r.monster, map: r.map, perCopy: perCopy };
         });
         return best;
