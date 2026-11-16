@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.29.0",
+    version: "1.29.1",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -192,7 +192,9 @@ module.exports = {
                 { steps: [{ name: "orbg", level: 0 }, { name: "orbg", level: 1 }, { name: "orbofint", level: 0 }] }, // big Pom Pom (level2n)
             ],
             ranger: [
-                { name: "quiver", level: 0 },    // Cole: 1 Armadillo Scale + 200 Beewings; scorpion drop
+                // Cole: 1 Armadillo Scale + 200 Beewings (scorpions drop it too). The +7 is built on
+                // a second copy; the worn +0 stays until it is done.
+                { steps: [{ name: "quiver", level: 0 }, { name: "quiver", level: 7 }] },
                 { steps: [{ name: "orbg", level: 0 }, { name: "orbg", level: 1 }, { name: "orbofdex", level: 0 }] }, // Fire Spirit
             ],
         },
