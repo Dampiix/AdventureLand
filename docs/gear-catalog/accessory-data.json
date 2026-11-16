@@ -1,0 +1,7266 @@
+{
+ "items": [
+  {
+   "n": "stillwaterlens",
+   "nm": "Stillwater Lens",
+   "t": "orb",
+   "gr": [
+    0,
+    0,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 240000,
+   "lv": [
+    {
+     "int": 9,
+     "resistance": 60,
+     "mp": 400
+    },
+    {
+     "int": 10,
+     "resistance": 66,
+     "mp": 440
+    },
+    {
+     "int": 11,
+     "resistance": 72,
+     "mp": 480
+    },
+    {
+     "int": 12,
+     "resistance": 78,
+     "mp": 520
+    },
+    {
+     "int": 13,
+     "resistance": 84,
+     "mp": 560
+    },
+    {
+     "int": 14,
+     "resistance": 92,
+     "mp": 610
+    }
+   ],
+   "craft": {
+    "i": [
+     [
+      240,
+      "rimeglass",
+      0
+     ],
+     [
+      6,
+      "gemfragment",
+      0
+     ],
+     [
+      8,
+      "seashell",
+      0
+     ],
+     [
+      1,
+      "orbofint",
+      0
+     ]
+    ],
+    "c": 800000,
+    "npc": "craftsman"
+   },
+   "md": [
+    [
+     "rimedjinn",
+     0.0016666666666666668
+    ]
+   ]
+  },
+  {
+   "n": "keepsakependant",
+   "nm": "Keepsake Pendant",
+   "t": "amulet",
+   "gr": [
+    0,
+    2,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 180000,
+   "lv": [
+    {
+     "mp": 150,
+     "xp": 2
+    },
+    {
+     "mp": 225,
+     "xp": 2
+    },
+    {
+     "mp": 300,
+     "xp": 2
+    },
+    {
+     "mp": 375,
+     "xp": 2
+    },
+    {
+     "mp": 450,
+     "xp": 2
+    },
+    {
+     "mp": 544,
+     "xp": 2
+    }
+   ],
+   "craft": {
+    "i": [
+     [
+      1,
+      "sixcake",
+      0
+     ],
+     [
+      1,
+      "hpamulet",
+      0
+     ],
+     [
+      1,
+      "bronzeingot",
+      0
+     ],
+     [
+      20,
+      "drapes",
+      0
+     ]
+    ],
+    "c": 1000000,
+    "npc": "anniversary_baker"
+   },
+   "xc": [
+    [
+     "anniversary_equipment",
+     0.08
+    ],
+    [
+     "sixcake",
+     0.0768
+    ]
+   ]
+  },
+  {
+   "n": "test_orb",
+   "nm": "Orb of Testing",
+   "t": "orb",
+   "gr": [
+    0,
+    0,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 1,
+   "lv": [
+    {},
+    {},
+    {},
+    {},
+    {},
+    {}
+   ],
+   "shop": [
+    "Divian"
+   ],
+   "xc": [
+    [
+     "glitch",
+     0.0005
+    ],
+    [
+     "lglitch",
+     0.0004
+    ]
+   ],
+   "open": [
+    [
+     "lglitch",
+     "rgoo",
+     0.025
+    ],
+    [
+     "lglitch",
+     "cutebee",
+     1
+    ]
+   ]
+  },
+  {
+   "n": "amuletofm",
+   "nm": "Amulet of Mystery",
+   "t": "amulet",
+   "gr": [
+    0,
+    0,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 6400000,
+   "lv": [
+    {
+     "str": 4,
+     "int": 6,
+     "dex": 3,
+     "armor": 10,
+     "hp": 400,
+     "crit": 2,
+     "evasion": 2,
+     "manasteal": 0.5,
+     "dreturn": 1,
+     "reflection": 0.5
+    },
+    {
+     "str": 5,
+     "int": 7,
+     "dex": 4,
+     "armor": 12,
+     "hp": 520,
+     "crit": 3,
+     "evasion": 4,
+     "manasteal": 0.5,
+     "dreturn": 1.8,
+     "reflection": 0.5
+    },
+    {
+     "str": 6,
+     "int": 8,
+     "dex": 5,
+     "armor": 14,
+     "hp": 640,
+     "crit": 4,
+     "evasion": 6,
+     "manasteal": 0.5,
+     "dreturn": 2.5,
+     "reflection": 0.5
+    },
+    {
+     "str": 7,
+     "int": 9,
+     "dex": 6,
+     "armor": 16,
+     "hp": 760,
+     "crit": 5,
+     "evasion": 8,
+     "manasteal": 0.5,
+     "dreturn": 3.3,
+     "reflection": 0.5
+    },
+    {
+     "str": 8,
+     "int": 10,
+     "dex": 7,
+     "armor": 18,
+     "hp": 880,
+     "crit": 6,
+     "evasion": 10,
+     "manasteal": 0.5,
+     "dreturn": 4,
+     "reflection": 0.5
+    },
+    {
+     "str": 9,
+     "int": 11,
+     "dex": 8,
+     "armor": 21,
+     "hp": 1030,
+     "crit": 7.3,
+     "evasion": 12.5,
+     "manasteal": 0.5,
+     "dreturn": 4.9,
+     "reflection": 0.5
+    }
+   ],
+   "md": [
+    [
+     "oneeye",
+     0.000002
+    ]
+   ],
+   "xc": [
+    [
+     "glitch",
+     0.0005
+    ],
+    [
+     "lglitch",
+     0
+    ]
+   ],
+   "open": [
+    [
+     "lglitch",
+     "rgoo",
+     0.025
+    ],
+    [
+     "lglitch",
+     "cutebee",
+     1
+    ]
+   ]
+  },
+  {
+   "n": "northstar",
+   "nm": "The North Star",
+   "t": "amulet",
+   "gr": [
+    0,
+    0,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 64000000,
+   "lv": [
+    {
+     "xp": 10
+    },
+    {
+     "xp": 15
+    },
+    {
+     "xp": 20
+    },
+    {
+     "xp": 25
+    },
+    {
+     "xp": 30
+    },
+    {
+     "xp": 36
+    }
+   ],
+   "md": [
+    [
+     "grinch",
+     0.0001
+    ]
+   ],
+   "xc": [
+    [
+     "glitch",
+     0.0005
+    ],
+    [
+     "lglitch",
+     0
+    ],
+    [
+     "candycane",
+     0
+    ],
+    [
+     "xbox",
+     0.0029
+    ]
+   ],
+   "open": [
+    [
+     "lglitch",
+     "rgoo",
+     0.025
+    ],
+    [
+     "lglitch",
+     "cutebee",
+     1
+    ]
+   ]
+  },
+  {
+   "n": "bfangamulet",
+   "nm": "Ghastly Bat Fang",
+   "t": "amulet",
+   "gr": [
+    0,
+    0,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 6400000,
+   "lv": [
+    {
+     "critdamage": 4,
+     "apiercing": 20,
+     "lifesteal": 2
+    },
+    {
+     "critdamage": 8,
+     "apiercing": 40,
+     "lifesteal": 3
+    },
+    {
+     "critdamage": 12,
+     "apiercing": 60,
+     "lifesteal": 4
+    },
+    {
+     "critdamage": 16,
+     "apiercing": 80,
+     "lifesteal": 5
+    },
+    {
+     "critdamage": 20,
+     "apiercing": 100,
+     "lifesteal": 6
+    },
+    {
+     "critdamage": 25,
+     "apiercing": 125,
+     "lifesteal": 7.3
+    }
+   ],
+   "craft": {
+    "i": [
+     [
+      1,
+      "bfang",
+      0
+     ],
+     [
+      5000,
+      "bwing",
+      0
+     ]
+    ],
+    "c": 4000000,
+    "npc": "craftsman"
+   },
+   "xc": [
+    [
+     "glitch",
+     0.0005
+    ],
+    [
+     "lglitch",
+     0
+    ]
+   ],
+   "open": [
+    [
+     "lglitch",
+     "rgoo",
+     0.025
+    ],
+    [
+     "lglitch",
+     "cutebee",
+     1
+    ]
+   ]
+  },
+  {
+   "n": "mpxamulet",
+   "nm": "Amulet of MP",
+   "t": "amulet",
+   "gr": [
+    0,
+    0,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "set": "mpx",
+   "g": 56000000,
+   "lv": [
+    {},
+    {},
+    {},
+    {},
+    {},
+    {}
+   ],
+   "md": [
+    [
+     "mechagnome",
+     1e-7
+    ],
+    [
+     "xmagex",
+     0.002
+    ]
+   ],
+   "xc": [
+    [
+     "glitch",
+     0.0005
+    ],
+    [
+     "lglitch",
+     0
+    ]
+   ],
+   "open": [
+    [
+     "lglitch",
+     "rgoo",
+     0.025
+    ],
+    [
+     "lglitch",
+     "cutebee",
+     1
+    ]
+   ]
+  },
+  {
+   "n": "suckerpunch",
+   "nm": "Sucker Punch",
+   "t": "ring",
+   "gr": [
+    0,
+    0,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "set": "fury",
+   "g": 3200000,
+   "lv": [
+    {
+     "crit": 2,
+     "apiercing": 20,
+     "lifesteal": 2
+    },
+    {
+     "crit": 3,
+     "apiercing": 40,
+     "lifesteal": 3
+    },
+    {
+     "crit": 4,
+     "apiercing": 60,
+     "lifesteal": 4
+    },
+    {
+     "crit": 5,
+     "apiercing": 80,
+     "lifesteal": 5
+    },
+    {
+     "crit": 6,
+     "apiercing": 100,
+     "lifesteal": 6
+    },
+    {
+     "crit": 7.3,
+     "apiercing": 125,
+     "lifesteal": 7.3
+    }
+   ],
+   "md": [
+    [
+     "crab",
+     2e-7
+    ],
+    [
+     "crabx",
+     4e-7
+    ],
+    [
+     "crabxx",
+     0.0004
+    ]
+   ],
+   "xc": [
+    [
+     "glitch",
+     0.0005
+    ],
+    [
+     "lglitch",
+     0.0004
+    ]
+   ],
+   "open": [
+    [
+     "lglitch",
+     "rgoo",
+     0.025
+    ],
+    [
+     "lglitch",
+     "cutebee",
+     1
+    ]
+   ]
+  },
+  {
+   "n": "vring",
+   "nm": "Vampiring",
+   "t": "ring",
+   "gr": [
+    0,
+    0,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "set": "vampires",
+   "g": 4200000,
+   "lv": [
+    {
+     "str": 12,
+     "vit": 6,
+     "armor": 10,
+     "lifesteal": 6,
+     "dreturn": 9,
+     "courage": 1,
+     "pnresistance": 4
+    },
+    {
+     "str": 16,
+     "vit": 6,
+     "armor": 10,
+     "lifesteal": 6,
+     "dreturn": 9,
+     "courage": 1,
+     "pnresistance": 4
+    },
+    {
+     "str": 20,
+     "vit": 6,
+     "armor": 10,
+     "lifesteal": 6,
+     "dreturn": 9,
+     "courage": 1,
+     "pnresistance": 4
+    },
+    {
+     "str": 24,
+     "vit": 6,
+     "armor": 10,
+     "lifesteal": 6,
+     "dreturn": 9,
+     "courage": 1,
+     "pnresistance": 4
+    },
+    {
+     "str": 28,
+     "vit": 6,
+     "armor": 10,
+     "lifesteal": 6,
+     "dreturn": 9,
+     "courage": 1,
+     "pnresistance": 4
+    },
+    {
+     "str": 33,
+     "vit": 6,
+     "armor": 10,
+     "lifesteal": 6,
+     "dreturn": 9,
+     "courage": 1,
+     "pnresistance": 4
+    }
+   ],
+   "md": [
+    [
+     "a1",
+     0.00005
+    ],
+    [
+     "a2",
+     0.00005
+    ]
+   ],
+   "xc": [
+    [
+     "glitch",
+     0.0005
+    ],
+    [
+     "lglitch",
+     0.0004
+    ]
+   ],
+   "open": [
+    [
+     "lglitch",
+     "rgoo",
+     0.025
+    ],
+    [
+     "lglitch",
+     "cutebee",
+     1
+    ]
+   ]
+  },
+  {
+   "n": "trigger",
+   "nm": "The Trigger",
+   "t": "ring",
+   "gr": [
+    0,
+    0,
+    1,
+    3
+   ],
+   "up": false,
+   "cp": true,
+   "g": 6400000,
+   "lv": [
+    {
+     "str": 6,
+     "apiercing": 10
+    },
+    {
+     "str": 8,
+     "apiercing": 12
+    },
+    {
+     "str": 10,
+     "apiercing": 14
+    },
+    {
+     "str": 12,
+     "apiercing": 16
+    },
+    {
+     "str": 14,
+     "apiercing": 18
+    },
+    {
+     "str": 17,
+     "apiercing": 21
+    }
+   ],
+   "md": [
+    [
+     "xmagex",
+     0.0002
+    ]
+   ],
+   "xc": [
+    [
+     "glitch",
+     0.0002
+    ],
+    [
+     "lglitch",
+     0
+    ]
+   ],
+   "open": [
+    [
+     "lglitch",
+     "rgoo",
+     0.025
+    ],
+    [
+     "lglitch",
+     "cutebee",
+     1
+    ]
+   ]
+  },
+  {
+   "n": "zapper",
+   "nm": "The Zapper",
+   "t": "ring",
+   "gr": [
+    0,
+    0,
+    1,
+    3
+   ],
+   "up": false,
+   "cp": true,
+   "g": 6400000,
+   "lv": [
+    {
+     "str": 5,
+     "int": 10,
+     "resistance": 30,
+     "rpiercing": 10
+    },
+    {
+     "str": 5,
+     "int": 13,
+     "resistance": 30,
+     "rpiercing": 14
+    },
+    {
+     "str": 5,
+     "int": 16,
+     "resistance": 30,
+     "rpiercing": 18
+    },
+    {
+     "str": 5,
+     "int": 19,
+     "resistance": 30,
+     "rpiercing": 22
+    },
+    {
+     "str": 5,
+     "int": 22,
+     "resistance": 30,
+     "rpiercing": 26
+    },
+    {
+     "str": 5,
+     "int": 26,
+     "resistance": 30,
+     "rpiercing": 31
+    }
+   ],
+   "md": [
+    [
+     "xmagex",
+     0.02
+    ]
+   ],
+   "xc": [
+    [
+     "glitch",
+     0.0002
+    ],
+    [
+     "lglitch",
+     0
+    ]
+   ],
+   "open": [
+    [
+     "lglitch",
+     "rgoo",
+     0.025
+    ],
+    [
+     "lglitch",
+     "cutebee",
+     1
+    ]
+   ]
+  },
+  {
+   "n": "goldring",
+   "nm": "Ring of Gold",
+   "t": "ring",
+   "gr": [
+    0,
+    2,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 28000000,
+   "lv": [
+    {
+     "gold": 4
+    },
+    {
+     "gold": 6
+    },
+    {
+     "gold": 8
+    },
+    {
+     "gold": 10
+    },
+    {
+     "gold": 12
+    },
+    {
+     "gold": 15
+    }
+   ],
+   "md": [
+    [
+     "goldenbot",
+     0.02
+    ]
+   ],
+   "xc": [
+    [
+     "glitch",
+     0.0022
+    ],
+    [
+     "lglitch",
+     0
+    ]
+   ],
+   "open": [
+    [
+     "lglitch",
+     "rgoo",
+     0.025
+    ],
+    [
+     "lglitch",
+     "cutebee",
+     1
+    ]
+   ]
+  },
+  {
+   "n": "armorring",
+   "nm": "Ring of Armor",
+   "t": "ring",
+   "gr": [
+    1,
+    4,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 180000,
+   "lv": [
+    {
+     "armor": 24
+    },
+    {
+     "armor": 33,
+     "dreturn": 0.3
+    },
+    {
+     "armor": 42,
+     "dreturn": 0.5
+    },
+    {
+     "armor": 51,
+     "dreturn": 0.8
+    },
+    {
+     "armor": 60,
+     "dreturn": 1
+    },
+    {
+     "armor": 71,
+     "dreturn": 1.3
+    }
+   ],
+   "craft": {
+    "i": [
+     [
+      1,
+      "snakefang",
+      0
+     ],
+     [
+      1,
+      "lotusf",
+      0
+     ],
+     [
+      1,
+      "vitring",
+      2
+     ]
+    ],
+    "c": 0,
+    "npc": "mcollector"
+   },
+   "xc": [
+    [
+     "glitch",
+     0.0022
+    ],
+    [
+     "lglitch",
+     0.0004
+    ]
+   ],
+   "open": [
+    [
+     "lglitch",
+     "rgoo",
+     0.025
+    ],
+    [
+     "lglitch",
+     "cutebee",
+     1
+    ]
+   ]
+  },
+  {
+   "n": "resistancering",
+   "nm": "Ring of Resistance",
+   "t": "ring",
+   "gr": [
+    1,
+    4,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 180000,
+   "lv": [
+    {
+     "resistance": 24
+    },
+    {
+     "resistance": 33,
+     "reflection": 0.1
+    },
+    {
+     "resistance": 42,
+     "reflection": 0.3
+    },
+    {
+     "resistance": 51,
+     "reflection": 0.4
+    },
+    {
+     "resistance": 60,
+     "reflection": 0.5
+    },
+    {
+     "resistance": 71,
+     "reflection": 0.7
+    }
+   ],
+   "craft": {
+    "i": [
+     [
+      1,
+      "ink",
+      0
+     ],
+     [
+      5,
+      "ascale",
+      0
+     ],
+     [
+      1,
+      "vitring",
+      2
+     ]
+    ],
+    "c": 0,
+    "npc": "mcollector"
+   },
+   "xc": [
+    [
+     "glitch",
+     0.0022
+    ],
+    [
+     "lglitch",
+     0.0004
+    ]
+   ],
+   "open": [
+    [
+     "lglitch",
+     "rgoo",
+     0.025
+    ],
+    [
+     "lglitch",
+     "cutebee",
+     1
+    ]
+   ]
+  },
+  {
+   "n": "ringofluck",
+   "nm": "Ring of Luck",
+   "t": "ring",
+   "gr": [
+    0,
+    0,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 6400000,
+   "lv": [
+    {
+     "luck": 10
+    },
+    {
+     "luck": 15
+    },
+    {
+     "luck": 20
+    },
+    {
+     "luck": 25
+    },
+    {
+     "luck": 30
+    },
+    {
+     "luck": 36
+    }
+   ],
+   "md": [
+    [
+     "plantoid",
+     7e-7
+    ]
+   ],
+   "xc": [
+    [
+     "glitch",
+     0.0005
+    ],
+    [
+     "lglitch",
+     0
+    ]
+   ],
+   "open": [
+    [
+     "lglitch",
+     "rgoo",
+     0.025
+    ],
+    [
+     "lglitch",
+     "cutebee",
+     1
+    ]
+   ]
+  },
+  {
+   "n": "ringhs",
+   "nm": "Ring of Holidays",
+   "t": "ring",
+   "gr": [
+    0,
+    0,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "set": "holidays",
+   "g": 6400000,
+   "lv": [
+    {
+     "str": 4,
+     "int": 4,
+     "dex": 4,
+     "vit": 10,
+     "luck": 8
+    },
+    {
+     "str": 4,
+     "int": 4,
+     "dex": 4,
+     "vit": 15,
+     "luck": 11
+    },
+    {
+     "str": 4,
+     "int": 4,
+     "dex": 4,
+     "vit": 20,
+     "luck": 14
+    },
+    {
+     "str": 4,
+     "int": 4,
+     "dex": 4,
+     "vit": 25,
+     "luck": 17
+    },
+    {
+     "str": 4,
+     "int": 4,
+     "dex": 4,
+     "vit": 30,
+     "luck": 20
+    },
+    {
+     "str": 4,
+     "int": 4,
+     "dex": 4,
+     "vit": 36,
+     "luck": 24
+    }
+   ],
+   "md": [
+    [
+     "grinch",
+     0.004
+    ]
+   ],
+   "xc": [
+    [
+     "glitch",
+     0.0005
+    ],
+    [
+     "lglitch",
+     0
+    ]
+   ],
+   "open": [
+    [
+     "lglitch",
+     "rgoo",
+     0.025
+    ],
+    [
+     "lglitch",
+     "cutebee",
+     1
+    ]
+   ]
+  },
+  {
+   "n": "molesteeth",
+   "nm": "Mole's Teeth",
+   "t": "earring",
+   "gr": [
+    0,
+    1,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 500000,
+   "lv": [
+    {
+     "apiercing": 15
+    },
+    {
+     "apiercing": 30
+    },
+    {
+     "apiercing": 45
+    },
+    {
+     "apiercing": 60
+    },
+    {
+     "apiercing": 75
+    },
+    {
+     "apiercing": 94
+    }
+   ],
+   "md": [
+    [
+     "mole",
+     0.00002
+    ]
+   ],
+   "xc": [
+    [
+     "glitch",
+     0.0022
+    ],
+    [
+     "lglitch",
+     0.0004
+    ]
+   ],
+   "open": [
+    [
+     "lglitch",
+     "rgoo",
+     0.025
+    ],
+    [
+     "lglitch",
+     "cutebee",
+     1
+    ]
+   ]
+  },
+  {
+   "n": "mearring",
+   "nm": "Mistletoe Earring",
+   "t": "earring",
+   "gr": [
+    0,
+    0,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "set": "holidays",
+   "g": 12000000,
+   "lv": [
+    {
+     "luck": 8
+    },
+    {
+     "luck": 12
+    },
+    {
+     "luck": 16
+    },
+    {
+     "luck": 20
+    },
+    {
+     "luck": 24
+    },
+    {
+     "luck": 29
+    }
+   ],
+   "xc": [
+    [
+     "glitch",
+     0.0005
+    ],
+    [
+     "lglitch",
+     0
+    ],
+    [
+     "mistletoe",
+     0
+    ]
+   ],
+   "open": [
+    [
+     "lglitch",
+     "rgoo",
+     0.025
+    ],
+    [
+     "lglitch",
+     "cutebee",
+     1
+    ]
+   ]
+  },
+  {
+   "n": "ctristone",
+   "nm": "Tri-Stone",
+   "t": "ring",
+   "gr": [
+    1,
+    4,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 50000,
+   "lv": [
+    {
+     "str": 1,
+     "int": 1,
+     "dex": 1,
+     "vit": 1,
+     "apiercing": 5,
+     "rpiercing": 5
+    },
+    {
+     "str": 2,
+     "int": 2,
+     "dex": 2,
+     "vit": 2,
+     "apiercing": 10,
+     "rpiercing": 10
+    },
+    {
+     "str": 3,
+     "int": 3,
+     "dex": 3,
+     "vit": 3,
+     "apiercing": 15,
+     "rpiercing": 15
+    },
+    {
+     "str": 4,
+     "int": 4,
+     "dex": 4,
+     "vit": 4,
+     "apiercing": 20,
+     "rpiercing": 20
+    },
+    {
+     "str": 5,
+     "int": 5,
+     "dex": 5,
+     "vit": 5,
+     "apiercing": 25,
+     "rpiercing": 25
+    },
+    {
+     "str": 6,
+     "int": 6,
+     "dex": 6,
+     "vit": 6,
+     "apiercing": 31,
+     "rpiercing": 31
+    }
+   ],
+   "craft": {
+    "i": [
+     [
+      1,
+      "strring",
+      0
+     ],
+     [
+      1,
+      "intring",
+      0
+     ],
+     [
+      1,
+      "dexring",
+      0
+     ],
+     [
+      10,
+      "vitscroll",
+      0
+     ]
+    ],
+    "c": 20000,
+    "npc": "craftsman"
+   },
+   "xc": [
+    [
+     "glitch",
+     0.0022
+    ],
+    [
+     "lglitch",
+     0.0037
+    ]
+   ],
+   "open": [
+    [
+     "lglitch",
+     "rgoo",
+     0.025
+    ],
+    [
+     "lglitch",
+     "cutebee",
+     1
+    ]
+   ]
+  },
+  {
+   "n": "cdarktristone",
+   "nm": "Dark Tri-Stone",
+   "t": "ring",
+   "gr": [
+    1,
+    4,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 50000,
+   "lv": [
+    {
+     "str": 1,
+     "int": 1,
+     "dex": 1,
+     "vit": 1,
+     "apiercing": 5,
+     "rpiercing": 5,
+     "evasion": 3
+    },
+    {
+     "str": 2,
+     "int": 2,
+     "dex": 2,
+     "vit": 2,
+     "apiercing": 10,
+     "rpiercing": 10,
+     "evasion": 3
+    },
+    {
+     "str": 3,
+     "int": 3,
+     "dex": 3,
+     "vit": 3,
+     "apiercing": 15,
+     "rpiercing": 15,
+     "evasion": 3
+    },
+    {
+     "str": 4,
+     "int": 4,
+     "dex": 4,
+     "vit": 4,
+     "apiercing": 20,
+     "rpiercing": 20,
+     "evasion": 3
+    },
+    {
+     "str": 5,
+     "int": 5,
+     "dex": 5,
+     "vit": 5,
+     "apiercing": 25,
+     "rpiercing": 25,
+     "evasion": 3
+    },
+    {
+     "str": 6,
+     "int": 6,
+     "dex": 6,
+     "vit": 6,
+     "apiercing": 31,
+     "rpiercing": 31,
+     "evasion": 3
+    }
+   ],
+   "xc": [
+    [
+     "glitch",
+     0.0022
+    ],
+    [
+     "lglitch",
+     0.0037
+    ]
+   ],
+   "open": [
+    [
+     "lglitch",
+     "rgoo",
+     0.025
+    ],
+    [
+     "lglitch",
+     "cutebee",
+     1
+    ]
+   ]
+  },
+  {
+   "n": "skullamulet",
+   "nm": "Skull Amulet",
+   "t": "amulet",
+   "gr": [
+    2,
+    4,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 30000,
+   "lv": [
+    {
+     "str": 1,
+     "int": 1,
+     "dex": 1,
+     "for": 4,
+     "armor": 10,
+     "hp": 200
+    },
+    {
+     "str": 2,
+     "int": 2,
+     "dex": 2,
+     "for": 5,
+     "armor": 15,
+     "hp": 520
+    },
+    {
+     "str": 3,
+     "int": 3,
+     "dex": 3,
+     "for": 6,
+     "armor": 20,
+     "hp": 840
+    },
+    {
+     "str": 4,
+     "int": 4,
+     "dex": 4,
+     "for": 7,
+     "armor": 25,
+     "hp": 1160
+    },
+    {
+     "str": 5,
+     "int": 5,
+     "dex": 5,
+     "for": 8,
+     "armor": 30,
+     "hp": 1480
+    },
+    {
+     "str": 6,
+     "int": 6,
+     "dex": 6,
+     "for": 9,
+     "armor": 36,
+     "hp": 1880
+    }
+   ],
+   "xc": [
+    [
+     "glitch",
+     0.0022
+    ],
+    [
+     "lglitch",
+     0.0037
+    ],
+    [
+     "candy1",
+     0.0661
+    ]
+   ],
+   "open": [
+    [
+     "lglitch",
+     "rgoo",
+     0.025
+    ],
+    [
+     "lglitch",
+     "cutebee",
+     1
+    ]
+   ]
+  },
+  {
+   "n": "spookyamulet",
+   "nm": "Amulet of Spooks",
+   "t": "amulet",
+   "gr": [
+    0,
+    3,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 320000,
+   "lv": [
+    {
+     "evasion": 5,
+     "luck": 2,
+     "gold": 2,
+     "xp": 2,
+     "reflection": 2
+    },
+    {
+     "evasion": 5.6,
+     "luck": 2,
+     "gold": 2,
+     "xp": 2,
+     "reflection": 2.3
+    },
+    {
+     "evasion": 6.3,
+     "luck": 3,
+     "gold": 3,
+     "xp": 3,
+     "reflection": 2.5
+    },
+    {
+     "evasion": 6.9,
+     "luck": 3,
+     "gold": 3,
+     "xp": 3,
+     "reflection": 2.8
+    },
+    {
+     "evasion": 7.5,
+     "luck": 3,
+     "gold": 3,
+     "xp": 3,
+     "reflection": 3
+    },
+    {
+     "evasion": 8.3,
+     "luck": 3,
+     "gold": 3,
+     "xp": 3,
+     "reflection": 3.3
+    }
+   ],
+   "xc": [
+    [
+     "glitch",
+     0.0022
+    ],
+    [
+     "lglitch",
+     0.0004
+    ],
+    [
+     "candy0",
+     0.0012
+    ]
+   ],
+   "open": [
+    [
+     "lglitch",
+     "rgoo",
+     0.025
+    ],
+    [
+     "lglitch",
+     "cutebee",
+     1
+    ]
+   ]
+  },
+  {
+   "n": "hpamulet",
+   "nm": "Amulet of HP",
+   "t": "amulet",
+   "gr": [
+    3,
+    5,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 20000,
+   "lv": [
+    {
+     "hp": 200
+    },
+    {
+     "hp": 440
+    },
+    {
+     "hp": 680
+    },
+    {
+     "hp": 920
+    },
+    {
+     "hp": 1160
+    },
+    {
+     "hp": 1460
+    }
+   ],
+   "mapd": [
+    [
+     "main",
+     0.0006
+    ],
+    [
+     "cave",
+     0.0006
+    ],
+    [
+     "maintest",
+     0.0007
+    ]
+   ],
+   "xc": [
+    [
+     "glitch",
+     0.0022
+    ],
+    [
+     "lglitch",
+     0.0037
+    ],
+    [
+     "jewellerybox",
+     0.5
+    ]
+   ],
+   "open": [
+    [
+     "lglitch",
+     "rgoo",
+     0.025
+    ],
+    [
+     "lglitch",
+     "cutebee",
+     1
+    ]
+   ]
+  },
+  {
+   "n": "snring",
+   "nm": "Stompy's Nose Ring",
+   "t": "amulet",
+   "gr": [
+    0,
+    0,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 2400000,
+   "lv": [
+    {
+     "str": 14,
+     "dex": 2,
+     "armor": 20
+    },
+    {
+     "str": 16,
+     "dex": 3,
+     "armor": 25
+    },
+    {
+     "str": 18,
+     "dex": 4,
+     "armor": 30
+    },
+    {
+     "str": 20,
+     "dex": 5,
+     "armor": 35
+    },
+    {
+     "str": 22,
+     "dex": 6,
+     "armor": 40
+    },
+    {
+     "str": 25,
+     "dex": 7,
+     "armor": 46
+    }
+   ],
+   "md": [
+    [
+     "stompy",
+     0.002
+    ]
+   ],
+   "xc": [
+    [
+     "glitch",
+     0.0005
+    ],
+    [
+     "lglitch",
+     0.0004
+    ]
+   ],
+   "open": [
+    [
+     "lglitch",
+     "rgoo",
+     0.025
+    ],
+    [
+     "lglitch",
+     "cutebee",
+     1
+    ]
+   ]
+  },
+  {
+   "n": "sanguine",
+   "nm": "Sanguine Amulet",
+   "t": "amulet",
+   "gr": [
+    0,
+    0,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 32000000,
+   "lv": [
+    {
+     "str": 5,
+     "int": 5,
+     "dex": 5,
+     "hp": 1200
+    },
+    {
+     "str": 6,
+     "int": 6,
+     "dex": 6,
+     "hp": 1500
+    },
+    {
+     "str": 7,
+     "int": 7,
+     "dex": 7,
+     "hp": 1800
+    },
+    {
+     "str": 8,
+     "int": 8,
+     "dex": 8,
+     "hp": 2100
+    },
+    {
+     "str": 9,
+     "int": 9,
+     "dex": 9,
+     "hp": 2400
+    },
+    {
+     "str": 10,
+     "int": 10,
+     "dex": 10,
+     "hp": 2775
+    }
+   ],
+   "md": [
+    [
+     "mvampire",
+     0.0000125
+    ],
+    [
+     "fvampire",
+     0.00002
+    ]
+   ],
+   "xc": [
+    [
+     "glitch",
+     0.0005
+    ],
+    [
+     "lglitch",
+     0
+    ]
+   ],
+   "open": [
+    [
+     "lglitch",
+     "rgoo",
+     0.025
+    ],
+    [
+     "lglitch",
+     "cutebee",
+     1
+    ]
+   ]
+  },
+  {
+   "n": "dexamulet",
+   "nm": "Amulet of Dexterity",
+   "t": "amulet",
+   "gr": [
+    3,
+    5,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 30000,
+   "lv": [
+    {
+     "dex": 4
+    },
+    {
+     "dex": 7
+    },
+    {
+     "dex": 10
+    },
+    {
+     "dex": 13
+    },
+    {
+     "dex": 16
+    },
+    {
+     "dex": 20
+    }
+   ],
+   "xc": [
+    [
+     "statamulet",
+     0.3333
+    ],
+    [
+     "glitch",
+     0.0022
+    ],
+    [
+     "lglitch",
+     0.0037
+    ]
+   ],
+   "open": [
+    [
+     "statamulet",
+     "fvampire",
+     0.3
+    ],
+    [
+     "statamulet",
+     "map:halloween",
+     0.0007
+    ],
+    [
+     "lglitch",
+     "rgoo",
+     0.025
+    ],
+    [
+     "lglitch",
+     "cutebee",
+     1
+    ]
+   ]
+  },
+  {
+   "n": "stramulet",
+   "nm": "Amulet of Strength",
+   "t": "amulet",
+   "gr": [
+    3,
+    5,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 30000,
+   "lv": [
+    {
+     "str": 4
+    },
+    {
+     "str": 7
+    },
+    {
+     "str": 10
+    },
+    {
+     "str": 13
+    },
+    {
+     "str": 16
+    },
+    {
+     "str": 20
+    }
+   ],
+   "xc": [
+    [
+     "statamulet",
+     0.3333
+    ],
+    [
+     "glitch",
+     0.0022
+    ],
+    [
+     "lglitch",
+     0.0037
+    ]
+   ],
+   "open": [
+    [
+     "statamulet",
+     "fvampire",
+     0.3
+    ],
+    [
+     "statamulet",
+     "map:halloween",
+     0.0007
+    ],
+    [
+     "lglitch",
+     "rgoo",
+     0.025
+    ],
+    [
+     "lglitch",
+     "cutebee",
+     1
+    ]
+   ]
+  },
+  {
+   "n": "intamulet",
+   "nm": "Amulet of Intelligence",
+   "t": "amulet",
+   "gr": [
+    3,
+    5,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 30000,
+   "lv": [
+    {
+     "int": 4
+    },
+    {
+     "int": 7
+    },
+    {
+     "int": 10
+    },
+    {
+     "int": 13
+    },
+    {
+     "int": 16
+    },
+    {
+     "int": 20
+    }
+   ],
+   "xc": [
+    [
+     "statamulet",
+     0.3333
+    ],
+    [
+     "glitch",
+     0.0022
+    ],
+    [
+     "lglitch",
+     0.0037
+    ]
+   ],
+   "open": [
+    [
+     "statamulet",
+     "fvampire",
+     0.3
+    ],
+    [
+     "statamulet",
+     "map:halloween",
+     0.0007
+    ],
+    [
+     "lglitch",
+     "rgoo",
+     0.025
+    ],
+    [
+     "lglitch",
+     "cutebee",
+     1
+    ]
+   ]
+  },
+  {
+   "n": "t2stramulet",
+   "nm": "Amulet of the Eager Warrior",
+   "t": "amulet",
+   "gr": [
+    0,
+    2,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 160000,
+   "lv": [
+    {
+     "str": 6,
+     "resistance": 30
+    },
+    {
+     "str": 9,
+     "resistance": 50
+    },
+    {
+     "str": 12,
+     "resistance": 70
+    },
+    {
+     "str": 15,
+     "resistance": 90
+    },
+    {
+     "str": 18,
+     "resistance": 110
+    },
+    {
+     "str": 22,
+     "resistance": 135
+    }
+   ],
+   "xc": [
+    [
+     "glitch",
+     0.0022
+    ],
+    [
+     "lglitch",
+     0.0004
+    ],
+    [
+     "gemfragment",
+     0.2857
+    ]
+   ],
+   "open": [
+    [
+     "lglitch",
+     "rgoo",
+     0.025
+    ],
+    [
+     "lglitch",
+     "cutebee",
+     1
+    ]
+   ]
+  },
+  {
+   "n": "t2intamulet",
+   "nm": "Amulet of the Fierce Mage",
+   "t": "amulet",
+   "gr": [
+    0,
+    2,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 160000,
+   "lv": [
+    {
+     "int": 6,
+     "armor": 30
+    },
+    {
+     "int": 9,
+     "armor": 50
+    },
+    {
+     "int": 12,
+     "armor": 70
+    },
+    {
+     "int": 15,
+     "armor": 90
+    },
+    {
+     "int": 18,
+     "armor": 110
+    },
+    {
+     "int": 22,
+     "armor": 135
+    }
+   ],
+   "xc": [
+    [
+     "glitch",
+     0.0022
+    ],
+    [
+     "lglitch",
+     0.0004
+    ],
+    [
+     "gemfragment",
+     0.2857
+    ]
+   ],
+   "open": [
+    [
+     "lglitch",
+     "rgoo",
+     0.025
+    ],
+    [
+     "lglitch",
+     "cutebee",
+     1
+    ]
+   ]
+  },
+  {
+   "n": "t2dexamulet",
+   "nm": "Amulet of the Stubborn Ranger",
+   "t": "amulet",
+   "gr": [
+    0,
+    2,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 160000,
+   "lv": [
+    {
+     "dex": 6,
+     "vit": 5
+    },
+    {
+     "dex": 9,
+     "vit": 8
+    },
+    {
+     "dex": 12,
+     "vit": 11
+    },
+    {
+     "dex": 15,
+     "vit": 14
+    },
+    {
+     "dex": 18,
+     "vit": 17
+    },
+    {
+     "dex": 22,
+     "vit": 21
+    }
+   ],
+   "xc": [
+    [
+     "glitch",
+     0.0022
+    ],
+    [
+     "lglitch",
+     0.0004
+    ],
+    [
+     "gemfragment",
+     0.2857
+    ]
+   ],
+   "open": [
+    [
+     "lglitch",
+     "rgoo",
+     0.025
+    ],
+    [
+     "lglitch",
+     "cutebee",
+     1
+    ]
+   ]
+  },
+  {
+   "n": "warmscarf",
+   "nm": "Warm Scarf",
+   "t": "amulet",
+   "gr": [
+    7,
+    9,
+    10,
+    12
+   ],
+   "up": true,
+   "cp": false,
+   "g": 20000,
+   "lv": [
+    {
+     "str": 2,
+     "int": 2,
+     "dex": 2,
+     "armor": 10,
+     "resistance": 10,
+     "apiercing": 5,
+     "rpiercing": 5
+    },
+    {
+     "str": 2,
+     "int": 2,
+     "dex": 2,
+     "armor": 10,
+     "resistance": 10,
+     "apiercing": 6,
+     "rpiercing": 6
+    },
+    {
+     "str": 2,
+     "int": 2,
+     "dex": 2,
+     "armor": 10,
+     "resistance": 10,
+     "apiercing": 8,
+     "rpiercing": 8
+    },
+    {
+     "str": 2,
+     "int": 2,
+     "dex": 2,
+     "armor": 10,
+     "resistance": 10,
+     "apiercing": 9,
+     "rpiercing": 9
+    },
+    {
+     "str": 2,
+     "int": 2,
+     "dex": 2,
+     "armor": 10,
+     "resistance": 10,
+     "apiercing": 10,
+     "rpiercing": 10
+    },
+    {
+     "str": 2,
+     "int": 2,
+     "dex": 2,
+     "armor": 10,
+     "resistance": 10,
+     "apiercing": 11,
+     "rpiercing": 11
+    }
+   ],
+   "xc": [
+    [
+     "glitch",
+     0.0022
+    ],
+    [
+     "lglitch",
+     0.0037
+    ],
+    [
+     "mistletoe",
+     0.0654
+    ],
+    [
+     "candycane",
+     0.0631
+    ],
+    [
+     "ornament",
+     0.0654
+    ]
+   ],
+   "open": [
+    [
+     "lglitch",
+     "rgoo",
+     0.025
+    ],
+    [
+     "lglitch",
+     "cutebee",
+     1
+    ]
+   ]
+  },
+  {
+   "n": "hpbelt",
+   "nm": "Belt of HP",
+   "t": "belt",
+   "gr": [
+    3,
+    5,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 20000,
+   "lv": [
+    {
+     "hp": 160
+    },
+    {
+     "hp": 400
+    },
+    {
+     "hp": 640
+    },
+    {
+     "hp": 880
+    },
+    {
+     "hp": 1120
+    },
+    {
+     "hp": 1420
+    }
+   ],
+   "mapd": [
+    [
+     "main",
+     0.0006
+    ],
+    [
+     "cave",
+     0.0006
+    ],
+    [
+     "maintest",
+     0.0007
+    ]
+   ],
+   "xc": [
+    [
+     "glitch",
+     0.0022
+    ],
+    [
+     "lglitch",
+     0.0037
+    ],
+    [
+     "jewellerybox",
+     0.5
+    ]
+   ],
+   "open": [
+    [
+     "lglitch",
+     "rgoo",
+     0.025
+    ],
+    [
+     "lglitch",
+     "cutebee",
+     1
+    ]
+   ]
+  },
+  {
+   "n": "mpxbelt",
+   "nm": "Belt of MP Reduction",
+   "t": "belt",
+   "gr": [
+    0,
+    0,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "set": "mpx",
+   "g": 1200000,
+   "lv": [
+    {},
+    {},
+    {},
+    {},
+    {},
+    {}
+   ],
+   "md": [
+    [
+     "oneeye",
+     3.3333333333333335e-7
+    ]
+   ],
+   "xc": [
+    [
+     "glitch",
+     0.0005
+    ],
+    [
+     "lglitch",
+     0.0004
+    ]
+   ],
+   "open": [
+    [
+     "lglitch",
+     "rgoo",
+     0.025
+    ],
+    [
+     "lglitch",
+     "cutebee",
+     1
+    ]
+   ]
+  },
+  {
+   "n": "lbelt",
+   "nm": "Belt",
+   "t": "belt",
+   "gr": [
+    3,
+    5,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 40000,
+   "lv": [
+    {
+     "armor": 15,
+     "speed": 1
+    },
+    {
+     "armor": 20,
+     "speed": 2
+    },
+    {
+     "armor": 25,
+     "speed": 3
+    },
+    {
+     "armor": 30,
+     "speed": 4
+    },
+    {
+     "armor": 35,
+     "speed": 5
+    },
+    {
+     "armor": 41,
+     "speed": 7
+    }
+   ],
+   "craft": {
+    "i": [
+     [
+      100,
+      "bfur",
+      0
+     ],
+     [
+      1,
+      "hpbelt",
+      2
+     ]
+    ],
+    "c": 0,
+    "npc": "mcollector"
+   },
+   "xc": [
+    [
+     "glitch",
+     0.0022
+    ],
+    [
+     "lglitch",
+     0.0037
+    ]
+   ],
+   "open": [
+    [
+     "lglitch",
+     "rgoo",
+     0.025
+    ],
+    [
+     "lglitch",
+     "cutebee",
+     1
+    ]
+   ]
+  },
+  {
+   "n": "strbelt",
+   "nm": "Belt of Strength",
+   "t": "belt",
+   "gr": [
+    2,
+    5,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 50000,
+   "lv": [
+    {
+     "str": 4
+    },
+    {
+     "str": 7
+    },
+    {
+     "str": 10
+    },
+    {
+     "str": 13
+    },
+    {
+     "str": 16
+    },
+    {
+     "str": 20
+    }
+   ],
+   "xc": [
+    [
+     "statbelt",
+     0.3333
+    ],
+    [
+     "glitch",
+     0.0022
+    ],
+    [
+     "lglitch",
+     0.0037
+    ]
+   ],
+   "open": [
+    [
+     "statbelt",
+     "map:spookytown",
+     0.0007
+    ],
+    [
+     "lglitch",
+     "rgoo",
+     0.025
+    ],
+    [
+     "lglitch",
+     "cutebee",
+     1
+    ]
+   ]
+  },
+  {
+   "n": "mbelt",
+   "nm": "Well-Crafted Belt",
+   "t": "belt",
+   "gr": [
+    0,
+    1,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 640000,
+   "lv": [
+    {
+     "int": 8,
+     "dex": 8,
+     "armor": 15,
+     "speed": 1
+    },
+    {
+     "int": 8,
+     "dex": 8,
+     "armor": 25,
+     "speed": 2
+    },
+    {
+     "int": 8,
+     "dex": 8,
+     "armor": 35,
+     "speed": 3
+    },
+    {
+     "int": 8,
+     "dex": 8,
+     "armor": 45,
+     "speed": 4
+    },
+    {
+     "int": 8,
+     "dex": 8,
+     "armor": 55,
+     "speed": 5
+    },
+    {
+     "int": 8,
+     "dex": 8,
+     "armor": 68,
+     "speed": 7
+    }
+   ],
+   "md": [
+    [
+     "a6",
+     0.1
+    ]
+   ],
+   "xc": [
+    [
+     "glitch",
+     0.0022
+    ],
+    [
+     "lglitch",
+     0.0004
+    ]
+   ],
+   "open": [
+    [
+     "lglitch",
+     "rgoo",
+     0.025
+    ],
+    [
+     "lglitch",
+     "cutebee",
+     1
+    ]
+   ]
+  },
+  {
+   "n": "sbelt",
+   "nm": "Belt of Hallowed Trials",
+   "t": "belt",
+   "gr": [
+    0,
+    1,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 640000,
+   "lv": [
+    {
+     "str": 8,
+     "int": 8,
+     "dex": 8,
+     "for": 12,
+     "armor": 15,
+     "resistance": 15
+    },
+    {
+     "str": 10,
+     "int": 10,
+     "dex": 10,
+     "for": 12,
+     "armor": 25,
+     "resistance": 25
+    },
+    {
+     "str": 12,
+     "int": 12,
+     "dex": 12,
+     "for": 12,
+     "armor": 35,
+     "resistance": 35
+    },
+    {
+     "str": 14,
+     "int": 14,
+     "dex": 14,
+     "for": 12,
+     "armor": 45,
+     "resistance": 45
+    },
+    {
+     "str": 16,
+     "int": 16,
+     "dex": 16,
+     "for": 12,
+     "armor": 55,
+     "resistance": 55
+    },
+    {
+     "str": 19,
+     "int": 19,
+     "dex": 19,
+     "for": 12,
+     "armor": 68,
+     "resistance": 68
+    }
+   ],
+   "md": [
+    [
+     "slenderman",
+     0.05
+    ],
+    [
+     "a5",
+     0.0001
+    ],
+    [
+     "a8",
+     0.00025
+    ],
+    [
+     "xmagex",
+     0.01
+    ]
+   ],
+   "xc": [
+    [
+     "glitch",
+     0.0022
+    ],
+    [
+     "lglitch",
+     0.0004
+    ]
+   ],
+   "open": [
+    [
+     "lglitch",
+     "rgoo",
+     0.025
+    ],
+    [
+     "lglitch",
+     "cutebee",
+     1
+    ]
+   ]
+  },
+  {
+   "n": "santasbelt",
+   "nm": "Santa's Belt",
+   "t": "belt",
+   "gr": [
+    0,
+    3,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "set": "holidays",
+   "g": 640000,
+   "lv": [
+    {
+     "dex": 3,
+     "evasion": 4
+    },
+    {
+     "dex": 5,
+     "evasion": 4
+    },
+    {
+     "dex": 7,
+     "evasion": 4
+    },
+    {
+     "dex": 9,
+     "evasion": 4
+    },
+    {
+     "dex": 11,
+     "evasion": 4
+    },
+    {
+     "dex": 14,
+     "evasion": 4
+    }
+   ],
+   "xc": [
+    [
+     "glitch",
+     0.0022
+    ],
+    [
+     "lglitch",
+     0.0004
+    ],
+    [
+     "mistletoe",
+     0.0065
+    ],
+    [
+     "candycane",
+     0.0063
+    ],
+    [
+     "ornament",
+     0.0065
+    ]
+   ],
+   "open": [
+    [
+     "lglitch",
+     "rgoo",
+     0.025
+    ],
+    [
+     "lglitch",
+     "cutebee",
+     1
+    ]
+   ]
+  },
+  {
+   "n": "dexbelt",
+   "nm": "Belt of Dexterity",
+   "t": "belt",
+   "gr": [
+    2,
+    5,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 50000,
+   "lv": [
+    {
+     "dex": 4
+    },
+    {
+     "dex": 7
+    },
+    {
+     "dex": 10
+    },
+    {
+     "dex": 13
+    },
+    {
+     "dex": 16
+    },
+    {
+     "dex": 20
+    }
+   ],
+   "xc": [
+    [
+     "statbelt",
+     0.3333
+    ],
+    [
+     "glitch",
+     0.0022
+    ],
+    [
+     "lglitch",
+     0.0037
+    ]
+   ],
+   "open": [
+    [
+     "statbelt",
+     "map:spookytown",
+     0.0007
+    ],
+    [
+     "lglitch",
+     "rgoo",
+     0.025
+    ],
+    [
+     "lglitch",
+     "cutebee",
+     1
+    ]
+   ]
+  },
+  {
+   "n": "intbelt",
+   "nm": "Belt of Intelligence",
+   "t": "belt",
+   "gr": [
+    2,
+    5,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 50000,
+   "lv": [
+    {
+     "int": 4
+    },
+    {
+     "int": 7
+    },
+    {
+     "int": 10
+    },
+    {
+     "int": 13
+    },
+    {
+     "int": 16
+    },
+    {
+     "int": 20
+    }
+   ],
+   "xc": [
+    [
+     "statbelt",
+     0.3333
+    ],
+    [
+     "glitch",
+     0.0022
+    ],
+    [
+     "lglitch",
+     0.0037
+    ]
+   ],
+   "open": [
+    [
+     "statbelt",
+     "map:spookytown",
+     0.0007
+    ],
+    [
+     "lglitch",
+     "rgoo",
+     0.025
+    ],
+    [
+     "lglitch",
+     "cutebee",
+     1
+    ]
+   ]
+  },
+  {
+   "n": "ringsj",
+   "nm": "Ring of Small Joys",
+   "t": "ring",
+   "gr": [
+    3,
+    5,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 24000,
+   "lv": [
+    {
+     "str": 1,
+     "int": 1,
+     "dex": 1,
+     "resistance": 5
+    },
+    {
+     "str": 2,
+     "int": 2,
+     "dex": 2,
+     "resistance": 10
+    },
+    {
+     "str": 3,
+     "int": 3,
+     "dex": 3,
+     "resistance": 15
+    },
+    {
+     "str": 4,
+     "int": 4,
+     "dex": 4,
+     "resistance": 20
+    },
+    {
+     "str": 5,
+     "int": 5,
+     "dex": 5,
+     "resistance": 25
+    },
+    {
+     "str": 6,
+     "int": 6,
+     "dex": 6,
+     "resistance": 31
+    }
+   ],
+   "mapd": [
+    [
+     "main",
+     0.0007
+    ],
+    [
+     "cave",
+     0.0004
+    ],
+    [
+     "maintest",
+     0.001
+    ]
+   ],
+   "xc": [
+    [
+     "glitch",
+     0.0022
+    ],
+    [
+     "lglitch",
+     0.0037
+    ]
+   ],
+   "open": [
+    [
+     "lglitch",
+     "rgoo",
+     0.025
+    ],
+    [
+     "lglitch",
+     "cutebee",
+     1
+    ]
+   ]
+  },
+  {
+   "n": "solitaire",
+   "nm": "Solitaire Ring",
+   "t": "ring",
+   "gr": [
+    0,
+    0,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 1200000,
+   "lv": [
+    {},
+    {},
+    {},
+    {},
+    {},
+    {}
+   ],
+   "md": [
+    [
+     "pinkgoo",
+     0.0005
+    ]
+   ],
+   "xc": [
+    [
+     "glitch",
+     0.0005
+    ],
+    [
+     "lglitch",
+     0.0004
+    ]
+   ],
+   "open": [
+    [
+     "lglitch",
+     "rgoo",
+     0.025
+    ],
+    [
+     "lglitch",
+     "cutebee",
+     1
+    ]
+   ]
+  },
+  {
+   "n": "vitring",
+   "nm": "Ring of Vitality",
+   "t": "ring",
+   "gr": [
+    3,
+    5,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 24000,
+   "lv": [
+    {
+     "vit": 2
+    },
+    {
+     "vit": 4
+    },
+    {
+     "vit": 6
+    },
+    {
+     "vit": 8
+    },
+    {
+     "vit": 10
+    },
+    {
+     "vit": 13
+    }
+   ],
+   "xc": [
+    [
+     "statring",
+     0.25
+    ],
+    [
+     "glitch",
+     0.0022
+    ],
+    [
+     "lglitch",
+     0.0037
+    ]
+   ],
+   "open": [
+    [
+     "statring",
+     "map:winter_cave",
+     0.0005
+    ],
+    [
+     "statring",
+     "map:winterland",
+     0.0005
+    ],
+    [
+     "lglitch",
+     "rgoo",
+     0.025
+    ],
+    [
+     "lglitch",
+     "cutebee",
+     1
+    ]
+   ]
+  },
+  {
+   "n": "strring",
+   "nm": "Ring of Strength",
+   "t": "ring",
+   "gr": [
+    3,
+    5,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 24000,
+   "lv": [
+    {
+     "str": 2
+    },
+    {
+     "str": 4
+    },
+    {
+     "str": 6
+    },
+    {
+     "str": 8
+    },
+    {
+     "str": 10
+    },
+    {
+     "str": 13
+    }
+   ],
+   "xc": [
+    [
+     "statring",
+     0.25
+    ],
+    [
+     "glitch",
+     0.0022
+    ],
+    [
+     "lglitch",
+     0.0037
+    ]
+   ],
+   "open": [
+    [
+     "statring",
+     "map:winter_cave",
+     0.0005
+    ],
+    [
+     "statring",
+     "map:winterland",
+     0.0005
+    ],
+    [
+     "lglitch",
+     "rgoo",
+     0.025
+    ],
+    [
+     "lglitch",
+     "cutebee",
+     1
+    ]
+   ]
+  },
+  {
+   "n": "intring",
+   "nm": "Ring of Intelligence",
+   "t": "ring",
+   "gr": [
+    3,
+    5,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 24000,
+   "lv": [
+    {
+     "int": 2
+    },
+    {
+     "int": 4
+    },
+    {
+     "int": 6
+    },
+    {
+     "int": 8
+    },
+    {
+     "int": 10
+    },
+    {
+     "int": 13
+    }
+   ],
+   "xc": [
+    [
+     "statring",
+     0.25
+    ],
+    [
+     "glitch",
+     0.0022
+    ],
+    [
+     "lglitch",
+     0.0037
+    ]
+   ],
+   "open": [
+    [
+     "statring",
+     "map:winter_cave",
+     0.0005
+    ],
+    [
+     "statring",
+     "map:winterland",
+     0.0005
+    ],
+    [
+     "lglitch",
+     "rgoo",
+     0.025
+    ],
+    [
+     "lglitch",
+     "cutebee",
+     1
+    ]
+   ]
+  },
+  {
+   "n": "dexring",
+   "nm": "Ring of Dexterity",
+   "t": "ring",
+   "gr": [
+    3,
+    5,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 24000,
+   "lv": [
+    {
+     "dex": 2
+    },
+    {
+     "dex": 4
+    },
+    {
+     "dex": 6
+    },
+    {
+     "dex": 8
+    },
+    {
+     "dex": 10
+    },
+    {
+     "dex": 13
+    }
+   ],
+   "xc": [
+    [
+     "statring",
+     0.25
+    ],
+    [
+     "glitch",
+     0.0022
+    ],
+    [
+     "lglitch",
+     0.0037
+    ]
+   ],
+   "open": [
+    [
+     "statring",
+     "map:winter_cave",
+     0.0005
+    ],
+    [
+     "statring",
+     "map:winterland",
+     0.0005
+    ],
+    [
+     "lglitch",
+     "rgoo",
+     0.025
+    ],
+    [
+     "lglitch",
+     "cutebee",
+     1
+    ]
+   ]
+  },
+  {
+   "n": "cring",
+   "nm": "Ring of The Crypt",
+   "t": "ring",
+   "gr": [
+    0,
+    4,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 240000,
+   "lv": [
+    {
+     "int": 4,
+     "dex": 4
+    },
+    {
+     "int": 6,
+     "dex": 6
+    },
+    {
+     "int": 8,
+     "dex": 8
+    },
+    {
+     "int": 10,
+     "dex": 10
+    },
+    {
+     "int": 12,
+     "dex": 12
+    },
+    {
+     "int": 15,
+     "dex": 15
+    }
+   ],
+   "md": [
+    [
+     "vbat",
+     0.5
+    ]
+   ],
+   "xc": [
+    [
+     "glitch",
+     0.0022
+    ],
+    [
+     "lglitch",
+     0.0004
+    ]
+   ],
+   "open": [
+    [
+     "lglitch",
+     "rgoo",
+     0.025
+    ],
+    [
+     "lglitch",
+     "cutebee",
+     1
+    ]
+   ]
+  },
+  {
+   "n": "cearring",
+   "nm": "Earring of The Crypt",
+   "t": "earring",
+   "gr": [
+    0,
+    4,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 380000,
+   "lv": [
+    {
+     "str": 5,
+     "int": 5
+    },
+    {
+     "str": 7,
+     "int": 7
+    },
+    {
+     "str": 9,
+     "int": 9
+    },
+    {
+     "str": 11,
+     "int": 11
+    },
+    {
+     "str": 13,
+     "int": 13
+    },
+    {
+     "str": 16,
+     "int": 16
+    }
+   ],
+   "md": [
+    [
+     "vbat",
+     0.5
+    ]
+   ],
+   "xc": [
+    [
+     "glitch",
+     0.0022
+    ],
+    [
+     "lglitch",
+     0.0004
+    ]
+   ],
+   "open": [
+    [
+     "lglitch",
+     "rgoo",
+     0.025
+    ],
+    [
+     "lglitch",
+     "cutebee",
+     1
+    ]
+   ]
+  },
+  {
+   "n": "intearring",
+   "nm": "Earring of Intelligence",
+   "t": "earring",
+   "gr": [
+    2,
+    5,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 38000,
+   "lv": [
+    {
+     "int": 3
+    },
+    {
+     "int": 5
+    },
+    {
+     "int": 7
+    },
+    {
+     "int": 9
+    },
+    {
+     "int": 11
+    },
+    {
+     "int": 14
+    }
+   ],
+   "md": [
+    [
+     "mvampire",
+     0.1
+    ],
+    [
+     "phoenix",
+     0.12
+    ]
+   ],
+   "xc": [
+    [
+     "glitch",
+     0.0022
+    ],
+    [
+     "lglitch",
+     0.0037
+    ]
+   ],
+   "open": [
+    [
+     "lglitch",
+     "rgoo",
+     0.025
+    ],
+    [
+     "lglitch",
+     "cutebee",
+     1
+    ]
+   ]
+  },
+  {
+   "n": "strearring",
+   "nm": "Earring of Strength",
+   "t": "earring",
+   "gr": [
+    2,
+    5,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 38000,
+   "lv": [
+    {
+     "str": 3
+    },
+    {
+     "str": 5
+    },
+    {
+     "str": 7
+    },
+    {
+     "str": 9
+    },
+    {
+     "str": 11
+    },
+    {
+     "str": 14
+    }
+   ],
+   "md": [
+    [
+     "mvampire",
+     0.1
+    ],
+    [
+     "phoenix",
+     0.12
+    ]
+   ],
+   "xc": [
+    [
+     "glitch",
+     0.0022
+    ],
+    [
+     "lglitch",
+     0.0037
+    ]
+   ],
+   "open": [
+    [
+     "lglitch",
+     "rgoo",
+     0.025
+    ],
+    [
+     "lglitch",
+     "cutebee",
+     1
+    ]
+   ]
+  },
+  {
+   "n": "dexearring",
+   "nm": "Earring of Dexterity",
+   "t": "earring",
+   "gr": [
+    2,
+    5,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 38000,
+   "lv": [
+    {
+     "dex": 3
+    },
+    {
+     "dex": 5
+    },
+    {
+     "dex": 7
+    },
+    {
+     "dex": 9
+    },
+    {
+     "dex": 11
+    },
+    {
+     "dex": 14
+    }
+   ],
+   "md": [
+    [
+     "mvampire",
+     0.1
+    ],
+    [
+     "phoenix",
+     0.12
+    ]
+   ],
+   "xc": [
+    [
+     "glitch",
+     0.0022
+    ],
+    [
+     "lglitch",
+     0.0037
+    ]
+   ],
+   "open": [
+    [
+     "lglitch",
+     "rgoo",
+     0.025
+    ],
+    [
+     "lglitch",
+     "cutebee",
+     1
+    ]
+   ]
+  },
+  {
+   "n": "dexearringx",
+   "nm": "Enchanted Earring",
+   "t": "earring",
+   "gr": [
+    0,
+    2,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 38000,
+   "lv": [
+    {
+     "dex": 6,
+     "speed": 1,
+     "luck": 2
+    },
+    {
+     "dex": 8,
+     "speed": 1,
+     "luck": 4
+    },
+    {
+     "dex": 10,
+     "speed": 1,
+     "luck": 6
+    },
+    {
+     "dex": 12,
+     "speed": 1,
+     "luck": 8
+    },
+    {
+     "dex": 14,
+     "speed": 1,
+     "luck": 10
+    },
+    {
+     "dex": 17,
+     "speed": 1,
+     "luck": 13
+    }
+   ],
+   "xc": [
+    [
+     "glitch",
+     0.0022
+    ],
+    [
+     "lglitch",
+     0.0037
+    ]
+   ],
+   "open": [
+    [
+     "lglitch",
+     "rgoo",
+     0.025
+    ],
+    [
+     "lglitch",
+     "cutebee",
+     1
+    ]
+   ]
+  },
+  {
+   "n": "vitearring",
+   "nm": "Earring of Vitality",
+   "t": "earring",
+   "gr": [
+    2,
+    5,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 38000,
+   "lv": [
+    {
+     "vit": 3
+    },
+    {
+     "vit": 5
+    },
+    {
+     "vit": 7
+    },
+    {
+     "vit": 9
+    },
+    {
+     "vit": 11
+    },
+    {
+     "vit": 14
+    }
+   ],
+   "md": [
+    [
+     "phoenix",
+     0.12
+    ]
+   ],
+   "xc": [
+    [
+     "glitch",
+     0.0022
+    ],
+    [
+     "lglitch",
+     0.0037
+    ]
+   ],
+   "open": [
+    [
+     "lglitch",
+     "rgoo",
+     0.025
+    ],
+    [
+     "lglitch",
+     "cutebee",
+     1
+    ]
+   ]
+  },
+  {
+   "n": "lostearring",
+   "nm": "Gold Earring",
+   "t": "earring",
+   "gr": [
+    0,
+    2,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 360000,
+   "lv": [
+    {},
+    {},
+    {},
+    {},
+    {},
+    {}
+   ],
+   "mapd": [
+    [
+     "mansion",
+     0.00012
+    ]
+   ],
+   "xc": [
+    [
+     "glitch",
+     0.0022
+    ],
+    [
+     "lglitch",
+     0.0004
+    ]
+   ],
+   "open": [
+    [
+     "lglitch",
+     "rgoo",
+     0.025
+    ],
+    [
+     "lglitch",
+     "cutebee",
+     1
+    ]
+   ]
+  },
+  {
+   "n": "orbg",
+   "nm": "Orb of Beginnings",
+   "t": "orb",
+   "gr": [
+    4,
+    6,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 60000,
+   "lv": [
+    {
+     "str": 2,
+     "int": 2,
+     "dex": 2
+    },
+    {
+     "str": 3,
+     "int": 3,
+     "dex": 3
+    },
+    {
+     "str": 4,
+     "int": 4,
+     "dex": 4
+    },
+    {
+     "str": 5,
+     "int": 5,
+     "dex": 5
+    },
+    {
+     "str": 6,
+     "int": 6,
+     "dex": 6
+    },
+    {
+     "str": 7,
+     "int": 7,
+     "dex": 7
+    }
+   ],
+   "craft": {
+    "i": [
+     [
+      1,
+      "ascale",
+      0
+     ],
+     [
+      1,
+      "pleather",
+      0
+     ],
+     [
+      1,
+      "cscale",
+      0
+     ],
+     [
+      1,
+      "bfur",
+      0
+     ]
+    ],
+    "c": 0,
+    "npc": "mcollector"
+   },
+   "xc": [
+    [
+     "glitch",
+     0.0022
+    ],
+    [
+     "lglitch",
+     0.0004
+    ]
+   ],
+   "open": [
+    [
+     "lglitch",
+     "rgoo",
+     0.025
+    ],
+    [
+     "lglitch",
+     "cutebee",
+     1
+    ]
+   ]
+  },
+  {
+   "n": "tigerstone",
+   "nm": "Tiger Stone",
+   "t": "orb",
+   "gr": [
+    0,
+    1,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "set": "tiger",
+   "g": 600000,
+   "lv": [
+    {
+     "str": 2,
+     "int": 1,
+     "dex": 2,
+     "vit": 10,
+     "armor": 30,
+     "speed": 1
+    },
+    {
+     "str": 3,
+     "int": 2,
+     "dex": 3,
+     "vit": 14,
+     "armor": 30,
+     "speed": 1
+    },
+    {
+     "str": 4,
+     "int": 2,
+     "dex": 4,
+     "vit": 18,
+     "armor": 30,
+     "speed": 1
+    },
+    {
+     "str": 5,
+     "int": 3,
+     "dex": 5,
+     "vit": 22,
+     "armor": 30,
+     "speed": 1
+    },
+    {
+     "str": 6,
+     "int": 3,
+     "dex": 6,
+     "vit": 26,
+     "armor": 30,
+     "speed": 1
+    },
+    {
+     "str": 7,
+     "int": 4,
+     "dex": 7,
+     "vit": 31,
+     "armor": 30,
+     "speed": 1
+    }
+   ],
+   "md": [
+    [
+     "tiger",
+     0.001
+    ]
+   ],
+   "xc": [
+    [
+     "glitch",
+     0.0022
+    ],
+    [
+     "lglitch",
+     0.0004
+    ]
+   ],
+   "open": [
+    [
+     "lglitch",
+     "rgoo",
+     0.025
+    ],
+    [
+     "lglitch",
+     "cutebee",
+     1
+    ]
+   ]
+  },
+  {
+   "n": "vorb",
+   "nm": "Vampiric Canine Teeth",
+   "t": "orb",
+   "gr": [
+    0,
+    0,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "set": "vampires",
+   "g": 12000000,
+   "lv": [
+    {
+     "courage": 1,
+     "pcourage": 1
+    },
+    {
+     "courage": 2,
+     "pcourage": 1
+    },
+    {
+     "courage": 3,
+     "pcourage": 1
+    },
+    {
+     "courage": 4,
+     "pcourage": 1
+    },
+    {
+     "courage": 5,
+     "pcourage": 1
+    },
+    {
+     "courage": 6,
+     "pcourage": 1
+    }
+   ],
+   "md": [
+    [
+     "a1",
+     0.0005
+    ],
+    [
+     "a4",
+     0.001
+    ]
+   ],
+   "xc": [
+    [
+     "glitch",
+     0.0005
+    ],
+    [
+     "lglitch",
+     0
+    ]
+   ],
+   "open": [
+    [
+     "lglitch",
+     "rgoo",
+     0.025
+    ],
+    [
+     "lglitch",
+     "cutebee",
+     1
+    ]
+   ]
+  },
+  {
+   "n": "orbofvit",
+   "nm": "Orb of Vitality",
+   "t": "orb",
+   "gr": [
+    1,
+    4,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 240000,
+   "lv": [
+    {
+     "vit": 10
+    },
+    {
+     "vit": 14
+    },
+    {
+     "vit": 18
+    },
+    {
+     "vit": 22
+    },
+    {
+     "vit": 26
+    },
+    {
+     "vit": 31
+    }
+   ],
+   "md": [
+    [
+     "pppompom",
+     0.001
+    ]
+   ],
+   "xc": [
+    [
+     "glitch",
+     0.0022
+    ],
+    [
+     "lglitch",
+     0.0004
+    ]
+   ],
+   "open": [
+    [
+     "lglitch",
+     "rgoo",
+     0.025
+    ],
+    [
+     "lglitch",
+     "cutebee",
+     1
+    ]
+   ]
+  },
+  {
+   "n": "orbofint",
+   "nm": "Orb of Intelligence",
+   "t": "orb",
+   "gr": [
+    1,
+    4,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 240000,
+   "lv": [
+    {
+     "int": 4
+    },
+    {
+     "int": 7
+    },
+    {
+     "int": 10
+    },
+    {
+     "int": 13
+    },
+    {
+     "int": 16
+    },
+    {
+     "int": 20
+    }
+   ],
+   "md": [
+    [
+     "pppompom",
+     0.001
+    ]
+   ],
+   "xc": [
+    [
+     "glitch",
+     0.0022
+    ],
+    [
+     "lglitch",
+     0.0004
+    ]
+   ],
+   "open": [
+    [
+     "lglitch",
+     "rgoo",
+     0.025
+    ],
+    [
+     "lglitch",
+     "cutebee",
+     1
+    ]
+   ]
+  },
+  {
+   "n": "orbofstr",
+   "nm": "Orb of Strength",
+   "t": "orb",
+   "gr": [
+    1,
+    4,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 240000,
+   "lv": [
+    {
+     "str": 4
+    },
+    {
+     "str": 7
+    },
+    {
+     "str": 10
+    },
+    {
+     "str": 13
+    },
+    {
+     "str": 16
+    },
+    {
+     "str": 20
+    }
+   ],
+   "md": [
+    [
+     "fireroamer",
+     0.0006934812760055479
+    ]
+   ],
+   "xc": [
+    [
+     "glitch",
+     0.0022
+    ],
+    [
+     "lglitch",
+     0.0004
+    ]
+   ],
+   "open": [
+    [
+     "lglitch",
+     "rgoo",
+     0.025
+    ],
+    [
+     "lglitch",
+     "cutebee",
+     1
+    ]
+   ]
+  },
+  {
+   "n": "orbofdex",
+   "nm": "Orb of Dexterity",
+   "t": "orb",
+   "gr": [
+    1,
+    4,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 240000,
+   "lv": [
+    {
+     "dex": 4
+    },
+    {
+     "dex": 7
+    },
+    {
+     "dex": 10
+    },
+    {
+     "dex": 13
+    },
+    {
+     "dex": 16
+    },
+    {
+     "dex": 20
+    }
+   ],
+   "md": [
+    [
+     "fireroamer",
+     0.0006934812760055479
+    ]
+   ],
+   "xc": [
+    [
+     "glitch",
+     0.0022
+    ],
+    [
+     "lglitch",
+     0.0004
+    ]
+   ],
+   "open": [
+    [
+     "lglitch",
+     "rgoo",
+     0.025
+    ],
+    [
+     "lglitch",
+     "cutebee",
+     1
+    ]
+   ]
+  },
+  {
+   "n": "orboffire",
+   "nm": "Orb of Fire",
+   "t": "orb",
+   "gr": [
+    0,
+    3,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 60000,
+   "lv": [
+    {
+     "firesistance": 15
+    },
+    {
+     "firesistance": 20
+    },
+    {
+     "firesistance": 25
+    },
+    {
+     "firesistance": 30
+    },
+    {
+     "firesistance": 35
+    },
+    {
+     "firesistance": 41
+    }
+   ],
+   "md": [
+    [
+     "gredpro",
+     1
+    ]
+   ],
+   "xc": [
+    [
+     "glitch",
+     0.0022
+    ],
+    [
+     "lglitch",
+     0.0004
+    ]
+   ],
+   "open": [
+    [
+     "lglitch",
+     "rgoo",
+     0.025
+    ],
+    [
+     "lglitch",
+     "cutebee",
+     1
+    ]
+   ]
+  },
+  {
+   "n": "orboffrost",
+   "nm": "Orb of Frost",
+   "t": "orb",
+   "gr": [
+    0,
+    3,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 60000,
+   "lv": [
+    {
+     "fzresistance": 15
+    },
+    {
+     "fzresistance": 20
+    },
+    {
+     "fzresistance": 25
+    },
+    {
+     "fzresistance": 30
+    },
+    {
+     "fzresistance": 35
+    },
+    {
+     "fzresistance": 41
+    }
+   ],
+   "md": [
+    [
+     "gbluepro",
+     1
+    ]
+   ],
+   "xc": [
+    [
+     "glitch",
+     0.0022
+    ],
+    [
+     "lglitch",
+     0.0004
+    ]
+   ],
+   "open": [
+    [
+     "lglitch",
+     "rgoo",
+     0.025
+    ],
+    [
+     "lglitch",
+     "cutebee",
+     1
+    ]
+   ]
+  },
+  {
+   "n": "orbofplague",
+   "nm": "Orb of Plague",
+   "t": "orb",
+   "gr": [
+    0,
+    3,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 60000,
+   "lv": [
+    {
+     "pnresistance": 15
+    },
+    {
+     "pnresistance": 20
+    },
+    {
+     "pnresistance": 25
+    },
+    {
+     "pnresistance": 30
+    },
+    {
+     "pnresistance": 35
+    },
+    {
+     "pnresistance": 41
+    }
+   ],
+   "md": [
+    [
+     "ggreenpro",
+     1
+    ]
+   ],
+   "xc": [
+    [
+     "glitch",
+     0.0022
+    ],
+    [
+     "lglitch",
+     0.0004
+    ]
+   ],
+   "open": [
+    [
+     "lglitch",
+     "rgoo",
+     0.025
+    ],
+    [
+     "lglitch",
+     "cutebee",
+     1
+    ]
+   ]
+  },
+  {
+   "n": "orbofresolve",
+   "nm": "Orb of Resolve",
+   "t": "orb",
+   "gr": [
+    0,
+    3,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 60000,
+   "lv": [
+    {},
+    {},
+    {},
+    {},
+    {},
+    {}
+   ],
+   "md": [
+    [
+     "gpurplepro",
+     1
+    ]
+   ],
+   "xc": [
+    [
+     "glitch",
+     0.0022
+    ],
+    [
+     "lglitch",
+     0.0004
+    ]
+   ],
+   "open": [
+    [
+     "lglitch",
+     "rgoo",
+     0.025
+    ],
+    [
+     "lglitch",
+     "cutebee",
+     1
+    ]
+   ]
+  },
+  {
+   "n": "orba",
+   "nm": "Orb of Adventures",
+   "t": "orb",
+   "gr": [
+    0,
+    2,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 240000,
+   "lv": [
+    {
+     "firesistance": 15,
+     "fzresistance": 15,
+     "pnresistance": 15
+    },
+    {
+     "firesistance": 20,
+     "fzresistance": 20,
+     "pnresistance": 20
+    },
+    {
+     "firesistance": 25,
+     "fzresistance": 25,
+     "pnresistance": 25
+    },
+    {
+     "firesistance": 30,
+     "fzresistance": 30,
+     "pnresistance": 30
+    },
+    {
+     "firesistance": 35,
+     "fzresistance": 35,
+     "pnresistance": 35
+    },
+    {
+     "firesistance": 41,
+     "fzresistance": 41,
+     "pnresistance": 41
+    }
+   ],
+   "craft": {
+    "i": [
+     [
+      1,
+      "orboffire",
+      0
+     ],
+     [
+      1,
+      "orboffrost",
+      0
+     ],
+     [
+      1,
+      "orbofplague",
+      0
+     ],
+     [
+      1,
+      "orbofresolve",
+      0
+     ]
+    ],
+    "c": 0,
+    "npc": "mcollector"
+   },
+   "xc": [
+    [
+     "glitch",
+     0.0022
+    ],
+    [
+     "lglitch",
+     0.0004
+    ]
+   ],
+   "open": [
+    [
+     "lglitch",
+     "rgoo",
+     0.025
+    ],
+    [
+     "lglitch",
+     "cutebee",
+     1
+    ]
+   ]
+  },
+  {
+   "n": "orboftemporal",
+   "nm": "Orb of Temporal Forces",
+   "t": "orb",
+   "gr": [
+    0,
+    0,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "set": "holidays",
+   "g": 1200000,
+   "lv": [
+    {
+     "evasion": 5
+    },
+    {
+     "evasion": 9
+    },
+    {
+     "evasion": 13
+    },
+    {
+     "evasion": 17
+    },
+    {
+     "evasion": 21
+    },
+    {
+     "evasion": 26
+    }
+   ],
+   "xc": [
+    [
+     "glitch",
+     0.0005
+    ],
+    [
+     "lglitch",
+     0.0004
+    ],
+    [
+     "ornament",
+     0.0001
+    ],
+    [
+     "xbox",
+     0.0295
+    ]
+   ],
+   "open": [
+    [
+     "lglitch",
+     "rgoo",
+     0.025
+    ],
+    [
+     "lglitch",
+     "cutebee",
+     1
+    ]
+   ]
+  },
+  {
+   "n": "orbofsc",
+   "nm": "Orb of Second Chances",
+   "t": "orb",
+   "gr": [
+    0,
+    0,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "set": "holidays",
+   "g": 120000,
+   "lv": [
+    {
+     "str": 2,
+     "int": 2,
+     "dex": 2,
+     "vit": 2,
+     "mp": 200
+    },
+    {
+     "str": 3,
+     "int": 4,
+     "dex": 3,
+     "vit": 3,
+     "mp": 300
+    },
+    {
+     "str": 4,
+     "int": 6,
+     "dex": 4,
+     "vit": 4,
+     "mp": 400
+    },
+    {
+     "str": 5,
+     "int": 8,
+     "dex": 5,
+     "vit": 5,
+     "mp": 500
+    },
+    {
+     "str": 6,
+     "int": 10,
+     "dex": 6,
+     "vit": 6,
+     "mp": 600
+    },
+    {
+     "str": 7,
+     "int": 13,
+     "dex": 7,
+     "vit": 7,
+     "mp": 725
+    }
+   ],
+   "xc": [
+    [
+     "glitch",
+     0.0005
+    ],
+    [
+     "lglitch",
+     0.0004
+    ]
+   ],
+   "open": [
+    [
+     "lglitch",
+     "rgoo",
+     0.025
+    ],
+    [
+     "lglitch",
+     "cutebee",
+     1
+    ]
+   ]
+  },
+  {
+   "n": "charmer",
+   "nm": "Charmer",
+   "t": "orb",
+   "gr": [
+    0,
+    3,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 120000,
+   "lv": [
+    {
+     "vit": 10
+    },
+    {
+     "vit": 20
+    },
+    {
+     "vit": 30
+    },
+    {
+     "vit": 40
+    },
+    {
+     "vit": 50
+    },
+    {
+     "vit": 63
+    }
+   ],
+   "craft": {
+    "i": [
+     [
+      1,
+      "goldnugget",
+      0
+     ],
+     [
+      20,
+      "gem1",
+      0
+     ],
+     [
+      1,
+      "emptyheart",
+      0
+     ]
+    ],
+    "c": 80000,
+    "npc": "craftsman"
+   },
+   "xc": [
+    [
+     "glitch",
+     0.0022
+    ],
+    [
+     "lglitch",
+     0.0004
+    ]
+   ],
+   "open": [
+    [
+     "lglitch",
+     "rgoo",
+     0.025
+    ],
+    [
+     "lglitch",
+     "cutebee",
+     1
+    ]
+   ]
+  },
+  {
+   "n": "rabbitsfoot",
+   "nm": "Rabbit's Foot",
+   "t": "orb",
+   "gr": [
+    0,
+    0,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 120000,
+   "lv": [
+    {
+     "luck": 10
+    },
+    {
+     "luck": 15
+    },
+    {
+     "luck": 20
+    },
+    {
+     "luck": 25
+    },
+    {
+     "luck": 30
+    },
+    {
+     "luck": 36
+    }
+   ],
+   "tok": [
+    "funtoken:120"
+   ],
+   "xc": [
+    [
+     "glitch",
+     0.0005
+    ],
+    [
+     "lglitch",
+     0.0004
+    ],
+    [
+     "basketofeggs",
+     0.0002
+    ]
+   ],
+   "open": [
+    [
+     "lglitch",
+     "rgoo",
+     0.025
+    ],
+    [
+     "lglitch",
+     "cutebee",
+     1
+    ],
+    [
+     "basketofeggs",
+     "wabbit",
+     0.01
+    ]
+   ]
+  },
+  {
+   "n": "talkingskull",
+   "nm": "Yorick the Talking Skull",
+   "t": "orb",
+   "gr": [
+    1,
+    2,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 96000,
+   "lv": [
+    {
+     "xp": 5
+    },
+    {
+     "xp": 10
+    },
+    {
+     "xp": 15
+    },
+    {
+     "xp": 20
+    },
+    {
+     "xp": 25
+    },
+    {
+     "xp": 31
+    }
+   ],
+   "xc": [
+    [
+     "glitch",
+     0.0022
+    ],
+    [
+     "lglitch",
+     0.0004
+    ],
+    [
+     "candy0",
+     0.0153
+    ],
+    [
+     "candy0v3",
+     0.0153
+    ]
+   ],
+   "open": [
+    [
+     "lglitch",
+     "rgoo",
+     0.025
+    ],
+    [
+     "lglitch",
+     "cutebee",
+     1
+    ]
+   ]
+  },
+  {
+   "n": "jacko",
+   "nm": "Jack-o Lantern",
+   "t": "orb",
+   "gr": [
+    2,
+    4,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 96000,
+   "lv": [
+    {
+     "rpiercing": 20
+    },
+    {
+     "rpiercing": 35
+    },
+    {
+     "rpiercing": 50
+    },
+    {
+     "rpiercing": 65
+    },
+    {
+     "rpiercing": 80
+    },
+    {
+     "rpiercing": 99
+    }
+   ],
+   "xc": [
+    [
+     "glitch",
+     0.0022
+    ],
+    [
+     "lglitch",
+     0.0004
+    ],
+    [
+     "candy0",
+     0.1528
+    ],
+    [
+     "candy0v3",
+     0.153
+    ]
+   ],
+   "open": [
+    [
+     "lglitch",
+     "rgoo",
+     0.025
+    ],
+    [
+     "lglitch",
+     "cutebee",
+     1
+    ]
+   ]
+  },
+  {
+   "n": "ftrinket",
+   "nm": "Trinket of Faith",
+   "t": "orb",
+   "gr": [
+    1,
+    3,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 96000,
+   "lv": [
+    {
+     "str": 2,
+     "int": 2,
+     "dex": 2,
+     "vit": 2,
+     "armor": 5,
+     "speed": 1
+    },
+    {
+     "str": 2,
+     "int": 2,
+     "dex": 2,
+     "vit": 5,
+     "armor": 10,
+     "speed": 2
+    },
+    {
+     "str": 2,
+     "int": 2,
+     "dex": 2,
+     "vit": 8,
+     "armor": 15,
+     "speed": 3
+    },
+    {
+     "str": 2,
+     "int": 2,
+     "dex": 2,
+     "vit": 11,
+     "armor": 20,
+     "speed": 4
+    },
+    {
+     "str": 2,
+     "int": 2,
+     "dex": 2,
+     "vit": 14,
+     "armor": 25,
+     "speed": 5
+    },
+    {
+     "str": 2,
+     "int": 2,
+     "dex": 2,
+     "vit": 18,
+     "armor": 31,
+     "speed": 6
+    }
+   ],
+   "xc": [
+    [
+     "glitch",
+     0.0022
+    ],
+    [
+     "lglitch",
+     0.0004
+    ],
+    [
+     "gift0",
+     0.3041
+    ],
+    [
+     "gift1",
+     0.0136
+    ],
+    [
+     "anniversary_legacy",
+     0.0136
+    ]
+   ],
+   "open": [
+    [
+     "lglitch",
+     "rgoo",
+     0.025
+    ],
+    [
+     "lglitch",
+     "cutebee",
+     1
+    ]
+   ]
+  },
+  {
+   "n": "emberseal",
+   "nm": "Ember Seal",
+   "t": "ring",
+   "gr": [
+    1,
+    4,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 220000,
+   "lv": [
+    {
+     "str": 7,
+     "firesistance": 7
+    },
+    {
+     "str": 10,
+     "firesistance": 7
+    },
+    {
+     "str": 12,
+     "firesistance": 7
+    },
+    {
+     "str": 15,
+     "firesistance": 7
+    },
+    {
+     "str": 17,
+     "firesistance": 7
+    },
+    {
+     "str": 20,
+     "firesistance": 7
+    }
+   ],
+   "craft": {
+    "i": [
+     [
+      1,
+      "strring",
+      2
+     ],
+     [
+      1,
+      "embercore",
+      0
+     ],
+     [
+      6,
+      "essenceoffire",
+      0
+     ]
+    ],
+    "c": 300000,
+    "npc": "craftsman"
+   }
+  },
+  {
+   "n": "glacierseal",
+   "nm": "Glacier Seal",
+   "t": "ring",
+   "gr": [
+    1,
+    4,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 220000,
+   "lv": [
+    {
+     "int": 7,
+     "fzresistance": 7
+    },
+    {
+     "int": 10,
+     "fzresistance": 7
+    },
+    {
+     "int": 12,
+     "fzresistance": 7
+    },
+    {
+     "int": 15,
+     "fzresistance": 7
+    },
+    {
+     "int": 17,
+     "fzresistance": 7
+    },
+    {
+     "int": 20,
+     "fzresistance": 7
+    }
+   ],
+   "craft": {
+    "i": [
+     [
+      1,
+      "intring",
+      2
+     ],
+     [
+      1,
+      "frostcore",
+      0
+     ],
+     [
+      6,
+      "essenceoffrost",
+      0
+     ]
+    ],
+    "c": 300000,
+    "npc": "craftsman"
+   }
+  },
+  {
+   "n": "venomband",
+   "nm": "Venom Band",
+   "t": "ring",
+   "gr": [
+    1,
+    4,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 220000,
+   "lv": [
+    {
+     "dex": 7,
+     "pnresistance": 7
+    },
+    {
+     "dex": 10,
+     "pnresistance": 7
+    },
+    {
+     "dex": 12,
+     "pnresistance": 7
+    },
+    {
+     "dex": 15,
+     "pnresistance": 7
+    },
+    {
+     "dex": 17,
+     "pnresistance": 7
+    },
+    {
+     "dex": 20,
+     "pnresistance": 7
+    }
+   ],
+   "craft": {
+    "i": [
+     [
+      1,
+      "dexring",
+      2
+     ],
+     [
+      1,
+      "verdantcore",
+      0
+     ],
+     [
+      12,
+      "poison",
+      0
+     ],
+     [
+      4,
+      "snakefang",
+      0
+     ]
+    ],
+    "c": 240000,
+    "npc": "craftsman"
+   }
+  },
+  {
+   "n": "saffronloop",
+   "nm": "Saffron Loop",
+   "t": "earring",
+   "cls": [
+    "merchant"
+   ],
+   "gr": [
+    1,
+    5,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 180000,
+   "lv": [
+    {
+     "vit": 10,
+     "gold": 5
+    },
+    {
+     "vit": 12,
+     "gold": 6
+    },
+    {
+     "vit": 14,
+     "gold": 7
+    },
+    {
+     "vit": 16,
+     "gold": 8
+    },
+    {
+     "vit": 18,
+     "gold": 9
+    },
+    {
+     "vit": 21,
+     "gold": 10
+    }
+   ],
+   "craft": {
+    "i": [
+     [
+      1,
+      "vitearring",
+      2
+     ],
+     [
+      1,
+      "goldnugget",
+      0
+     ],
+     [
+      100,
+      "gemfragment",
+      0
+     ]
+    ],
+    "c": 350000,
+    "npc": "craftsman"
+   }
+  },
+  {
+   "n": "moonshardearring",
+   "nm": "Moonshard Earring",
+   "t": "earring",
+   "cls": [
+    "mage",
+    "priest"
+   ],
+   "gr": [
+    1,
+    5,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 160000,
+   "lv": [
+    {
+     "int": 8,
+     "mp": 100
+    },
+    {
+     "int": 10,
+     "mp": 130
+    },
+    {
+     "int": 13,
+     "mp": 160
+    },
+    {
+     "int": 15,
+     "mp": 190
+    },
+    {
+     "int": 17,
+     "mp": 220
+    },
+    {
+     "int": 20,
+     "mp": 258
+    }
+   ],
+   "craft": {
+    "i": [
+     [
+      1,
+      "intearring",
+      2
+     ],
+     [
+      8,
+      "voidthread",
+      0
+     ],
+     [
+      40,
+      "bwing",
+      0
+     ],
+     [
+      4,
+      "essenceofether",
+      0
+     ]
+    ],
+    "c": 240000,
+    "npc": "craftsman"
+   }
+  },
+  {
+   "n": "cloverstud",
+   "nm": "Clover Stud",
+   "t": "earring",
+   "gr": [
+    1,
+    5,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 76000,
+   "lv": [
+    {
+     "vit": 6,
+     "luck": 6
+    },
+    {
+     "vit": 8,
+     "luck": 8
+    },
+    {
+     "vit": 9,
+     "luck": 10
+    },
+    {
+     "vit": 11,
+     "luck": 12
+    },
+    {
+     "vit": 12,
+     "luck": 14
+    },
+    {
+     "vit": 14,
+     "luck": 17
+    }
+   ],
+   "craft": {
+    "i": [
+     [
+      1,
+      "vitearring",
+      2
+     ],
+     [
+      1,
+      "verdantcore",
+      0
+     ],
+     [
+      40,
+      "ashleaf",
+      0
+     ],
+     [
+      40,
+      "spores",
+      0
+     ],
+     [
+      5,
+      "gslime",
+      0
+     ]
+    ],
+    "c": 280000,
+    "npc": "craftsman"
+   }
+  },
+  {
+   "n": "anchorbelt",
+   "nm": "Anchor Belt",
+   "t": "belt",
+   "gr": [
+    1,
+    5,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 220000,
+   "lv": [
+    {
+     "armor": 24,
+     "resistance": 12,
+     "hp": 640,
+     "speed": -2
+    },
+    {
+     "armor": 32,
+     "resistance": 16,
+     "hp": 800,
+     "speed": -2
+    },
+    {
+     "armor": 40,
+     "resistance": 20,
+     "hp": 960,
+     "speed": -2
+    },
+    {
+     "armor": 48,
+     "resistance": 24,
+     "hp": 1120,
+     "speed": -2
+    },
+    {
+     "armor": 56,
+     "resistance": 28,
+     "hp": 1280,
+     "speed": -2
+    },
+    {
+     "armor": 66,
+     "resistance": 33,
+     "hp": 1480,
+     "speed": -2
+    }
+   ],
+   "craft": {
+    "i": [
+     [
+      1,
+      "hpbelt",
+      2
+     ],
+     [
+      150,
+      "reefglass",
+      0
+     ],
+     [
+      1,
+      "cshell",
+      0
+     ]
+    ],
+    "c": 260000,
+    "npc": "craftsman"
+   }
+  },
+  {
+   "n": "windbelt",
+   "nm": "Wind Belt",
+   "t": "belt",
+   "gr": [
+    1,
+    5,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 260000,
+   "lv": [
+    {
+     "dex": 11,
+     "armor": 10,
+     "speed": 2
+    },
+    {
+     "dex": 14,
+     "armor": 14,
+     "speed": 3
+    },
+    {
+     "dex": 16,
+     "armor": 18,
+     "speed": 4
+    },
+    {
+     "dex": 19,
+     "armor": 22,
+     "speed": 4
+    },
+    {
+     "dex": 21,
+     "armor": 26,
+     "speed": 5
+    },
+    {
+     "dex": 24,
+     "armor": 31,
+     "speed": 6
+    }
+   ],
+   "craft": {
+    "i": [
+     [
+      1,
+      "dexbelt",
+      2
+     ],
+     [
+      40,
+      "stormfeather",
+      0
+     ],
+     [
+      4,
+      "essenceofether",
+      0
+     ]
+    ],
+    "c": 300000,
+    "npc": "craftsman"
+   }
+  },
+  {
+   "n": "knifebelt",
+   "nm": "Knife Belt",
+   "t": "belt",
+   "cls": [
+    "rogue"
+   ],
+   "up": false,
+   "cp": false,
+   "g": 900000,
+   "lv": [
+    {
+     "int": 2,
+     "dex": 8,
+     "armor": 12
+    },
+    {
+     "int": 2,
+     "dex": 8,
+     "armor": 12
+    },
+    {
+     "int": 2,
+     "dex": 8,
+     "armor": 12
+    },
+    {
+     "int": 2,
+     "dex": 8,
+     "armor": 12
+    },
+    {
+     "int": 2,
+     "dex": 8,
+     "armor": 12
+    },
+    {
+     "int": 2,
+     "dex": 8,
+     "armor": 12
+    }
+   ],
+   "craft": {
+    "i": [
+     [
+      1,
+      "dexbelt",
+      2
+     ],
+     [
+      30,
+      "spidersilk",
+      0
+     ],
+     [
+      8,
+      "voidthread",
+      0
+     ],
+     [
+      20,
+      "bwing",
+      0
+     ],
+     [
+      12,
+      "poison",
+      0
+     ]
+    ],
+    "c": 350000,
+    "npc": "craftsman"
+   }
+  },
+  {
+   "n": "gloampendant",
+   "nm": "Gloam Pendant",
+   "t": "amulet",
+   "cls": [
+    "rogue"
+   ],
+   "gr": [
+    0,
+    1,
+    4,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 420000,
+   "lv": [
+    {
+     "int": 6,
+     "dex": 6,
+     "mp": 250
+    },
+    {
+     "int": 8,
+     "dex": 8,
+     "mp": 325
+    },
+    {
+     "int": 9,
+     "dex": 9,
+     "mp": 400
+    },
+    {
+     "int": 11,
+     "dex": 11,
+     "mp": 475
+    },
+    {
+     "int": 12,
+     "dex": 12,
+     "mp": 550
+    },
+    {
+     "int": 14,
+     "dex": 14,
+     "mp": 644
+    }
+   ],
+   "craft": {
+    "i": [
+     [
+      1,
+      "dexamulet",
+      2
+     ],
+     [
+      30,
+      "voidthread",
+      0
+     ],
+     [
+      80,
+      "bwing",
+      0
+     ],
+     [
+      6,
+      "essenceofether",
+      0
+     ]
+    ],
+    "c": 6400000,
+    "npc": "craftsman"
+   }
+  },
+  {
+   "n": "sapstone",
+   "nm": "Sapstone",
+   "t": "orb",
+   "cls": [
+    "rogue"
+   ],
+   "up": false,
+   "cp": false,
+   "g": 1800000,
+   "lv": [
+    {
+     "dex": 16,
+     "vit": 12,
+     "armor": 24,
+     "resistance": 24,
+     "frequency": 4
+    },
+    {
+     "dex": 16,
+     "vit": 12,
+     "armor": 24,
+     "resistance": 24,
+     "frequency": 4
+    },
+    {
+     "dex": 16,
+     "vit": 12,
+     "armor": 24,
+     "resistance": 24,
+     "frequency": 4
+    },
+    {
+     "dex": 16,
+     "vit": 12,
+     "armor": 24,
+     "resistance": 24,
+     "frequency": 4
+    },
+    {
+     "dex": 16,
+     "vit": 12,
+     "armor": 24,
+     "resistance": 24,
+     "frequency": 4
+    },
+    {
+     "dex": 16,
+     "vit": 12,
+     "armor": 24,
+     "resistance": 24,
+     "frequency": 4
+    }
+   ],
+   "md": [
+    [
+     "ent",
+     0.0001
+    ]
+   ]
+  },
+  {
+   "n": "stonegaze",
+   "nm": "Stonegaze Ring",
+   "t": "ring",
+   "gr": [
+    0,
+    0,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 6400000,
+   "lv": [
+    {
+     "str": 5,
+     "dex": 5,
+     "armor": 35,
+     "resistance": 35
+    },
+    {
+     "str": 7,
+     "dex": 7,
+     "armor": 45,
+     "resistance": 45
+    },
+    {
+     "str": 9,
+     "dex": 9,
+     "armor": 55,
+     "resistance": 55
+    },
+    {
+     "str": 11,
+     "dex": 11,
+     "armor": 65,
+     "resistance": 65
+    },
+    {
+     "str": 13,
+     "dex": 13,
+     "armor": 75,
+     "resistance": 75
+    },
+    {
+     "str": 16,
+     "dex": 16,
+     "armor": 88,
+     "resistance": 88
+    }
+   ],
+   "md": [
+    [
+     "oneeye",
+     0.000004
+    ]
+   ]
+  },
+  {
+   "n": "mummyhex",
+   "nm": "Mummy's Hex",
+   "t": "earring",
+   "gr": [
+    0,
+    0,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 3200000,
+   "lv": [
+    {
+     "int": 4,
+     "dex": 4
+    },
+    {
+     "int": 5,
+     "dex": 5
+    },
+    {
+     "int": 6,
+     "dex": 6
+    },
+    {
+     "int": 7,
+     "dex": 7
+    },
+    {
+     "int": 8,
+     "dex": 8
+    },
+    {
+     "int": 9,
+     "dex": 9
+    }
+   ],
+   "md": [
+    [
+     "mummy",
+     0.0000034482758620689654
+    ]
+   ]
+  },
+  {
+   "n": "harpyecho",
+   "nm": "Harpy's Echo",
+   "t": "orb",
+   "gr": [
+    0,
+    0,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 6400000,
+   "lv": [
+    {
+     "int": 5
+    },
+    {
+     "int": 7
+    },
+    {
+     "int": 9
+    },
+    {
+     "int": 11
+    },
+    {
+     "int": 13
+    },
+    {
+     "int": 16
+    }
+   ],
+   "md": [
+    [
+     "harpy",
+     0.0000045454545454545455
+    ]
+   ]
+  },
+  {
+   "n": "canopener",
+   "nm": "The Can Opener",
+   "t": "ring",
+   "gr": [
+    0,
+    0,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 6400000,
+   "lv": [
+    {
+     "str": 5,
+     "dex": 5
+    },
+    {
+     "str": 7,
+     "dex": 7
+    },
+    {
+     "str": 9,
+     "dex": 9
+    },
+    {
+     "str": 11,
+     "dex": 11
+    },
+    {
+     "str": 13,
+     "dex": 13
+    },
+    {
+     "str": 16,
+     "dex": 16
+    }
+   ],
+   "md": [
+    [
+     "bscorpion",
+     0.000014285714285714285
+    ]
+   ]
+  },
+  {
+   "n": "blightcap",
+   "nm": "Blightcap Stud",
+   "t": "earring",
+   "gr": [
+    0,
+    0,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 6400000,
+   "lv": [
+    {
+     "int": 3,
+     "dex": 3,
+     "vit": 5,
+     "for": 5
+    },
+    {
+     "int": 4,
+     "dex": 4,
+     "vit": 7,
+     "for": 6
+    },
+    {
+     "int": 5,
+     "dex": 5,
+     "vit": 9,
+     "for": 7
+    },
+    {
+     "int": 6,
+     "dex": 6,
+     "vit": 11,
+     "for": 8
+    },
+    {
+     "int": 7,
+     "dex": 7,
+     "vit": 13,
+     "for": 9
+    },
+    {
+     "int": 8,
+     "dex": 8,
+     "vit": 16,
+     "for": 10
+    }
+   ],
+   "md": [
+    [
+     "pppompom",
+     0.0000023809523809523808
+    ]
+   ]
+  },
+  {
+   "n": "gnomecap",
+   "nm": "Gnomish Capacitor",
+   "t": "amulet",
+   "gr": [
+    0,
+    0,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 6400000,
+   "lv": [
+    {
+     "int": 6,
+     "mp": 250
+    },
+    {
+     "int": 8,
+     "mp": 310
+    },
+    {
+     "int": 10,
+     "mp": 370
+    },
+    {
+     "int": 12,
+     "mp": 430
+    },
+    {
+     "int": 14,
+     "mp": 490
+    },
+    {
+     "int": 17,
+     "mp": 565
+    }
+   ],
+   "md": [
+    [
+     "mechagnome",
+     0.00002380952380952381
+    ]
+   ]
+  },
+  {
+   "n": "koboldbelt",
+   "nm": "Kobold's Backbone",
+   "t": "belt",
+   "gr": [
+    0,
+    0,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 6400000,
+   "lv": [
+    {
+     "str": 3,
+     "armor": 30,
+     "resistance": 30,
+     "hp": 500,
+     "dreturn": 3,
+     "courage": 1,
+     "mcourage": 2,
+     "pcourage": 1
+    },
+    {
+     "str": 4,
+     "armor": 35,
+     "resistance": 35,
+     "hp": 600,
+     "dreturn": 3.5,
+     "courage": 1,
+     "mcourage": 3,
+     "pcourage": 1
+    },
+    {
+     "str": 5,
+     "armor": 40,
+     "resistance": 40,
+     "hp": 700,
+     "dreturn": 4,
+     "courage": 1,
+     "mcourage": 3,
+     "pcourage": 1
+    },
+    {
+     "str": 6,
+     "armor": 45,
+     "resistance": 45,
+     "hp": 800,
+     "dreturn": 4.5,
+     "courage": 1,
+     "mcourage": 4,
+     "pcourage": 1
+    },
+    {
+     "str": 7,
+     "armor": 50,
+     "resistance": 50,
+     "hp": 900,
+     "dreturn": 5,
+     "courage": 1,
+     "mcourage": 4,
+     "pcourage": 1
+    },
+    {
+     "str": 8,
+     "armor": 56,
+     "resistance": 56,
+     "hp": 1025,
+     "dreturn": 5.6,
+     "courage": 1,
+     "mcourage": 5,
+     "pcourage": 1
+    }
+   ],
+   "md": [
+    [
+     "kobold",
+     0.000011904761904761905
+    ]
+   ]
+  },
+  {
+   "n": "frostfang",
+   "nm": "Frostfang Earring",
+   "t": "earring",
+   "gr": [
+    0,
+    0,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 6400000,
+   "lv": [
+    {
+     "str": 3,
+     "dex": 3,
+     "crit": 2,
+     "critdamage": 12
+    },
+    {
+     "str": 4,
+     "dex": 4,
+     "crit": 2.3,
+     "critdamage": 16
+    },
+    {
+     "str": 5,
+     "dex": 5,
+     "crit": 2.5,
+     "critdamage": 20
+    },
+    {
+     "str": 6,
+     "dex": 6,
+     "crit": 2.8,
+     "critdamage": 24
+    },
+    {
+     "str": 7,
+     "dex": 7,
+     "crit": 3,
+     "critdamage": 28
+    },
+    {
+     "str": 8,
+     "dex": 8,
+     "crit": 3.3,
+     "critdamage": 33
+    }
+   ],
+   "md": [
+    [
+     "wolf",
+     0.0000017857142857142857
+    ]
+   ]
+  },
+  {
+   "n": "paleclaw",
+   "nm": "Paleclaw Totem",
+   "t": "amulet",
+   "gr": [
+    0,
+    0,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 12800000,
+   "lv": [
+    {
+     "str": 5,
+     "dex": 5
+    },
+    {
+     "str": 7,
+     "dex": 7
+    },
+    {
+     "str": 9,
+     "dex": 9
+    },
+    {
+     "str": 11,
+     "dex": 11
+    },
+    {
+     "str": 13,
+     "dex": 13
+    },
+    {
+     "str": 16,
+     "dex": 16
+    }
+   ],
+   "md": [
+    [
+     "paledino",
+     0.03333333333333333
+    ]
+   ]
+  },
+  {
+   "n": "mimicgrin",
+   "nm": "Mimic's Grin",
+   "t": "orb",
+   "gr": [
+    0,
+    0,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 12800000,
+   "lv": [
+    {
+     "luck": 9,
+     "gold": 7,
+     "xp": 4
+    },
+    {
+     "luck": 12,
+     "gold": 9,
+     "xp": 6
+    },
+    {
+     "luck": 15,
+     "gold": 11,
+     "xp": 8
+    },
+    {
+     "luck": 18,
+     "gold": 13,
+     "xp": 10
+    },
+    {
+     "luck": 21,
+     "gold": 15,
+     "xp": 12
+    },
+    {
+     "luck": 25,
+     "gold": 18,
+     "xp": 15
+    }
+   ],
+   "md": [
+    [
+     "mimic",
+     0.05263157894736842
+    ]
+   ]
+  },
+  {
+   "n": "scorpionseal",
+   "nm": "Scorpion Seal",
+   "t": "ring",
+   "cls": [
+    "warrior",
+    "rogue",
+    "paladin"
+   ],
+   "gr": [
+    0,
+    0,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 6400000,
+   "lv": [
+    {
+     "armor": 20,
+     "resistance": 20,
+     "apiercing": 10
+    },
+    {
+     "str": 1,
+     "dex": 1,
+     "armor": 26,
+     "resistance": 26,
+     "apiercing": 20
+    },
+    {
+     "str": 2,
+     "dex": 2,
+     "armor": 32,
+     "resistance": 32,
+     "apiercing": 30
+    },
+    {
+     "str": 3,
+     "dex": 3,
+     "armor": 38,
+     "resistance": 38,
+     "apiercing": 40
+    },
+    {
+     "str": 4,
+     "dex": 4,
+     "armor": 44,
+     "resistance": 44,
+     "apiercing": 50
+    },
+    {
+     "str": 5,
+     "dex": 5,
+     "armor": 52,
+     "resistance": 52,
+     "apiercing": 63
+    }
+   ],
+   "md": [
+    [
+     "xscorpion",
+     0.0000035714285714285714
+    ]
+   ]
+  },
+  {
+   "n": "watchersearring",
+   "nm": "Watcher's Earring",
+   "t": "earring",
+   "gr": [
+    0,
+    0,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "set": "watchers",
+   "g": 6400000,
+   "lv": [
+    {
+     "str": 6,
+     "int": 6,
+     "dex": 6,
+     "evasion": 1
+    },
+    {
+     "str": 8,
+     "int": 8,
+     "dex": 8,
+     "evasion": 1.5
+    },
+    {
+     "str": 9,
+     "int": 9,
+     "dex": 9,
+     "evasion": 2
+    },
+    {
+     "str": 11,
+     "int": 11,
+     "dex": 11,
+     "evasion": 2.5
+    },
+    {
+     "str": 12,
+     "int": 12,
+     "dex": 12,
+     "evasion": 3
+    },
+    {
+     "str": 14,
+     "int": 14,
+     "dex": 14,
+     "evasion": 3.6
+    }
+   ],
+   "md": [
+    [
+     "manyeye",
+     0.058823529411764705
+    ]
+   ]
+  },
+  {
+   "n": "graveglass",
+   "nm": "Graveglass Lens",
+   "t": "orb",
+   "gr": [
+    0,
+    0,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 6400000,
+   "lv": [
+    {
+     "int": 5,
+     "rpiercing": 15
+    },
+    {
+     "int": 7,
+     "rpiercing": 25
+    },
+    {
+     "int": 9,
+     "rpiercing": 35
+    },
+    {
+     "int": 11,
+     "rpiercing": 45
+    },
+    {
+     "int": 13,
+     "rpiercing": 55
+    },
+    {
+     "int": 16,
+     "rpiercing": 68
+    }
+   ],
+   "md": [
+    [
+     "ghost",
+     0.000003125
+    ]
+   ]
+  },
+  {
+   "n": "heartwoodlocket",
+   "nm": "Heartwood Locket",
+   "t": "amulet",
+   "cls": [
+    "priest"
+   ],
+   "gr": [
+    0,
+    0,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 6400000,
+   "lv": [
+    {
+     "int": 10,
+     "armor": 30,
+     "hp": 300,
+     "frequency": 5
+    },
+    {
+     "int": 12,
+     "armor": 40,
+     "hp": 360,
+     "frequency": 6
+    },
+    {
+     "int": 14,
+     "armor": 50,
+     "hp": 420,
+     "frequency": 7
+    },
+    {
+     "int": 16,
+     "armor": 60,
+     "hp": 480,
+     "frequency": 7
+    },
+    {
+     "int": 18,
+     "armor": 70,
+     "hp": 540,
+     "frequency": 8
+    },
+    {
+     "int": 21,
+     "armor": 83,
+     "hp": 615,
+     "frequency": 9
+    }
+   ],
+   "md": [
+    [
+     "dryad",
+     0.000002564102564102564
+    ]
+   ]
+  },
+  {
+   "n": "groundingstrap",
+   "nm": "Grounding Strap",
+   "t": "belt",
+   "gr": [
+    0,
+    0,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 6400000,
+   "lv": [
+    {
+     "resistance": 25,
+     "hp": 300,
+     "firesistance": 15,
+     "fzresistance": 15,
+     "pnresistance": 15
+    },
+    {
+     "resistance": 30,
+     "hp": 375,
+     "firesistance": 18,
+     "fzresistance": 18,
+     "pnresistance": 18
+    },
+    {
+     "resistance": 35,
+     "hp": 450,
+     "firesistance": 20,
+     "fzresistance": 20,
+     "pnresistance": 20
+    },
+    {
+     "resistance": 40,
+     "hp": 525,
+     "firesistance": 23,
+     "fzresistance": 23,
+     "pnresistance": 23
+    },
+    {
+     "resistance": 45,
+     "hp": 600,
+     "firesistance": 25,
+     "fzresistance": 25,
+     "pnresistance": 25
+    },
+    {
+     "resistance": 51,
+     "hp": 694,
+     "firesistance": 28,
+     "fzresistance": 28,
+     "pnresistance": 28
+    }
+   ],
+   "md": [
+    [
+     "sparkbot",
+     0.0000023809523809523808
+    ]
+   ]
+  },
+  {
+   "n": "crookedkey",
+   "nm": "Crooked Key Earring",
+   "t": "earring",
+   "tier": 3,
+   "gr": [
+    0,
+    3,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "set": "crookedkeys",
+   "g": 1600000,
+   "lv": [
+    {
+     "apiercing": 20,
+     "rpiercing": 20
+    },
+    {
+     "apiercing": 24,
+     "rpiercing": 24
+    },
+    {
+     "apiercing": 28,
+     "rpiercing": 28
+    },
+    {
+     "apiercing": 32,
+     "rpiercing": 32
+    },
+    {
+     "apiercing": 36,
+     "rpiercing": 36
+    },
+    {
+     "apiercing": 41,
+     "rpiercing": 41
+    }
+   ],
+   "craft": {
+    "i": [
+     [
+      30,
+      "witchparcel",
+      0
+     ],
+     [
+      1,
+      "goldingot",
+      0
+     ],
+     [
+      20,
+      "mbones",
+      0
+     ]
+    ],
+    "c": 2000000,
+    "npc": "witch"
+   },
+   "xc": [
+    [
+     "witchparcel",
+     0.0001
+    ]
+   ]
+  },
+  {
+   "n": "blackcatbell",
+   "nm": "Black Cat's Bell",
+   "t": "orb",
+   "tier": 3,
+   "gr": [
+    0,
+    0,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 2400000,
+   "lv": [
+    {
+     "frequency": 10
+    },
+    {
+     "frequency": 12
+    },
+    {
+     "frequency": 14
+    },
+    {
+     "frequency": 16
+    },
+    {
+     "frequency": 18
+    },
+    {
+     "frequency": 21
+    }
+   ],
+   "craft": {
+    "i": [
+     [
+      40,
+      "witchparcel",
+      0
+     ],
+     [
+      1,
+      "goldingot",
+      0
+     ],
+     [
+      100,
+      "bwing",
+      0
+     ]
+    ],
+    "c": 2000000,
+    "npc": "witch"
+   },
+   "xc": [
+    [
+     "witchparcel",
+     0.0001
+    ]
+   ]
+  },
+  {
+   "n": "nightmarketsash",
+   "nm": "Nightmarket Sash",
+   "t": "belt",
+   "tier": 3,
+   "gr": [
+    0,
+    3,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 2400000,
+   "lv": [
+    {
+     "vit": 4,
+     "gold": 10
+    },
+    {
+     "vit": 5,
+     "gold": 13
+    },
+    {
+     "vit": 6,
+     "gold": 15
+    },
+    {
+     "vit": 7,
+     "gold": 18
+    },
+    {
+     "vit": 8,
+     "gold": 20
+    },
+    {
+     "vit": 9,
+     "gold": 23
+    }
+   ],
+   "craft": {
+    "i": [
+     [
+      30,
+      "witchparcel",
+      0
+     ],
+     [
+      1,
+      "goldingot",
+      0
+     ],
+     [
+      50,
+      "pstem",
+      0
+     ]
+    ],
+    "c": 2000000,
+    "npc": "witch"
+   },
+   "xc": [
+    [
+     "witchparcel",
+     0.0001
+    ]
+   ]
+  },
+  {
+   "n": "cave_loaded_die",
+   "nm": "Loaded Die",
+   "t": "orb",
+   "gr": [
+    0,
+    0,
+    6,
+    7
+   ],
+   "up": false,
+   "cp": true,
+   "g": 72000,
+   "lv": [
+    {
+     "crit": 8,
+     "critdamage": 10
+    },
+    {
+     "crit": 8.5,
+     "critdamage": 12
+    },
+    {
+     "crit": 9,
+     "critdamage": 14
+    },
+    {
+     "crit": 9.5,
+     "critdamage": 16
+    },
+    {
+     "crit": 10,
+     "critdamage": 18
+    },
+    {
+     "crit": 10.6,
+     "critdamage": 20.5
+    }
+   ],
+   "craft": {
+    "i": [
+     [
+      10,
+      "cave_amber",
+      0
+     ],
+     [
+      8,
+      "seashell",
+      0
+     ],
+     [
+      2,
+      "reefglass",
+      0
+     ]
+    ],
+    "c": 16000,
+    "npc": "craftsman"
+   },
+   "xc": [
+    [
+     "cave_finish",
+     0.05
+    ]
+   ]
+  }
+ ]
+}

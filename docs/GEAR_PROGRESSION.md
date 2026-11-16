@@ -41,9 +41,22 @@ Hunter set, token buys, spare upgrades) are paused until this is done.
    i.e. ~7 spare +7 copies (~218 crafted copies, ~44M) per +8 – revisit once Fire
    Spirits (essence of fire) are safe to farm.
 
-**Stat slots** (cheapest main stat after shop +9, to be planned): Belt of STR/INT/DEX
-+2 (+10, Spookytown map drop), Party Hat (2 fun tokens, +9 = 17 stat vs 15), cape,
-orbs, jewelry +3.
+**Stat slots** (evaluated 2026-11-16): compound jewelry costs ~12 +0 copies for +2,
+~91 for +3, ~1100 for +4 (guide model) – +2 is the realistic target.
+- Belt: Belt of STR/INT/DEX +2 = +10 over the HP belt (0) – Spookytown map drop
+  (1/1429 per kill, type random, every type fits one of our classes). Biggest gain,
+  but Spookytown (mummies, booboos, stoneworms) is not safe yet.
+- Rings: stat ring +2 (6) over Ring of Small Joys +2 (3) – Winterland/winter cave map
+  drop 1/2000 (type 1/4); arctic bees are safe. Later crafts: Emberseal etc. (+2 = 12).
+- Amulet: stat amulet +3 (13 vs 10) needs ~91 copies – Halloween map drop 1/1429
+  (snakes are safe) or Dracul (30 %). Collected on the side, auto-compounded.
+- Earrings: Phoenix (12 % per type) – events.
+- Orb: class orb +2 (10) from Fire Spirits / big Pom Pom; Orb of Beginnings +2 (4 all)
+  needs porcupine leather – both spots not safe yet. Cape (+4): leather from wolves.
+- Party Hat: dropped – each copy costs 2 fun tokens, +9 would need ~4800 tokens;
+  at the reachable +7/+8 it loses to shop +9.
+Conclusion: after shop +9 the next target is a **spot**, not an item – once the team
+farms Spookytown, wolves and Fire Spirits safely, belts, cape and orbs open up.
 
 ## What the in-game guide asks for (read 2026-11-16)
 
