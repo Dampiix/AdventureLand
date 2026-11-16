@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.53.4",
+    version: "1.54.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -350,7 +350,8 @@ module.exports = {
         // count). A spare that gets there is swapped in, the old one becomes the next spare;
         // the next level starts only once every worn copy is at the top. Worn copies are never
         // risked; items nobody wears are left alone.
-        bruteForce: { names: ["fireblade", "firebow", "firestaff"], maxLevel: 9 },
+        // hoardAt (2026-11-16): spares are not risked beyond this level; +7 copies are kept.
+        bruteForce: { names: ["fireblade", "firebow", "firestaff"], maxLevel: 9, hoardAt: 7 },
         stock: [
             { name: "fireblade", upTo: 7, spares: 3 },
             { name: "firestaff", upTo: 7, spares: 3 },

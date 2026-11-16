@@ -1888,17 +1888,22 @@ module.exports = function createWorkshop(ctx) {
                 ["mainhand", "offhand"].forEach(function (s) { if (eq[s] && eq[s].name === name) levels.push(eq[s].level || 0); });
             });
             if (!levels.length) continue; // nobody wears it: spares wait
-            const target = Math.min.apply(null, levels) + 1;
+            let target = Math.min.apply(null, levels) + 1;
+            // Hoard (player decision 2026-11-16): above bf.hoardAt nothing is risked – spares
+            // only climb to hoardAt and stay there (later: server grace peaks, Primlings).
+            const capped = !!bf.hoardAt && target > bf.hoardAt;
+            if (capped) target = bf.hoardAt;
             if (target > (bf.maxLevel || 9)) continue;
             const k = key("_brute", { name: name, level: target });
             if (blockedUntil[k] > now) continue;
             if (activeEarmarks().some(function (e) { return e.name === name; })) continue; // a better copy is on its way
             const spares = unlockedCopies(name);
-            if (!spares.length || spares.some(function (l) { return l >= target; })) continue; // none, or one ready to deliver
+            if (!spares.some(function (l) { return l < target; })) continue; // nothing left to climb
+            if (!capped && spares.some(function (l) { return l >= target; })) continue; // one is ready to deliver
             if (character.esize < 3) return false;
-            const best = Math.max.apply(null, spares);
+            const best = Math.max.apply(null, spares.filter(function (l) { return l < target; }));
             util.status("upgrading a spare " + name + " +" + best + " towards +" + target, "orange");
-            util.log("workshop", "spare " + name + " +" + best + " -> +" + target + " (weakest worn +" + (target - 1) + ")", "white");
+            util.log("workshop", "spare " + name + " +" + best + " -> +" + target + (capped ? " (kept there)" : " (weakest worn +" + (target - 1) + ")"), "white");
             try {
                 await develop("_brute", { name: name, level: target }, { budgetKey: GOALS, minChance: 0, spare: true });
             } catch (e) {
