@@ -928,6 +928,24 @@ module.exports = function createWorkshop(ctx) {
         return best;
     }
 
+    // Grace from failed fodder only lifted items of the fodder's grade (2026-11-16: 875k of
+    // Wooden Basher failures at +6, normal grade, moved the firebow +5, high grade, by 0%).
+    // So grace is farmed only when the fodder at +level has the item's grade, and a
+    // (fodder, item, level) that gained nothing is not tried again for a day.
+    const noGraceUntil = {}; // "item:level" -> timestamp
+    function graceHelps(item, level) {
+        const fodder = cfg.grace.fodder;
+        const k = item.name + ":" + level;
+        if (noGraceUntil[k] > Date.now()) return false;
+        const same = item_grade({ name: fodder, level: level }) === item_grade({ name: item.name, level: level });
+        if (!same) {
+            noGraceUntil[k] = Date.now() + 24 * 60 * 60 * 1000;
+            util.log("workshop", "no grace for " + item.name + " +" + level + " -> +" + (level + 1) + ": " + fodder +
+                " has another grade there (grace only helps the same grade)", "orange");
+        }
+        return same;
+    }
+
     function fodderIndex(maxLevel) {
         let best = -1;
         character.items.forEach(function (item, i) {
@@ -960,7 +978,7 @@ module.exports = function createWorkshop(ctx) {
     }
 
     // Returns the new chance once it reaches minChance, or null when we gave up.
-    async function farmGrace(level, minChance, targetChance) {
+    async function farmGrace(level, minChance, targetChance, itemName) {
         const gk = "grace:" + level;
         const fodder = cfg.grace.fodder;
         const def = G.items[fodder];
@@ -1052,6 +1070,11 @@ module.exports = function createWorkshop(ctx) {
                         current = chance;
                         lastGain = chance - before;
                         lastFailed = true;
+                        if (lastGain < 0.005) {
+                            stopReason = "a grace stack gave the item " + pct(lastGain) + " - this fodder does not help it";
+                            if (itemName) noGraceUntil[itemName + ":" + (level - 1)] = Date.now() + 24 * 60 * 60 * 1000;
+                            break;
+                        }
                         if (chance >= minChance) {
                             util.log("workshop", "grace done after " + tries + " attempts: +" + level + " now at " + pct(chance), "green");
                             return chance;
@@ -1209,12 +1232,13 @@ module.exports = function createWorkshop(ctx) {
                 // Still short on a valuable item at a higher level, but close (risk.graceWindow):
                 // build grace with cheap fodder. Far below the floor, grace costs too much.
                 const close = chance >= minChance - graceWindowFor(level + 1);
-                if (!better && !spare && close && minChance > 0 && cfg.grace.enabled && level + 1 >= cfg.grace.minLevel) {
+                if (!better && !spare && close && minChance > 0 && cfg.grace.enabled && level + 1 >= cfg.grace.minLevel &&
+                    graceHelps(item, level)) {
                     const graced = await farmGrace(level + 1, minChance, async function () {
                         await ensureScroll(k, scroll, 1); // fodder attempts may have used our scrolls
                         await goTo("newupgrade");
                         return preview(bagIndex(scroll, 0));
-                    });
+                    }, w.name);
                     if (graced !== null) better = { scroll: scroll, chance: graced };
                 }
                 if (!better) {
