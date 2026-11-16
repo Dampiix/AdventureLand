@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.60.1",
+    version: "1.61.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -277,6 +277,12 @@ module.exports = {
         // 2 STR per piece for ~3x the armor and resistance.
         // The Monster Hunter sets are long-term and stay out for now.
         classWishesEnabled: true,
+        // Belts (player decision 2026-11-17): tanks keep an HP belt and take it to +2 (+640 HP:
+        // what booboos/stoneworms need) – while that wish is open the merchant keeps every HP
+        // belt for compounding instead of selling it; afterwards the rest is sold again.
+        // Priest and ranger: a main-stat belt (+4 at +0, +10 at +2) replaces the HP belt right
+        // away. Stat belts only drop in Spooky Town (map drop) – the wish waits until a spot
+        // there is safe.
         // Rings (player decision 2026-11-16): two stat rings +2 in the class's main stat
         // (+6) replace the Rings of Small Joys +2 (+3 STR/INT/DEX, +15 resistance) – at +0/+1
         // they are no better. Delivered only complete (+2), worn over a Ring of Joy right away
@@ -290,6 +296,7 @@ module.exports = {
             paladin: [
                 { steps: [{ name: "orbg", level: 0 }, { name: "orbg", level: 1 }, { name: "orbofstr", level: 0 }] }, // Fire Spirit
                 { steps: [{ name: "strring", level: 2 }], replace: true, anytime: true },
+                { steps: [{ name: "hpbelt", level: 1 }, { name: "hpbelt", level: 2 }] },
                 { steps: [{ name: "helmet1", level: 7 }], replace: true },
                 { steps: [{ name: "gloves1", level: 7 }], replace: true },
                 { steps: [{ name: "pants1", level: 7 }], replace: true },
@@ -299,6 +306,7 @@ module.exports = {
             priest: [
                 { steps: [{ name: "orbg", level: 0 }, { name: "orbg", level: 1 }, { name: "orbofint", level: 0 }] }, // big Pom Pom (level2n)
                 { steps: [{ name: "intring", level: 2 }], replace: true, anytime: true },
+                { steps: [{ name: "intbelt", level: 0 }, { name: "intbelt", level: 1 }, { name: "intbelt", level: 2 }], replace: true, anytime: true },
             ],
             // The offhand is a second weapon (dual wield, handled by gear/workshop).
             // Monster Hunter Warrior set: long-term, paused (entries: mwhelmet 7, mwgloves 8,
@@ -306,6 +314,7 @@ module.exports = {
             warrior: [
                 { steps: [{ name: "orbg", level: 0 }, { name: "orbg", level: 1 }, { name: "orbofstr", level: 0 }] }, // Fire Spirit
                 { steps: [{ name: "strring", level: 2 }], replace: true, anytime: true },
+                { steps: [{ name: "hpbelt", level: 1 }, { name: "hpbelt", level: 2 }] },
                 { steps: [{ name: "helmet1", level: 7 }], replace: true },
                 { steps: [{ name: "gloves1", level: 7 }], replace: true },
                 { steps: [{ name: "pants1", level: 7 }], replace: true },
@@ -318,6 +327,7 @@ module.exports = {
                 { steps: [{ name: "quiver", level: 0 }, { name: "quiver", level: 7 }] },
                 { steps: [{ name: "orbg", level: 0 }, { name: "orbg", level: 1 }, { name: "orbofdex", level: 0 }] }, // Fire Spirit
                 { steps: [{ name: "dexring", level: 2 }], replace: true, anytime: true },
+                { steps: [{ name: "dexbelt", level: 0 }, { name: "dexbelt", level: 1 }, { name: "dexbelt", level: 2 }], replace: true, anytime: true },
             ],
         },
     },
@@ -511,7 +521,7 @@ module.exports = {
             { name: "hpamulet", maxLevel: 10 },
             { name: "vitearring", maxLevel: 10 },
             { name: "vitring", maxLevel: 10 },  // STR beats VIT for the warrior too (player decision 2026-11-16)
-            { name: "hpbelt", maxLevel: 10 },
+            { name: "hpbelt", maxLevel: 10 },   // kept while a tank's HP-belt wish is open (isReserved)
             { name: "helmet", maxLevel: 3 },
             // Shop weapons and the old quiver that did their job (player decision 2026-11-16):
             // fire weapons replaced them, the ranger wears a quiver +8. A copy a fighter or
