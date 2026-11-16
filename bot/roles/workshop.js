@@ -793,10 +793,27 @@ module.exports = function createWorkshop(ctx) {
         return null;
     }
 
+    // Do we hold enough tokens (bag + bank) to buy this item?
+    function tokensFor(name) {
+        const offer = tokenOffer(name);
+        if (!offer) return false;
+        const banked = (bankSnapshot ? bankSnapshot.items : []).reduce(function (s, b) { return b.name === offer.token ? s + (b.q || 1) : s; }, 0);
+        return util.countItem(offer.token) + banked >= offer.price;
+    }
+
     // Buy a +0 copy with tokens at the token NPC (Daisy for Monster Tokens).
     async function buyWithTokens(name) {
         const offer = tokenOffer(name);
         if (!offer) return false;
+        // A fighter already wears one (e.g. a Hunter piece stopped below its wished level):
+        // we never upgrade worn gear, and a second copy would only burn tokens.
+        const wearer = Object.keys(worn).find(function (f) {
+            return config.team.fighters.includes(f) && Object.values(worn[f] || {}).some(function (x) { return x && x.name === name; });
+        });
+        if (wearer) {
+            util.log("workshop", wearer + " already wears " + name + " - not buying another for " + offer.price + " " + offer.token, "white");
+            return false;
+        }
         let have = util.countItem(offer.token);
         if (have < offer.price) {
             const banked = bankSnapshot && bankSnapshot.items.find(function (b) { return b.name === offer.token; });
@@ -1133,6 +1150,12 @@ module.exports = function createWorkshop(ctx) {
                 const w = eq[slot];
                 const def = w && G.items[w.name];
                 if (!def || !def.upgrade || !sellerOf(w.name) || (w.level || 0) < g.fromLevel || (w.level || 0) >= g.upTo) return;
+                // A token piece for this slot is wished and affordable (e.g. Monster Hunter
+                // armor): it replaces the shop piece, so don't spend on the shop piece.
+                if (wishList(f).some(function (x) {
+                    const d = G.items[x.name];
+                    return d && d.type === def.type && x.name !== w.name && tokensFor(x.name);
+                })) return;
                 // A drop weapon is being readied for this fighter: its shop weapon stays as it is.
                 if (slot === "mainhand" && weaponPlans().some(function (p) { return p.fighter === f; })) return;
                 // Stat armor: the worn piece's stat, else the fighter's main stat.

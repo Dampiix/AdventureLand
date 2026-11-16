@@ -90,13 +90,17 @@ module.exports = function createGear(ctx) {
     // steps ({ steps: [...] }, e.g. Orb of Beginnings +0 -> +2 -> Orb of Strength +1):
     // only the first step the worn piece doesn't reach yet is wished. A piece of a later
     // step counts for all earlier ones, so a lucky drop skips ahead. Anything worn there
-    // that is not part of the chain stays our choice (no wish).
+    // that is not part of the chain stays our choice (no wish) – unless the entry has
+    // replace: true (e.g. Monster Hunter armor over shop armor): then any piece of the
+    // chain, at any level, beats what is worn and is equipped over it.
     function classChains() {
         const table = cfg.classWishes || {};
         return (table.all || []).concat(table[character.ctype] || []).map(function (e) {
-            return (e && e.steps ? e.steps : [e]).filter(function (s) {
+            const steps = (e && e.steps ? e.steps : [e]).filter(function (s) {
                 return s && G.items[s.name] && usable(G.items[s.name]);
             });
+            steps.replace = !!(e && e.replace);
+            return steps;
         }).filter(function (steps) { return steps.length; });
     }
     // How many steps of the chain this piece covers (0 = none or not part of it).
@@ -123,12 +127,12 @@ module.exports = function createGear(ctx) {
             let progress = null;
             slots.forEach(function (s) {
                 const worn = character.slots && character.slots[s];
-                const p = worn ? chainProgress(steps, worn) : 0;
-                if (p < 0) return;
+                let p = worn ? chainProgress(steps, worn) : 0;
+                if (p < 0 && !steps.replace) return;
                 if (progress === null || p < progress) progress = p;
             });
             if (progress === null || progress >= steps.length) return;
-            const w = steps[progress];
+            const w = steps[Math.max(0, progress)];
             if (have.some(function (x) { return x.name === w.name; })) return;
             const stat = G.items[w.name].stat ? mainStat : null;
             list.push(stat ? { name: w.name, level: w.level || 0, stat: stat } : { name: w.name, level: w.level || 0 });
@@ -146,7 +150,7 @@ module.exports = function createGear(ctx) {
                 const worn = character.slots && character.slots[s];
                 if (!worn) return false;
                 const p = chainProgress(steps, worn);
-                return p >= 0 && worn.name !== item.name && mine > p;
+                return (p >= 0 || steps.replace) && worn.name !== item.name && mine > p;
             });
             if (slot) return { num: num, slot: slot };
         }
@@ -158,7 +162,7 @@ module.exports = function createGear(ctx) {
         const steps = worn && chainOf(worn.name);
         if (!steps) return false;
         const p = chainProgress(steps, item);
-        return p >= 0 && p < chainProgress(steps, worn);
+        return (p >= 0 || steps.replace) && p < chainProgress(steps, worn);
     }
 
     function sendWishes() {
@@ -391,7 +395,7 @@ module.exports = function createGear(ctx) {
             const w = slots[s];
             if (!w || w.name === item.name) return false;
             const p = chainProgress(steps, w);
-            return p >= 0 && chainProgress(steps, item) > p;
+            return (p >= 0 || steps.replace) && chainProgress(steps, item) > p;
         })) return true;
         // Equipment for a slot we leave empty, or that just arrived (the merchant's
         // delivery may no longer be among our top wishes): give the equip pass a chance.

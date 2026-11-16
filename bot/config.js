@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.35.2",
+    version: "1.36.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -207,7 +207,16 @@ module.exports = {
                 { steps: [{ name: "orbg", level: 0 }, { name: "orbg", level: 1 }, { name: "orbofint", level: 0 }] }, // big Pom Pom (level2n)
             ],
             // The offhand is a second weapon (dual wield, handled by gear/workshop).
+            // Monster Hunter Warrior set first (player decision 2026-11-16): bought with
+            // tokens in this order (7 + 8 + 11 = 26 of our 29 now; armor 12 and boots 15
+            // as tokens come in), upgraded towards +7 by the risk rules and worn over the
+            // shop armor at whatever level it reached (replace).
             warrior: [
+                { steps: [{ name: "mwhelmet", level: 7 }], replace: true },
+                { steps: [{ name: "mwgloves", level: 7 }], replace: true },
+                { steps: [{ name: "mwpants", level: 7 }], replace: true },
+                { steps: [{ name: "mwarmor", level: 7 }], replace: true },
+                { steps: [{ name: "mwboots", level: 7 }], replace: true },
                 { steps: [{ name: "orbg", level: 0 }, { name: "orbg", level: 1 }, { name: "orbofstr", level: 0 }] }, // Fire Spirit
             ],
             ranger: [
