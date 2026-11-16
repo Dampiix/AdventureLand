@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.58.1",
+    version: "1.58.2",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -115,7 +115,7 @@ module.exports = {
     },
 
     targeting: {
-        farm: "arcticbee",              // e.g. "squigtoad" to force a monster for everyone (null = guide)
+        farm: null,              // e.g. "squigtoad" to force a monster for everyone (null = guide)
         fallback: "goo",          // used when the progression guide has no answer
         // Farm only where every fighter's own guide calls the spot safe; routes the guide
         // only offers as a careful trial count once proven – by the guide's own fights, or
@@ -173,7 +173,7 @@ module.exports = {
         potionWhenMissing: true,
         // With a priest in the party close by (or as the priest): potions only as an
         // emergency, the healing does the rest (player decision 2026-11-16).
-        withHealer: { potionHpBelow: 0.45, potionWhenMissing: false },
+        withHealer: { potionHpBelow: 0.6, potionWhenMissing: false },
     },
 
     classes: {
