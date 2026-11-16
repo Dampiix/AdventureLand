@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.51.1",
+    version: "1.52.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -134,6 +134,9 @@ module.exports = {
             tankClasses: ["warrior", "paladin"],
             tankHits: 6, otherHits: 3, healCover: 1.5,
             pull: 2, pullAggressive: 3,
+            // Aggressive monsters whose spawn area per monster is below this (px²) come as a
+            // whole pack (vampire rats: 5 in 150x195 wiped the team, 2026-11-16).
+            denseArea: 15000,
             abilities: [],                 // monster abilities we accept (others: the guide decides)
         },
         refreshMs: 5 * 60 * 1000, // how often to ask the guide again

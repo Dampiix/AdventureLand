@@ -89,7 +89,8 @@ module.exports = function createHunts(ctx) {
         if (cfg.allow.includes(monster)) return true;
         if (!G.monsters[monster]) return false;
         const cached = safeCache[monster];
-        if (cached && Date.now() - cached.at < 2 * 60 * 1000) return cached.safe;
+        const died = ctx.targeting && ctx.targeting.deathAt ? ctx.targeting.deathAt(monster) : 0;
+        if (cached && Date.now() - cached.at < 2 * 60 * 1000 && !(cached.safe && died > cached.at)) return cached.safe;
         let why = "no targeting module";
         try {
             why = ctx.targeting ? ctx.targeting.whyUnsafe(monster) : why;

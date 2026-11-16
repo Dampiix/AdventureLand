@@ -101,7 +101,29 @@ module.exports = function createTargeting(ctx) {
         if (now - lastSave > 60 * 1000) { lastSave = now; saveExperience(); }
     }
 
+    // A fighter died while its farm target was `monster`: not safe for an hour. Every
+    // fighter reports its own death (fighter.js), so a whole-team wipe counts too – the
+    // leader's clock() only sees deaths while it is alive itself.
+    function diedAt(monster, who) {
+        if (!monster || !G.monsters[monster]) return;
+        const now = Date.now();
+        const e = experience[monster];
+        if (e && e.bad && now - e.bad < 60 * 1000) return; // already noted for this wipe
+        util.log("target", who + " died while farming " + monster + " - not counted as safe for an hour", "red");
+        experience[monster] = { ms: 0, at: now, bad: now };
+        saveExperience();
+        nextPickAt = 0;
+    }
+    function deathAt(monster) {
+        const e = experience[monster];
+        return (e && e.bad) || 0;
+    }
+
     if (comms) {
+        comms.on("died", function (data, from) {
+            if (!config.characters[from] || party.isMember) return;
+            diedAt(data && data.monster, from);
+        });
         comms.on("safe", function (data, from) {
             if (!config.characters[from]) return;
             reports[from] = { listed: data.listed || null, safe: data.safe || data.list || [], sure: data.sure || data.list || [], at: Date.now() };
@@ -159,6 +181,26 @@ module.exports = function createTargeting(ctx) {
     function teamModelOn() {
         return !!ts.enabled && party.enabled && !party.isMember;
     }
+    // Aggressive monsters packed tightly (spawn area per monster below ts.denseArea px²)
+    // all come at once – e.g. 5 vampire rats in a 150x195 box at the level1 entrance
+    // wiped the team in seconds (2026-11-16). Largest such pack on any map, else 0.
+    function densePack(monster) {
+        let most = 0;
+        Object.keys(G.maps).forEach(function (mapName) {
+            const map = G.maps[mapName];
+            if (map.ignore || map.instance) return;
+            (map.monsters || []).forEach(function (pack) {
+                if (pack.type !== monster || !pack.count) return;
+                const boxes = pack.boundaries ? pack.boundaries.map(function (b) { return b.slice(1); }) : pack.boundary ? [pack.boundary] : [];
+                boxes.forEach(function (b) {
+                    const area = Math.abs((b[2] - b[0]) * (b[3] - b[1]));
+                    if (area / pack.count < (ts.denseArea || 15000)) most = Math.max(most, pack.count);
+                });
+            });
+        });
+        return most;
+    }
+
     function teamVerdict(monster) {
         const m = G.monsters[monster];
         if (!m || m.cooperative) return { ok: false, why: "no data / cooperative" };
@@ -176,7 +218,7 @@ module.exports = function createTargeting(ctx) {
             else if (m.damage_type === "magical") def = (f.resistance || 0) - (m.rpiercing || 0);
             return (m.attack || 0) * 1.1 * util.damageMultiplier(def);
         };
-        const pull = (m.aggro || 0) >= 1 ? (ts.pullAggressive || 3) : (ts.pull || 2);
+        const pull = (m.aggro || 0) >= 1 ? Math.max(ts.pullAggressive || 3, densePack(monster)) : (ts.pull || 2);
         const volley = hitOn(tank) * pull;
         const tankHits = tank.max_hp / Math.max(1, volley);
         if (tankHits < (ts.tankHits || 6)) return { ok: false, why: tank.name + " survives " + tankHits.toFixed(1) + " volleys of " + pull + " (need " + (ts.tankHits || 6) + ")" };
@@ -562,5 +604,5 @@ module.exports = function createTargeting(ctx) {
     }
 
     return { currentFarm: currentFarm, pick: pick, isValid: isValid, reportSearch: reportSearch, isTeamSafe: isTeamSafe, whyUnsafe: whyUnsafe,
-        teamModelOn: teamModelOn, teamVerdict: teamVerdict, safetyReport: safetyReport };
+        teamModelOn: teamModelOn, teamVerdict: teamVerdict, safetyReport: safetyReport, diedAt: diedAt, deathAt: deathAt };
 };

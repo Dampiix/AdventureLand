@@ -37,8 +37,17 @@ module.exports = function createFighter(ctx, cls) {
     let reviveWaitUntil = 0;
     ctx.comms.on("revive_wait", function () { reviveWaitUntil = Date.now() + 30 * 1000; });
 
+    let deathReported = false;
     function handleDeath() {
-        if (!character.rip) return false;
+        if (!character.rip) { deathReported = false; return false; }
+        if (!deathReported) {
+            deathReported = true;
+            const monster = lastFarm && !lastFarm.any ? lastFarm.monster : null;
+            if (monster) {
+                if (party.isMember) ctx.comms.send(config.leader, "died", { monster: monster });
+                else targeting.diedAt(monster, character.name);
+            }
+        }
         if (Date.now() < reviveWaitUntil) {
             util.status("dead - a priest is reviving me", "yellow");
             return true;
