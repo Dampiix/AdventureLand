@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.59.0",
+    version: "1.59.1",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -129,7 +129,9 @@ module.exports = {
         avoidTrial: true,
         // Melee classes never hit monsters returning this much damage (dreturn in %, porcupine
         // 4800 = 48x back – one hit kills a warrior; armadillo 30 is fine). Ranged ones farm them.
-        melee: { classes: ["warrior", "paladin", "rogue"], maxDreturn: 100 },
+        // Lowered to 20 (2026-11-16): armadillos (30 %) nearly killed the solo warrior – his
+        // dual-wield hits and Cleave on several of them came back faster than potions heal.
+        melee: { classes: ["warrior", "paladin", "rogue"], maxDreturn: 20 },
         // The current farm spot is left only when a member's "unsafe" lasts this long
         // (verdicts near the edge flip back and forth); a death there counts at once.
         objectionGraceMs: 5 * 60 * 1000,

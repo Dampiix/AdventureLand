@@ -50,7 +50,9 @@ module.exports = function createWarrior(ctx) {
     // Cleave and Stomp hit everything around us: never with a damage-return monster in reach.
     function spikyNear(range) {
         return Object.values(parent.entities || {}).some(function (e) {
-            return e && e.type === "monster" && !e.dead && util.distanceTo(e) <= range + 20 && util.tooSpiky(ctx.config, e);
+            // Any damage return counts here: Cleave/Stomp hit them all, each one returns.
+            return e && e.type === "monster" && !e.dead && util.distanceTo(e) <= range + 20 &&
+                ((G.monsters[e.mtype] || {}).dreturn > 0 || util.tooSpiky(ctx.config, e));
         });
     }
 
