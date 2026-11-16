@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.57.0",
+    version: "1.58.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -115,7 +115,7 @@ module.exports = {
     },
 
     targeting: {
-        farm: "boar",              // e.g. "squigtoad" to force a monster for everyone (null = guide)
+        farm: "arcticbee",              // e.g. "squigtoad" to force a monster for everyone (null = guide)
         fallback: "goo",          // used when the progression guide has no answer
         // Farm only where every fighter's own guide calls the spot safe; routes the guide
         // only offers as a careful trial count once proven – by the guide's own fights, or
@@ -210,8 +210,10 @@ module.exports = {
             stompFrom: 2,                   // Stomp (lvl 52, basher) with this many attackers
             sturdyHits: 4,                  // War Cry (lvl 70) on targets needing this many hits
             hardShell: { enabled: true, below: 0.45 }, // lvl 60, against physical hits
-            useCharge: true, chargeFrom: 150,          // +30 speed on walks and longer chases
-            dash: { enabled: true, from: 120, max: 150, everyMs: 2000 }, // jump the last gap (straight line only, 120 MP, no cooldown)
+            useCharge: true,                           // +30 speed whenever we walk (on cooldown)
+            // Dash: the server accepts a point at most 50 px away (game source) – a 120 MP hop,
+            // no gap closer. Off since 2026-11-16 (the old 150 px jumps always failed).
+            dash: { enabled: false, from: 120, max: 45, everyMs: 2000 },
         },
         mage: {
             energizeAbove: 0.6,             // only give mana while we have more than this

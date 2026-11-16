@@ -75,10 +75,10 @@ module.exports = function createWarrior(ctx) {
         const dist = util.distanceTo(target);
         if (dist < (d.from || 120)) return false;
         const p = util.xy(target);
-        if (typeof can_move_to === "function" && !can_move_to(p.x, p.y)) return false;
-        // Land just short of the target, at most d.max away.
-        const step = Math.min(d.max || 150, dist - (character.range || 20) * 0.7);
-        if (step < 40) return false;
+        // The server takes a point at most 50 px away (game source: farther fails as
+        // "dash_failed" and the MP is gone) – a hop over an obstacle, not a gap closer.
+        const step = Math.min(d.max || 45, 48, dist - (character.range || 20) * 0.7);
+        if (step < 20) return false;
         const k = step / dist;
         const to = [character.real_x + (p.x - character.real_x) * k, character.real_y + (p.y - character.real_y) * k];
         lastDash = Date.now();
@@ -96,6 +96,12 @@ module.exports = function createWarrior(ctx) {
 
     return {
         name: "warrior",
+
+        // Charge (+30 speed for 3.2 s, 40 s cooldown, no MP) whenever we walk – farm trips,
+        // boss searches and Daisy trips too (player request 2026-11-16).
+        always: function () {
+            if (c.useCharge && is_moving(character)) tryCharge();
+        },
 
         survive: function () {
             const h = c.hardShell || {};
@@ -143,8 +149,7 @@ module.exports = function createWarrior(ctx) {
 
         // Called while we walk: towards `target` (chase) or along a route (target null).
         move: function (target) {
-            const far = target ? util.distanceTo(target) > (c.chargeFrom || 150) : true;
-            if (far) tryCharge();
+            tryCharge();
             return target ? tryDash(target) : false;
         },
     };

@@ -136,6 +136,7 @@ module.exports = function createFighter(ctx, cls) {
     function tick() {
         if (handleDeath()) return;
         if (!cls.survive()) handlePotions();
+        if (cls.always) cls.always(); // every tick, also while a trip keeps the loop busy
         loot();
         party.manage();
         // Leader: share position every tick – also while searching, travelling or at Daisy,
