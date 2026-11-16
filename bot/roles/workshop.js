@@ -1581,7 +1581,12 @@ module.exports = function createWorkshop(ctx) {
                 if (!worn[f] || !canWield(f, name)) return;
                 const m = worn[f].mainhand;
                 if (m && m.name === name) return; // already wears one: gear goals take over
-                if ((bw.craft || []).includes(name) && (!m || (m.level || 0) < cfg.gearGoals.upTo)) return; // not yet
+                // Not before the fighter is "full +7": weapon at upTo AND all shop armor past
+                // the first stage (player decision 2026-11-16).
+                if ((bw.craft || []).includes(name)) {
+                    const stage = armorStage(f);
+                    if (!m || (m.level || 0) < cfg.gearGoals.upTo || (stage !== null && stage <= cfg.gearGoals.upTo)) return;
+                }
                 const bar = wornPower(f) * (1 + (bw.margin || 0));
                 for (let level = 0; level <= bw.maxLevel; level++) {
                     if (util.weaponPower(name, level, classes[f]) <= bar) continue;
