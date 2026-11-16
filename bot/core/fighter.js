@@ -71,7 +71,9 @@ module.exports = function createFighter(ctx, cls) {
     function handleCombat() {
         const farm = targeting.currentFarm();
         const target = targeting.pick(farm);
-        targeting.reportSearch(!!target);
+        // Only time actually fighting counts for the crowded-spot check: running after a
+        // monster that another player kills on the way is time without a target too.
+        targeting.reportSearch(!!target && is_in_range(target));
         lastFarm = farm;
         lastTarget = target;
 
