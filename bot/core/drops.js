@@ -43,6 +43,13 @@ module.exports = function createDrops(ctx) {
         return util.teamCycle(route, config.hunts && config.hunts.teamSpeedup);
     }
 
+    // Base XP per second of a route (monster XP / kill cycle). The guide's own route "xp"
+    // rated crabs at 5663 vs crocs at 620 on 2026-11-17 - in practice crabs give little.
+    function xpRate(route) {
+        const m = G.monsters[route.monster];
+        return m && route.cycle > 0 ? (m.xp || 0) / route.cycle : 0;
+    }
+
     // Solo with Lone Wolf the bonus loot roll scales with our (full) contribution and the
     // extra luck: our own table estimates count that in. Party shares vary – no bonus there.
     function luckFactor() {
@@ -73,7 +80,7 @@ module.exports = function createDrops(ctx) {
             const perCopy = a.rate > 0 && cycle
                 ? cycle / a.rate
                 : a.meanSeconds * (cycle && a.route.cycle > 0 ? cycle / a.route.cycle : 1) / Math.max(1, need.copies);
-            list.push({ monster: a.route.monster, map: a.route.map, perCopy: perCopy, xp: a.route.xp || 0 });
+            list.push({ monster: a.route.monster, map: a.route.map, perCopy: perCopy, xp: xpRate(a.route) });
         };
         (advice && advice.rows || []).forEach(function (row) {
             consider(row.action);
@@ -162,7 +169,7 @@ module.exports = function createDrops(ctx) {
             // The guide's own "safe" (for the leader alone) is not needed once the team model judges spots.
             const teamModel = ctx.targeting && ctx.targeting.teamModelOn && ctx.targeting.teamModelOn();
             if (!(rate > 0) || !(r.cycle > 0) || (r.safe !== true && !teamModel) || !teamSafe(r.monster)) return;
-            out.push({ monster: r.monster, map: r.map, perCopy: teamCycle(r) / rate, xp: r.xp || 0 });
+            out.push({ monster: r.monster, map: r.map, perCopy: teamCycle(r) / rate, xp: xpRate(r) });
         });
         return out.sort(function (a, b) { return a.perCopy - b.perCopy; });
     }
