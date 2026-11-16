@@ -674,6 +674,9 @@ module.exports = function createWorkshop(ctx) {
     function reportDrops() {
         const d = config.drops;
         if (!d || !d.enabled || !config.leader || Date.now() < nextDropReportAt) return;
+        // Counts include the bank: right after a restart, before the first bank scan,
+        // everything would look missing (e.g. "50 armor boxes missing" with 130 banked).
+        if (!bankSnapshot) return;
         nextDropReportAt = Date.now() + d.reportMs;
         const list = [];
         Object.keys(shortages).forEach(function (name) {
