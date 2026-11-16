@@ -702,7 +702,10 @@ module.exports = function createWorkshop(ctx) {
         // everything would look missing (e.g. "50 armor boxes missing" with 130 banked).
         if (!bankSnapshot) return;
         // ...and the fighters' wishes: unknown wishes would drop every shortage.
-        if (config.team.fighters.some(function (f) { return !wishes[f]; })) return;
+        // (solo: just the leader – the others are offline and never send wishes)
+        const ph = (config.phases || {})[config.phase] || {};
+        const active = ph.party && ph.party.length ? ph.party : [config.leader];
+        if (active.some(function (f) { return !wishes[f]; })) return;
         nextDropReportAt = Date.now() + d.reportMs;
         const list = [];
         Object.keys(shortages).forEach(function (name) {

@@ -43,7 +43,17 @@ module.exports = function createDrops(ctx) {
         return util.teamCycle(route, config.hunts && config.hunts.teamSpeedup);
     }
 
-    // The guide's farm advice for one missing item, or null.
+    // Solo with Lone Wolf the bonus loot roll scales with our (full) contribution and the
+    // extra luck: our own table estimates count that in. Party shares vary – no bonus there.
+    function luckFactor() {
+        if (ctx.party && ctx.party.enabled) return 1;
+        const t = character.encouragement && character.encouragement.totals;
+        return t && t.luck > 1 ? t.luck : 1;
+    }
+
+    // Every farm route for one missing item, fastest first ([] = none): the guide's routes
+    // plus our own from the drop tables – so a crowded best spot falls back to the next one
+    // (stat rings: ice roamers full of bots -> arctic bees on the same map, 2026-11-17).
     function routeFor(need) {
         let advice;
         try {
@@ -52,7 +62,7 @@ module.exports = function createDrops(ctx) {
             util.log("drops", "guide failed for " + need.name + ": " + util.errReason(e), "red");
             return null;
         }
-        let best = null;
+        const list = [];
         const consider = function (a) {
             if (!a || a.kind !== "farm" || !a.route || a.blocked || !G.monsters[a.route.monster]) return;
             // The guide's plain XP row (no item, no rate) says nothing about this drop.
@@ -63,18 +73,45 @@ module.exports = function createDrops(ctx) {
             const perCopy = a.rate > 0 && cycle
                 ? cycle / a.rate
                 : a.meanSeconds * (cycle && a.route.cycle > 0 ? cycle / a.route.cycle : 1) / Math.max(1, need.copies);
-            if (!best || perCopy < best.perCopy) best = { monster: a.route.monster, map: a.route.map, perCopy: perCopy };
+            list.push({ monster: a.route.monster, map: a.route.map, perCopy: perCopy });
         };
         (advice && advice.rows || []).forEach(function (row) {
             consider(row.action);
             const tree = row.plan && row.plan.tree;
             if (tree) (tree.alternatives || []).forEach(consider);
         });
-        // The guide has no drop route for some items (e.g. a Cape from 40 Leather, or
-        // books when it counts other copies): use the game's drop tables ourselves.
-        const own = tableRoute(need.name);
-        if (own && (!best || own.perCopy < best.perCopy)) best = own;
-        return best;
+        // The guide has no drop route for some items (e.g. a Cape from 40 Leather, books when
+        // it counts other copies, map drops on other monsters): the game's drop tables.
+        tableRoutes(need.name).forEach(function (r) { list.push(r); });
+        const seen = {};
+        return list.sort(function (a, b) { return a.perCopy - b.perCopy; }).filter(function (r) {
+            const k = r.monster + "@" + r.map;
+            if (seen[k]) return false;
+            seen[k] = true;
+            return true;
+        });
+    }
+
+    // Per-kill chance of `name` from every monster on a map (G.drops.maps: map-wide drops,
+    // directly or through a table such as statring). { map: rate }
+    function mapDropRates(name) {
+        const rates = {};
+        const maps = (G.drops && G.drops.maps) || {};
+        Object.keys(maps).forEach(function (map) {
+            (maps[map] || []).forEach(function (d) {
+                if (!Array.isArray(d) || !(d[0] > 0)) return;
+                let share = 0;
+                if (d[1] === name) share = 1;
+                else if (d[1] === "open" && Array.isArray(G.drops[d[2]])) {
+                    const table = G.drops[d[2]];
+                    const total = table.reduce(function (s, x) { return s + (x && x[0] > 0 ? x[0] : 0); }, 0);
+                    const weight = table.reduce(function (s, x) { return s + (x && x[1] === name ? x[0] : 0); }, 0);
+                    if (total > 0) share = weight / total;
+                }
+                if (share > 0) rates[map] = (rates[map] || 0) + d[0] * share;
+            });
+        });
+        return rates;
     }
 
     // Per-kill chance of `name` from each monster: direct drops plus one exchange step
@@ -108,23 +145,26 @@ module.exports = function createDrops(ctx) {
         return rates;
     }
 
-    // Fastest safe guide route among the monsters that drop `name`, or null.
-    function tableRoute(name) {
+    // Safe guide routes among the monsters that drop `name` (own or map drops), fastest first.
+    function tableRoutes(name) {
         const rates = dropRates(name);
-        if (!Object.keys(rates).length) return null;
+        const mapRates = mapDropRates(name);
+        if (!Object.keys(rates).length && !Object.keys(mapRates).length) return [];
         let routesNow = [];
-        try { routesNow = (get_progression() || {}).routes || []; } catch (e) { return null; }
+        try { routesNow = (get_progression() || {}).routes || []; } catch (e) { return []; }
+        const luck = luckFactor();
         // Same safety rule as any farm target: safe for every member, trials only once proven.
         const teamSafe = function (m) { return !ctx.targeting || ctx.targeting.isTeamSafe(m); };
-        let best = null;
+        const out = [];
         routesNow.forEach(function (r) {
+            if (!r) return;
+            const rate = ((rates[r.monster] || 0) + (mapRates[r.map] || 0)) * luck;
             // The guide's own "safe" (for the leader alone) is not needed once the team model judges spots.
             const teamModel = ctx.targeting && ctx.targeting.teamModelOn && ctx.targeting.teamModelOn();
-            if (!r || !rates[r.monster] || !(r.cycle > 0) || (r.safe !== true && !teamModel) || !teamSafe(r.monster)) return;
-            const perCopy = teamCycle(r) / rates[r.monster];
-            if (!best || perCopy < best.perCopy) best = { monster: r.monster, map: r.map, perCopy: perCopy };
+            if (!(rate > 0) || !(r.cycle > 0) || (r.safe !== true && !teamModel) || !teamSafe(r.monster)) return;
+            out.push({ monster: r.monster, map: r.map, perCopy: teamCycle(r) / rate });
         });
-        return best;
+        return out.sort(function (a, b) { return a.perCopy - b.perCopy; });
     }
 
     function check() {
@@ -135,7 +175,8 @@ module.exports = function createDrops(ctx) {
         const limit = cfg.maxHoursPerCopy * 3600;
         const found = [];
         needs.forEach(function (need) {
-            const r = routeFor(need);
+            const cands = routeFor(need);
+            const r = cands[0];
             if (!r) {
                 if (Date.now() - (slowLogged[need.name] || 0) < 60 * 60 * 1000) return;
                 slowLogged[need.name] = Date.now();
@@ -150,7 +191,9 @@ module.exports = function createDrops(ctx) {
                 util.log("drops", need.name + ": " + est + " at " + r.monster + " - too slow, not farming it", "white");
                 return;
             }
-            found.push(Object.assign({ name: need.name, copies: need.copies }, r));
+            cands.filter(function (c) { return c.perCopy <= limit; }).forEach(function (c) {
+                found.push(Object.assign({ name: need.name, copies: need.copies }, c));
+            });
         });
         routes = found.sort(function (a, b) { return a.perCopy - b.perCopy; });
     }
