@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.56.0",
+    version: "1.56.1",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -115,7 +115,7 @@ module.exports = {
     },
 
     targeting: {
-        farm: null,              // e.g. "squigtoad" to force a monster for everyone (null = guide)
+        farm: "boar",              // e.g. "squigtoad" to force a monster for everyone (null = guide)
         fallback: "goo",          // used when the progression guide has no answer
         // Farm only where every fighter's own guide calls the spot safe; routes the guide
         // only offers as a careful trial count once proven – by the guide's own fights, or
@@ -489,6 +489,7 @@ module.exports = {
             // level: compounding them first loses gold on average). Worn copies stay.
             { name: "hpamulet", maxLevel: 10 },
             { name: "vitearring", maxLevel: 10 },
+            { name: "vitring", maxLevel: 10 },  // STR beats VIT for the warrior too (player decision 2026-11-16)
             { name: "hpbelt", maxLevel: 10 },
             { name: "helmet", maxLevel: 3 },
             // Shop weapons and the old quiver that did their job (player decision 2026-11-16):
