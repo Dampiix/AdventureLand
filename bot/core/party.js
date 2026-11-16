@@ -100,9 +100,11 @@ module.exports = function createParty(ctx) {
     }
 
     // Members: hard leash. Returns true when we must move instead of fighting.
-    function keepUp() {
+    // `loose` (join events): on the leader's map we roam freely after our own targets.
+    function keepUp(loose) {
         const lead = leaderInfo();
         if (!lead) return false;
+        if (loose && character.map === lead.map) return false;
         if (character.map !== lead.map || util.distanceTo(lead) > cfg.leash) {
             moveTowards(lead, "following " + leader);
             return true;

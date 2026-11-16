@@ -103,7 +103,8 @@ module.exports = function createFighter(ctx, cls) {
         if (supply.tick() === "busy") return;
         if (ctx.events.tick() === "busy") return;
         if (!ctx.events.current() && ctx.hunts.tick() === "busy") return; // no Daisy trips during events
-        if (party.keepUp()) return;
+        const ev = ctx.events.current();
+        if (party.keepUp(!!(ev && ev.join))) return;
         if (cls.support()) return;
         handleCombat();
     }

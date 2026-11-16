@@ -374,6 +374,14 @@ module.exports = function createTargeting(ctx) {
         const attacker = nearestPartyAttacker();
         if (attacker) return attacker;
 
+        // Join event (e.g. Goo Brawl): anything in the event map is fair game, and
+        // everyone picks its own nearest monster – waiting for the leader's pick
+        // (a melee paladin) left most kills to other players.
+        if (farmTarget.any) {
+            const m = get_nearest_monster({});
+            return isValid(m) ? m : null;
+        }
+
         if (party.isMember) {
             const lead = party.leaderInfo();
             // Easy farm targets (e.g. goos for a hunt): everyone fights its own monster,
@@ -389,11 +397,6 @@ module.exports = function createTargeting(ctx) {
             return isValid(assist) && (assist.target || isCoop(assist)) ? assist : null;
         }
 
-        if (farmTarget.any) {
-            // Join event: anything in the event map is fair game.
-            const m = get_nearest_monster({});
-            return isValid(m) ? m : null;
-        }
         const type = farmTarget.monster;
         if (G.monsters[type] && G.monsters[type].cooperative) {
             const boss = get_nearest_monster({ type: type });
