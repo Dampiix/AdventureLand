@@ -253,13 +253,26 @@ module.exports = function createTargeting(ctx) {
         const now = Date.now();
         const c = liveChecked[e.id];
         if (c && c.level === e.level && now - c.at < 30 * 1000) return c.ok;
-        let v;
-        if (teamModelOn()) {
-            v = teamVerdict(e.mtype, e);
-        } else {
-            const ratio = ((e.attack || def.attack) * (e.frequency || def.frequency || 1)) / Math.max(1, def.attack * (def.frequency || 1));
-            v = ratio <= (lcfg.tolerance || 1.5) ? { ok: true } : { ok: false, why: "hits " + ratio.toFixed(1) + "x as hard as at level 1" };
+        // Harmless even at its real attack (every fighter survives 20+ hits, e.g. a level-7
+        // armadillo with 27 attack): no further check.
+        const team = ctx.events && ctx.events.teamStats ? ctx.events.teamStats() : [];
+        const fighters = team.length ? team : [util.combatStats()];
+        const harmlessNow = !(def.abilities && Object.keys(def.abilities).length) && fighters.every(function (f) {
+            const d = def.damage_type === "physical" ? (f.armor || 0) - (def.apiercing || 0)
+                : def.damage_type === "magical" ? (f.resistance || 0) - (def.rpiercing || 0) : 0;
+            return f.max_hp >= 20 * (e.attack || def.attack || 0) * 1.1 * util.damageMultiplier(d);
+        });
+        if (harmlessNow) {
+            liveChecked[e.id] = { level: e.level, ok: true, at: now };
+            return true;
         }
+        const ratioCheck = function () {
+            const ratio = ((e.attack || def.attack) * (e.frequency || def.frequency || 1)) / Math.max(1, def.attack * (def.frequency || 1));
+            return ratio <= (lcfg.tolerance || 1.5) ? { ok: true } : { ok: false, why: "hits " + ratio.toFixed(1) + "x as hard as at level 1" };
+        };
+        let v = teamModelOn() ? teamVerdict(e.mtype, e) : ratioCheck();
+        // Team stats not in yet (right after a restart): judge by the level difference alone.
+        if (!v.ok && /waiting for the team/.test(v.why || "")) v = ratioCheck();
         liveChecked[e.id] = { level: e.level, ok: v.ok, at: now };
         const k = e.mtype + ":" + e.level;
         if (!v.ok && now - (liveLogged[k] || 0) > 10 * 60 * 1000) {
