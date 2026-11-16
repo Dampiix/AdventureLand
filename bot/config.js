@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.52.0",
+    version: "1.53.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -138,6 +138,13 @@ module.exports = {
             // whole pack (vampire rats: 5 in 150x195 wiped the team, 2026-11-16).
             denseArea: 15000,
             abilities: [],                 // monster abilities we accept (others: the guide decides)
+        },
+        // Monster levels (player request 2026-11-16): from this level a monster is checked
+        // again with its real stats before we pull it (team model, else its damage per
+        // second must stay within tolerance x the level-1 monster's).
+        live: {
+            fromLevel: 2,
+            tolerance: 1.5,
         },
         refreshMs: 5 * 60 * 1000, // how often to ask the guide again
         crowdedAfterMs: 90 * 1000,    // no free target this long on the farm map -> spot is crowded

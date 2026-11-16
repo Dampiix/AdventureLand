@@ -201,8 +201,11 @@ module.exports = function createTargeting(ctx) {
         return most;
     }
 
-    function teamVerdict(monster) {
-        const m = G.monsters[monster];
+    // `live` (optional): a monster entity – its real attack/frequency (higher levels hit
+    // harder) replace the base values from G.monsters.
+    function teamVerdict(monster, live) {
+        const base = G.monsters[monster];
+        const m = base && live ? Object.assign({}, base, { attack: live.attack || base.attack, frequency: live.frequency || base.frequency }) : base;
         if (!m || m.cooperative) return { ok: false, why: "no data / cooperative" };
         const odd = Object.keys(m.abilities || {}).filter(function (a) { return !(ts.abilities || []).includes(a); });
         if (odd.length) return { ok: false, why: "abilities: " + odd.join(", ") };
@@ -231,6 +234,51 @@ module.exports = function createTargeting(ctx) {
             if (hits < (ts.otherHits || 3)) return { ok: false, why: f.name + " survives " + hits.toFixed(1) + " hits (need " + (ts.otherHits || 3) + ")" };
         }
         return { ok: true, why: tank.name + " tanks " + pull + " (" + tankHits.toFixed(1) + " volleys, " + Math.round(incoming) + " dmg/s vs " + Math.round(healing) + " healing/s)" };
+    }
+
+    // ---- monster levels ---------------------------------------------------------
+    // Monsters nobody attacks gain levels over time (game source: +50% base HP, +100%
+    // base XP, +5% attack on growing spawns / +12.5% elsewhere per level, a bit faster).
+    // All checks above use level-1 stats, so a monster above config.targeting.live.fromLevel
+    // is checked again with its real stats before we pull it: the team model when it is
+    // on (leader), else its damage per second must stay within live.tolerance of the
+    // level-1 monster's. Monsters already on us are always fought.
+    const lcfg = cfg.live || {};
+    const liveChecked = {}; // entity id -> { level, ok, at }
+    const liveLogged = {};  // "type:level" -> last log
+    function liveSafe(e) {
+        if (!e || (e.level || 1) < (lcfg.fromLevel || 2)) return true;
+        const def = G.monsters[e.mtype];
+        if (!def || def.cooperative) return true;
+        const now = Date.now();
+        const c = liveChecked[e.id];
+        if (c && c.level === e.level && now - c.at < 30 * 1000) return c.ok;
+        let v;
+        if (teamModelOn()) {
+            v = teamVerdict(e.mtype, e);
+        } else {
+            const ratio = ((e.attack || def.attack) * (e.frequency || def.frequency || 1)) / Math.max(1, def.attack * (def.frequency || 1));
+            v = ratio <= (lcfg.tolerance || 1.5) ? { ok: true } : { ok: false, why: "hits " + ratio.toFixed(1) + "x as hard as at level 1" };
+        }
+        liveChecked[e.id] = { level: e.level, ok: v.ok, at: now };
+        const k = e.mtype + ":" + e.level;
+        if (!v.ok && now - (liveLogged[k] || 0) > 10 * 60 * 1000) {
+            liveLogged[k] = now;
+            util.log("target", "skipping " + e.mtype + " level " + e.level + " (attack " + Math.round(e.attack || 0) + "): " + v.why, "orange");
+        }
+        return v.ok;
+    }
+    // Nearest free monster of this type that we may hit (damage return, live level check).
+    function nearestSafe(type) {
+        let best = null;
+        let bestD = Infinity;
+        Object.values(parent.entities || {}).forEach(function (e) {
+            if (!e || e.type !== "monster" || e.mtype !== type || e.dead || !e.visible || e.target) return;
+            if (util.tooSpiky(config, e) || !liveSafe(e)) return;
+            const d = util.distanceTo(e);
+            if (d < bestD) { bestD = d; best = e; }
+        });
+        return best;
     }
 
     // Leader command "/safety [map]": every monster of the map (default: ours) with each
@@ -583,8 +631,8 @@ module.exports = function createTargeting(ctx) {
             const lead = party.leaderInfo();
             // Easy farm targets (e.g. goos for a hunt): everyone fights its own monster,
             // as long as it stays close to the leader.
-            const own = lead && lead.farm && isEasy(lead.farm) ? get_nearest_monster({ type: lead.farm, no_target: true }) : null;
-            if (own && !util.tooSpiky(config, own)) {
+            const own = lead && lead.farm && isEasy(lead.farm) ? nearestSafe(lead.farm) : null;
+            if (own) {
                 const p = util.xy(own);
                 if (Math.hypot(p.x - lead.x, p.y - lead.y) <= config.party.leash * 0.8) return own;
             }
@@ -599,8 +647,7 @@ module.exports = function createTargeting(ctx) {
             const boss = get_nearest_monster({ type: type });
             if (isValid(boss)) return boss;
         }
-        const m = get_nearest_monster({ type: type, no_target: true });
-        return m && !util.tooSpiky(config, m) ? m : null;
+        return nearestSafe(type);
     }
 
     return { currentFarm: currentFarm, pick: pick, isValid: isValid, reportSearch: reportSearch, isTeamSafe: isTeamSafe, whyUnsafe: whyUnsafe,
