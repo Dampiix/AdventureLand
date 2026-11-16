@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.42.0",
+    version: "1.42.1",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -125,7 +125,10 @@ module.exports = {
         },
         refreshMs: 5 * 60 * 1000, // how often to ask the guide again
         crowdedAfterMs: 90 * 1000,    // no free target this long on the farm map -> spot is crowded
-        crowdedForMs: 5 * 60 * 1000,  // then use the guide's next choice for this long
+        // ...or this share of a window without a free target (other players leave us only
+        // the odd monster, e.g. one per minute):
+        crowdedWindowMs: 3 * 60 * 1000, crowdedIdleShare: 0.6,
+        crowdedForMs: 15 * 60 * 1000, // then use the guide's next choice for this long
     },
 
     combat: {

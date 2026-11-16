@@ -334,19 +334,39 @@ module.exports = function createTargeting(ctx) {
     // Called by the fighter every combat tick. If we stand on the farm map for
     // a while without any free target (other players clear the spot), mark the
     // spot as crowded and move on to the guide's next choice (or the next drop route).
+    // Besides a long gap without any target, a spot where other players leave us only
+    // the odd monster is crowded too: we measure the share of time without a target over
+    // a sliding window (crowdedWindowMs) and give up above crowdedIdleShare.
+    let win = null; // { monster, start, last, idle }
+    function markCrowded(why) {
+        const now = Date.now();
+        crowdedUntil[farm.monster] = now + cfg.crowdedForMs;
+        util.log("target", farm.monster + " spot looks crowded (" + why + ") - trying another target for " + Math.round(cfg.crowdedForMs / 60000) + " min", "orange");
+        idleSince = 0;
+        win = null;
+        nextPickAt = 0; // pick again right away
+    }
     function reportSearch(found) {
         const src = farm ? String(farm.source) : "";
-        if (found || !farm || !(src.startsWith("guide") || src.startsWith("drop")) || character.map !== farm.map) {
+        const now = Date.now();
+        if (!farm || !(src.startsWith("guide") || src.startsWith("drop")) || character.map !== farm.map) {
             idleSince = 0;
+            win = null;
             return;
         }
-        const now = Date.now();
+        // Idle share over the window.
+        if (!win || win.monster !== farm.monster) win = { monster: farm.monster, start: now, last: now, idle: 0 };
+        const dt = Math.min(5000, now - win.last);
+        win.last = now;
+        if (!found) win.idle += dt;
+        if (cfg.crowdedWindowMs && now - win.start >= cfg.crowdedWindowMs) {
+            const share = win.idle / (now - win.start);
+            if (share >= (cfg.crowdedIdleShare || 0.6)) { markCrowded(Math.round(share * 100) + "% of " + Math.round(cfg.crowdedWindowMs / 60000) + " min without a target"); return; }
+            win = { monster: farm.monster, start: now, last: now, idle: 0 };
+        }
+        if (found) { idleSince = 0; return; }
         if (!idleSince) idleSince = now;
-        if (now - idleSince < cfg.crowdedAfterMs) return;
-        crowdedUntil[farm.monster] = now + cfg.crowdedForMs;
-        util.log("target", farm.monster + " spot looks crowded - trying another target for " + Math.round(cfg.crowdedForMs / 60000) + " min", "orange");
-        idleSince = 0;
-        nextPickAt = 0; // pick again right away
+        if (now - idleSince >= cfg.crowdedAfterMs) markCrowded("no free target for " + Math.round(cfg.crowdedAfterMs / 1000) + " s");
     }
 
     // Monster types an event spawns in waves (G.events[name].waves), or null for "anything".
