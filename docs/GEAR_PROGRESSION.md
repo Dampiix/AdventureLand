@@ -23,9 +23,24 @@ resistance; set bonus 2 pcs +1 all stats, 3 pcs +20 armor/+20 resistance, 4 pcs 
 5 pcs +4 speed. Copies only from Armor Boxes (~95 % Rugged: helmet/gloves ~23 % each,
 pants 21 %, coat/shoes 14.5 %); +7 needs ~30 copies and ~6M per piece, +8 ~218 copies –
 so the target is +7, helmet/gloves/pants first (3-piece bonus). Collect armor boxes
-meanwhile (Raw Emerald exchange, Skeletor, Mimics, leather). Still to decide: from
-which level a Rugged piece replaces the shop piece, and for which class first
-(priest/ranger limit new spots).
+meanwhile (Raw Emerald exchange, Skeletor, Mimics, leather). **Decided 2026-11-16:
+Rugged +7 for tanks only** (warrior, paladin): it costs 2 main stat per piece against
+shop +8, which hurts the priest's healing and the ranger's damage, while the tank
+gains ~3x armor/resistance. Priest and ranger keep shop +8.
+
+**Monster Hunter sets: long-term only** (decided 2026-11-16). Main stat is just +1
+over shop per level (Hunter +7: 10, shop +8: 12), so they only beat shop +8 at +8;
+full set +7 with its bonus is 56 vs 60 main stat (plus armor and piercing). A set
+costs 53 Monster Tokens per copy (hat 7, gloves 8, pants 11, armor 12, shoes 15), and
++7 needs many copies (high grade, grace -1). Tokens are collected meanwhile.
+
+**Grace** (game source, server.js upgrade): every failed attempt at +L adds 1 player
+grace for +L whatever the item; it counts as min(3, fails / 4.5) plus the upgraded
+item's own grace and a base-grade term (normal +1, high -1, rare -2), plus server
+grace (everyone's fails, min 6, reset by anyone's success), and is then divided by
+L and 4.8 minus a threshold. So fodder grace only helps normal-grade items (shop gear);
+high/rare items (fire weapons, Rugged, Hunter) gain ~0-1 %. Offerings (Primling x1.4)
+are the real lever, but only buyable from players.
 
 **Weapons** (not implemented beyond step 2 yet):
 1. Shop weapon of the class, pushed to +7 by the gear goals.
@@ -47,9 +62,13 @@ which level a Rugged piece replaces the shop piece, and for which class first
    speed; Sword of the Dead (60 + 10 STR) needs a "Sword" from weapon boxes – not
    farmable, so the warrior takes maces. There is no Axe of the Dead; axes are
    two-handed (Cleave from 52) and lose to dual wield on single targets.
-4. Fire weapons above +7 are not worth it yet: +7 -> +8 succeeds ~14 % of the time,
-   i.e. ~7 spare +7 copies (~218 crafted copies, ~44M) per +8 – revisit once Fire
-   Spirits (essence of fire) are safe to farm.
+4. **Fire weapon ladder** (`workshop.bruteForce`, decided 2026-11-16): grace can't lift
+   them, so spare copies (drops, Dracul, archive) are upgraded at once with the normal
+   scroll – always to one level above the weakest worn copy in the team (both of the
+   warrior's blades count). A spare that gets there is swapped in and the old copy
+   becomes the next spare; the next level starts only once every worn copy is at the
+   top. Worn copies are never risked. Dracul (cave) is now a searched boss: firestaff
+   5 %, stat earrings 10 % each, Dracul's Attire 3 % (kept in the bank for later).
 
 **Stat slots** (evaluated 2026-11-16): compound jewelry costs ~12 +0 copies for +2,
 ~91 for +3, ~1100 for +4 (guide model) – +2 is the realistic target.
