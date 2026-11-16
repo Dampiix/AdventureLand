@@ -31,8 +31,11 @@ module.exports = function createEvents(ctx) {
     const nextSearchAt = (function () {
         try { return get(SEARCH_KEY) || {}; } catch (e) { return {}; }
     })();
+    // Bosses on config.events.farmBosses are hunted nonstop: the next search comes after
+    // farmBossEveryMs instead of searchEveryMs (the Phoenix respawns ~32 s after its death).
     function searchLater(name) {
-        nextSearchAt[name] = Date.now() + cfg.searchEveryMs;
+        const nonstop = (cfg.farmBosses || []).includes(name);
+        nextSearchAt[name] = Date.now() + (nonstop ? (cfg.farmBossEveryMs || 60 * 1000) : cfg.searchEveryMs);
         try { set(SEARCH_KEY, nextSearchAt); } catch (e) { /* storage unavailable */ }
     }
     let lastJoinTry = 0;
@@ -235,8 +238,8 @@ module.exports = function createEvents(ctx) {
                     return;
                 }
             }
-            util.log("event", name + " not found - next search in " + Math.round(cfg.searchEveryMs / 60000) + " min", "white");
             searchLater(name);
+            util.log("event", name + " not found - next search in " + Math.max(1, Math.round((nextSearchAt[name] - Date.now()) / 60000)) + " min", "white");
         } catch (e) {
             util.log("event", "search for " + name + " failed: " + util.errReason(e), "red");
             searchLater(name);
