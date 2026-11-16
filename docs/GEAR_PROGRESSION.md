@@ -6,6 +6,44 @@ its current lessons (shop armor/weapon +7, jewelry +2) are done.
 
 Source: game data version 18285 (items, sets, tokens, craft recipes, drop tables),
 evaluated by hand. The official docs say almost nothing about gear after the shop.
+The full catalog (every armor piece, weapon and offhand with stats and sources) is
+built by `scripts/gear-catalog.mjs` into `docs/gear-catalog/gear-catalog.pdf`.
+
+## Decided progression (2026-11-16) – the bot must work the same on a fresh account
+
+**Armor:** follow the guide's wishes; in parallel the gear goals push ALL worn shop
+armor to +7, then all to +8, then all to +9 (`gearGoals.stages`). From +7 each level
+adds +3 main stat; +9 shop armor (15 stat) is close to crafted tier-2 armor at +9 (16).
++10 is left out (~770M per piece by the guide's estimate). Our own lists (class wishes,
+Hunter set, token buys, spare upgrades) are paused until this is done.
+
+**Weapons** (not implemented beyond step 2 yet):
+1. Shop weapon of the class, pushed to +7 by the gear goals.
+2. Fire weapons (Phoenix drops, weapon boxes, craft: shop weapon + essence of fire)
+   are upgraded in the background; whichever is stronger in the fighter's hands – shop
+   or fire weapon – is worn (`betterWeapons`, both directions).
+3. **Next step: the "of the Dead" weapons.** Once the worn weapon (shop or fire) is
+   +7, the class's Dead weapon is built in the background and replaces it as soon as
+   it is stronger. Copies are cheap and farmable – **Bones** (Zombies 1/100, weak:
+   9k HP / 260 attack; Dino 1/400; Pale Dino 5 per kill) + a shop base + a fee:
+   | Class | Dead weapon | +7 | vs fire +7 | Recipe |
+   |---|---|---|---|---|
+   | Warrior (dual wield) | Mace of the Dead x2 | 63.5 each after the mace -8 % | 2x54 -> 2x63.5 (+17 %) | Bones + Wooden Basher + 240k |
+   | Priest | Staff of the Dead | 82 | 75 (+9 %) | Bones + Staff + 120k |
+   | Ranger | Bow of the Dead | 82 (+2.5 crit) | 76 (+8 %) | Bones + Bow + 120k |
+   | Paladin | Mace of the Dead | 69 | 54 fireblade | Bones + Wooden Basher + 240k |
+   Notes: ~30 copies to +7 on average (guide model, no grace), Rare scrolls (1.6M)
+   from +5/+6; Staff/Bow of the Dead carry STR (off-stat for priest/ranger) and -6/-12
+   speed; Sword of the Dead (60 + 10 STR) needs a "Sword" from weapon boxes – not
+   farmable, so the warrior takes maces. There is no Axe of the Dead; axes are
+   two-handed (Cleave from 52) and lose to dual wield on single targets.
+4. Fire weapons above +7 are not worth it yet: +7 -> +8 succeeds ~14 % of the time,
+   i.e. ~7 spare +7 copies (~218 crafted copies, ~44M) per +8 – revisit once Fire
+   Spirits (essence of fire) are safe to farm.
+
+**Stat slots** (cheapest main stat after shop +9, to be planned): Belt of STR/INT/DEX
++2 (+10, Spookytown map drop), Party Hat (2 fun tokens, +9 = 17 stat vs 15), cape,
+orbs, jewelry +3.
 
 ## What the in-game guide asks for (read 2026-11-16)
 
