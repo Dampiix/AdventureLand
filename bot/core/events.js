@@ -99,9 +99,11 @@ module.exports = function createEvents(ctx) {
         const tank = team.filter(function (f) { return tankClasses.includes(f.ctype); })
             .sort(function (a, b) { return b.max_hp - a.max_hp; })[0] || team[0];
         const incoming = hitOn(tank) * (m.frequency || 1);
-        const healing = team.reduce(function (sum, f) {
+        let healing = team.reduce(function (sum, f) {
             return sum + (f.ctype === "priest" ? (f.heal || f.attack) * f.frequency : 0);
         }, 0);
+        // Alone (solo phase, Lone Wolf): potions and own sustain instead of a priest.
+        if (team.length === 1 && healing === 0) healing = bcfg.soloSustainHps || 150;
         const cover = bcfg.healCover || 1.5;
         if (incoming > healing * cover) {
             return { ok: false, why: Math.round(incoming) + " damage/s on " + tank.name + " vs " + Math.round(healing) + " healing/s" };
