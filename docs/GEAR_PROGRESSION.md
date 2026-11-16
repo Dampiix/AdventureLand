@@ -12,10 +12,20 @@ built by `scripts/gear-catalog.mjs` into `docs/gear-catalog/gear-catalog.pdf`.
 ## Decided progression (2026-11-16) – the bot must work the same on a fresh account
 
 **Armor:** follow the guide's wishes; in parallel the gear goals push ALL worn shop
-armor to +7, then all to +8, then all to +9 (`gearGoals.stages`). From +7 each level
-adds +3 main stat; +9 shop armor (15 stat) is close to crafted tier-2 armor at +9 (16).
-+10 is left out (~770M per piece by the guide's estimate). Our own lists (class wishes,
+armor to +7, then all to +8 (`gearGoals.stages`). From +7 each level adds +3 main stat
+(+7: 9, +8: 12, +9: 15). Capped at +8 (2026-11-16): per piece +8 ~170 copies / 1.1M,
++9 ~2400 copies / 17M (~250M for the team), +10 ~770M. Our own lists (class wishes,
 Hunter set, token buys, spare upgrades) are paused until this is done.
+
+**Armor after shop +8: Rugged** (community order: store -> rugged -> heavy -> darkforge).
+Rugged is a toughness trade: +7 has 10 stat (vs 12 at shop +8) but ~3x the armor and
+resistance; set bonus 2 pcs +1 all stats, 3 pcs +20 armor/+20 resistance, 4 pcs +8 FOR,
+5 pcs +4 speed. Copies only from Armor Boxes (~95 % Rugged: helmet/gloves ~23 % each,
+pants 21 %, coat/shoes 14.5 %); +7 needs ~30 copies and ~6M per piece, +8 ~218 copies –
+so the target is +7, helmet/gloves/pants first (3-piece bonus). Collect armor boxes
+meanwhile (Raw Emerald exchange, Skeletor, Mimics, leather). Still to decide: from
+which level a Rugged piece replaces the shop piece, and for which class first
+(priest/ranger limit new spots).
 
 **Weapons** (not implemented beyond step 2 yet):
 1. Shop weapon of the class, pushed to +7 by the gear goals.

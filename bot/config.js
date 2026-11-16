@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.40.0",
+    version: "1.40.1",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -326,8 +326,9 @@ module.exports = {
             // Armor in stages (player decision 2026-11-16): ALL of a fighter's shop armor
             // reaches a stage before any piece goes on to the next. From +7 each level adds
             // +3 main stat. Guide estimate per piece from scratch: +8 ~170 copies / 1.1M,
-            // +9 ~2400 copies / 17M, +10 ~100,000 copies / 770M (not included).
-            stages: [7, 8, 9],
+            // +9 ~2400 copies / 17M, +10 ~100,000 copies / 770M. Capped at +8 (player
+            // decision 2026-11-16: 170 -> 2400 copies is too steep; armor boxes / Rugged next).
+            stages: [7, 8],
             everyMs: 3 * 60 * 1000,   // one gear-goal step this often even while wishes are open
             slots: ["helmet", "chest", "pants", "shoes", "gloves", "mainhand"],
             weapons: [{ name: "fireblade", minChance: 0.18 }], // 14% at +8, ~19% with full grace
