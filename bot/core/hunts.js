@@ -17,6 +17,9 @@
 // that need her walk up to her while the leader is there, and the leader waits
 // (up to waitAtDaisyMaxMs) until every member's report shows it is done.
 //
+// A member farming on its own (bot_party detached(): the leader farms a monster it
+// must not hit) works on its own hunt meanwhile – same checks, solo kill speed.
+//
 // A hunt is taken on only if it is safe for the whole team (same check as farm
 // spots in bot_targeting: every fighter's guide agrees, no recent death there;
 // config.hunts.allow/deny override it) and the remaining kills fit into the
@@ -103,6 +106,7 @@ module.exports = function createHunts(ctx) {
     // route): the kill part speeds up with the team (config.hunts.teamSpeedup), the
     // respawn limit of the spot does not. null when the guide has no route.
     const cycleCache = {};
+    function solo() { return !leads && !!(party.detached && party.detached()); }
     function teamKillSeconds(monster) {
         const c = cycleCache[monster];
         if (c && Date.now() - c.at < 5 * 60 * 1000) return c.s;
@@ -110,7 +114,7 @@ module.exports = function createHunts(ctx) {
         try {
             ((get_progression() || {}).routes || []).forEach(function (r) {
                 if (!r || r.monster !== monster) return;
-                const s = util.teamCycle(r, cfg.teamSpeedup);
+                const s = util.teamCycle(r, solo() ? 1 : cfg.teamSpeedup);
                 if (s !== null && (best === null || s < best)) best = s;
             });
         } catch (e) { /* guide not ready */ }
@@ -150,11 +154,13 @@ module.exports = function createHunts(ctx) {
         return list;
     }
 
-    // Leader: the hunt monster to farm right now, or null.
+    // Leader (or a member farming on its own: only its own hunt): the hunt monster to
+    // farm right now, or null.
     function target() {
-        if (!leads || !active()) return null;
+        const alone = solo();
+        if ((!leads && !alone) || !active()) return null;
         const sn = serverName();
-        const open = allHunts()
+        const open = (alone ? [{ name: character.name, hunt: own() }] : allHunts())
             .filter(function (x) {
                 const h = x.hunt;
                 return h && h.c > 0 && h.sn === sn && h.ms > cfg.minRemainingMs && isSafe(h.id) && fitsInTime(x);
