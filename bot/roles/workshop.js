@@ -793,14 +793,6 @@ module.exports = function createWorkshop(ctx) {
         return null;
     }
 
-    // Do we hold enough tokens (bag + bank) to buy this item?
-    function tokensFor(name) {
-        const offer = tokenOffer(name);
-        if (!offer) return false;
-        const banked = (bankSnapshot ? bankSnapshot.items : []).reduce(function (s, b) { return b.name === offer.token ? s + (b.q || 1) : s; }, 0);
-        return util.countItem(offer.token) + banked >= offer.price;
-    }
-
     // Buy a +0 copy with tokens at the token NPC (Daisy for Monster Tokens).
     async function buyWithTokens(name) {
         const offer = tokenOffer(name);
@@ -1150,12 +1142,6 @@ module.exports = function createWorkshop(ctx) {
                 const w = eq[slot];
                 const def = w && G.items[w.name];
                 if (!def || !def.upgrade || !sellerOf(w.name) || (w.level || 0) < g.fromLevel || (w.level || 0) >= g.upTo) return;
-                // A token piece for this slot is wished and affordable (e.g. Monster Hunter
-                // armor): it replaces the shop piece, so don't spend on the shop piece.
-                if (wishList(f).some(function (x) {
-                    const d = G.items[x.name];
-                    return d && d.type === def.type && x.name !== w.name && tokensFor(x.name);
-                })) return;
                 // A drop weapon is being readied for this fighter: its shop weapon stays as it is.
                 if (slot === "mainhand" && weaponPlans().some(function (p) { return p.fighter === f; })) return;
                 // Stat armor: the worn piece's stat, else the fighter's main stat.
@@ -1728,6 +1714,13 @@ module.exports = function createWorkshop(ctx) {
                 return;
             }
             await develop(job.fighter, job.wish, job.wish.stat ? { stat: job.wish.stat } : undefined);
+            if (job.wish.full && reachedOnly[k] !== undefined) {
+                // Only the complete piece is wanted (e.g. Hunter armor at +7): keep the copy
+                // and try the next step later – luck or grace may help.
+                util.log("workshop", job.wish.name + " stays at +" + reachedOnly[k] + " for now - " + job.fighter + " only wants +" + job.wish.level, "white");
+                delete reachedOnly[k];
+                blockedUntil[k] = Date.now() + cfg.giveUpForMs;
+            }
         } catch (e) {
             const reason = util.errReason(e);
             util.log("workshop", job.wish.name + " +" + job.wish.level + " for " + job.fighter + ": " + reason, reason === "budget" ? "orange" : "red");

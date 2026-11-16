@@ -91,8 +91,9 @@ module.exports = function createGear(ctx) {
     // only the first step the worn piece doesn't reach yet is wished. A piece of a later
     // step counts for all earlier ones, so a lucky drop skips ahead. Anything worn there
     // that is not part of the chain stays our choice (no wish) – unless the entry has
-    // replace: true (e.g. Monster Hunter armor over shop armor): then any piece of the
-    // chain, at any level, beats what is worn and is equipped over it.
+    // replace: true (e.g. Monster Hunter armor over shop armor): then a piece of the
+    // chain that reached its step level (e.g. +7) is equipped over what is worn, and the
+    // merchant delivers such a wish only complete (full), never at a lower level.
     function classChains() {
         const table = cfg.classWishes || {};
         return (table.all || []).concat(table[character.ctype] || []).map(function (e) {
@@ -113,6 +114,10 @@ module.exports = function createGear(ctx) {
         });
         return best;
     }
+    // Does this piece reach one of the chain's steps (name and level)?
+    function reachedStep(steps, item) {
+        return steps.some(function (s) { return s.name === item.name && (item.level || 0) >= (s.level || 0); });
+    }
     function chainOf(name) {
         return classChains().find(function (steps) { return steps.some(function (s) { return s.name === name; }); }) || null;
     }
@@ -129,13 +134,20 @@ module.exports = function createGear(ctx) {
                 const worn = character.slots && character.slots[s];
                 let p = worn ? chainProgress(steps, worn) : 0;
                 if (p < 0 && !steps.replace) return;
+                // Replace chains come after the shop progression (player decision
+                // 2026-11-16): only once the worn piece reached the gear goals' level.
+                const goals = config.workshop && config.workshop.gearGoals;
+                if (p < 0 && goals && goals.enabled && (worn.level || 0) < (goals.upTo || 7)) return;
                 if (progress === null || p < progress) progress = p;
             });
             if (progress === null || progress >= steps.length) return;
             const w = steps[Math.max(0, progress)];
             if (have.some(function (x) { return x.name === w.name; })) return;
             const stat = G.items[w.name].stat ? mainStat : null;
-            list.push(stat ? { name: w.name, level: w.level || 0, stat: stat } : { name: w.name, level: w.level || 0 });
+            const wish = { name: w.name, level: w.level || 0 };
+            if (stat) wish.stat = stat;
+            if (steps.replace) wish.full = true;
+            list.push(wish);
         });
         return list;
     }
@@ -144,7 +156,7 @@ module.exports = function createGear(ctx) {
         for (let num = 0; num < character.items.length; num++) {
             const item = character.items[num];
             const steps = item && chainOf(item.name);
-            if (!steps) continue;
+            if (!steps || (steps.replace && !reachedStep(steps, item))) continue;
             const mine = chainProgress(steps, item);
             const slot = (SLOTS_BY_TYPE[G.items[item.name].type] || []).find(function (s) {
                 const worn = character.slots && character.slots[s];
@@ -391,7 +403,7 @@ module.exports = function createGear(ctx) {
         if (strongerWeapon(item) || strongerOffhand(item)) return true;
         // Further along a class wish chain than what we wear: the equip pass takes it.
         const steps = chainOf(item.name);
-        if (steps && Object.keys(slots).some(function (s) {
+        if (steps && !(steps.replace && !reachedStep(steps, item)) && Object.keys(slots).some(function (s) {
             const w = slots[s];
             if (!w || w.name === item.name) return false;
             const p = chainProgress(steps, w);
