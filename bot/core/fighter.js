@@ -81,9 +81,20 @@ module.exports = function createFighter(ctx, cls) {
         const e = g && g.find(function (x) { return x[0] === kind; });
         return e ? e[1] : (kind === "hp" ? 200 : 300);
     }
+    // A living priest in our party close by (or we are one): it heals, so potions are only
+    // an emergency (combat.withHealer) – solo we drink on every cooldown.
+    function healerNear() {
+        if (character.ctype === "priest") return true;
+        if (!party.enabled) return false;
+        return party.memberNames().some(function (n) {
+            if (n === character.name) return false;
+            const p = get_player(n);
+            return !!p && !p.rip && p.ctype === "priest" && util.distanceTo(p) < 600;
+        });
+    }
     function handlePotions() {
         if (is_on_cooldown("use_hp")) return;
-        const c = config.combat;
+        const c = healerNear() ? Object.assign({}, config.combat, config.combat.withHealer || {}) : config.combat;
         const hpMissing = character.max_hp - character.hp;
         const mpMissing = character.max_mp - character.mp;
         if (util.hpRatio() < c.potionHpBelow) use_skill("use_hp").catch(function () {});

@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.58.0",
+    version: "1.58.1",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -171,6 +171,9 @@ module.exports = {
         // Otherwise drink as soon as a whole potion's worth is missing (HP before MP), i.e.
         // on every cooldown in a long fight (player request 2026-11-16).
         potionWhenMissing: true,
+        // With a priest in the party close by (or as the priest): potions only as an
+        // emergency, the healing does the rest (player decision 2026-11-16).
+        withHealer: { potionHpBelow: 0.45, potionWhenMissing: false },
     },
 
     classes: {
