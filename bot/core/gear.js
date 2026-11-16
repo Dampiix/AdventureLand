@@ -236,6 +236,7 @@ module.exports = function createGear(ctx) {
     // usable beats an empty slot.
     async function equipPass() {
         equipping = true;
+        const wornBefore = JSON.stringify(worn());
         try {
             const rows = (guide().rows || []).filter(function (r) { return r.action && r.action.kind === "equip"; });
             for (const row of rows) {
@@ -317,6 +318,9 @@ module.exports = function createGear(ctx) {
         } catch (e) {
             util.log("gear", "equip failed: " + util.errReason(e), "red");
         } finally {
+            // Tell the merchant right away what we wear now: with the 5-min report it still
+            // saw the old helmet +7 and started another +8 for us (2026-11-17).
+            if (JSON.stringify(worn()) !== wornBefore) nextWishAt = 0;
             equipping = false;
         }
     }
