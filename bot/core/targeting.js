@@ -338,10 +338,21 @@ module.exports = function createTargeting(ctx) {
     // the odd monster is crowded too: we measure the share of time without a target over
     // a sliding window (crowdedWindowMs) and give up above crowdedIdleShare.
     let win = null; // { monster, start, last, idle }
+    // A spot found crowded again soon after the last time is skipped longer each time
+    // (crowdedForMs, doubled per repeat up to crowdedMaxMs). Kept across restarts.
+    const CROWD_KEY = "dmpx_crowded:" + character.name;
+    const crowdHistory = (function () { try { return get(CROWD_KEY) || {}; } catch (e) { return {}; } })(); // monster -> { n, at, until }
+    Object.keys(crowdHistory).forEach(function (m) { if (crowdHistory[m].until > Date.now()) crowdedUntil[m] = crowdHistory[m].until; });
     function markCrowded(why) {
         const now = Date.now();
-        crowdedUntil[farm.monster] = now + cfg.crowdedForMs;
-        util.log("target", farm.monster + " spot looks crowded (" + why + ") - trying another target for " + Math.round(cfg.crowdedForMs / 60000) + " min", "orange");
+        const h = crowdHistory[farm.monster];
+        // A repeat within a day of the last time counts up; otherwise start over.
+        const n = h && now - h.at < 24 * 60 * 60 * 1000 ? h.n + 1 : 1;
+        const ms = Math.min(cfg.crowdedMaxMs || cfg.crowdedForMs, cfg.crowdedForMs * Math.pow(2, n - 1));
+        crowdedUntil[farm.monster] = now + ms;
+        crowdHistory[farm.monster] = { n: n, at: now, until: now + ms };
+        try { set(CROWD_KEY, crowdHistory); } catch (e) { /* storage unavailable */ }
+        util.log("target", farm.monster + " spot looks crowded (" + why + ") - trying another target for " + Math.round(ms / 60000) + " min", "orange");
         idleSince = 0;
         win = null;
         nextPickAt = 0; // pick again right away

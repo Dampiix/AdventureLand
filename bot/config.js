@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.42.2",
+    version: "1.42.3",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -128,7 +128,8 @@ module.exports = {
         // ...or this share of a window without a free target (other players leave us only
         // the odd monster, e.g. one per minute):
         crowdedWindowMs: 3 * 60 * 1000, crowdedIdleShare: 0.7, // idle = not in range of a target (walking counts)
-        crowdedForMs: 15 * 60 * 1000, // then use the guide's next choice for this long
+        crowdedForMs: 60 * 60 * 1000,  // then use the guide's next choice for this long,
+        crowdedMaxMs: 6 * 60 * 60 * 1000, // doubled each time the same spot is crowded again within a day
     },
 
     combat: {
