@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.30.1",
+    version: "1.31.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -246,9 +246,14 @@ module.exports = {
         // a drop – the fighter keeps its shop weapon. Gear-goal budget, normal scrolls.
         betterWeapons: {
             enabled: true,
-            names: ["fireblade", "firestaff", "firebow"],
+            names: ["fireblade", "firestaff", "firebow", "concordmace"],
             maxLevel: 7,
             margin: 0.03,   // at least 3% stronger than the worn weapon
+            // Bought with tokens when we hold none (player decision 2026-11-16: the Concord
+            // Mace first – a paladin's mace beats the fireblade +7 already at +4).
+            buy: ["concordmace"],
+            // Token weapons are not cheap to lose: each step needs this chance.
+            minChance: { concordmace: 0.7 },
         },
         // Gear goals (approved 2026-11-15): when idle, the merchant pushes the fighters' worn
         // shop armor and selected weapons to `upTo`. Shop armor is re-buyable, so every

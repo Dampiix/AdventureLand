@@ -1456,7 +1456,9 @@ module.exports = function createWorkshop(ctx) {
         if (!bw || !bw.enabled) return [];
         const plans = [];
         (bw.names || []).forEach(function (name) {
-            if (!G.items[name] || !unlockedCopies(name).length) return;
+            // Names on bw.buy (e.g. the Concord Mace) are bought with tokens when we hold none.
+            const buyable = (bw.buy || []).includes(name) && !!tokenOffer(name);
+            if (!G.items[name] || (!unlockedCopies(name).length && !buyable)) return;
             let plan = null;
             config.team.fighters.forEach(function (f) {
                 if (!worn[f] || !canWield(f, name)) return;
@@ -1499,10 +1501,29 @@ module.exports = function createWorkshop(ctx) {
             if (blockedUntil[k] > now || earmarks[plan.fighter + "|" + plan.name]) continue;
             if (unlockedCopies(plan.name).some(function (l) { return l >= plan.need; })) continue; // ready to deliver
             if (character.esize < 3) return false;
+            const bw = cfg.betterWeapons;
+            if (!unlockedCopies(plan.name).length) {
+                // A bw.buy weapon we don't hold yet: buy the +0 copy with tokens first.
+                util.status("buying " + plan.name + " for " + plan.fighter, "orange");
+                try {
+                    if (!(await buyWithTokens(plan.name))) blockedUntil[k] = Date.now() + cfg.giveUpForMs;
+                } catch (e) {
+                    util.log("workshop", "buying " + plan.name + ": " + util.errReason(e), "orange");
+                    blockedUntil[k] = Date.now() + cfg.giveUpForMs;
+                }
+                return true;
+            }
             util.status("upgrading " + plan.name + " for " + plan.fighter, "orange");
             util.log("workshop", "upgrading " + plan.name + " to +" + plan.need + " - then it beats " + plan.fighter + "'s weapon", "yellow");
+            // Drop weapons may break (player decision 2026-11-15); token weapons get a risk floor.
+            const floor = bw.minChance && bw.minChance[plan.name];
             try {
-                await develop("_better", { name: plan.name, level: plan.need }, { budgetKey: GOALS, replaceable: true, spare: true, minChance: 0 });
+                await develop("_better", { name: plan.name, level: plan.need }, { budgetKey: GOALS, replaceable: !floor, spare: true, minChance: floor || 0 });
+                if (reachedOnly[GOALS] !== undefined) {
+                    // Next step below the risk floor: try again later (luck or grace may help).
+                    delete reachedOnly[GOALS];
+                    blockedUntil[k] = Date.now() + cfg.giveUpForMs;
+                }
             } catch (e) {
                 const reason = util.errReason(e);
                 util.log("workshop", plan.name + " +" + plan.need + ": " + reason, "orange");
