@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.48.2",
+    version: "1.48.3",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -383,8 +383,8 @@ module.exports = {
             // would cap everything ever spent on gear goals.
             budget: {
                 incomeShare: 0.5, transferAbove: 3000000,
-                // Player decision 2026-11-16: +5M for 5 h to gear up the new warrior.
-                extra: { amount: 5000000, until: "2026-11-16T18:20:00Z" },
+                // Player decision 2026-11-16: +10M for 12 h for more +8 armor pieces.
+                extra: { amount: 10000000, until: "2026-11-17T06:15:44Z" },
             },
         },
         // Fixed wishes on top of the guide's. Items without a shop are bought with tokens
