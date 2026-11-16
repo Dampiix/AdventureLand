@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.45.1",
+    version: "1.46.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -158,6 +158,12 @@ module.exports = {
             partyHealDanger: 0.35,          // ...or one member is below this
             useCurse: true, mpReserveRatio: 0.4,
             useRevive: true,                // revive fallen members (consumes an Essence of Life)
+            // Absorb Sins (lvl 55): emergency only – a member below `below` with monsters on it
+            // and no warrior/paladin within Taunt range of it; only while we are above selfAbove.
+            absorb: { enabled: true, below: 0.35, selfAbove: 0.6 },
+            // Dark Blessing (lvl 70): +25% party damage for 8 s on targets needing sturdyHits+
+            // of our hits, and on bosses.
+            darkBlessing: { enabled: true, sturdyHits: 10 },
         },
         ranger: {
             sturdyHits: 3,                  // Hunter's Mark / Supershot only on targets needing 3+ hits
