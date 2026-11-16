@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.50.3",
+    version: "1.51.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -52,13 +52,18 @@ module.exports = {
             snowman: "always",          // holiday season world boss, 1,200 HP
             goobrawl: "always",         // daily goo fight
             phoenix: "always",          // roaming coop boss, weak hits, 180k XP, fire weapons
+            // Dracul (cave, bat area; player request 2026-11-16): 240k HP, 245 magical hits,
+            // 200k XP, respawns ~18 min after death at one of two cave spots. Drops firestaff
+            // 5%, int/str/dex earrings 10% each, Dracul's Attire 3%, void thread 10%. Not
+            // cooperative: never taken from another player who fights it.
+            mvampire: "always",
             crabxx: "never", franky: "never", icegolem: "never",
             horseman: "never", abtesting: "never",
             graveyard: "always",          // Halloween: zombies/ghouls in Spooky Town's graveyard – Bones (2026-11-16)
         },
         // "always" only applies once every fighter has reached this level
-        minLevel: { phoenix: 40, goobrawl: 20, snowman: 10, graveyard: 40 },
-        search: ["phoenix"],            // roaming bosses the leader looks for
+        minLevel: { phoenix: 40, goobrawl: 20, snowman: 10, graveyard: 40, mvampire: 50 },
+        search: ["phoenix", "mvampire"], // roaming bosses the leader looks for
         // Search again this long after a miss or a kill (player decision 2026-11-15: 30 min,
         // the walk costs farm time; the Phoenix respawns ~32 min after its death).
         searchEveryMs: 30 * 60 * 1000,
