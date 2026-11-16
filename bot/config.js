@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.50.2",
+    version: "1.50.3",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -435,7 +435,7 @@ module.exports = {
         // Phoenix and event weapons are never on this list – they can't be bought again.
         sellList: [
             // junk drops. Craft ingredients (spores, crab claws, frog tongues, ascale,
-            // bear fur, white eggs, carrots, rat tails, vit scrolls) are kept since the
+            // bear fur, white eggs, carrots, vit scrolls) are kept since the
             // fresh start (2026-11-15): Cole and Leo craft gear from them.
             "slimestaff", "mushroomstaff", "stinger",
             "wcap", "wshoes", "wattire", "wbreeches", "wgloves",
@@ -466,7 +466,7 @@ module.exports = {
             // Materials without a plan (player decision 2026-11-16). Kept on purpose: green
             // slime, ashleaf (Thistle Quiver), bat wings, spores (Oathplate), reef glass,
             // carrots (Carrot Sword).
-            "snakefang", "embercoal",
+            "snakefang", "embercoal", "rattail", "smush",
             // Rugged and Heavy armor (armor boxes) are no longer sold since the fresh start:
             // craft bases (Oathplate, Resolute Sallet, class boots) and upgrades (2026-11-16).
         ],
