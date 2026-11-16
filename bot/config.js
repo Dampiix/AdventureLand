@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.48.0",
+    version: "1.48.1",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -275,9 +275,10 @@ module.exports = {
             shop: 0,               // re-buyable from an NPC: no floor (the budgets cap the gold)
             compound: 0.35,        // compound items (three copies from drops)
             rare: 0.5,             // token / drop items (Hunter set, Phoenix weapons, ...)
-            // Grace farming only when the chance is at most this far below the floor, by target
-            // level (player decision 2026-11-16): to +5 about 1-2 grace stacks, from +6 ~3.
-            graceWindow: { default: 0.1, 6: 0.15 },
+            // Grace farming starts only when the chance is at most this far below the floor
+            // (a sanity limit). How many grace stacks are built is decided by the fodder's own
+            // success chance (grace.maxFodderChance, player decision 2026-11-16).
+            graceWindow: 0.25,
             // No floor either (like shop gear): copies come from boxes we hold in numbers.
             free: ["helmet1", "gloves1", "pants1", "coat1", "shoes1"],
             maxScrollGrade: 2,     // try up to Rare scrolls when the normal one falls short
@@ -302,8 +303,9 @@ module.exports = {
             fodder: "wbasher",       // cheap upgradeable shop item no gear goal uses (Wooden Basher, 4,900 gold)
             budgetPerLevel: 300000,  // gold per target level per 24 h (fodder + scrolls)
             maxAttempts: 25,         // fodder attempts per farming round
-            // Stop when the fodder itself would succeed with more than this at the target level:
-            // a success resets the grace, so another stack would be unlikely.
+            // Grace stacks only while the fodder itself would fail more likely than not: stop
+            // when its own chance at the target level is above this - now, or by the time the
+            // stacks still needed are built (measured gain per stack). A success resets them.
             maxFodderChance: 0.5,
             batch: 5,                // helmets prepared at once, then attempted back to back
         },

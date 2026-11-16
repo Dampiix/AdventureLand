@@ -898,9 +898,9 @@ module.exports = function createWorkshop(ctx) {
     // cheap shop items (config.workshop.grace.fodder) at +L until the valuable
     // item's previewed chance reaches its tier – or the grace budget runs out.
 
-    // How far below the floor grace farming may start, by target level (risk.graceWindow:
-    // a number, or { default, <level>: window } – the highest listed level <= target wins).
-    // Player decision 2026-11-16: +5 1-2 grace stacks, from +6 more (~3).
+    // How far below the floor grace farming may start at all (risk.graceWindow: a number,
+    // or { default, <level>: window } – the highest listed level <= target wins). How many
+    // stacks are actually built is decided by the fodder's chance (see farmGrace).
     function graceWindowFor(target) {
         const w = cfg.risk.graceWindow;
         if (typeof w === "number") return w;
@@ -927,18 +927,18 @@ module.exports = function createWorkshop(ctx) {
 
     // One upgrade attempt on a fodder copy; returns "success" | "fail".
     // bulk: how many scrolls to buy if we have none (one trip for a whole batch).
-    // cap: at the target level, skip ("capped") when the fodder itself would succeed with
-    // more than this chance – a success resets the grace, so another stack is unlikely.
-    async function fodderAttempt(gk, index, bulk, cap) {
+    // check(ownChance): at the target level, the fodder's own success chance is previewed
+    // first; a returned reason skips the attempt ({ stop: reason }).
+    async function fodderAttempt(gk, index, bulk, check) {
         const item = character.items[index];
         const scroll = "scroll" + item_grade(item);
         await ensureScroll(gk, scroll, bulk || 1);
         await goTo("newupgrade");
         const i = util.findItemIndex(function (x) { return x.name === item.name && (x.level || 0) === (item.level || 0) && !x.l && !x.p; });
         if (i === -1) throw { reason: "fodder lost track" };
-        if (cap) {
-            const own = (await upgrade(i, bagIndex(scroll, 0), null, true)).chance;
-            if (own > cap) return { capped: own };
+        if (check) {
+            const why = check((await upgrade(i, bagIndex(scroll, 0), null, true)).chance);
+            if (why) return { stop: why };
         }
         await boost("massproduction");
         const result = await upgrade(i, bagIndex(scroll, 0));
@@ -953,6 +953,16 @@ module.exports = function createWorkshop(ctx) {
         util.log("workshop", "building grace for +" + level + " with " + fodder + " (need " + pct(minChance) + ")", "yellow");
         let tries = 0;   // attempts at the target level
         let stopReason = "attempt limit";
+        // How many grace stacks are realistic is decided by the fodder's own chance (player
+        // decision 2026-11-16): every failed fodder attempt is a stack, a success resets
+        // them, and grace raises the fodder's chance too. We stop when the fodder would
+        // succeed with more than grace.maxFodderChance – now, or by the time the stacks
+        // still needed (from the measured gain per stack) are built.
+        const cap = cfg.grace.maxFodderChance || 0.5;
+        let lastOwn = null;      // fodder chance before the previous attempt
+        let lastGain = null;     // target chance gained by the previous failed attempt
+        let lastFailed = false;
+        let current = null;      // target chance right now
 
         // Fodder copies sitting exactly one level below the target.
         const readyCount = function () {
@@ -964,6 +974,7 @@ module.exports = function createWorkshop(ctx) {
         try {
             for (let round = 0; round < 50 && tries < cfg.grace.maxAttempts; round++) {
                 let chance = await targetChance();
+                current = chance;
                 if (chance >= minChance) {
                     util.log("workshop", "grace done after " + tries + " attempts: +" + level + " now at " + pct(chance), "green");
                     return chance;
@@ -998,20 +1009,42 @@ module.exports = function createWorkshop(ctx) {
                 util.log("workshop", readyCount() + " " + fodder + "s ready at +" + (level - 1) + " - attempting +" + level, "white");
 
                 // 2. Attempt the whole batch in a row, re-checking the real preview after each one.
-                while (readyCount() && tries < cfg.grace.maxAttempts) {
-                    const outcome = await fodderAttempt(gk, fodderIndex(level - 1), readyCount(), cfg.grace.maxFodderChance);
-                    if (outcome && outcome.capped !== undefined) {
-                        stopReason = "fodder already succeeds with " + pct(outcome.capped) + " - another grace stack is unlikely";
-                        break;
+                const check = function (own) {
+                    let why = null;
+                    if (own > cap) {
+                        why = "fodder already succeeds with " + pct(own) + " - another grace stack is unlikely";
+                    } else if (lastFailed && lastOwn !== null && lastGain > 0) {
+                        const perStack = Math.max(0, own - lastOwn);
+                        const needed = Math.ceil((minChance - current) / lastGain);
+                        const atLast = own + (needed - 1) * perStack;
+                        if (atLast > cap) {
+                            why = "needs ~" + needed + " more stacks (+" + pct(lastGain) + " each), the fodder would be at " +
+                                pct(atLast) + " by then - not realistic";
+                        }
                     }
+                    lastOwn = own;
+                    return why;
+                };
+                while (readyCount() && tries < cfg.grace.maxAttempts) {
+                    const before = current;
+                    const outcome = await fodderAttempt(gk, fodderIndex(level - 1), readyCount(), check);
+                    if (outcome && outcome.stop) { stopReason = outcome.stop; break; }
                     tries++;
-                    util.log("workshop", "grace attempt " + tries + " at +" + level + ": " + (outcome === "fail" ? "failed (grace up)" : "succeeded (grace reset)"), "white");
+                    util.log("workshop", "grace attempt " + tries + " at +" + level + ": " + (outcome === "fail" ? "failed (grace up)" : "succeeded (grace reset)") +
+                        " - fodder had " + pct(lastOwn), "white");
                     if (outcome === "fail") {
                         chance = await targetChance();
+                        current = chance;
+                        lastGain = chance - before;
+                        lastFailed = true;
                         if (chance >= minChance) {
                             util.log("workshop", "grace done after " + tries + " attempts: +" + level + " now at " + pct(chance), "green");
                             return chance;
                         }
+                    } else {
+                        lastFailed = false;
+                        lastGain = null;
+                        current = await targetChance();
                     }
                 }
                 if (stopReason !== "attempt limit") break;
