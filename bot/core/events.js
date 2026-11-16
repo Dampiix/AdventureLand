@@ -93,8 +93,11 @@ module.exports = function createEvents(ctx) {
             const hits = f.max_hp / hitOn(f);
             if (hits < minHits) return { ok: false, why: f.name + " survives only " + hits.toFixed(1) + " hits (need " + minHits + ")" };
         }
-        // 2. Healing vs. damage on the tank (the leader takes the hits).
-        const tank = team[0];
+        // 2. Healing vs. damage on the tank: a warrior/paladin in the party (Taunt keeps the
+        // boss on it), else the leader.
+        const tankClasses = (config.targeting.teamSafety && config.targeting.teamSafety.tankClasses) || ["warrior", "paladin"];
+        const tank = team.filter(function (f) { return tankClasses.includes(f.ctype); })
+            .sort(function (a, b) { return b.max_hp - a.max_hp; })[0] || team[0];
         const incoming = hitOn(tank) * (m.frequency || 1);
         const healing = team.reduce(function (sum, f) {
             return sum + (f.ctype === "priest" ? (f.heal || f.attack) * f.frequency : 0);
