@@ -36,7 +36,8 @@ module.exports = function createEvents(ctx) {
         try { set(SEARCH_KEY, nextSearchAt); } catch (e) { /* storage unavailable */ }
     }
     let lastJoinTry = 0;
-    let joined = null;         // leader: { name, map } after a successful join()
+    let joined = null;         // leader: { name, map } once we stand on the event map
+    let joining = null;        // leader: { name, from, at } while a join() is on its way
 
     function teamLevel() {
         return util.teamLevel(config);
@@ -291,18 +292,31 @@ module.exports = function createEvents(ctx) {
         current = decide();
 
         // Join events: join once, re-join if we left the event map (e.g. after a death).
+        // join() resolves before the teleport lands, so the event map is the first map
+        // we reach after joining – not the map we were on when the promise resolved.
         if (!current || !current.join) {
             joined = null;
+            joining = null;
         } else {
+            if (joining && joining.name === current.name && character.map !== joining.from) {
+                joined = { name: current.name, map: character.map };
+                joining = null;
+                util.log("event", "in " + current.name + " (" + character.map + ")", "green");
+            }
             if (joined && joined.name === current.name && character.map !== joined.map) joined = null;
+            // Already there (e.g. after a restart): event maps carry the event's name.
+            if (!joined && !joining && character.map === current.name) joined = { name: current.name, map: character.map };
             if (!joined) {
-                if (Date.now() - lastJoinTry > 10000) {
-                    lastJoinTry = Date.now();
+                // Give a sent join time to land before trying again; a failed one waits 10 s.
+                if (joining ? Date.now() - joining.at > 30000 : Date.now() - lastJoinTry > 10000) {
                     const name = current.name;
+                    joining = { name: name, from: character.map, at: Date.now() };
                     util.log("event", "joining " + name, "green");
-                    join(name)
-                        .then(function () { joined = { name: name, map: character.map }; })
-                        .catch(function (e) { util.log("event", "join " + name + ": " + util.errReason(e), "orange"); });
+                    join(name).catch(function (e) {
+                        util.log("event", "join " + name + ": " + util.errReason(e), "orange");
+                        joining = null;
+                        lastJoinTry = Date.now();
+                    });
                 }
                 return "busy";
             }
