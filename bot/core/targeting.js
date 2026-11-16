@@ -270,7 +270,16 @@ module.exports = function createTargeting(ctx) {
             const ratio = ((e.attack || def.attack) * (e.frequency || def.frequency || 1)) / Math.max(1, def.attack * (def.frequency || 1));
             return ratio <= tolerance ? { ok: true } : { ok: false, why: "hits " + ratio.toFixed(1) + "x as hard as at level 1" };
         };
-        let v = teamModelOn() ? teamVerdict(e.mtype, e) : ratioCheck(lcfg.tolerance || 1.5);
+        // Members (and solo fighters) pulling their own target: we must survive ownHits of its
+        // real hits ourselves (the warrior shrugs off a level-7 CGoo, a priest may not).
+        const ownCheck = function () {
+            const me = util.combatStats();
+            const d = def.damage_type === "physical" ? (me.armor || 0) - (def.apiercing || 0)
+                : def.damage_type === "magical" ? (me.resistance || 0) - (def.rpiercing || 0) : 0;
+            const hits = me.max_hp / Math.max(1, (e.attack || def.attack || 0) * 1.1 * util.damageMultiplier(d));
+            return hits >= (lcfg.ownHits || 6) ? { ok: true } : { ok: false, why: "I survive " + hits.toFixed(1) + " of its hits (need " + (lcfg.ownHits || 6) + ")" };
+        };
+        let v = teamModelOn() ? teamVerdict(e.mtype, e) : ownCheck();
         // Team stats not in yet (right after a restart, or a member was away): the level-1
         // monster passed the team check already, so only a big level jump is refused.
         if (!v.ok && /waiting for the team/.test(v.why || "")) v = ratioCheck(lcfg.waitTolerance || 2.5);
