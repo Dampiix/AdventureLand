@@ -105,7 +105,10 @@ module.exports = function createFighter(ctx, cls) {
         else if (hp < c.potionHpBelow) use_skill("use_hp").catch(function () {});
         else if (mp < c.potionMpBelow) use_skill("use_mp").catch(function () {});
         else if (c.potionWhenMissing && hpMissing >= potionGives("hp")) use_skill("use_hp").catch(function () {});
-        else if (c.potionWhenMissing && mpMissing >= potionGives("mp")) use_skill("use_mp").catch(function () {});
+        // MP has its own rule (combat.mpTopUp: share of a potion that may be missing): mana
+        // is healing for the priest and Cleave/3-Shot for the others – it stays topped up
+        // also in the party, where HP potions are only an emergency (player decision 2026-11-17).
+        else if (c.mpTopUp !== undefined ? mpMissing >= potionGives("mp") * c.mpTopUp : (c.potionWhenMissing && mpMissing >= potionGives("mp"))) use_skill("use_mp").catch(function () {});
     }
 
     // A target in sight ends the search walk: smart_move kept walking to the middle of the

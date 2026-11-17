@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.73.3",
+    version: "1.73.4",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -201,6 +201,9 @@ module.exports = {
         // With a priest in the party close by (or as the priest): potions only as an
         // emergency, the healing does the rest (player decision 2026-11-16).
         withHealer: { potionHpBelow: 0.6, potionWhenMissing: false },
+        // MP: drink as soon as this share of an MP potion is missing – solo and in the party
+        // (player decision 2026-11-17: "Mana kann ruhig immer voll sein", potions are cheap).
+        mpTopUp: 0.5,
         // Below this HP an HP potion always comes first; above it MP comes first once MP is
         // below potionMpBelow and HP above half, or nearly empty (at 0 MP the solo warrior
         // could not attack and only took hits, 2026-11-17).
