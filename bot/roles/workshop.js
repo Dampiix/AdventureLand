@@ -1845,10 +1845,10 @@ module.exports = function createWorkshop(ctx) {
         const wished = {};
         fighters().forEach(function (f) { wishList(f).forEach(function (w) { wished[w.name] = true; }); });
         const pool = [];
-        character.items.forEach(function (it) { if (it && !it.l && !it.p && !wished[it.name]) pool.push({ name: it.name, level: it.level || 0 }); });
-        (bankSnapshot ? bankSnapshot.items : []).forEach(function (b) { if (!wished[b.name]) pool.push({ name: b.name, level: b.level }); });
+        character.items.forEach(function (it) { if (it && !it.l && !it.p && !wished[it.name]) pool.push({ name: it.name, level: it.level || 0, stat: it.stat_type || null }); });
+        (bankSnapshot ? bankSnapshot.items : []).forEach(function (b) { if (!wished[b.name]) pool.push({ name: b.name, level: b.level, stat: b.stat || null }); });
         activeEarmarks().forEach(function (e) {
-            const i = pool.findIndex(function (p) { return p.name === e.name && p.level >= e.level; });
+            const i = pool.findIndex(function (p) { return p.name === e.name && p.level >= e.level && (!e.stat || p.stat === e.stat); });
             if (i !== -1) pool.splice(i, 1);
         });
         fightersList.forEach(function (f) {
@@ -1861,14 +1861,18 @@ module.exports = function createWorkshop(ctx) {
                 for (let n = pending; n < empty; n++) {
                     const i = pool.findIndex(function (p) {
                         const def = G.items[p.name];
-                        return def && def.type === type && usableBy(def, classes[f]) && !isGoalStock(p);
+                        // A piece with a stat scroll only goes to a fighter with that main stat
+                        // (three Horse Leather Capes with STR/INT/DEX, 2026-11-17).
+                        const own = G.classes[classes[f]] && G.classes[classes[f]].main_stat;
+                        return def && def.type === type && usableBy(def, classes[f]) && !isGoalStock(p) &&
+                            (!p.stat || !MAIN_STATS.includes(p.stat) || p.stat === own);
                     });
                     if (i === -1) return;
                     const p = pool.splice(i, 1)[0];
                     // Key by name: a second copy for the other ring/earring slot waits for the next round.
                     if (earmarks[f + "|" + p.name]) return;
-                    earmark(f, p.name, p.level);
-                    util.log("workshop", p.name + " +" + p.level + " goes to " + f + " (empty " + type + " slot)", "yellow");
+                    earmark(f, p.name, p.level, p.stat);
+                    util.log("workshop", p.name + " +" + p.level + (p.stat ? " " + p.stat : "") + " goes to " + f + " (empty " + type + " slot)", "yellow");
                 }
             });
             // Dual wield (warrior): an empty offhand next to a one-handed weapon – or one
@@ -1910,7 +1914,7 @@ module.exports = function createWorkshop(ctx) {
         });
         (bankSnapshot ? bankSnapshot.items : []).forEach(function (b) { pool.push({ name: b.name, level: b.level, stat: b.stat || null }); });
         activeEarmarks().forEach(function (e) {
-            const i = pool.findIndex(function (p) { return p.name === e.name && p.level >= e.level; });
+            const i = pool.findIndex(function (p) { return p.name === e.name && p.level >= e.level && (!e.stat || p.stat === e.stat); });
             if (i !== -1) pool.splice(i, 1);
         });
         fightersList.forEach(function (f) {
