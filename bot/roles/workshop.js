@@ -1913,7 +1913,12 @@ module.exports = function createWorkshop(ctx) {
     // comes back as the next spare, and only once every worn copy is at the top level does
     // the next level start. Worn copies are never risked; nothing happens while a copy
     // of that item is on its way to a fighter.
-    async function bruteForceSpares() {
+    function spareLadderCopies() {
+        const bf = cfg.bruteForce;
+        if (!bf || !bf.names) return 0;
+        return bf.names.reduce(function (sum, n) { return sum + unlockedCopies(n).length; }, 0);
+    }
+        async function bruteForceSpares() {
         const bf = cfg.bruteForce;
         if (!bf || !bf.names) return false;
         const now = Date.now();
@@ -2095,6 +2100,9 @@ module.exports = function createWorkshop(ctx) {
         // Waiting box armor copies are upgraded every round (not only every gear-goal step),
         // before the wish job opens new boxes.
         if (waitingBoxArmor() >= 3 && await upgradeBoxArmor()) return;
+        // Same for the fire weapon ladder: solo Phoenix kills bring ~2 weapons each, far more
+        // than the 3-minute step could work through (player decision 2026-11-17).
+        if (spareLadderCopies() >= 3 && await bruteForceSpares()) return;
         // A tight bank comes first: every compound (3 -> 1) frees two slots, and the armor
         // boxes for the Rugged chain only open with 10 free (2026-11-17: 83 of 84 used).
         if (bankSnapshot && bankSnapshot.free < ((cfg.exchange || {}).onDemandBankFree || 10) && await autoCompound()) return;
