@@ -797,7 +797,11 @@ module.exports = function createWorkshop(ctx) {
     function heldBoxFor(name) {
         return ((cfg.exchange || {}).onDemand || []).some(function (src) {
             const t = G.drops[src];
-            return Array.isArray(t) && t.some(function (d) { return d && d[1] === name; }) && ingredientCount(src, 0) > 0;
+            if (!Array.isArray(t) || !t.some(function (d) { return d && d[1] === name; })) return false;
+            // Any stack in the bag or the bank (bank stacks carry no level, so ingredientCount
+            // with level 0 missed them).
+            return character.items.some(function (i) { return i && i.name === src; }) ||
+                !!(bankSnapshot && bankSnapshot.items.some(function (b) { return b.name === src; }));
         });
     }
 
