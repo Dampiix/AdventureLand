@@ -62,6 +62,29 @@ are the real lever, but only buyable from players.
    speed; Sword of the Dead (60 + 10 STR) needs a "Sword" from weapon boxes – not
    farmable, so the warrior takes maces. There is no Axe of the Dead; axes are
    two-handed (Cleave from 52) and lose to dual wield on single targets.
+   **Decided 2026-11-17: only the warrior gets a Dead weapon** (Mace of the Dead x2, about
+   +10-18 % damage at +7 against fireblade +7, -860 HP; Bones are scarce). The priest keeps
+   the Firestaff (one fire/burn weapon in the team). The ranger aims for the Crossbow.
+
+**Order per class (decided 2026-11-17):** all: shop armor and weapons +7 -> armor +8 ->
+jewelry/belt/orb/cape slots in parallel -> fire weapons from the Phoenix (ladder to +7).
+Then: **warrior** Rugged +7 (tank), two Lolipop Maces +7 (orange from Jr., green from
+Green Jr. as stand-ins, carried for an Agitate mode), later Mace of the Dead x2;
+**ranger** Firebow +7 first, then the Crossbow; **priest** Firestaff for now.
+
+**Ranger bows at +7** (game data 2026-11-17; total attack ~ weapon attack x DEX/20):
+| Bow | +7 | Source |
+|---|---|---|
+| Crossbow | 103, +120 armor piercing, -36 % attack speed (ranger) | Weapon Box 2 %, Ponty |
+| Harpy Bow | 91, +2 speed, +5 evasion | craft: Well-Crafted Bow + 100 Harpy Feathers + 1.64M (harpies: 160k HP, 1,720 magic hits) |
+| Artisan's Bow | 91 | Weapon Box 0.4 % |
+| Reunion Bow | 87, crit damage | anniversary event craft |
+| Cupid's Bow | 83, +VIT | Valentine pink goos |
+| Bow of the Feared Ranger | 83 | Halloween candy (0.02 %) |
+| Bow of the Dead | 82, +20 STR, -12 speed | Bones + Bow |
+| Fire Bow / Frost Bow / Well-Crafted Bow | 76, burn / freeze / - | Phoenix, Weapon Box / craft Bow + 3 Essence of Frost / Weapon Box |
+| Hunting Bow | 69, armor piercing (normal grade to +4) | Porcupines, Ponty |
+Nothing between Firebow and Crossbow is farmable for us yet (event bows only in season).
 4. **Fire weapon ladder** (`workshop.bruteForce`, decided 2026-11-16): grace can't lift
    them, so spare copies (drops, Dracul, archive) are upgraded at once with the normal
    scroll – always to one level above the weakest worn copy in the team (both of the

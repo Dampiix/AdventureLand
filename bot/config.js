@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.78.0",
+    version: "1.79.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -70,13 +70,16 @@ module.exports = {
             // explosion splash) on every kill – a warrior weapon for the Agitate mode. 3,200 HP,
             // 80% evasion, weak magical hits, cooperative; respawns after ~5-9 h.
             jr: "always",
+            // Green Jr. (Spooky Forest): the green Lolipop Mace (+24 DEX) on every kill – no loss
+            // against the fireblades (no stat either), a stand-in until two orange ones are done.
+            greenjr: "always",
             crabxx: "never", franky: "never", icegolem: "never",
             horseman: "never", abtesting: "never",
             graveyard: "always",          // Halloween: zombies/ghouls in Spooky Town's graveyard – Bones (2026-11-16)
         },
         // "always" only applies once every fighter has reached this level
-        minLevel: { phoenix: 40, goobrawl: 20, snowman: 10, graveyard: 40, mvampire: 50, jr: 40 },
-        search: ["phoenix", "mvampire", "jr"], // roaming bosses the leader looks for
+        minLevel: { phoenix: 40, goobrawl: 20, snowman: 10, graveyard: 40, mvampire: 50, jr: 40, greenjr: 40 },
+        search: ["phoenix", "mvampire", "jr", "greenjr"], // roaming bosses the leader looks for
         // Search again this long after a miss or a kill (player decision 2026-11-15: 30 min,
         // the walk costs farm time). Respawn times (game source): the Phoenix (respawn 32)
         // comes back ~32 s after its death at a random one of its 5 spots; Dracul (1080)
@@ -367,6 +370,9 @@ module.exports = {
                 // on every hit, one-handed, so dual wield stays. Carried in the bag until an
                 // Agitate mode swaps them in. Only Jr. drops them; +8 (~15-19%) is decided later.
                 { steps: [{ name: "ololipop", level: 7 }], carry: true, count: 2 },
+                // Green ones (+24 DEX, Green Jr.) stand in while orange ones are missing (player
+                // decision 2026-11-17): no loss against a stat-less weapon, just no bonus.
+                { steps: [{ name: "glolipop", level: 7 }], carry: true, count: 2, insteadOf: "ololipop" },
             ],
             ranger: [
                 // Cole: 1 Armadillo Scale + 200 Beewings (scorpions drop it too). The +7 is built on
@@ -396,7 +402,7 @@ module.exports = {
             graceWindow: 0.25,
             // No floor either (like shop gear): copies come from boxes we hold in numbers.
             free: ["helmet1", "gloves1", "pants1", "coat1", "shoes1",
-                "ololipop"], // Lolipop Maces up to +7 like shop gear: Jr. drops one or two per kill
+                "ololipop", "glolipop"], // Lolipop Maces up to +7 like shop gear: (Green) Jr. drops one or two per kill
             maxScrollGrade: 2,     // try up to Rare scrolls when the normal one falls short
             buyStrongerScrolls: true, // only within budgetPerWish; owned/banked ones are used first
         },
@@ -604,8 +610,6 @@ module.exports = {
             { name: "staff", maxLevel: 7 },
             { name: "blade", maxLevel: 5 },
             { name: "quiver", maxLevel: 2 },
-            // Lollipop Maces from the archive (player decision 2026-11-16): weak tier-0 maces.
-            { name: "glolipop", maxLevel: 10 },
             // Materials without a plan (player decision 2026-11-16). Kept on purpose: green
             // slime, ashleaf (Thistle Quiver), bat wings, spores (Oathplate), reef glass,
             // carrots (Carrot Sword).

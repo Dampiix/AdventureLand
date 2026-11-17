@@ -109,6 +109,7 @@ module.exports = function createGear(ctx) {
             steps.carry = !!(e && e.carry);
             steps.whenWorn = (e && e.whenWorn) || null;
             steps.count = (e && e.count) || 1; // carried copies wanted (e.g. two maces for dual wield)
+            steps.insteadOf = (e && e.insteadOf) || null; // stand-in for this carried item's missing copies
             return steps;
         }).filter(function (steps) { return steps.length; });
     }
@@ -163,17 +164,28 @@ module.exports = function createGear(ctx) {
         });
     }
     // Wish for a carried chain: the first step no copy in the bag reaches yet.
+    // Finished copies of a carried chain in the bag.
+    function carriedDone(steps) {
+        return character.items.filter(function (item) { return item && chainProgress(steps, item) >= steps.length; }).length;
+    }
+    // How many copies of this carried chain are still needed: a stand-in (insteadOf) only
+    // covers what the preferred item does not have finished yet.
+    function carryNeed(steps) {
+        if (!steps.insteadOf) return steps.count;
+        const preferred = chainOf(steps.insteadOf);
+        return Math.max(0, steps.count - (preferred && preferred.carry ? carriedDone(preferred) : 0));
+    }
     function carryWish(steps) {
         if (steps.whenWorn && !wornReaches(steps.whenWorn)) return null;
-        // Finished copies in the bag; below steps.count the next copy is wished.
+        // Finished copies in the bag; below the needed count the next copy is wished.
         const progress = character.items.filter(Boolean).map(function (item) { return chainProgress(steps, item); })
             .sort(function (a, b) { return b - a; });
         const done = progress.filter(function (p) { return p >= steps.length; }).length;
-        if (done >= steps.count) return null;
+        if (done >= carryNeed(steps)) return null;
         const best = Math.max(0, progress[done] || 0); // the furthest copy that is not finished yet
         const w = steps[Math.min(best, steps.length - 1)];
         const wish = { name: w.name, level: w.level || 0, full: true }; // only the finished piece is useful
-        if (steps.count > 1) wish.count = steps.count;
+        if (carryNeed(steps) > 1) wish.count = carryNeed(steps);
         return wish;
     }
     function classWishes(have) {
@@ -457,7 +469,8 @@ module.exports = function createGear(ctx) {
     function isReserved(item) {
         if (wishes.some(function (w) { return w.name === item.name && (item.level || 0) >= w.level; })) return true;
         const carried = chainOf(item.name);
-        if (carried && carried.carry && reachedStep(carried, item)) return true; // finished carried piece
+        // A finished carried piece – a stand-in only while the preferred copies are missing.
+        if (carried && carried.carry && reachedStep(carried, item) && carryNeed(carried) > 0) return true;
         // A stronger copy of something we wear (e.g. a finished gear goal) stays
         // with us until the equip pass puts it on.
         const slots = character.slots || {};
