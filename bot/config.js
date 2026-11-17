@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.84.3",
+    version: "1.85.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -24,8 +24,9 @@ module.exports = {
         // Solo again 2026-11-17: test run of the warrior alone on CGoos (Tiny Rubies).
         // Party again 2026-11-17: White Wolves to test the lone pulls.
         // Solo again 2026-11-17 (afternoon): the warrior hunts the Phoenix nonstop for firebows.
-        // Party: leader "DmpxPriest", phase "party".
-        leader: "DmpxWar",
+        // Party again 2026-11-17 (evening): normal farming and the Goo Brawl together.
+        // Solo: leader "DmpxWar", phase "solo".
+        leader: "DmpxPriest",
         fighters: ["DmpxPriest", "DmpxWar", "DmpxRanger"],
         merchant: "DampiixMerch",                       // null for no merchant
         farm: {},                                       // optional per-character farm override, e.g. { DmpxRanger: "bee" }
@@ -33,7 +34,7 @@ module.exports = {
 
     // "solo":  only the leader fights (Lone Wolf bonus); the merchant still supports it.
     // "party": all fighters form a party around the leader.
-    phase: "solo",
+    phase: "party",
 
     party: {
         followDistance: 80,   // members idle within this distance of the leader
@@ -136,8 +137,8 @@ module.exports = {
     },
 
     targeting: {
-        // Player decision 2026-11-17: Irradiated Goo again (two Spider Silk are in, spider farm done).
-        farm: "cgoo",            // e.g. "squigtoad" to force a monster for everyone (null = guide)
+        // Player decision 2026-11-17 (evening): the guide picks again (party, no CGoos).
+        farm: null,            // e.g. "squigtoad" to force a monster for everyone (null = guide)
         fallback: "goo",          // used when the progression guide has no answer
         // Farm only where every fighter's own guide calls the spot safe; routes the guide
         // only offers as a careful trial count once proven – by the guide's own fights, or
