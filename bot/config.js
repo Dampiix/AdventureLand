@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.65.1",
+    version: "1.66.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -16,10 +16,11 @@ module.exports = {
         // 2026-11-16: the paladin DmpxPala is replaced by the warrior DmpxWar (taunt, cleave).
         // Party since 2026-11-16: the priest leads (picks the spots, ranged), the warrior
         // tanks with Taunt.
-        // Solo since 2026-11-16 (XP test: the warrior alone with Lone Wolf made 24.3M XP in
-        // 30 min, the whole party 16.2M): the warrior levels ahead as the tank. Back to the
-        // party: leader "DmpxPriest", phase "party".
-        leader: "DmpxWar",
+        // Solo 2026-11-16 to 2026-11-17 (XP test: the warrior alone with Lone Wolf made 24.3M XP
+        // in 30 min, the whole party 16.2M): the warrior levelled ahead as the tank (59 -> 64).
+        // Party again since 2026-11-17 (booboos and wolves now pass the team check).
+        // Solo: leader "DmpxWar", phase "solo".
+        leader: "DmpxPriest",
         fighters: ["DmpxPriest", "DmpxWar", "DmpxRanger"],
         merchant: "DampiixMerch",                       // null for no merchant
         farm: {},                                       // optional per-character farm override, e.g. { DmpxRanger: "bee" }
@@ -27,7 +28,7 @@ module.exports = {
 
     // "solo":  only the leader fights (Lone Wolf bonus); the merchant still supports it.
     // "party": all fighters form a party around the leader.
-    phase: "solo",
+    phase: "party",
 
     party: {
         followDistance: 80,   // members idle within this distance of the leader
