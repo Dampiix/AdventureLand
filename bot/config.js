@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.84.1",
+    version: "1.84.2",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -528,12 +528,14 @@ module.exports = {
                 // Player decisions 2026-11-17: 10M more for 12 h at 08:45, another 10M at 12:23 (the
                 // budget ran out on the Rugged pants/shoes). The extra counts against the last 24 h of
                 // spending, so the total grows: 30M until 2026-11-18 00:23 UTC.
-                extra: { amount: 30000000, until: "2026-11-18T00:23:24Z" },
+                // Ends with the reset at 22:00 German time (player decision 2026-11-17), so the reset
+                // does not hand out a fresh 30M.
+                extra: { amount: 30000000, until: "2026-11-17T21:00:00Z" },
                 // One-time fresh start of every pot (gear goals, weapon ladder, grace): from this
                 // time on, spending and gold samples before it are ignored, so no pot starts in
                 // the minus – the income since then fills them again. May lie in the future;
                 // once 24 h have passed it has no effect any more. null = none.
-                resetAt: null,
+                resetAt: "2026-11-17T21:00:00Z", // player decision 2026-11-17: fresh start at 22:00 German time
             },
         },
         // Fixed wishes on top of the guide's. Items without a shop are bought with tokens
