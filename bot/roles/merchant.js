@@ -481,6 +481,9 @@ module.exports = function createMerchant(ctx) {
                 await fish();
                 await goHome();
             }
+            // A tool still in hand (e.g. after a restart while fishing) slows us down: bag it.
+            const held = character.slots && character.slots.mainhand;
+            if (held && (held.name === "rod" || held.name === "pickaxe") && character.esize > 0) await unequip("mainhand").catch(function () {});
             keepStand();
             // At the stand the last workshop status stays visible (player request 2026-11-17).
             if (!character.stand) util.status("ready in town", "white");
