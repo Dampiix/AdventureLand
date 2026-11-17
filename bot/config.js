@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.88.2",
+    version: "1.88.3",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -42,7 +42,6 @@ module.exports = {
     market: {
         buy: [
             { item: "essenceoffire", price: 140000, want: 10 }, // = a fire weapon (+ shop weapon, 20k at Leo)
-            { item: "firebow",       price: 160000, want: 5  }, // weapon ladder for the ranger
             { item: "ololipop",      price: 150000, want: 4  }, // orange Lolipop Mace (a player pays 300k)
             { item: "glolipop",      price:  80000, want: 4  }, // green one as a stand-in
             { item: "offeringp",     price: 350000, want: 2  }, // Primling
