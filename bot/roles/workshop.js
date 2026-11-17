@@ -1997,6 +1997,18 @@ module.exports = function createWorkshop(ctx) {
         });
     }
 
+    // Rings of Small Joys up to +2 once every team fighter wears two rings that are at least
+    // as good – a Ring of Joy +2 or another ring at +2 (stat rings) – player decision
+    // 2026-11-17. Copies above +2 stay: they still beat a worn +2.
+    function isSpareJoyRing(item) {
+        if (!item || item.name !== "ringsj" || (item.level || 0) > 2) return false;
+        return config.team.fighters.every(function (f) {
+            const eq = worn[f];
+            if (!eq) return false;
+            return ["ring1", "ring2"].every(function (s) { return eq[s] && (eq[s].level || 0) >= 2; });
+        });
+    }
+
     // A box armor piece we are done with (player decision 2026-11-17): nobody wishes it any
     // more and a fighter wears it at upTo (or we hold a copy at upTo) – further copies from
     // the boxes are sold. The copy at upTo itself is kept.
@@ -2128,7 +2140,7 @@ module.exports = function createWorkshop(ctx) {
     return {
         work: work, handOver: handOver, isReserved: isReserved, readyFor: readyFor,
         isGoalStock: isGoalStock, isGoalFinished: isGoalFinished, isOutgrownGoalCopy: isOutgrownGoalCopy,
-        isDoneBoxArmor: isDoneBoxArmor, isOrphanStatCopy: isOrphanStatCopy,
+        isDoneBoxArmor: isDoneBoxArmor, isOrphanStatCopy: isOrphanStatCopy, isSpareJoyRing: isSpareJoyRing,
         classOf: function (fighter) { return classes[fighter] || null; },
         oneEachFor: oneEachFor,
         markCarried: function (fighter, item) { (carries[fighter] = carries[fighter] || {})[item] = true; },
