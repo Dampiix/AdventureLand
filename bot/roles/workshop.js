@@ -376,9 +376,24 @@ module.exports = function createWorkshop(ctx) {
         return sum;
     }
 
+    // budget.resetAt once it has passed: everything before it is ignored (0 = no mark).
+    function resetMark() {
+        const r = cfg.gearGoals.budget && cfg.gearGoals.budget.resetAt;
+        const t = r ? Date.parse(r) : 0;
+        return t && t <= Date.now() ? t : 0;
+    }
     function goalBudget() {
         const b = cfg.gearGoals.budget;
         if (!income.samples.length) return { allowed: 0, earned: 0, spent: 0, hours: 0, moved: 0 };
+        // A reset mark: the first gold sample after it is the baseline, older spending is gone.
+        const mark = resetMark();
+        if (mark && income.samples[0].t < mark) {
+            income.samples = income.samples.filter(function (s) { return s.t >= mark; });
+            if (!income.samples.length) income.samples.push({ t: Date.now(), gold: character.gold });
+            income.spends = income.spends.filter(function (s) { return s.t >= mark; });
+            saveIncome();
+            util.log("workshop", "budget reset: every pot starts from 0 now", "yellow");
+        }
         const base = income.samples[0];
         // All workshop spending is put back into the income; the gear goals' share only
         // counts their own spending (the weapon ladder has its own pot).
@@ -410,6 +425,12 @@ module.exports = function createWorkshop(ctx) {
     // never below grace.budgetPerLevel. Grace spending itself is not a loss of income.
     function graceBudget() {
         const g = cfg.grace;
+        const mark = resetMark();
+        if (mark && graceSince < mark) { // budget.resetAt: grace spending starts over too
+            Object.keys(spent).forEach(function (k) { if (k.indexOf("grace:") === 0) delete spent[k]; });
+            graceSince = mark;
+            saveGraceSpent();
+        }
         if (!g.incomeShare) return g.budgetPerLevel;
         let graceSpent = 0;
         Object.keys(spent).forEach(function (k) { if (k.indexOf("grace:") === 0) graceSpent += spent[k] || 0; });

@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.77.0",
+    version: "1.78.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -521,6 +521,11 @@ module.exports = {
                 // budget ran out on the Rugged pants/shoes). The extra counts against the last 24 h of
                 // spending, so the total grows: 30M until 2026-11-18 00:23 UTC.
                 extra: { amount: 30000000, until: "2026-11-18T00:23:24Z" },
+                // One-time fresh start of every pot (gear goals, weapon ladder, grace): from this
+                // time on, spending and gold samples before it are ignored, so no pot starts in
+                // the minus – the income since then fills them again. May lie in the future;
+                // once 24 h have passed it has no effect any more. null = none.
+                resetAt: null,
             },
         },
         // Fixed wishes on top of the guide's. Items without a shop are bought with tokens
