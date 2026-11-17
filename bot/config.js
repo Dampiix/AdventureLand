@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.67.2",
+    version: "1.68.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -21,7 +21,7 @@ module.exports = {
         // Party again since 2026-11-17 (booboos and wolves now pass the team check).
         // Solo again 2026-11-17: the warrior hunts the Phoenix nonstop with Lone Wolf for fire
         // weapons (firebow for the ranger). Party: leader "DmpxPriest", phase "party".
-        leader: "DmpxWar",
+        leader: "DmpxPriest",
         fighters: ["DmpxPriest", "DmpxWar", "DmpxRanger"],
         merchant: "DampiixMerch",                       // null for no merchant
         farm: {},                                       // optional per-character farm override, e.g. { DmpxRanger: "bee" }
@@ -29,7 +29,7 @@ module.exports = {
 
     // "solo":  only the leader fights (Lone Wolf bonus); the merchant still supports it.
     // "party": all fighters form a party around the leader.
-    phase: "solo",
+    phase: "party",
 
     party: {
         followDistance: 80,   // members idle within this distance of the leader
