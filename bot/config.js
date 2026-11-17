@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.87.0",
+    version: "1.88.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -51,6 +51,19 @@ module.exports = {
             { item: "leather",       price:  120000, keep: 0 }, // a player buys at 100k
             { item: "snakefang",     price: 3500000, keep: 0 }, // a player buys at 3M
         ],
+    },
+
+    // Dismantle drops (player decision 2026-11-17): instead of upgrading them, the merchant
+    // takes every spare copy of these items (up to maxLevel) to Leo and dismantles it into
+    // its material - a fire weapon gives one Essence of Fire (10k, any level). The material
+    // stacks in one bank slot; weapons are crafted from it when we want them (shop weapon +
+    // essence + 20k at Leo). These items are left out of the weapon ladder while enabled.
+    // Never dismantled: worn, wished or earmarked copies, a copy readied for a fighter
+    // (betterWeapons), locked or titled copies, and copies up to a market.buy "want".
+    dismantle: {
+        enabled: true,
+        names: ["fireblade", "firestaff", "firebow"],
+        maxLevel: 0, // +1 and higher copies stay (they would only give one essence as well)
     },
 
     // "solo":  only the leader fights (Lone Wolf bonus); the merchant still supports it.

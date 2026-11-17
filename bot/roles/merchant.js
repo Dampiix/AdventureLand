@@ -414,6 +414,7 @@ module.exports = function createMerchant(ctx) {
         if (G.items[item.name] && G.items[item.name].type === "pot") return false; // potion stock stays with us
         if (m.bank.keep.includes(item.name)) return false;
         if (marketSurplus(item.name, item.level) > 0) return false; // waits for a slot in the stand
+        if (workshop.waitsForDismantle(item)) return false;           // goes to Leo, not the bank
         const gifts = [].concat.apply([], Object.values(m.give || {}));
         return !gifts.includes(item.name);
     }

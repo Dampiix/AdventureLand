@@ -827,6 +827,67 @@ module.exports = function createWorkshop(ctx) {
         saveShortages();
     }
 
+    // ---- dismantling (config.dismantle, player decision 2026-11-17) ------------------
+    //
+    // Spare drop weapons are not upgraded but dismantled at Leo into their material (a
+    // fire weapon gives one Essence of Fire). The material stacks in one bank slot and
+    // weapons are crafted from it on demand - Phoenix nights no longer fill the bank.
+    function dismantleOn(name) {
+        const d = config.dismantle;
+        return !!(d && d.enabled && (d.names || []).includes(name) && G.dismantle && G.dismantle[name]);
+    }
+    // Units we hold (bag + last bank snapshot).
+    function ownedCount(name) {
+        const bag = character.items.reduce(function (s, i) { return i && i.name === name ? s + (i.q || 1) : s; }, 0);
+        const bank = bankSnapshot ? bankSnapshot.items.reduce(function (s, b) { return b.name === name ? s + (b.q || 1) : s; }, 0) : 0;
+        return bag + bank;
+    }
+    // A bag item or bank entry we may dismantle now.
+    function isDismantleCopy(item) {
+        if (!item || !dismantleOn(item.name) || item.l || item.p) return false;
+        if ((item.level || 0) > (config.dismantle.maxLevel || 0)) return false;
+        if (isReserved(item) || isOwnWish(item.name)) return false;
+        // betterWeapons readies a copy of it for a fighter: those copies are needed.
+        if (weaponPlans().some(function (p) { return p.name === item.name; })) return false;
+        // Bought on purpose (config.market.buy): copies up to "want" stay.
+        const order = ((config.market || {}).buy || []).find(function (o) { return o.item === item.name; });
+        if (order && ownedCount(item.name) <= (order.want || 0)) return false;
+        return true;
+    }
+    async function dismantleDrops() {
+        if (!config.dismantle || !config.dismantle.enabled) return false;
+        if ((blockedUntil._dismantle || 0) > Date.now()) return false;
+        const inBag = function () { return character.items.findIndex(function (i) { return isDismantleCopy(i); }); };
+        const banked = bankSnapshot ? bankSnapshot.items.filter(isDismantleCopy) : [];
+        if (inBag() === -1 && !banked.length) return false;
+        const reserve = util.goldAmount(config.merchantRole.goldReserve);
+        try {
+            // Bank copies first, as many as the bag takes in one visit.
+            for (const b of banked) {
+                if (character.esize < 4) break;
+                await retrieve(b);
+            }
+            let index;
+            while ((index = inBag()) !== -1) {
+                const item = character.items[index];
+                const cost = G.dismantle[item.name].cost || 0;
+                if (character.gold - cost < reserve) throw { reason: "gold below the reserve" };
+                util.status("dismantling " + item.name, "orange");
+                await goTo("craftsman");
+                index = inBag(); // the walk may have taken a while: locate it again
+                if (index === -1) break;
+                const name = character.items[index].name, level = character.items[index].level || 0;
+                await dismantle(index);
+                util.log("workshop", "dismantled " + name + " +" + level + " into " +
+                    G.dismantle[name].items.map(function (it) { return it[0] + "x " + it[1]; }).join(", "), "green");
+            }
+        } catch (e) {
+            util.log("workshop", "dismantling: " + util.errReason(e), "orange");
+            blockedUntil._dismantle = Date.now() + cfg.giveUpForMs;
+        }
+        return true;
+    }
+
     function unlockedCopies(name) {
         const list = [];
         character.items.forEach(function (i) { if (i && i.name === name && !i.l && !i.p) list.push(i.level || 0); });
@@ -1285,6 +1346,7 @@ module.exports = function createWorkshop(ctx) {
         if (cfg.stockEnabled === false) return false; // paused (player decision 2026-11-16)
         const now = Date.now();
         for (const rule of cfg.stock || []) {
+            if (dismantleOn(rule.name)) continue;
             const k = key("_stock", { name: rule.name, level: rule.upTo });
             if (blockedUntil[k] > now) continue;
             const total = totalCopies(rule.name);
@@ -2066,13 +2128,14 @@ module.exports = function createWorkshop(ctx) {
     function spareLadderCopies() {
         const bf = cfg.bruteForce;
         if (!bf || !bf.names) return 0;
-        return bf.names.reduce(function (sum, n) { return sum + unlockedCopies(n).length; }, 0);
+        return bf.names.filter(function (n) { return !dismantleOn(n); }).reduce(function (sum, n) { return sum + unlockedCopies(n).length; }, 0);
     }
         async function bruteForceSpares() {
         const bf = cfg.bruteForce;
         if (!bf || !bf.names) return false;
         const now = Date.now();
         for (const name of bf.names) {
+            if (dismantleOn(name)) continue; // config.dismantle: no upgrades, essence instead
             const levels = [];
             config.team.fighters.forEach(function (f) {
                 const eq = worn[f];
@@ -2230,6 +2293,7 @@ module.exports = function createWorkshop(ctx) {
         }
 
         if (await workOwnWishes()) return; // the merchant's own stand and tools come first
+        if (await dismantleDrops()) return; // spare drop weapons into material (config.dismantle)
         if (await stockOneEach()) return;
         fillEmptySlots();
         deliverBetterWeapons();
@@ -2370,10 +2434,10 @@ module.exports = function createWorkshop(ctx) {
         },
         isOwnWish: isOwnWish,
         // Units of an item we hold (bag + last bank snapshot), e.g. for the stand's buy orders.
-        ownedCount: function (name) {
-            const bag = character.items.reduce(function (s, i) { return i && i.name === name ? s + (i.q || 1) : s; }, 0);
-            const bank = bankSnapshot ? bankSnapshot.items.reduce(function (s, b) { return b.name === name ? s + (b.q || 1) : s; }, 0) : 0;
-            return bag + bank;
+        ownedCount: ownedCount,
+        // A copy waiting to be dismantled stays in the bag (unless dismantling is paused).
+        waitsForDismantle: function (item) {
+            return (blockedUntil._dismantle || 0) <= Date.now() && isDismantleCopy(item);
         },
     };
 };
