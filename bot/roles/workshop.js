@@ -2097,6 +2097,28 @@ module.exports = function createWorkshop(ctx) {
             }
         }
 
+        // A finished copy that only lacks the wished stat gets it right away: the scroll is a
+        // sure step, while its wish may rank behind accessories that stay open for hours
+        // (the Rugged Coat +7 waited for the warrior's STR, 2026-11-17).
+        for (const o of openWishes()) {
+            if (!o.wish.stat) continue;
+            const lvl = targetLevel(o.fighter, o.wish);
+            if (wishIndex(o.wish, lvl) !== -1) continue;
+            const idx = character.items.findIndex(function (it) {
+                return it && !it.l && it.name === o.wish.name && (it.level || 0) >= lvl && it.stat_type !== o.wish.stat;
+            });
+            if (idx === -1) continue;
+            const k = key(o.fighter, o.wish);
+            try {
+                util.status(o.wish.stat + " scroll for " + o.wish.name + " (" + o.fighter + ")", "orange");
+                await applyStat(idx, o.wish.stat, k);
+                return;
+            } catch (e) {
+                util.log("workshop", "no " + o.wish.stat + " for " + o.wish.name + " +" + lvl + " yet: " + util.errReason(e), "orange");
+                blockedUntil[k] = Date.now() + cfg.giveUpForMs;
+            }
+        }
+
         // Waiting box armor copies are upgraded every round (not only every gear-goal step),
         // before the wish job opens new boxes.
         if (waitingBoxArmor() >= 3 && await upgradeBoxArmor()) return;
