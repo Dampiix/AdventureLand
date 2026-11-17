@@ -75,6 +75,15 @@ module.exports = function createWorkshop(ctx) {
 
     const classes = {}; // fighter -> ctype (sent with its wishes)
     const carries = {}; // fighter -> { item: true/false } for one-per-character items
+    // Gold a fighter handed over is income (loot, sales), not a transfer by hand: the
+    // transfer check below would otherwise drop a big handover (gearGoals budget).
+    comms.on("gold", function (data) {
+        const a = Math.round((data && data.a) || 0);
+        if (a <= 0) return;
+        income.credits = income.credits || [];
+        income.credits.push({ t: Date.now(), a: a });
+        saveIncome();
+    });
     comms.on("wishes", function (data, from) {
         wishes[from] = (data.list || []).filter(function (w) { return w && G.items[w.name]; });
         try { set(WISHES_KEY, { at: Date.now(), list: wishes }); } catch (e) { /* storage unavailable */ }
@@ -376,6 +385,7 @@ module.exports = function createWorkshop(ctx) {
         while (income.samples.length > 2 && now - income.samples[1].t >= DAY) income.samples.shift();
         const since = income.samples[0].t;
         income.spends = income.spends.filter(function (s) { return s.t >= since; });
+        income.credits = (income.credits || []).filter(function (c) { return c.t >= since; });
         saveIncome();
     }
 
@@ -388,7 +398,9 @@ module.exports = function createWorkshop(ctx) {
         for (let i = 1; i < points.length; i++) {
             const a = points[i - 1], b = points[i];
             const between = income.spends.reduce(function (x, s) { return s.t > a.t && s.t <= b.t ? x + s.a : x; }, 0);
-            const step = b.gold - a.gold + between;
+            // Gold the fighters handed over in this step is income, not a transfer.
+            const handed = (income.credits || []).reduce(function (x, c) { return c.t > a.t && c.t <= b.t ? x + c.a : x; }, 0);
+            const step = b.gold - a.gold + between - handed;
             if (Math.abs(step) >= limit) sum += step;
         }
         return sum;

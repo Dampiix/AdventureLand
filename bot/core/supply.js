@@ -74,6 +74,9 @@ module.exports = function createSupply(ctx) {
             if (surplus >= s.goldMinSend) {
                 await send_gold(name, surplus);
                 util.log("supply", "handed " + surplus + " gold to " + name, "green");
+                // The merchant counts handed-over gold as income, even in one big jump
+                // (8.6M from selling to a player's buy orders, 2026-11-17).
+                comms.send(name, "gold", { a: surplus });
             }
         } catch (e) {
             util.log("supply", "gold handover failed: " + util.errReason(e), "red");
