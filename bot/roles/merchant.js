@@ -101,7 +101,7 @@ module.exports = function createMerchant(ctx) {
         const market = config.market || {};
         const lvlText = function (name, level) { return G.items[name].upgrade || G.items[name].compound ? " +" + level : ""; };
         // Listed buy orders no longer needed - the item left config.market.buy, or we hold
-        // "want" by now - are taken down (unequip gives the reserved gold back).
+        // "want" by now - are taken down (unequip removes the listing).
         slots.forEach(function (s) {
             const it = character.slots[s];
             if (!it || !it.b) return;
