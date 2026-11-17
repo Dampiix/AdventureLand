@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.63.0",
+    version: "1.63.1",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -399,6 +399,7 @@ module.exports = {
         // every spare copy from the armor boxes is upgraded towards upTo at once – failures
         // free bank slots and the next chain pieces are ready early (the bank has ~19 free
         // slots; a new pack costs 75M).
+        // Once a piece is worn (or held) at upTo and nobody wishes it, new copies are sold.
         boxArmor: { names: ["helmet1", "gloves1", "pants1", "coat1", "shoes1"], upTo: 7 },
         stock: [
             { name: "fireblade", upTo: 7, spares: 3 },

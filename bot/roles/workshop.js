@@ -1965,6 +1965,20 @@ module.exports = function createWorkshop(ctx) {
         return false;
     }
 
+    // A box armor piece we are done with (player decision 2026-11-17): nobody wishes it any
+    // more and a fighter wears it at upTo (or we hold a copy at upTo) – further copies from
+    // the boxes are sold. The copy at upTo itself is kept.
+    function isDoneBoxArmor(item) {
+        const b = cfg.boxArmor;
+        if (!b || !item || !(b.names || []).includes(item.name) || (item.level || 0) >= b.upTo) return false;
+        if (fighters().some(function (f) { return wishList(f).some(function (w) { return w.name === item.name; }); })) return false;
+        const wornDone = config.team.fighters.some(function (f) {
+            const eq = worn[f] || {};
+            return Object.keys(eq).some(function (s) { return eq[s] && eq[s].name === item.name && (eq[s].level || 0) >= b.upTo; });
+        });
+        return wornDone || unlockedCopies(item.name).some(function (l) { return l >= b.upTo; });
+    }
+
     async function work() {
         if (!cfg.enabled) return;
 
@@ -2076,6 +2090,7 @@ module.exports = function createWorkshop(ctx) {
     return {
         work: work, handOver: handOver, isReserved: isReserved, readyFor: readyFor,
         isGoalStock: isGoalStock, isGoalFinished: isGoalFinished, isOutgrownGoalCopy: isOutgrownGoalCopy,
+        isDoneBoxArmor: isDoneBoxArmor,
         classOf: function (fighter) { return classes[fighter] || null; },
         oneEachFor: oneEachFor,
         markCarried: function (fighter, item) { (carries[fighter] = carries[fighter] || {})[item] = true; },
