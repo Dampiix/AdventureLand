@@ -212,7 +212,8 @@ module.exports = function createTargeting(ctx) {
 
     // `live` (optional): a monster entity – its real attack/frequency (higher levels hit
     // harder) replace the base values from G.monsters.
-    function teamVerdict(monster, live) {
+    // opts.pull: check this many at once (the pack check below) instead of the usual count.
+    function teamVerdict(monster, live, opts) {
         const base = G.monsters[monster];
         const m = base && live ? Object.assign({}, base, { attack: live.attack || base.attack, frequency: live.frequency || base.frequency }) : base;
         if (!m || m.cooperative) return { ok: false, why: "no data / cooperative" };
@@ -233,8 +234,8 @@ module.exports = function createTargeting(ctx) {
         // Monsters we pull one at a time (isolation) come as one plus a possible add
         // (pullLone) – a level-12 White Wolf failed "5.1 volleys of 3" though we never pull
         // three (2026-11-17). Dense packs still count whole.
-        const lonePull = icfg.enabled && joinsFights(m);
-        const pull = (m.aggro || 0) >= 1
+        const lonePull = icfg.enabled && joinsFights(m) && !(opts && opts.pull);
+        const pull = opts && opts.pull ? opts.pull : (m.aggro || 0) >= 1
             ? Math.max(lonePull ? (ts.pullLone || 2) : (ts.pullAggressive || 3), densePack(monster))
             : (ts.pull || 2);
         const volley = hitOn(tank) * pull;
@@ -246,7 +247,7 @@ module.exports = function createTargeting(ctx) {
         // The whole fight, not only its rate: what heals and potions don't cover is lost for
         // as long as the kill takes (a level-12 White Wolf has 312k HP). Lone pulls
         // (isolation) start with one monster; the volley check above keeps the margin for adds.
-        const fightPull = icfg.enabled && joinsFights(m) ? 1 : pull;
+        const fightPull = lonePull ? 1 : pull;
         const teamDps = team.reduce(function (s, f) {
             if (f.ctype === "priest") return s; // its actions are counted as healing above
             const d = f.damage_type === "magical" ? (m.resistance || 0) - (f.rpiercing || 0) : (m.armor || 0) - (f.apiercing || 0);
@@ -380,14 +381,34 @@ module.exports = function createTargeting(ctx) {
     function joinsFights(def) {
         return (def.aggro || 0) >= (icfg.minAggro || 0.3) && (def.rage || 0) >= (icfg.minRage || 0.3);
     }
+    // Can we take a whole pack of them at once (isolation.packOf, default the aggressive pull)?
+    // Then lone pulls are pointless - the moles were waited for one by one though the team
+    // tanks three easily (2026-11-17). Uses the monster's real level (attack, HP).
+    // Party leader: the team model; solo: our own hits and sustain against the pack.
+    const packSeen = {}; // "type:level" -> { ok, at }
+    function packOk(e) {
+        const def = G.monsters[e.mtype];
+        const n = Math.max(icfg.packOf || ts.pullAggressive || 3, densePack(e.mtype));
+        if (teamModelOn()) return teamVerdict(e.mtype, e, { pull: n }).ok;
+        if (party.enabled) return false; // members: the leader decides who is pulled
+        const me = util.combatStats();
+        const d = def.damage_type === "physical" ? (me.armor || 0) - (def.apiercing || 0)
+            : def.damage_type === "magical" ? (me.resistance || 0) - (def.rpiercing || 0) : 0;
+        const hit = (e.attack || def.attack || 0) * 1.1 * util.damageMultiplier(d);
+        return me.max_hp / Math.max(1, hit * n) >= (lcfg.ownHits || 6);
+    }
     function aggressive(e) {
         const def = e && G.monsters[e.mtype];
         if (!def || !joinsFights(def)) return false;
+        const now = Date.now();
         const k = e.mtype + ":" + Math.round(e.attack || def.attack || 0);
         const c = harmlessSeen[k];
-        const now = Date.now();
         if (!c || now - c.at > 30 * 1000) harmlessSeen[k] = { ok: harmless(e.mtype, e.attack), at: now };
-        return !harmlessSeen[k].ok;
+        if (harmlessSeen[k].ok) return false;
+        const pk = e.mtype + ":" + (e.level || 1);
+        const p = packSeen[pk];
+        if (!p || now - p.at > 30 * 1000) packSeen[pk] = { ok: packOk(e), at: now };
+        return !packSeen[pk].ok;
     }
     // Where we stop to hit e: on the line from us to it, at 90% of our range.
     function standPoint(e) {
