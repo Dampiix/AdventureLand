@@ -148,13 +148,14 @@ module.exports = function createTargeting(ctx) {
     // Monsters the guide doesn't list at all (e.g. goos once we outgrew them) are not
     // "unsafe", just unknown: harmless if every fighter survives 20+ of their hits
     // (team stats from bot_events, the game's damage formula).
-    function harmless(monster) {
+    // attack (optional): a live monster's real attack instead of the level-1 value.
+    function harmless(monster, attack) {
         const m = G.monsters[monster];
         if (!m || m.cooperative || (m.abilities && Object.keys(m.abilities).length)) return false;
         const team = ctx.events && ctx.events.teamStats ? ctx.events.teamStats() : [util.combatStats()];
         return team.every(function (f) {
             const def = m.damage_type === "physical" ? (f.armor || 0) - (m.apiercing || 0) : (f.resistance || 0) - (m.rpiercing || 0);
-            return f.max_hp >= 20 * (m.attack || 0) * 1.1 * util.damageMultiplier(def);
+            return f.max_hp >= 20 * (attack || m.attack || 0) * 1.1 * util.damageMultiplier(def);
         });
     }
 
@@ -367,9 +368,17 @@ module.exports = function createTargeting(ctx) {
     // and only when no other free aggressive monster is near the target, near where we
     // will stand or near the way there (config.targeting.isolation).
     const icfg = cfg.isolation || {};
+    // Harmless ones (every fighter survives 20+ of their real hits) don't count: a whole
+    // swarm of bees can't hurt us, and waiting for a lone bee left the team idle (2026-11-17).
+    const harmlessSeen = {}; // "type:attack" -> { ok, at }
     function aggressive(e) {
         const def = e && G.monsters[e.mtype];
-        return !!def && (def.aggro || 0) >= (icfg.minAggro || 0.3);
+        if (!def || (def.aggro || 0) < (icfg.minAggro || 0.3)) return false;
+        const k = e.mtype + ":" + Math.round(e.attack || def.attack || 0);
+        const c = harmlessSeen[k];
+        const now = Date.now();
+        if (!c || now - c.at > 30 * 1000) harmlessSeen[k] = { ok: harmless(e.mtype, e.attack), at: now };
+        return !harmlessSeen[k].ok;
     }
     // Where we stop to hit e: on the line from us to it, at 90% of our range.
     function standPoint(e) {
