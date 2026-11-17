@@ -2298,14 +2298,14 @@ module.exports = function createWorkshop(ctx) {
             fighters().forEach(function (f) {
                 wishList(f).forEach(function (w) {
                     if (wishIndex(w, targetLevel(f, w)) !== -1) return; // ready for delivery
-                    const until = blockedUntil[key(f, w)] || 0;
-                    list.push(w.name + "+" + w.level + " " + f.replace(/^Dmpx/, "") +
-                        (until > now ? " (paused " + Math.ceil((until - now) / 60000) + " min)" : ""));
+                    // Only what is being worked on (player request 2026-11-17): paused ones are left out.
+                    if ((blockedUntil[key(f, w)] || 0) > now) return;
+                    list.push(w.name + "+" + w.level + " " + f.replace(/^Dmpx/, ""));
                 });
             });
             const k = function (n) { return Math.round(n / 1000) + "k"; };
-            return "wishes: " + (list.slice(0, 8).join(", ") || "none") + (list.length > 8 ? " ..." : "") +
-                " | budget: goals " + k(goalBudget().allowed) + ", ladder " + k(ladderBudget().allowed);
+            return "budget: goals " + k(goalBudget().allowed) + ", ladder " + k(ladderBudget().allowed) +
+                " | working on: " + (list.slice(0, 6).join(", ") || "nothing") + (list.length > 6 ? " ..." : "");
         },
         // Units of an item we hold (bag + last bank snapshot), e.g. for the stand's buy orders.
         ownedCount: function (name) {
