@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.68.0",
+    version: "1.68.1",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -76,7 +76,7 @@ module.exports = {
         searchEveryMs: 30 * 60 * 1000,
         // Bosses hunted nonstop: searched again after farmBossEveryMs (player option
         // 2026-11-16; Phoenix: weapons and earrings, about half the XP/h of crocs).
-        farmBosses: ["phoenix"],        // nonstop Phoenix hunt (2026-11-17, solo warrior)
+        farmBosses: [],                 // e.g. ["phoenix"] for a nonstop hunt (solo warrior 2026-11-17)
         farmBossEveryMs: 60 * 1000,
         searchSpotMs: 4000,             // look around this long at each spawn area
         // Boss check (bosses only; the guide never calls them safe): from everyone's stats
