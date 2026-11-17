@@ -394,6 +394,8 @@ module.exports = function createTargeting(ctx) {
             const v = teamVerdict(e.mtype, e, { pull: n });
             // Why a pack is too much, once per type and level every 10 min (2026-11-17).
             const lk = e.mtype + ":" + (e.level || 1);
+            // Right after a restart the members' stats are not in yet: no verdict, ask again soon.
+            if (!v.ok && /waiting for the team/.test(v.why || "")) return null;
             if (!v.ok && Date.now() - (packLogged[lk] || 0) > 10 * 60 * 1000) {
                 packLogged[lk] = Date.now();
                 util.log("target", e.mtype + " level " + (e.level || 1) + " one at a time - " + n + " at once: " + v.why, "white");
@@ -417,7 +419,11 @@ module.exports = function createTargeting(ctx) {
         if (harmlessSeen[k].ok) return false;
         const pk = e.mtype + ":" + (e.level || 1);
         const p = packSeen[pk];
-        if (!p || now - p.at > 30 * 1000) packSeen[pk] = { ok: packOk(e), at: now };
+        if (!p || now - p.at > 30 * 1000) {
+            const r = packOk(e);
+            // null = unknown yet (team stats missing): treated as too much, checked again in 5 s
+            packSeen[pk] = { ok: r === true, at: r === null ? now - 25 * 1000 : now };
+        }
         return !packSeen[pk].ok;
     }
     // Where we stop to hit e: on the line from us to it, at 90% of our range.
