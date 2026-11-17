@@ -97,8 +97,13 @@ module.exports = function createFighter(ctx, cls) {
         const c = healerNear() ? Object.assign({}, config.combat, config.combat.withHealer || {}) : config.combat;
         const hpMissing = character.max_hp - character.hp;
         const mpMissing = character.max_mp - character.mp;
-        if (util.hpRatio() < c.potionHpBelow) use_skill("use_hp").catch(function () {});
-        else if (util.mpRatio() < c.potionMpBelow) use_skill("use_mp").catch(function () {});
+        const hp = util.hpRatio(), mp = util.mpRatio();
+        // Without MP there is no attack (and no skill): MP first unless HP is critical.
+        const mpEmpty = character.mp < Math.max(1, character.mp_cost || 0) * 3;
+        if (hp < (c.hpCriticalBelow || 0.3)) use_skill("use_hp").catch(function () {});
+        else if (mpEmpty || (mp < c.potionMpBelow && hp >= 0.5)) use_skill("use_mp").catch(function () {});
+        else if (hp < c.potionHpBelow) use_skill("use_hp").catch(function () {});
+        else if (mp < c.potionMpBelow) use_skill("use_mp").catch(function () {});
         else if (c.potionWhenMissing && hpMissing >= potionGives("hp")) use_skill("use_hp").catch(function () {});
         else if (c.potionWhenMissing && mpMissing >= potionGives("mp")) use_skill("use_mp").catch(function () {});
     }
@@ -133,7 +138,34 @@ module.exports = function createFighter(ctx, cls) {
         }
     }
 
+    // Solo recovery (config.combat.recover): after a fight that left us low, no new pull
+    // until the potions brought HP and MP back up. Monsters already on us are fought.
+    let recovering = false;
+    function resting() {
+        const r = config.combat.recover;
+        if (!r || !r.enabled || healerNear()) { recovering = false; return false; }
+        const hp = util.hpRatio(), mp = util.mpRatio();
+        const attacked = !!get_nearest_monster({ target: character.name });
+        if (!recovering) {
+            if (attacked) return false; // still fighting
+            if (hp >= r.hpBelow && mp >= r.mpBelow) return false;
+            recovering = true;
+            util.log("combat", "resting after the fight: HP " + Math.round(hp * 100) + "%, MP " + Math.round(mp * 100) + "%", "yellow");
+        }
+        if (hp >= r.hpUntil && mp >= r.mpUntil) {
+            recovering = false;
+            util.log("combat", "rested: HP " + Math.round(hp * 100) + "%, MP " + Math.round(mp * 100) + "%", "green");
+            return false;
+        }
+        if (attacked) return false; // something hits us while we rest: fight back
+        if (searchWalk) endSearchWalk();
+        else if (is_moving(character)) stop();
+        util.status("rest " + Math.round(Math.min(hp / r.hpUntil, mp / r.mpUntil) * 100) + "%", "white");
+        return true;
+    }
+
     function handleCombat() {
+        if (resting()) return;
         const farm = targeting.currentFarm();
         const target = targeting.pick(farm);
         // Only time actually fighting counts for the crowded-spot check: running after a

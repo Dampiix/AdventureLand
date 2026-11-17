@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.70.2",
+    version: "1.71.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -198,6 +198,14 @@ module.exports = {
         // With a priest in the party close by (or as the priest): potions only as an
         // emergency, the healing does the rest (player decision 2026-11-16).
         withHealer: { potionHpBelow: 0.6, potionWhenMissing: false },
+        // Below this HP an HP potion always comes first; above it MP comes first once MP is
+        // below potionMpBelow and HP above half, or nearly empty (at 0 MP the solo warrior
+        // could not attack and only took hits, 2026-11-17).
+        hpCriticalBelow: 0.3,
+        // Without a priest close by (solo): after a fight below hpBelow HP or mpBelow MP the
+        // fighter pulls nothing new and drinks back up to hpUntil / mpUntil first (player
+        // request 2026-11-17: 2-3 higher-level CGoos in a row wore the warrior down).
+        recover: { enabled: true, hpBelow: 0.5, mpBelow: 0.5, hpUntil: 0.8, mpUntil: 0.8 },
     },
 
     classes: {
