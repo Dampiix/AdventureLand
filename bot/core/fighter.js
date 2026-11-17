@@ -237,6 +237,15 @@ module.exports = function createFighter(ctx, cls) {
                 if (util.distanceTo(victim) > 40) moveTo(v);
                 return;
             }
+            // A monster already coming for us (e.g. after our Taunt) is waited for, not met
+            // halfway - the warrior ran towards the moles, into the next ones (2026-11-17).
+            // Only if it reaches us: one with a longer range than ours would stop short.
+            const def = G.monsters[target.mtype] || {};
+            if (target.target === character.name && (def.range || 0) <= (character.range || 0) + 10) {
+                if (is_moving(character) && !(typeof smart !== "undefined" && smart.moving)) stop();
+                util.status("waiting for " + target.mtype, "orange");
+                return;
+            }
             util.status("moving to " + target.mtype, "orange");
             if (cls.move && cls.move(target)) return; // e.g. Warrior Dash closed the gap
             // Aggressive ones: only up to our range, not into them (and past their friends).
