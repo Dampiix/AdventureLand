@@ -104,6 +104,28 @@ module.exports = function createMerchant(ctx) {
         });
     }
 
+    // No stand yet (fresh account): buy one from Divian as soon as the gold above the
+    // reserve allows it - one purchase, 40k (player decision 2026-11-17: the bot must run
+    // on its own from a fresh account).
+    let nextStandCheckAt = 0;
+    async function buyStand() {
+        if (!st.enabled || !st.buy || standIndex() !== -1 || Date.now() < nextStandCheckAt) return;
+        nextStandCheckAt = Date.now() + 10 * 60 * 1000;
+        if (workshop.ownedCount("stand0") + workshop.ownedCount("stand1") > 0) return; // one in the bank
+        const name = st.buy;
+        const def = G.items[name];
+        const npc = (G.maps.main.npcs || []).find(function (n) {
+            return Array.isArray((G.npcs[n.id] || {}).items) && G.npcs[n.id].items.includes(name);
+        });
+        if (!def || !npc || !npc.position) return;
+        if (character.gold - def.g < util.goldAmount(m.goldReserve)) return; // not yet affordable
+        if (character.esize < 1) return;
+        util.status("buying a stand", "yellow");
+        await util.walk({ map: "main", x: npc.position[0], y: npc.position[1] + 30 });
+        await buy(name, 1);
+        util.log("merchant", "bought a " + def.name + " for " + def.g + " gold - the market stand opens at home", "green");
+    }
+
     function homeSpot() {
         return useStand() ? { map: "main", x: st.home.x, y: st.home.y } : null;
     }
@@ -411,6 +433,7 @@ module.exports = function createMerchant(ctx) {
             await goHome();
             if (Date.now() >= nextChoresAt) {
                 nextChoresAt = Date.now() + 30 * 1000;
+                await buyStand();
                 await sellJunk();
                 await bankIfNeeded();
                 await workshop.work();

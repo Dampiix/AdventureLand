@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.82.6",
+    version: "1.83.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -574,6 +574,7 @@ module.exports = {
         // Square: x -240..240, y -120..144; 40+ px from fixed NPCs (Merrit's rules).
         stand: {
             enabled: true,
+            buy: "stand0",            // bought from Divian once, when the gold above the reserve allows it
             home: { x: -120, y: -112 },
             reach: 390,               // NPCs this close are used without walking (server: 400)
             // Buy orders (name, exact level for upgradeable items, quantity, price per unit).
