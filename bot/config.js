@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.72.4",
+    version: "1.72.5",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -206,7 +206,7 @@ module.exports = {
         // Without a priest close by (solo): after a fight below hpBelow HP or mpBelow MP the
         // fighter pulls nothing new and drinks back up to hpUntil / mpUntil first (player
         // request 2026-11-17: 2-3 higher-level CGoos in a row wore the warrior down).
-        recover: { enabled: true, hpBelow: 0.5, mpBelow: 0.5, hpUntil: 0.8, mpUntil: 0.8 },
+        recover: { enabled: true, hpBelow: 0.5, mpBelow: 0.5, hpUntil: 0.8, mpUntil: 0.8, maxMs: 90 * 1000 },
     },
 
     classes: {

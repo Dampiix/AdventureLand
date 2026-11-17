@@ -141,23 +141,34 @@ module.exports = function createFighter(ctx, cls) {
     // Solo recovery (config.combat.recover): after a fight that left us low, no new pull
     // until the potions brought HP and MP back up. Monsters already on us are fought.
     let recovering = false;
+    let restSince = 0;
     function resting() {
         const r = config.combat.recover;
-        if (!r || !r.enabled || healerNear()) { recovering = false; return false; }
+        // Solo only (player request): in a party the ranger rested while the priest was a
+        // few hundred px behind on the way to Daisy (2026-11-17).
+        if (!r || !r.enabled || party.enabled || healerNear()) { recovering = false; return false; }
         const hp = util.hpRatio(), mp = util.mpRatio();
         const attacked = !!get_nearest_monster({ target: character.name });
         if (!recovering) {
             if (attacked) return false; // still fighting
             if (hp >= r.hpBelow && mp >= r.mpBelow) return false;
             recovering = true;
+            restSince = Date.now();
             util.log("combat", "resting after the fight: HP " + Math.round(hp * 100) + "%, MP " + Math.round(mp * 100) + "%", "yellow");
         }
-        if (hp >= r.hpUntil && mp >= r.mpUntil) {
+        // Done – or resting too long (no potions left, slow natural regeneration).
+        if ((hp >= r.hpUntil && mp >= r.mpUntil) || Date.now() - restSince > (r.maxMs || 90 * 1000)) {
             recovering = false;
             util.log("combat", "rested: HP " + Math.round(hp * 100) + "%, MP " + Math.round(mp * 100) + "%", "green");
             return false;
         }
         if (attacked) return false; // something hits us while we rest: fight back
+        // Drink up to the targets: the normal rule only drinks once a whole potion is
+        // missing, so a 935-MP warrior stopped at ~46% MP and rested for good (2026-11-17).
+        if (!is_on_cooldown("use_hp")) {
+            if (hp < r.hpUntil && (hp / r.hpUntil <= mp / r.mpUntil || mp >= r.mpUntil)) use_skill("use_hp").catch(function () {});
+            else if (mp < r.mpUntil) use_skill("use_mp").catch(function () {});
+        }
         if (searchWalk) endSearchWalk();
         else if (is_moving(character)) stop();
         util.status("rest " + Math.round(Math.min(hp / r.hpUntil, mp / r.mpUntil) * 100) + "%", "white");
