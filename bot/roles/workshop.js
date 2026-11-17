@@ -138,11 +138,15 @@ module.exports = function createWorkshop(ctx) {
         const p = npcPos(npcId);
         if (!p) throw { reason: "npc " + npcId + " not found" };
         if (character.map === p.map && util.distanceTo(p) < 100) return;
-        // At the market stand: NPCs within the server's 400 px are used from there (the
-        // stand stays open, Merrit's two minutes keep running).
+        // At the market stand's home spot: NPCs within the server's 400 px are used from
+        // there (the stand stays open, Merrit's two minutes keep running). Checked by the
+        // spot, not character.stand: the stand opens a moment later and the merchant had
+        // already walked off to the upgrade NPC (2026-11-17).
         const st = config.merchantRole.stand || {};
-        if (character.stand && character.map === p.map && util.distanceTo(p) < (st.reach || 390)) return;
-        await smart_move(p);
+        const home = st.enabled && st.home && character.map === "main" && util.distanceTo({ x: st.home.x, y: st.home.y }) < 15 &&
+            character.items.some(function (i) { return i && G.items[i.name] && G.items[i.name].type === "stand"; });
+        if (home && character.map === p.map && util.distanceTo(p) < (st.reach || 390)) return;
+        await util.walk(p);
     }
 
     // Mass Production (lvl 30, -50%; "pp" from lvl 60, -90%) before an upgrade or compound,
@@ -273,7 +277,7 @@ module.exports = function createWorkshop(ctx) {
 
     async function retrieve(entry) {
         if (character.esize < 1) throw { reason: "bag full" };
-        await smart_move("bank");
+        await util.walk("bank");
         readBank();
         const fresh = bankSnapshot.items.find(function (b) { return b.pack === entry.pack && b.index === entry.index && b.name === entry.name; });
         if (!fresh) throw { reason: entry.name + " moved in the bank" };
@@ -511,7 +515,7 @@ module.exports = function createWorkshop(ctx) {
     async function gatherIngredient(name, q, level) {
         if (stackable(name)) {
             if (util.findItemIndex(function (i) { return i.name === name && (i.q || 1) >= q; }) !== -1) return;
-            await smart_move("bank");
+            await util.walk("bank");
             // Bag stacks go into the bank first: storing merges them into one stack.
             for (let i = character.items.length - 1; i >= 0; i--) {
                 if (character.items[i] && character.items[i].name === name) await bank_store(i);
@@ -2139,7 +2143,7 @@ module.exports = function createWorkshop(ctx) {
 
         if (!bankSnapshot || Date.now() - bankSnapshot.at > cfg.bankScanEveryMs) {
             util.status("checking the bank", "yellow");
-            await smart_move("bank");
+            await util.walk("bank");
             readBank();
         }
 

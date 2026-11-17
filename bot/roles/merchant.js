@@ -68,20 +68,7 @@ module.exports = function createMerchant(ctx) {
     function useStand() {
         return !!st.enabled && !!st.home && standIndex() !== -1;
     }
-    // A stand slows us to a crawl: every walk closes it first (smart_move is used by the
-    // workshop, deliveries and the bank alike).
-    const rawSmartMove = smart_move;
-    function closeStand() {
-        if (!character.stand) return;
-        try {
-            if (typeof close_stand === "function") close_stand();
-            else parent.close_merchant();
-        } catch (e) { /* closed anyway on the next try */ }
-    }
-    smart_move = function () {
-        closeStand();
-        return rawSmartMove.apply(null, arguments);
-    };
+    // Every walk goes through util.walk, which closes the stand first (speed 10 with it open).
     let nextOrdersAt = 0;
     // Open the stand at home and keep the buy orders listed (exact name and level).
     function keepStand() {
@@ -130,8 +117,8 @@ module.exports = function createMerchant(ctx) {
         if (!atHome()) {
             util.status("going to town", "yellow");
             const spot = homeSpot();
-            if (spot) await smart_move(spot);
-            else await smart_move({ to: "potions" });
+            if (spot) await util.walk(spot);
+            else await util.walk({ to: "potions" });
         }
         keepStand();
     }
@@ -299,13 +286,13 @@ module.exports = function createMerchant(ctx) {
         util.status("delivering to " + name, "orange");
         try {
             if (atHome()) await restock(req.want);
-            await smart_move({ map: req.map, x: req.x, y: req.y });
+            await util.walk({ map: req.map, x: req.x, y: req.y });
 
             // The fighter may have moved on: follow it once if it is visible.
             let fighter = get_player(name);
             if (fighter && !util.isNear(fighter, 200)) {
                 const p = util.xy(fighter);
-                await smart_move({ map: character.map, x: p.x, y: p.y });
+                await util.walk({ map: character.map, x: p.x, y: p.y });
                 fighter = get_player(name);
             }
             if (!fighter || !util.isNear(fighter, 250)) {
@@ -341,7 +328,7 @@ module.exports = function createMerchant(ctx) {
     // Walk into the bank and store what we can. Returns the number of stacks stored.
     async function bankTrip() {
         util.status("banking", "yellow");
-        await smart_move("bank");
+        await util.walk("bank");
         // smart_move can end outside the bank (interrupted by another move, e.g. a pickup
         // call): then every store fails with not_in_bank – try again on the next round.
         if (!character.bank) {

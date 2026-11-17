@@ -144,6 +144,20 @@ function distanceTo(point) {
 }
 
 // Walk straight to an entity when possible, pathfind otherwise.
+// Walk somewhere with smart_move; a merchant stand is closed first and we wait until the
+// server confirms it - with the stand open we crawl at speed 10 (the merchant walked to
+// the bank with his stand on, 2026-11-17).
+async function walk(dest) {
+    if (character.stand) {
+        try {
+            if (typeof close_stand === "function") close_stand();
+            else parent.close_merchant();
+        } catch (e) { /* checked below */ }
+        for (let i = 0; i < 40 && character.stand; i++) await sleep(50);
+    }
+    return smart_move(dest);
+}
+
 function moveToEntity(e) {
     const p = xy(e);
     return xmove(p.x, p.y);
@@ -281,6 +295,7 @@ module.exports = {
     xy: xy,
     distanceTo: distanceTo,
     moveToEntity: moveToEntity,
+    walk: walk,
     isNear: isNear,
     countItem: countItem,
     findItemIndex: findItemIndex,
