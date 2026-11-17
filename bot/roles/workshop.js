@@ -2290,6 +2290,23 @@ module.exports = function createWorkshop(ctx) {
         classOf: function (fighter) { return classes[fighter] || null; },
         oneEachFor: oneEachFor,
         markCarried: function (fighter, item) { (carries[fighter] = carries[fighter] || {})[item] = true; },
+        // What the workshop is waiting on (logged every 10 min by the merchant): open wishes
+        // with their pause, and what the budget pots still allow.
+        report: function () {
+            const now = Date.now();
+            const list = [];
+            fighters().forEach(function (f) {
+                wishList(f).forEach(function (w) {
+                    if (wishIndex(w, targetLevel(f, w)) !== -1) return; // ready for delivery
+                    const until = blockedUntil[key(f, w)] || 0;
+                    list.push(w.name + "+" + w.level + " " + f.replace(/^Dmpx/, "") +
+                        (until > now ? " (paused " + Math.ceil((until - now) / 60000) + " min)" : ""));
+                });
+            });
+            const k = function (n) { return Math.round(n / 1000) + "k"; };
+            return "wishes: " + (list.slice(0, 8).join(", ") || "none") + (list.length > 8 ? " ..." : "") +
+                " | budget: goals " + k(goalBudget().allowed) + ", ladder " + k(ladderBudget().allowed);
+        },
         // Units of an item we hold (bag + last bank snapshot), e.g. for the stand's buy orders.
         ownedCount: function (name) {
             const bag = character.items.reduce(function (s, i) { return i && i.name === name ? s + (i.q || 1) : s; }, 0);

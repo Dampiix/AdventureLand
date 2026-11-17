@@ -28,6 +28,7 @@ module.exports = function createMerchant(ctx) {
     let running = false;
     let busy = false;
     let nextChoresAt = 0;     // selling/restocking runs at most every 30 s
+    let nextReportAt = 0;     // workshop status report in the log
     let lastRespawnTry = 0;
 
     comms.on("pickup", function (data, from) {
@@ -417,7 +418,12 @@ module.exports = function createMerchant(ctx) {
                 await restock();
             }
             keepStand();
-            util.status(character.stand ? "stand open" : "ready in town", "white");
+            // At the stand the last workshop status stays visible (player request 2026-11-17).
+            if (!character.stand) util.status("ready in town", "white");
+            if (Date.now() >= nextReportAt) {
+                nextReportAt = Date.now() + 10 * 60 * 1000;
+                try { util.log("workshop", workshop.report(), "white"); } catch (e) { /* report only */ }
+            }
         } catch (e) {
             util.log("merchant", "work failed: " + util.errReason(e), "red");
             await sleep(5000);
