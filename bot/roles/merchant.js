@@ -84,7 +84,11 @@ module.exports = function createMerchant(ctx) {
         }
         if (Date.now() < nextOrdersAt) return;
         nextOrdersAt = Date.now() + 60 * 1000;
-        const slots = Object.keys(character.slots || {}).filter(function (s) { return s.indexOf("trade") === 0 && !isNaN(+s.slice(5)); });
+        // An open stand has 16 trade slots (24 from merchant level 70, 30 from 80 - server);
+        // empty ones are not listed in character.slots, so the names are built here.
+        const count = character.level >= 80 ? 30 : character.level >= 70 ? 24 : 16;
+        const slots = [];
+        for (let i = 1; i <= count; i++) slots.push("trade" + i);
         (st.buyOrders || []).forEach(function (o) {
             if (!G.items[o.name]) return;
             const level = o.level || 0;
