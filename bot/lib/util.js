@@ -147,11 +147,22 @@ function distanceTo(point) {
 // Walk somewhere with smart_move; a merchant stand is closed first and we wait until the
 // server confirms it - with the stand open we crawl at speed 10 (the merchant walked to
 // the bank with his stand on, 2026-11-17).
+// Opening goes through openStand: a stand that was just asked to open does not show in
+// character.stand until the server answers - a walk right after it (the fishing trip
+// after keepStand) used to leave with the stand opening on the way (2026-11-17).
+let standOpenAt = 0;
+function openStand(num) {
+    standOpenAt = Date.now();
+    const p = typeof open_stand === "function" ? open_stand(num) : parent.open_merchant(num);
+    if (p && p.catch) p.catch(function () { /* the next round tries again */ });
+    return p;
+}
 async function walk(dest) {
-    if (character.stand) {
+    while (!character.stand && Date.now() - standOpenAt < 3000) await sleep(100);
+    for (let attempt = 0; attempt < 3 && character.stand; attempt++) {
         try {
-            if (typeof close_stand === "function") close_stand();
-            else parent.close_merchant();
+            const p = typeof close_stand === "function" ? close_stand() : parent.close_merchant();
+            if (p && p.catch) p.catch(function () { /* checked below */ });
         } catch (e) { /* checked below */ }
         for (let i = 0; i < 40 && character.stand; i++) await sleep(50);
     }
@@ -296,6 +307,7 @@ module.exports = {
     distanceTo: distanceTo,
     moveToEntity: moveToEntity,
     walk: walk,
+    openStand: openStand,
     isNear: isNear,
     countItem: countItem,
     findItemIndex: findItemIndex,

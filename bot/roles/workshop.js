@@ -159,7 +159,7 @@ module.exports = function createWorkshop(ctx) {
             if (Math.hypot(p.x - home.x, p.y - home.y) < reach) {
                 if (character.map !== "main" || util.distanceTo(home) >= 15) await util.walk(home);
                 if (!character.stand) {
-                    try { open_stand(); } catch (e) { /* the merchant's round opens it again */ }
+                    try { util.openStand(); } catch (e) { /* the merchant's round opens it again */ }
                 }
                 return;
             }

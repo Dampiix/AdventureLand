@@ -76,8 +76,7 @@ module.exports = function createMerchant(ctx) {
         if (!useStand() || !atHome()) return;
         if (!character.stand) {
             try {
-                if (typeof open_stand === "function") open_stand(standIndex());
-                else parent.open_merchant(standIndex());
+                util.openStand(standIndex());
             } catch (e) { util.log("merchant", "opening the stand failed: " + util.errReason(e), "orange"); }
             nextOrdersAt = Date.now() + 2000; // let the trade slots appear first
             return;
