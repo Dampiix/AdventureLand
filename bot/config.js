@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.80.0",
+    version: "1.80.1",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -136,8 +136,9 @@ module.exports = {
     },
 
     targeting: {
-        // Player decision 2026-11-17: the guide picks between the Phoenix hunts (wolf test done).
-        farm: null,            // e.g. "squigtoad" to force a monster for everyone (null = guide)
+        // Player decision 2026-11-17: Spiders for Spider Silk (Fishing Rod + Pickaxe for the merchant:
+        // fishing gives Rugged pieces, mining gem fragments). Spiders share the main-map Phoenix spot.
+        farm: "spider",            // e.g. "squigtoad" to force a monster for everyone (null = guide)
         fallback: "goo",          // used when the progression guide has no answer
         // Farm only where every fighter's own guide calls the spot safe; routes the guide
         // only offers as a careful trial count once proven – by the guide's own fights, or
