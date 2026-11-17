@@ -239,17 +239,24 @@ module.exports = function createTargeting(ctx) {
             ? Math.max(lonePull ? (ts.pullLone || 2) : (ts.pullAggressive || 3), densePack(monster))
             : (ts.pull || 2);
         const volley = hitOn(tank) * pull;
-        const tankHits = tank.max_hp / Math.max(1, volley);
-        if (tankHits < (ts.tankHits || 6)) return { ok: false, why: tank.name + " survives " + tankHits.toFixed(1) + " volleys of " + pull + " (need " + (ts.tankHits || 6) + ")" };
+        // Healing per second from the party: every fighter with a heal stat (a priest today;
+        // no class names - player request 2026-11-17).
+        const healing = team.reduce(function (s, f) { return s + ((f.heal || 0) > 0 ? f.heal * (f.frequency || 1) : 0); }, 0);
+        // Volleys the tank survives, with what the healers heal between two volleys (none
+        // solo): 3 level-1 moles failed "5.9 volleys (need 6)" though the priest heals all
+        // along (player idea 2026-11-17).
+        const healedPerVolley = healing / (m.frequency || 1);
+        const netVolley = volley - healedPerVolley;
+        const tankHits = netVolley <= 0 ? Infinity : tank.max_hp / netVolley;
+        if (tankHits < (ts.tankHits || 6)) return { ok: false, why: tank.name + " survives " + tankHits.toFixed(1) + " volleys of " + pull + (healing ? " with healing" : "") + " (need " + (ts.tankHits || 6) + ")" };
         const incoming = volley * (m.frequency || 1);
-        const healing = team.reduce(function (s, f) { return s + (f.ctype === "priest" ? (f.heal || f.attack || 0) * (f.frequency || 1) : 0); }, 0);
         if (incoming > healing * (ts.healCover || 1.5)) return { ok: false, why: Math.round(incoming) + " dmg/s on " + tank.name + " vs " + Math.round(healing) + " healing/s" };
         // The whole fight, not only its rate: what heals and potions don't cover is lost for
         // as long as the kill takes (a level-12 White Wolf has 312k HP). Lone pulls
         // (isolation) start with one monster; the volley check above keeps the margin for adds.
         const fightPull = lonePull ? 1 : pull;
         const teamDps = team.reduce(function (s, f) {
-            if (f.ctype === "priest") return s; // its actions are counted as healing above
+            if ((f.heal || 0) > 0) return s; // a healer's actions are counted as healing above
             const d = f.damage_type === "magical" ? (m.resistance || 0) - (f.rpiercing || 0) : (m.armor || 0) - (f.apiercing || 0);
             return s + (f.attack || 0) * (f.frequency || 1) * util.damageMultiplier(d);
         }, 0);
