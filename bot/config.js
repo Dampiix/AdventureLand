@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.90.1",
+    version: "1.90.2",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -173,7 +173,8 @@ module.exports = {
     targeting: {
         // Player decision 2026-11-17 (night): the solo warrior farms CGoos overnight (gold for the
         // budget pots after the reset, XP to 68, gems); the Phoenix is still searched every 30 min.
-        farm: "cgoo",           // e.g. "squigtoad" to force a monster for everyone (null = guide)
+        // Test 2026-11-17 (late): the guide offers Boo Boos for the first time - solo test.
+        farm: "booboo",           // e.g. "squigtoad" to force a monster for everyone (null = guide)
         fallback: "goo",          // used when the progression guide has no answer
         // Farm only where every fighter's own guide calls the spot safe; routes the guide
         // only offers as a careful trial count once proven – by the guide's own fights, or
