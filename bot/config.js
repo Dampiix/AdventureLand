@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.72.3",
+    version: "1.72.4",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -126,8 +126,8 @@ module.exports = {
     },
 
     targeting: {
-        // Player decision 2026-11-17: White Wolves (test of the lone pulls); before: cgoo.
-        farm: "wolf",            // e.g. "squigtoad" to force a monster for everyone (null = guide)
+        // Player decision 2026-11-17: the guide again while the player is away (wolf test paused).
+        farm: null,            // e.g. "squigtoad" to force a monster for everyone (null = guide)
         fallback: "goo",          // used when the progression guide has no answer
         // Farm only where every fighter's own guide calls the spot safe; routes the guide
         // only offers as a careful trial count once proven – by the guide's own fights, or
