@@ -31,6 +31,16 @@ module.exports = function createSupply(ctx) {
         pendingSince = 0;
         noPotionsAt = data && data.potions === false ? Date.now() : 0;
     });
+    // While the merchant is on its way we keep farming and tell it where we are, so it
+    // follows us instead of walking to where we called from (player decision 2026-11-17:
+    // the Phoenix hunter was long gone and the merchant walked back to town every time).
+    let followUntil = 0;       // send our position until then (or until the merchant is done)
+    let lastPosAt = 0;
+    comms.on("served", function () { followUntil = 0; });
+    function sendPosition() {
+        lastPosAt = Date.now();
+        comms.send(merchant, "pos", { map: character.map, x: Math.round(character.x), y: Math.round(character.y) });
+    }
 
     function counts() {
         const n = util.potionNames(p);
@@ -110,6 +120,7 @@ module.exports = function createSupply(ctx) {
 
     function requestPickup(c) {
         lastRequest = Date.now();
+        followUntil = lastRequest + (s.followMs || 5 * 60 * 1000);
         if (!pendingSince) pendingSince = lastRequest;
         comms.send(merchant, "pickup", {
             map: character.map,
@@ -159,6 +170,8 @@ module.exports = function createSupply(ctx) {
 
         if (merchant && needsPickup(c) && now - lastRequest > s.requestEveryMs) {
             requestPickup(c);
+        } else if (merchant && followUntil > now && now - lastPosAt >= (s.positionEveryMs || 5000)) {
+            sendPosition();
         }
 
         // No merchant, no answer for a while, or it told us it has no potions for us.

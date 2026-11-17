@@ -45,6 +45,13 @@ module.exports = function createMerchant(ctx) {
         comms.send(from, "coming", { potions: canSupply(data.want) });
     });
 
+    // Position updates of a fighter we are walking to (see catchUp).
+    comms.on("pos", function (data, from) {
+        const r = requests.get(from);
+        if (!r || !data || !data.map) return;
+        r.map = data.map; r.x = data.x; r.y = data.y; r.posAt = Date.now();
+    });
+
     // At least half of every wanted potion type: in the bag or affordable above the reserve.
     function canSupply(want) {
         const spendable = Math.max(0, character.gold - util.goldAmount(m.goldReserve));
@@ -417,22 +424,51 @@ module.exports = function createMerchant(ctx) {
         }
     }
 
+    // Walk after a fighter that keeps farming (player decision 2026-11-17): towards the
+    // newest position we know - its live position while we see it, otherwise its last
+    // "pos" message - and re-route when it moved on. Returns the fighter once we are next
+    // to it, or null after followMs.
+    async function catchUp(name) {
+        const until = Date.now() + (m.followMs || 4 * 60 * 1000);
+        const newest = function () {
+            const seen = get_player(name);
+            if (seen && (!seen.map || seen.map === character.map)) return { map: character.map, x: seen.x, y: seen.y, seen: seen };
+            const r = requests.get(name);
+            return r ? { map: r.map, x: r.x, y: r.y } : null;
+        };
+        while (Date.now() < until) {
+            const dest = newest();
+            if (!dest) return null;
+            if (dest.seen && util.isNear(dest.seen, 200)) return dest.seen;
+            util.status("following " + name, "orange");
+            let done = false;
+            util.walk({ map: dest.map, x: dest.x, y: dest.y }).catch(function () { /* re-routed or blocked */ })
+                .then(function () { done = true; });
+            while (!done && Date.now() < until) {
+                await sleep(1000);
+                const now = newest();
+                if (now && now.seen && util.isNear(now.seen, 200)) { stop(); break; }
+                // It moved on: re-route (another map, or more than retargetPx away).
+                if (now && (now.map !== dest.map || Math.hypot(now.x - dest.x, now.y - dest.y) > (m.retargetPx || 150))) { stop(); break; }
+            }
+            for (let i = 0; i < 20 && !done; i++) await sleep(100); // let the interrupted walk settle
+            const here = newest();
+            if (here && here.seen && util.isNear(here.seen, 250)) return here.seen;
+            if (done && here && !here.seen && here.map === character.map && Math.hypot(here.x - character.x, here.y - character.y) < 100) {
+                await sleep(1000); // at its last known spot without seeing it: wait for the next update
+            }
+        }
+        return null;
+    }
+
     async function deliver(name) {
         const req = requests.get(name);
         util.status("delivering to " + name, "orange");
         try {
             if (atHome()) await restock(req.want);
-            await util.walk({ map: req.map, x: req.x, y: req.y });
-
-            // The fighter may have moved on: follow it once if it is visible.
-            let fighter = get_player(name);
-            if (fighter && !util.isNear(fighter, 200)) {
-                const p = util.xy(fighter);
-                await util.walk({ map: character.map, x: p.x, y: p.y });
-                fighter = get_player(name);
-            }
-            if (!fighter || !util.isNear(fighter, 250)) {
-                util.log("merchant", name + " not found at the pickup spot - waiting for a new request", "orange");
+            const fighter = await catchUp(name);
+            if (!fighter) {
+                util.log("merchant", "couldn't catch up with " + name + " - waiting for a new request", "orange");
                 return;
             }
 
@@ -445,6 +481,7 @@ module.exports = function createMerchant(ctx) {
             util.status("collecting from " + name, "orange");
             await sleep(m.handoverWaitMs); // the fighter hands over loot and gold while we stand here
             util.log("merchant", "pickup for " + name + " done", "green");
+            comms.send(name, "served", {});
         } catch (e) {
             util.log("merchant", "delivery to " + name + " failed: " + util.errReason(e), "red");
         } finally {

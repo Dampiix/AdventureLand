@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.88.5",
+    version: "1.89.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -330,7 +330,11 @@ module.exports = {
         pickupEveryMs: 15 * 60 * 1000,   // ask for a routine pickup this often
         firstPickupAfterMs: 60 * 1000,   // first routine pickup this long after the bot starts
         requestEveryMs: 60 * 1000,       // don't spam the merchant
-        merchantTimeoutMs: 3 * 60 * 1000 // no answer for this long -> buy potions yourself
+        merchantTimeoutMs: 3 * 60 * 1000, // no answer for this long -> buy potions yourself
+        // While the merchant is on its way we keep farming and send our position this often,
+        // for at most followMs after the request (player decision 2026-11-17).
+        positionEveryMs: 5000,
+        followMs: 5 * 60 * 1000,
     },
 
     // Fighters: equipment wishes from the progression guide + auto-equip
@@ -640,6 +644,10 @@ module.exports = {
         stockFromGold: 100000,
         goldReserve: { ratio: 0.2, min: 0, max: 1000000 }, // never spend below 20% of our gold (max 1M)
         handoverWaitMs: 10000,               // wait next to the fighter for its loot
+        // A pickup follows the fighter (its newest position) and re-routes once it moved more
+        // than retargetPx away; gives up after followMs (player decision 2026-11-17).
+        followMs: 4 * 60 * 1000,
+        retargetPx: 150,
         // Items the merchant sells to NPCs.
         // A plain name sells only +0 copies. { name, maxLevel } also sells
         // upgraded copies up to that level. Shiny and locked items are never sold.
