@@ -306,10 +306,16 @@ module.exports = function createWorkshop(ctx) {
         const floor = Math.max(util.goldAmount(config.merchantRole.goldReserve), cfg.keepGold || 0);
         if (character.gold - amount < floor) return false;
         if (k === GOALS) return goalBudget().allowed >= amount;
+        if (k === LADDER) return ladderBudget().allowed >= amount;
         return (spent[k] || 0) + amount <= budgetFor(k);
     }
 
     function pay(k, amount) {
+        if (k === LADDER) {
+            income.spends.push({ t: Date.now(), a: amount, k: LADDER });
+            saveIncome();
+            return;
+        }
         if (k === GOALS) {
             income.spends.push({ t: Date.now(), a: amount });
             income.total += amount;
@@ -330,6 +336,7 @@ module.exports = function createWorkshop(ctx) {
     // from the bank) shows up as one big jump between two samples: it is a transfer,
     // not income (budget.transferAbove), so the budget stays tied to real cash flow.
     const GOALS = "goals"; // budget key of the gear goals
+    const LADDER = "ladder"; // budget key of the weapon ladder (its own income share)
     const INCOME_KEY = "workshop_income:" + character.name;
     const DAY = 24 * 60 * 60 * 1000;
     const income = (function () {
@@ -373,9 +380,12 @@ module.exports = function createWorkshop(ctx) {
         const b = cfg.gearGoals.budget;
         if (!income.samples.length) return { allowed: 0, earned: 0, spent: 0, hours: 0, moved: 0 };
         const base = income.samples[0];
-        const spentInWindow = income.spends.reduce(function (sum, s) { return sum + s.a; }, 0);
+        // All workshop spending is put back into the income; the gear goals' share only
+        // counts their own spending (the weapon ladder has its own pot).
+        const spentAll = income.spends.reduce(function (sum, s) { return sum + s.a; }, 0);
+        const spentInWindow = income.spends.reduce(function (sum, s) { return s.k ? sum : sum + s.a; }, 0);
         const moved = transfers();
-        const earned = character.gold - base.gold + spentInWindow - moved;
+        const earned = character.gold - base.gold + spentAll - moved;
         // A player-granted extra (budget.extra: { amount, until }) on top of the income share,
         // e.g. to gear up a new character faster. What it pays for still counts as spent in
         // the 24 h window, so after it expires the income share has to catch up first.
@@ -383,6 +393,16 @@ module.exports = function createWorkshop(ctx) {
         let allowed = Math.max(0, earned * b.incomeShare + extra - spentInWindow);
         if (b.total) allowed = Math.min(allowed, Math.max(0, b.total - income.total));
         return { allowed: allowed, earned: earned, spent: spentInWindow, hours: (Date.now() - base.t) / 3600000, moved: moved };
+    }
+
+    // Weapon ladder budget (player decision 2026-11-17): its own share of the last 24 h of
+    // income (bruteForce.incomeShare) – no fixed amount, it grows with the account, and it
+    // keeps going while the gear goals' pot is empty after a player-granted extra.
+    function ladderBudget() {
+        const share = (cfg.bruteForce && cfg.bruteForce.incomeShare) || 0;
+        const spentLadder = income.spends.reduce(function (sum, s) { return s.k === LADDER ? sum + s.a : sum; }, 0);
+        const earned = goalBudget().earned;
+        return { allowed: Math.max(0, earned * share - spentLadder), earned: earned, spent: spentLadder };
     }
 
     // Grace budget per target level and 24 h (player decision 2026-11-16): a share of the
@@ -1960,7 +1980,7 @@ module.exports = function createWorkshop(ctx) {
             util.status("upgrading a spare " + name + " +" + best + " towards +" + target, "orange");
             util.log("workshop", "spare " + name + " +" + best + " -> +" + target + (capped ? " (kept there)" : " (weakest worn +" + (target - 1) + ")"), "white");
             try {
-                await develop("_brute", { name: name, level: target }, { budgetKey: GOALS, minChance: 0, spare: true });
+                await develop("_brute", { name: name, level: target }, { budgetKey: LADDER, minChance: 0, spare: true });
             } catch (e) {
                 const why = util.errReason(e);
                 util.log("workshop", name + " +" + target + ": " + why, "orange");
