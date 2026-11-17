@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.73.4",
+    version: "1.74.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -23,8 +23,9 @@ module.exports = {
         // weapons (firebow for the ranger). Party again 2026-11-17 for the firebow handover.
         // Solo again 2026-11-17: test run of the warrior alone on CGoos (Tiny Rubies).
         // Party again 2026-11-17: White Wolves to test the lone pulls.
-        // Solo: leader "DmpxWar", phase "solo".
-        leader: "DmpxPriest",
+        // Solo again 2026-11-17 (afternoon): the warrior hunts the Phoenix nonstop for firebows.
+        // Party: leader "DmpxPriest", phase "party".
+        leader: "DmpxWar",
         fighters: ["DmpxPriest", "DmpxWar", "DmpxRanger"],
         merchant: "DampiixMerch",                       // null for no merchant
         farm: {},                                       // optional per-character farm override, e.g. { DmpxRanger: "bee" }
@@ -32,7 +33,7 @@ module.exports = {
 
     // "solo":  only the leader fights (Lone Wolf bonus); the merchant still supports it.
     // "party": all fighters form a party around the leader.
-    phase: "party",
+    phase: "solo",
 
     party: {
         followDistance: 80,   // members idle within this distance of the leader
@@ -79,7 +80,7 @@ module.exports = {
         searchEveryMs: 30 * 60 * 1000,
         // Bosses hunted nonstop: searched again after farmBossEveryMs (player option
         // 2026-11-16; Phoenix: weapons and earrings, about half the XP/h of crocs).
-        farmBosses: [],                 // e.g. ["phoenix"] for a nonstop hunt (solo warrior 2026-11-17)
+        farmBosses: ["phoenix"],        // nonstop Phoenix hunt (solo warrior, firebows, 2026-11-17)
         farmBossEveryMs: 60 * 1000,
         searchSpotMs: 4000,             // look around this long at each spawn area
         // Boss check (bosses only; the guide never calls them safe): from everyone's stats
@@ -126,8 +127,8 @@ module.exports = {
     },
 
     targeting: {
-        // Player decision 2026-11-17: White Wolves again (lone-pull test with the hold fix).
-        farm: "wolf",            // e.g. "squigtoad" to force a monster for everyone (null = guide)
+        // Player decision 2026-11-17: the guide picks between the Phoenix hunts (wolf test done).
+        farm: null,            // e.g. "squigtoad" to force a monster for everyone (null = guide)
         fallback: "goo",          // used when the progression guide has no answer
         // Farm only where every fighter's own guide calls the spot safe; routes the guide
         // only offers as a careful trial count once proven – by the guide's own fights, or
