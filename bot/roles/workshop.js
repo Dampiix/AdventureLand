@@ -812,6 +812,7 @@ module.exports = function createWorkshop(ctx) {
             return Array.isArray(t) && t.some(function (d) { return d && d[1] === name; }) && G.items[src];
         });
         if (!sources.length) return false;
+        if ((ex.hold || []).includes(sources[0])) return false; // hoarded for a later batch
         if (bankSnapshot && bankSnapshot.free < (ex.onDemandBankFree || 10)) {
             util.log("workshop", "would open " + sources[0] + " for " + name + " but the bank is nearly full", "orange");
             return false;
@@ -860,6 +861,7 @@ module.exports = function createWorkshop(ctx) {
         for (const name of ex.items) {
             const def = G.items[name];
             if (!def || blockedUntil["exchange:" + name] > now) continue;
+            if ((ex.hold || []).includes(name)) continue; // hoarded for a later batch
             const need = def.e || 1;
             if (character.esize < ex.keepFree) return false;
 
@@ -2151,6 +2153,9 @@ module.exports = function createWorkshop(ctx) {
             if (await bruteForceSpares()) return;
             if (await upgradeBoxArmor()) return;
             if (await workOnGoals()) return;
+            // Exchanging used to wait for a moment without open wishes – with the Rugged
+            // wishes that never came, and 45 Tiny Rubies piled up (2026-11-17).
+            if (await autoExchange()) return;
         }
 
         const job = open[0];

@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.69.4",
+    version: "1.70.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -123,7 +123,8 @@ module.exports = {
     },
 
     targeting: {
-        farm: null,              // e.g. "squigtoad" to force a monster for everyone (null = guide)
+        // Player decision 2026-11-17: Irradiated Goo for Tiny Rubies (armor boxes later).
+        farm: "cgoo",            // e.g. "squigtoad" to force a monster for everyone (null = guide)
         fallback: "goo",          // used when the progression guide has no answer
         // Farm only where every fighter's own guide calls the spot safe; routes the guide
         // only offers as a careful trial count once proven – by the guide's own fights, or
@@ -502,6 +503,10 @@ module.exports = {
             // Opened only when a wished item comes out of them (Rugged armor), a few at a
             // time and only while the bank has room for the other rewards (2026-11-16).
             onDemand: ["armorbox"], onDemandBatch: 3, onDemandBankFree: 10,
+            // Hoarded, not exchanged or opened (player decision 2026-11-17: collect gems and
+            // boxes from CGoo, then exchange, open and upgrade in one big batch). Empty the
+            // list for the big batch.
+            hold: ["gem0", "gem1", "armorbox"],
             batch: 10,     // exchanges per round, so deliveries are not delayed for long
             keepFree: 8,   // stop while fewer bag slots are free (rewards need room)
         },
