@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.74.2",
+    version: "1.75.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -66,13 +66,17 @@ module.exports = {
             // 5%, int/str/dex earrings 10% each, Dracul's Attire 3%, void thread 10%. Not
             // cooperative: never taken from another player who fights it.
             mvampire: "always",
+            // Jr. (Spooky Town; player request 2026-11-17): drops the orange Lolipop Mace (+24 STR,
+            // explosion splash) on every kill – a warrior weapon for the Agitate mode. 3,200 HP,
+            // 80% evasion, weak magical hits, cooperative; respawns after ~5-9 h.
+            jr: "always",
             crabxx: "never", franky: "never", icegolem: "never",
             horseman: "never", abtesting: "never",
             graveyard: "always",          // Halloween: zombies/ghouls in Spooky Town's graveyard – Bones (2026-11-16)
         },
         // "always" only applies once every fighter has reached this level
-        minLevel: { phoenix: 40, goobrawl: 20, snowman: 10, graveyard: 40, mvampire: 50 },
-        search: ["phoenix", "mvampire"], // roaming bosses the leader looks for
+        minLevel: { phoenix: 40, goobrawl: 20, snowman: 10, graveyard: 40, mvampire: 50, jr: 40 },
+        search: ["phoenix", "mvampire", "jr"], // roaming bosses the leader looks for
         // Search again this long after a miss or a kill (player decision 2026-11-15: 30 min,
         // the walk costs farm time). Respawn times (game source): the Phoenix (respawn 32)
         // comes back ~32 s after its death at a random one of its 5 spots; Dracul (1080)
