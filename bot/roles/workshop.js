@@ -298,8 +298,16 @@ module.exports = function createWorkshop(ctx) {
         if (character.esize < 1) throw { reason: "bag full" };
         await util.walk("bank");
         readBank();
-        const fresh = bankSnapshot.items.find(function (b) { return b.pack === entry.pack && b.index === entry.index && b.name === entry.name; });
+        let fresh = bankSnapshot.items.find(function (b) { return b.pack === entry.pack && b.index === entry.index && b.name === entry.name; });
+        // An older snapshot (we took a copy since, or the player moved things): any slot with
+        // the same item and level will do - the wish used to pause for an hour (2026-11-17).
+        if (!fresh) {
+            fresh = bankSnapshot.items.find(function (b) {
+                return b.name === entry.name && b.level === entry.level && (b.stat || null) === (entry.stat || null);
+            });
+        }
         if (!fresh) throw { reason: entry.name + " moved in the bank" };
+        entry = fresh;
         await bank_retrieve(entry.pack, entry.index);
         util.log("workshop", "took " + entry.name + (entry.q > 1 ? " x" + entry.q : " +" + entry.level) + " from the bank", "green");
         readBank();
