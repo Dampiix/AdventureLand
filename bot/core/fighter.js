@@ -213,8 +213,11 @@ module.exports = function createFighter(ctx, cls) {
             // A monster on its way to a party member (e.g. the priest pulled it): meet it at
             // that member instead of running to where the monster was – the warrior ran past
             // the incoming White Wolf deeper into the spawn (2026-11-17). Taunt (range 200)
-            // takes it over once we are close.
-            const victimName = target.target && target.target !== character.name && party.memberNames().includes(target.target) ? target.target : null;
+            // takes it over once we are close. Melee only: the priest followed the wolf to
+            // the warrior after the Taunt – into the spawn (2026-11-17); ranged fighters just
+            // close in to their range.
+            const melee = ((config.targeting.melee || {}).classes || []).includes(character.ctype);
+            const victimName = melee && target.target && target.target !== character.name && party.memberNames().includes(target.target) ? target.target : null;
             const victim = victimName ? get_player(victimName) : null;
             if (victim && !victim.rip) {
                 util.status("moving to " + victimName, "orange");
