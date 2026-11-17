@@ -138,6 +138,10 @@ module.exports = function createWorkshop(ctx) {
         const p = npcPos(npcId);
         if (!p) throw { reason: "npc " + npcId + " not found" };
         if (character.map === p.map && util.distanceTo(p) < 100) return;
+        // At the market stand: NPCs within the server's 400 px are used from there (the
+        // stand stays open, Merrit's two minutes keep running).
+        const st = config.merchantRole.stand || {};
+        if (character.stand && character.map === p.map && util.distanceTo(p) < (st.reach || 390)) return;
         await smart_move(p);
     }
 
@@ -2260,5 +2264,11 @@ module.exports = function createWorkshop(ctx) {
         classOf: function (fighter) { return classes[fighter] || null; },
         oneEachFor: oneEachFor,
         markCarried: function (fighter, item) { (carries[fighter] = carries[fighter] || {})[item] = true; },
+        // Units of an item we hold (bag + last bank snapshot), e.g. for the stand's buy orders.
+        ownedCount: function (name) {
+            const bag = character.items.reduce(function (s, i) { return i && i.name === name ? s + (i.q || 1) : s; }, 0);
+            const bank = bankSnapshot ? bankSnapshot.items.reduce(function (s, b) { return b.name === name ? s + (b.q || 1) : s; }, 0) : 0;
+            return bag + bank;
+        },
     };
 };

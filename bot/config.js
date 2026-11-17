@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.80.1",
+    version: "1.81.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -87,7 +87,7 @@ module.exports = {
         searchEveryMs: 30 * 60 * 1000,
         // Bosses hunted nonstop: searched again after farmBossEveryMs (player option
         // 2026-11-16; Phoenix: weapons and earrings, about half the XP/h of crocs).
-        farmBosses: ["phoenix"],        // nonstop Phoenix hunt (solo warrior, firebows, 2026-11-17)
+        farmBosses: [],                 // e.g. ["phoenix"] for the nonstop hunt (off for the spider farm, 2026-11-17)
         // 10 s (player decision 2026-11-17): in the old 60 s the warrior seldom even reached his
         // farm spot; now he goes straight back on the round after a kill or an empty search.
         farmBossEveryMs: 10 * 1000,
@@ -558,7 +558,7 @@ module.exports = {
             // Hoarded, not exchanged or opened (player decision 2026-11-17: collect gems and
             // boxes from CGoo, then exchange, open and upgrade in one big batch). Empty the
             // list for the big batch.
-            hold: ["gem0", "gem1", "armorbox"],
+            hold: ["gem0", "gem1", "armorbox", "marketparcel"], // + Merrit's parcels (collected first, 2026-11-17)
             batch: 10,     // exchanges per round, so deliveries are not delayed for long
             keepFree: 8,   // stop while fewer bag slots are free (rewards need room)
         },
@@ -566,6 +566,27 @@ module.exports = {
 
     // Merchant role
     merchantRole: {
+        // Market stand (player decision 2026-11-17): with a Merchant Stand (stand0, bought by
+        // hand) the merchant's home is a spot on the town square with the stand open - buy
+        // orders for what we want, and Merrit's hourly Market Parcel for keeping a shop there
+        // two minutes. From there upgrade, compound, Xyn, Lucas and the potion shop are within
+        // the server's 400 px, so he only closes the stand for the bank, deliveries and crafts.
+        // Square: x -240..240, y -120..144; 40+ px from fixed NPCs (Merrit's rules).
+        stand: {
+            enabled: true,
+            home: { x: -120, y: -112 },
+            reach: 390,               // NPCs this close are used without walking (server: 400)
+            // Buy orders (name, exact level for upgradeable items, quantity, price per unit).
+            // An Essence of Fire is a full fire weapon (+ a shop weapon and 20k at Leo).
+            buyOrders: [
+                { name: "essenceoffire", q: 10, price: 140000 },
+                { name: "firebow", level: 0, q: 5, price: 160000 },
+                { name: "ololipop", level: 0, q: 4, price: 50000 },
+                { name: "offeringp", q: 2, price: 350000 },
+                { name: "leather", q: 40, price: 5000 },
+                { name: "crossbow", level: 0, q: 1, price: 400000 },
+            ],
+        },
         // Potion stock: potions.target per fighter using a size (at most stockPerPotion),
         // only built while we have stockFromGold – below that, gold goes to equipment
         // first and deliveries buy just what is needed.
@@ -639,6 +660,7 @@ module.exports = {
                 "tracker",
                 "scroll0", "scroll1", "scroll2", "cscroll0", "cscroll1", "cscroll2",
                 "essenceoflife", "poison", // skill ingredients for priests / rangers
+                "stand0", "stand1",        // the market stand stays in the bag
             ],
         },
     },

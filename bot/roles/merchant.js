@@ -60,15 +60,80 @@ module.exports = function createMerchant(ctx) {
         else if (util.mpRatio() < 0.2) use_skill("use_mp").catch(function () {});
     }
 
+    // ---- market stand (config.merchantRole.stand) ----------------------------------
+    const st = m.stand || {};
+    function standIndex() {
+        return util.findItemIndex(function (i) { return G.items[i.name] && G.items[i.name].type === "stand"; });
+    }
+    function useStand() {
+        return !!st.enabled && !!st.home && standIndex() !== -1;
+    }
+    // A stand slows us to a crawl: every walk closes it first (smart_move is used by the
+    // workshop, deliveries and the bank alike).
+    const rawSmartMove = smart_move;
+    function closeStand() {
+        if (!character.stand) return;
+        try {
+            if (typeof close_stand === "function") close_stand();
+            else parent.close_merchant();
+        } catch (e) { /* closed anyway on the next try */ }
+    }
+    smart_move = function () {
+        closeStand();
+        return rawSmartMove.apply(null, arguments);
+    };
+    let nextOrdersAt = 0;
+    // Open the stand at home and keep the buy orders listed (exact name and level).
+    function keepStand() {
+        if (!useStand() || !atHome()) return;
+        if (!character.stand) {
+            try {
+                if (typeof open_stand === "function") open_stand(standIndex());
+                else parent.open_merchant(standIndex());
+            } catch (e) { util.log("merchant", "opening the stand failed: " + util.errReason(e), "orange"); }
+            nextOrdersAt = Date.now() + 2000; // let the trade slots appear first
+            return;
+        }
+        if (Date.now() < nextOrdersAt) return;
+        nextOrdersAt = Date.now() + 60 * 1000;
+        const slots = Object.keys(character.slots || {}).filter(function (s) { return s.indexOf("trade") === 0 && !isNaN(+s.slice(5)); });
+        (st.buyOrders || []).forEach(function (o) {
+            if (!G.items[o.name]) return;
+            const level = o.level || 0;
+            const listed = slots.some(function (s) {
+                const it = character.slots[s];
+                return it && it.b && it.name === o.name && (it.level || 0) === level;
+            });
+            if (listed || character.gold < o.price) return; // a buy order must be funded
+            // q is the stock we want: only the missing units are ordered (bag + bank).
+            const missing = (o.q || 1) - workshop.ownedCount(o.name);
+            if (missing <= 0) return;
+            const free = slots.find(function (s) { return !character.slots[s]; });
+            if (!free) return;
+            character.slots[free] = { name: o.name, b: true }; // claimed until the server answers
+            parent.socket.emit("trade_wishlist", { slot: free, name: o.name, level: level, q: missing, price: o.price });
+            util.log("merchant", "buy order: " + missing + "x " + o.name + (G.items[o.name].upgrade ? " +" + level : "") + " at " + o.price, "white");
+        });
+    }
+
+    function homeSpot() {
+        return useStand() ? { map: "main", x: st.home.x, y: st.home.y } : null;
+    }
     function atHome() {
+        const spot = homeSpot();
+        if (spot) return character.map === "main" && util.distanceTo(spot) < 15;
         const shop = (G.maps.main.npcs || []).find(function (n) { return n.id === "fancypots"; });
         return character.map === "main" && shop && util.distanceTo({ x: shop.position[0], y: shop.position[1] }) < 200;
     }
 
     async function goHome() {
-        if (atHome()) return;
-        util.status("going to town", "yellow");
-        await smart_move({ to: "potions" });
+        if (!atHome()) {
+            util.status("going to town", "yellow");
+            const spot = homeSpot();
+            if (spot) await smart_move(spot);
+            else await smart_move({ to: "potions" });
+        }
+        keepStand();
     }
 
     // sellList entries: "name" (only +0) or { name, maxLevel }.
@@ -364,7 +429,8 @@ module.exports = function createMerchant(ctx) {
                 await goHome();
                 await restock();
             }
-            util.status("ready in town", "white");
+            keepStand();
+            util.status(character.stand ? "stand open" : "ready in town", "white");
         } catch (e) {
             util.log("merchant", "work failed: " + util.errReason(e), "red");
             await sleep(5000);
