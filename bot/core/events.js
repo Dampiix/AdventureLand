@@ -224,12 +224,22 @@ module.exports = function createEvents(ctx) {
             util.log("event", "searching " + name, "yellow");
             for (const spot of spawnSpots(name)) {
                 util.status("searching " + name + " (" + spot.map + ")", "yellow");
-                try {
-                    await smart_move(spot);
-                } catch (e) {
-                    util.log("event", "can't reach " + spot.map + " (" + util.errReason(e) + ") - next spot", "orange");
-                    continue;
+                // Stopped on the way (the handover to the merchant at his stand stands us
+                // still) is no reason to skip a spawn area: walk on to the same spot again.
+                // Dracul's first area was skipped that way (2026-11-17).
+                let reached = false;
+                for (let attempt = 0; attempt < 3 && !reached; attempt++) {
+                    try {
+                        await smart_move(spot);
+                        reached = true;
+                    } catch (e) {
+                        const reason = util.errReason(e);
+                        if (/interrupt|stop/i.test(reason) && attempt < 2) { await sleep(1500); continue; }
+                        util.log("event", "can't reach " + spot.map + " (" + reason + ") - next spot", "orange");
+                        break;
+                    }
                 }
+                if (!reached) continue;
                 await sleep(cfg.searchSpotMs);
                 if (get_nearest_monster({ type: name })) {
                     boss = { name: name, seenAt: Date.now() };
