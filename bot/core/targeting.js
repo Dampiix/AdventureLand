@@ -783,7 +783,10 @@ module.exports = function createTargeting(ctx) {
 
     function pick(farmTarget) {
         const current = get_targeted_monster();
-        if (isValid(current)) return current;
+        // A lone pull we are still walking up to must stay alone until it is engaged: the
+        // White Wolf wandered deeper into the pack while the priest followed it (2026-11-17).
+        // Dropped, we hold (waitForLone) until it – or another one – stands alone again.
+        if (isValid(current) && !(!current.target && aggressive(current) && !isolated(current))) return current;
 
         const attacker = nearestPartyAttacker();
         if (attacker && !util.tooSpiky(config, attacker)) return attacker;
