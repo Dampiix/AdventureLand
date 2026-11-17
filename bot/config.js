@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.66.3",
+    version: "1.66.4",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -467,9 +467,9 @@ module.exports = {
             // would cap everything ever spent on gear goals.
             budget: {
                 incomeShare: 0.5, transferAbove: 3000000,
-                // Player decision 2026-11-17: 10M more to spend until 09:00 German time. The extra
-                // counts against the last 24 h of spending (16M by then), so 15M leaves ~10M free.
-                extra: { amount: 15000000, until: "2026-11-17T08:00:00Z" },
+                // Player decision 2026-11-17 (08:45): 10M more for 12 h. The extra counts against
+                // the last 24 h of spending (~9.4M over the income share), so 20M leaves ~10M free.
+                extra: { amount: 20000000, until: "2026-11-17T19:45:17Z" },
             },
         },
         // Fixed wishes on top of the guide's. Items without a shop are bought with tokens
