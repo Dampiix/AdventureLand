@@ -175,6 +175,14 @@ module.exports = function createFighter(ctx, cls) {
         return true;
     }
 
+    // Walk to a point; a new order only when standing or the point moved 40+ px.
+    let moveDest = null;
+    function moveTo(p) {
+        if (is_moving(character) && moveDest && Math.hypot(moveDest.x - p.x, moveDest.y - p.y) < 40) return;
+        moveDest = { x: p.x, y: p.y };
+        xmove(p.x, p.y);
+    }
+
     function handleCombat() {
         if (resting()) return;
         const farm = targeting.currentFarm();
@@ -202,13 +210,23 @@ module.exports = function createFighter(ctx, cls) {
         endSearchWalk();
 
         if (!is_in_range(target)) {
+            // A monster on its way to a party member (e.g. the priest pulled it): meet it at
+            // that member instead of running to where the monster was – the warrior ran past
+            // the incoming White Wolf deeper into the spawn (2026-11-17). Taunt (range 200)
+            // takes it over once we are close.
+            const victimName = target.target && target.target !== character.name && party.memberNames().includes(target.target) ? target.target : null;
+            const victim = victimName ? get_player(victimName) : null;
+            if (victim && !victim.rip) {
+                util.status("moving to " + victimName, "orange");
+                const v = util.xy(victim);
+                if (util.distanceTo(victim) > 40) moveTo(v);
+                return;
+            }
             util.status("moving to " + target.mtype, "orange");
             if (cls.move && cls.move(target)) return; // e.g. Warrior Dash closed the gap
-            if (!is_moving(character)) {
-                // Aggressive ones: only up to our range, not into them (and past their friends).
-                if (targeting.aggressive(target)) { const p = targeting.standPoint(target); xmove(p.x, p.y); }
-                else util.moveToEntity(target);
-            }
+            // Aggressive ones: only up to our range, not into them (and past their friends).
+            // The point follows the monster (it was only set once, when we stood still).
+            moveTo(targeting.aggressive(target) ? targeting.standPoint(target) : util.xy(target));
             return;
         }
 
