@@ -105,9 +105,13 @@ module.exports = function createFighter(ctx, cls) {
 
     // A target in sight ends the search walk: smart_move kept walking to the middle of the
     // spawn while we fought on the way – into the White Wolf pack (2026-11-17).
+    // Only our own search walk is stopped: the way to a target behind a wall is a smart_move
+    // too (xmove), and stopping that every tick left the team standing in town (2026-11-17).
+    let searchWalk = 0;          // id of the running search walk, 0 = none
     let stoppedOnPurpose = false;
     function endSearchWalk() {
-        if (typeof smart === "undefined" || !smart.moving) return;
+        if (!searchWalk || typeof smart === "undefined" || !smart.moving) return;
+        searchWalk = 0;
         stoppedOnPurpose = true;
         stop();
     }
@@ -115,7 +119,12 @@ module.exports = function createFighter(ctx, cls) {
     function travel(destination, label) {
         util.status(label, "yellow");
         if (!is_moving(character)) {
-            smart_move(destination).catch(function (e) {
+            const id = Date.now();
+            searchWalk = id;
+            smart_move(destination).then(function () {
+                if (searchWalk === id) searchWalk = 0;
+            }).catch(function (e) {
+                if (searchWalk === id) searchWalk = 0;
                 if (stoppedOnPurpose) { stoppedOnPurpose = false; return; } // we stopped it for a target
                 util.log("move", "route to " + JSON.stringify(destination) + " failed: " + util.errReason(e), "red");
             });
