@@ -71,11 +71,57 @@ function errReason(e) {
     return (e && (e.reason || e.message)) || String(e);
 }
 
+// The game's status box shows only ~13 characters (player request 2026-11-17): every
+// status is shortened here, the details stay in the log. Applied in order.
+const SHORT = [
+    [/ \([^)]*\)/g, ""],                     // details in brackets
+    [/\bDampiixMerch\b/g, "Merch"], [/\bDmpxPriest\b/g, "Pri"], [/\bDmpxRanger\b/g, "Rng"], [/\bDmpx(\w+)/g, "$1"],
+    [/ for [A-Z]\w*$/, ""],                     // "... for Pri"
+    [/^dead - a priest is reviving me$/, "dead: revive"],
+    [/^dead - waiting to respawn$/, "dead: respawn"],
+    [/^searching /, "find "],
+    [/^waiting for monsters$/, "wait mobs"],
+    [/^waiting for a lone /, "lone? "],
+    [/^moving to /, "> "],
+    [/^(warrior|priest|ranger|paladin|rogue|mage): /, "hit "],
+    [/^visiting Daisy$/, "Daisy"],
+    [/^at Daisy, waiting for .*/, "Daisy: wait"],
+    [/^walking to Daisy$/, "> Daisy"],
+    [/^following /, "follow "],
+    [/^waiting near /, "near "],
+    [/^waiting for /, "wait "],
+    [/^buying potions$/, "buy pots"],
+    [/^going to town$/, "> town"],
+    [/^delivering to /, "give "],
+    [/^collecting from /, "collect "],
+    [/^ready in town$/, "ready"],
+    [/^compounding /, "cmp "],
+    [/^bank full - not exchanging$/, "bank full!"],
+    [/^exchanging /, "exch "],
+    [/^upgrading (a )?spare /, "up "],
+    [/^upgrading /, "up "],
+    [/ towards \+/, ">+"],
+    [/ to \+/, " +"],
+    [/^(\w+) scroll for /, "$1 "],            // "str scroll for coat1"
+    [/^trying /, "try "],
+    [/^gear goal: /, "do "],
+    [/^crafting /, "craft "],
+    [/^buying /, "buy "],
+    [/^checking the bank$/, "check bank"],
+    [/^working on /, "do "],
+    [/^up (\S+) \+(\d+)>\+(\d+)$/, "$1 $2>$3"], // "helmet1 3>7"
+    [/ \+(\d)/g, "+$1"],                // "intring+3"
+];
+function shortStatus(text) {
+    return SHORT.reduce(function (t, r) { return t.replace(r[0], r[1]); }, String(text));
+}
+
 let lastStatus = "";
 function status(text, color) {
-    if (text === lastStatus) return;
-    lastStatus = text;
-    set_message(text, color || "white");
+    const short = shortStatus(text);
+    if (short === lastStatus) return;
+    lastStatus = short;
+    set_message(short, color || "white");
 }
 
 function log(tag, text, color) {
