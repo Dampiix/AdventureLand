@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.64.3",
+    version: "1.65.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -262,7 +262,7 @@ module.exports = {
     gear: {
         enabled: true,
         wishEveryMs: 5 * 60 * 1000, // re-read the guide and resend wishes this often
-        maxWishes: 8,   // a longer list shifts less (the merchant works through it one by one)
+        maxWishes: 12,  // class chains alone are up to 9 (ring, earring, belt, orb, cape, five Rugged pieces)   // a longer list shifts less (the merchant works through it one by one)
         // Wishes per class ("all" = every class) for slots the guide leaves empty. An entry
         // is one item or a chain { steps: [...] }: only the first step the worn piece does
         // not reach is wished, a piece of a later step (e.g. a lucky drop) counts for the
@@ -283,6 +283,8 @@ module.exports = {
         // Priest and ranger: a main-stat belt (+4 at +0, +10 at +2) replaces the HP belt right
         // away. Stat belts only drop in Spooky Town (map drop) – the wish waits until a spot
         // there is safe.
+        // Rings and earrings to +3 (player decision 2026-11-17): +2 first, then +3 for both
+        // slots of each (+3 needs ~91 copies at +0 per piece - Phoenix earrings, Winterland rings).
         // Rings (player decision 2026-11-16): two stat rings +2 in the class's main stat
         // (+6) replace the Rings of Small Joys +2 (+3 STR/INT/DEX, +15 resistance) – at +0/+1
         // they are no better. Delivered only complete (+2), worn over a Ring of Joy right away
@@ -295,7 +297,8 @@ module.exports = {
             // (+3 to every main stat, 3 copies), then the class orb (+4 main stat already at +0).
             paladin: [
                 { steps: [{ name: "orbg", level: 0 }, { name: "orbg", level: 1 }, { name: "orbofstr", level: 0 }] }, // Fire Spirit
-                { steps: [{ name: "strring", level: 2 }], replace: true, anytime: true },
+                { steps: [{ name: "strring", level: 2 }, { name: "strring", level: 3 }], replace: true, anytime: true },
+                { steps: [{ name: "strearring", level: 2 }, { name: "strearring", level: 3 }], replace: true, anytime: true },
                 { steps: [{ name: "hpbelt", level: 1 }, { name: "hpbelt", level: 2 }] },
                 { steps: [{ name: "helmet1", level: 7 }], replace: true },
                 { steps: [{ name: "gloves1", level: 7 }], replace: true },
@@ -305,7 +308,8 @@ module.exports = {
             ],
             priest: [
                 { steps: [{ name: "orbg", level: 0 }, { name: "orbg", level: 1 }, { name: "orbofint", level: 0 }] }, // big Pom Pom (level2n)
-                { steps: [{ name: "intring", level: 2 }], replace: true, anytime: true },
+                { steps: [{ name: "intring", level: 2 }, { name: "intring", level: 3 }], replace: true, anytime: true },
+                { steps: [{ name: "intearring", level: 2 }, { name: "intearring", level: 3 }], replace: true, anytime: true },
                 { steps: [{ name: "intbelt", level: 0 }, { name: "intbelt", level: 1 }, { name: "intbelt", level: 2 }], replace: true, anytime: true },
             ],
             // The offhand is a second weapon (dual wield, handled by gear/workshop).
@@ -313,7 +317,8 @@ module.exports = {
             // mwpants 11, mwarmor 12, mwboots 15 tokens; replace at +7).
             warrior: [
                 { steps: [{ name: "orbg", level: 0 }, { name: "orbg", level: 1 }, { name: "orbofstr", level: 0 }] }, // Fire Spirit
-                { steps: [{ name: "strring", level: 2 }], replace: true, anytime: true },
+                { steps: [{ name: "strring", level: 2 }, { name: "strring", level: 3 }], replace: true, anytime: true },
+                { steps: [{ name: "strearring", level: 2 }, { name: "strearring", level: 3 }], replace: true, anytime: true },
                 { steps: [{ name: "hpbelt", level: 1 }, { name: "hpbelt", level: 2 }] },
                 { steps: [{ name: "helmet1", level: 7 }], replace: true },
                 { steps: [{ name: "gloves1", level: 7 }], replace: true },
@@ -326,7 +331,8 @@ module.exports = {
                 // a second copy; the worn +0 stays until it is done.
                 { steps: [{ name: "quiver", level: 0 }, { name: "quiver", level: 7 }] },
                 { steps: [{ name: "orbg", level: 0 }, { name: "orbg", level: 1 }, { name: "orbofdex", level: 0 }] }, // Fire Spirit
-                { steps: [{ name: "dexring", level: 2 }], replace: true, anytime: true },
+                { steps: [{ name: "dexring", level: 2 }, { name: "dexring", level: 3 }], replace: true, anytime: true },
+                { steps: [{ name: "dexearring", level: 2 }, { name: "dexearring", level: 3 }], replace: true, anytime: true },
                 { steps: [{ name: "dexbelt", level: 0 }, { name: "dexbelt", level: 1 }, { name: "dexbelt", level: 2 }], replace: true, anytime: true },
             ],
         },
