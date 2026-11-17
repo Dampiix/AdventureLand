@@ -89,23 +89,54 @@ module.exports = function createMerchant(ctx) {
         const count = character.level >= 80 ? 30 : character.level >= 70 ? 24 : 16;
         const slots = [];
         for (let i = 1; i <= count; i++) slots.push("trade" + i);
-        (st.buyOrders || []).forEach(function (o) {
-            if (!G.items[o.name]) return;
+        const market = config.market || {};
+        const lvlText = function (name, level) { return G.items[name].upgrade || G.items[name].compound ? " +" + level : ""; };
+        // Buy orders: what is missing up to "want" (bag + bank).
+        (market.buy || []).forEach(function (o) {
+            if (!G.items[o.item]) return;
             const level = o.level || 0;
             const listed = slots.some(function (s) {
                 const it = character.slots[s];
-                return it && it.b && it.name === o.name && (it.level || 0) === level;
+                return it && it.b && it.name === o.item && (it.level || 0) === level;
             });
             if (listed || character.gold < o.price) return; // a buy order must be funded
-            // q is the stock we want: only the missing units are ordered (bag + bank).
-            const missing = (o.q || 1) - workshop.ownedCount(o.name);
+            const missing = (o.want || 1) - workshop.ownedCount(o.item);
             if (missing <= 0) return;
             const free = slots.find(function (s) { return !character.slots[s]; });
             if (!free) return;
-            character.slots[free] = { name: o.name, b: true }; // claimed until the server answers
-            parent.socket.emit("trade_wishlist", { slot: free, name: o.name, level: level, q: missing, price: o.price });
-            util.log("merchant", "buy order: " + missing + "x " + o.name + (G.items[o.name].upgrade ? " +" + level : "") + " at " + o.price, "white");
+            character.slots[free] = { name: o.item, b: true }; // claimed until the server answers
+            parent.socket.emit("trade_wishlist", { slot: free, name: o.item, level: level, q: missing, price: o.price });
+            util.log("merchant", "buy order: " + missing + "x " + o.item + lvlText(o.item, level) + " at " + o.price, "white");
         });
+        // Sell orders: everything above "keep", from the bag (bank items come on the next
+        // bank trip). One listing per item at a time; a stack goes in with its surplus.
+        (market.sell || []).forEach(function (o) {
+            if (!G.items[o.item]) return;
+            const level = o.level || 0;
+            const listed = slots.some(function (s) {
+                const it = character.slots[s];
+                return it && !it.b && it.name === o.item && (it.level || 0) === level;
+            });
+            if (listed) return;
+            const surplus = workshop.ownedCount(o.item) - (o.keep || 0);
+            if (surplus <= 0) return;
+            const idx = util.findItemIndex(function (i) {
+                return i.name === o.item && (i.level || 0) === level && !i.l && !i.p && !workshop.isReserved(i);
+            });
+            if (idx === -1) return;
+            const free = slots.find(function (s) { return !character.slots[s]; });
+            if (!free) return;
+            const item = character.items[idx];
+            const q = Math.min(surplus, item.q || 1);
+            character.slots[free] = { name: o.item, price: o.price }; // claimed until the server answers
+            trade(idx, free, o.price, q);
+            util.log("merchant", "sell order: " + q + "x " + o.item + lvlText(o.item, level) + " at " + o.price, "white");
+        });
+    }
+    // Surplus of a market sell item (above "keep"), counted over bag, bank and listings.
+    function marketSurplus(name, level) {
+        const o = ((config.market || {}).sell || []).find(function (s) { return s.item === name && (s.level || 0) === (level || 0); });
+        return o ? workshop.ownedCount(name) - (o.keep || 0) : 0;
     }
 
     // ---- fishing (config.merchantRole.gather.fishing) --------------------------------
@@ -382,6 +413,7 @@ module.exports = function createMerchant(ctx) {
         if (!item || isSellable(item) || workshop.isReserved(item) || workshop.isGoalFinished(item)) return false;
         if (G.items[item.name] && G.items[item.name].type === "pot") return false; // potion stock stays with us
         if (m.bank.keep.includes(item.name)) return false;
+        if (marketSurplus(item.name, item.level) > 0) return false; // waits for a slot in the stand
         const gifts = [].concat.apply([], Object.values(m.give || {}));
         return !gifts.includes(item.name);
     }
@@ -436,6 +468,19 @@ module.exports = function createMerchant(ctx) {
             }
         }
         if (taken) util.log("merchant", "took " + taken + " junk stacks out of the bank to sell", "green");
+        // Market sell items (config.market.sell) above "keep": into the bag for the stand.
+        for (const pack of Object.keys(character.bank || {})) {
+            if (!/^items\d+$/.test(pack)) continue;
+            const items = character.bank[pack] || [];
+            for (let i = 0; i < items.length; i++) {
+                if (character.esize <= 3) break;
+                if (!items[i] || marketSurplus(items[i].name, items[i].level) <= 0) continue;
+                try {
+                    await bank_retrieve(pack, i);
+                    util.log("merchant", "took " + items[i].name + " from the bank for the stand", "green");
+                } catch (e) { /* next time */ }
+            }
+        }
         return taken;
     }
 

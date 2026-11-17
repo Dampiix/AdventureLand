@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.86.3",
+    version: "1.87.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -30,6 +30,27 @@ module.exports = {
         fighters: ["DmpxPriest", "DmpxWar", "DmpxRanger"],
         merchant: "DampiixMerch",                       // null for no merchant
         farm: {},                                       // optional per-character farm override, e.g. { DmpxRanger: "bee" }
+    },
+
+    // Market stand (player decision 2026-11-17): what the merchant buys and sells at his stand.
+    //   buy:  { item, price, want, level? }  - a buy order for what is missing up to "want"
+    //         (bag + bank are counted); level for upgradeable items, default +0.
+    //   sell: { item, price, keep, level? }  - everything above "keep" is offered; items in
+    //         the bank are fetched on the next bank trip. Wished items are never sold.
+    // Prices per unit in gold. The stand has 16 slots for both (24 from merchant level 70).
+    market: {
+        buy: [
+            { item: "essenceoffire", price: 140000, want: 10 }, // = a fire weapon (+ shop weapon, 20k at Leo)
+            { item: "firebow",       price: 160000, want: 5  }, // weapon ladder for the ranger
+            { item: "ololipop",      price: 150000, want: 4  }, // orange Lolipop Mace (a player pays 300k)
+            { item: "glolipop",      price:  80000, want: 4  }, // green one as a stand-in
+            { item: "offeringp",     price: 350000, want: 2  }, // Primling
+            { item: "crossbow",      price: 400000, want: 1  }, // the ranger's long-term bow
+        ],
+        sell: [
+            { item: "leather",       price:  120000, keep: 0 }, // a player buys at 100k
+            { item: "snakefang",     price: 3500000, keep: 0 }, // a player buys at 3M
+        ],
     },
 
     // "solo":  only the leader fights (Lone Wolf bonus); the merchant still supports it.
@@ -597,16 +618,7 @@ module.exports = {
             enabled: true,
             home: { x: -120, y: -112 },
             reach: 390,               // NPCs this close are used without walking (server: 400)
-            // Buy orders (name, exact level for upgradeable items, quantity, price per unit).
-            // An Essence of Fire is a full fire weapon (+ a shop weapon and 20k at Leo).
-            buyOrders: [
-                { name: "essenceoffire", q: 10, price: 140000 },
-                { name: "firebow", level: 0, q: 5, price: 160000 },
-                { name: "ololipop", level: 0, q: 4, price: 50000 },
-                { name: "offeringp", q: 2, price: 350000 },
-                { name: "leather", q: 40, price: 5000 },
-                { name: "crossbow", level: 0, q: 1, price: 400000 },
-            ],
+            // Buy and sell orders: config.market at the top.
         },
         // Potion stock: potions.target per fighter using a size (at most stockPerPotion),
         // only built while we have stockFromGold – below that, gold goes to equipment
