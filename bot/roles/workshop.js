@@ -297,6 +297,7 @@ module.exports = function createWorkshop(ctx) {
         const b = cfg.budgetPerWish;
         if (typeof b !== "object") return b;
         const name = k.split(":")[1];
+        if (b.byItem && b.byItem[name]) return b.byItem[name];
         return G.items[name] && !sellerOf(name) ? b.rare : b.shop;
     }
 

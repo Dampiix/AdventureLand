@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.71.0",
+    version: "1.72.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -349,6 +349,10 @@ module.exports = {
                 { steps: [{ name: "pants1", level: 7 }], replace: true },
                 { steps: [{ name: "coat1", level: 7 }], replace: true },
                 { steps: [{ name: "shoes1", level: 7 }], replace: true },
+                // Wooden Axe +8 for Cleave (player decision 2026-11-17): carried in the bag, not
+                // worn – the dual fireblades stay on until an Agitate/Cleave mode swaps it in.
+                // Wished once both dual-wield weapons are +7 (normal gear progression).
+                { steps: [{ name: "waxe", level: 8 }], carry: true, whenWorn: { mainhand: 7, offhand: 7 } },
             ],
             ranger: [
                 // Cole: 1 Armadillo Scale + 200 Beewings (scorpions drop it too). The +7 is built on
@@ -383,7 +387,12 @@ module.exports = {
         },
         // Gold per wish (base item + scrolls, failures included): shop gear vs token/drop
         // items (player decision 2026-11-16: room for Rare scrolls, 1.6M each).
-        budgetPerWish: { shop: 1000000, rare: 4000000 },
+        budgetPerWish: {
+            shop: 1000000, rare: 4000000,
+            // Per item (player decision 2026-11-17): Wooden Axe +8 ~2M on average with the
+            // broken copies (+7 25%, +8 15%), so 1M would stop it halfway.
+            byItem: { waxe: 4000000 },
+        },
         massSkills: true,             // Mass Production / Mass Exchange before upgrades and exchanges
         mainStatOnArmor: true,        // wished armor always gets the class's main stat scroll
         deliveryBatchMs: 10 * 60 * 1000, // finish the open wishes first; a ready item waits at most this long

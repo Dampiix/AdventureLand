@@ -104,6 +104,10 @@ module.exports = function createGear(ctx) {
             });
             steps.replace = !!(e && e.replace);
             steps.anytime = !!(e && e.anytime); // replace right away, not only after the shop gear
+            // carry: kept in the bag, never equipped by us (e.g. a Cleave axe next to dual
+            // wield); whenWorn: { slot: level } – wished only once those worn slots reach it.
+            steps.carry = !!(e && e.carry);
+            steps.whenWorn = (e && e.whenWorn) || null;
             return steps;
         }).filter(function (steps) { return steps.length; });
     }
@@ -143,11 +147,36 @@ module.exports = function createGear(ctx) {
     function chainOf(name) {
         return classChains().find(function (steps) { return steps.some(function (s) { return s.name === name; }); }) || null;
     }
+    // Carried class-wish items (see classChains): never equipped by the equip pass.
+    function isCarry(name) {
+        const steps = chainOf(name);
+        return !!(steps && steps.carry);
+    }
+    function wornReaches(whenWorn) {
+        return Object.keys(whenWorn || {}).every(function (slot) {
+            const w = character.slots && character.slots[slot];
+            return !!w && (w.level || 0) >= whenWorn[slot];
+        });
+    }
+    // Wish for a carried chain: the first step no copy in the bag reaches yet.
+    function carryWish(steps) {
+        if (steps.whenWorn && !wornReaches(steps.whenWorn)) return null;
+        let best = 0;
+        character.items.forEach(function (item) { if (item) best = Math.max(best, chainProgress(steps, item)); });
+        if (best >= steps.length) return null;
+        const w = steps[Math.max(0, best)];
+        return { name: w.name, level: w.level || 0, full: true }; // only the finished piece is useful
+    }
     function classWishes(have) {
         const list = [];
         const mainStat = config.workshop && config.workshop.mainStatOnArmor && G.classes[character.ctype]
             ? G.classes[character.ctype].main_stat : null;
         classChains().forEach(function (steps) {
+            if (steps.carry) {
+                const cw = carryWish(steps);
+                if (cw && !have.some(function (x) { return x.name === cw.name; })) list.push(cw);
+                return;
+            }
             const slots = SLOTS_BY_TYPE[G.items[steps[0].name].type] || [];
             // The least advanced slot of this type (an empty one first); a slot holding
             // something outside the chain is left alone.
@@ -177,7 +206,7 @@ module.exports = function createGear(ctx) {
         for (let num = 0; num < character.items.length; num++) {
             const item = character.items[num];
             const steps = item && chainOf(item.name);
-            if (!steps || (steps.replace && !reachedStep(steps, item))) continue;
+            if (!steps || steps.carry || (steps.replace && !reachedStep(steps, item))) continue;
             const mine = chainProgress(steps, item);
             const slot = (SLOTS_BY_TYPE[G.items[item.name].type] || []).find(function (s) {
                 const worn = character.slots && character.slots[s];
@@ -243,6 +272,7 @@ module.exports = function createGear(ctx) {
                 const a = row.action;
                 const item = character.items[a.num];
                 if (!item || item.name !== a.name || (item.level || 0) !== (a.level || 0)) continue; // bag changed meanwhile
+                if (isCarry(item.name)) continue; // carried for a later mode, not worn
                 if (chainDowngrade(item, a.slot)) continue;
                 await equip(a.num, a.slot);
                 util.log("gear", "equipped " + a.name + " +" + (a.level || 0) + " -> " + a.slot, "green");
@@ -296,6 +326,7 @@ module.exports = function createGear(ctx) {
                 const item = character.items[num];
                 const def = item && G.items[item.name];
                 if (!def || !WEARABLE.includes(def.type) || !usable(def)) continue;
+                if (isCarry(item.name)) continue;
                 const slot = slotsFor(def).find(function (s) { return !(character.slots && character.slots[s]); });
                 if (!slot) continue;
                 await equip(num, slot);
@@ -369,7 +400,7 @@ module.exports = function createGear(ctx) {
     // merchant's config.workshop.betterWeapons).
     function strongerWeapon(item) {
         const def = G.items[item.name];
-        if (!def || def.type !== "weapon" || !usable(def)) return false;
+        if (!def || def.type !== "weapon" || !usable(def) || isCarry(item.name)) return false;
         if (util.isDoublehand(item.name, character.ctype) && character.slots && character.slots.offhand) return false;
         const m = character.slots && character.slots.mainhand;
         const bw = config.workshop && config.workshop.betterWeapons;
@@ -392,7 +423,7 @@ module.exports = function createGear(ctx) {
         const def = G.items[item.name];
         const o = character.slots && character.slots.offhand;
         if (!def || def.type !== "weapon" || !o || !G.items[o.name] || G.items[o.name].type !== "weapon") return false;
-        if (!slotsFor(def).includes("offhand")) return false;
+        if (!slotsFor(def).includes("offhand") || isCarry(item.name)) return false;
         const bw = config.workshop && config.workshop.betterWeapons;
         const bar = util.weaponPower(o.name, o.level || 0, character.ctype) * (1 + ((bw && bw.margin) || 0));
         return util.weaponPower(item.name, item.level || 0, character.ctype) > bar;
@@ -416,6 +447,8 @@ module.exports = function createGear(ctx) {
     // Items the supply module must not hand to the merchant.
     function isReserved(item) {
         if (wishes.some(function (w) { return w.name === item.name && (item.level || 0) >= w.level; })) return true;
+        const carried = chainOf(item.name);
+        if (carried && carried.carry && reachedStep(carried, item)) return true; // finished carried piece
         // A stronger copy of something we wear (e.g. a finished gear goal) stays
         // with us until the equip pass puts it on.
         const slots = character.slots || {};
