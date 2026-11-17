@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.81.2",
+    version: "1.81.3",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -637,7 +637,8 @@ module.exports = {
             // Materials without a plan (player decision 2026-11-16). Kept on purpose: green
             // slime, ashleaf (Thistle Quiver), bat wings, spores (Oathplate), reef glass,
             // carrots (Carrot Sword).
-            "snakefang", "embercoal", "rattail", "smush",
+            // Snake Fangs are no longer sold (2026-11-17): a player buys them for 3M each.
+            "embercoal", "rattail", "smush",
             "cclaw",   // Crab Claw (fist weapon, 12 attack) - player decision 2026-11-17
             "vitscroll", "lspores", // VIT stat scrolls (we use STR/INT/DEX; the shop sells them), Large Spores - 2026-11-17
             // Rugged and Heavy armor (armor boxes) are no longer sold since the fresh start:
