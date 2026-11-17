@@ -241,7 +241,13 @@ module.exports = function createFighter(ctx, cls) {
             // halfway - the warrior ran towards the moles, into the next ones (2026-11-17).
             // Only if it reaches us: one with a longer range than ours would stop short.
             const def = G.monsters[target.mtype] || {};
-            if (target.target === character.name && (def.range || 0) <= (character.range || 0) + 10) {
+            // Ranged fighters likewise wait when the monster heads for a party member within
+            // their own range: it comes into range by itself - the ranger walked towards the
+            // moles (2026-11-17).
+            const onMember = !melee && victimName === null && target.target && target.target !== character.name &&
+                party.memberNames().includes(target.target) && get_player(target.target) &&
+                util.distanceTo(get_player(target.target)) < (character.range || 0) * 0.9;
+            if ((onMember || target.target === character.name) && (def.range || 0) <= (character.range || 0) + 10) {
                 if (is_moving(character) && !(typeof smart !== "undefined" && smart.moving)) stop();
                 util.status("waiting for " + target.mtype, "orange");
                 return;
