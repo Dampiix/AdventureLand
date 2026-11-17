@@ -217,7 +217,12 @@ module.exports = function createDrops(ctx) {
     function target(isCrowded) {
         if (!cfg.enabled || !leads) return null;
         if (Date.now() >= nextCheckAt) check();
-        const pick = routes.find(function (r) { return !isCrowded(r.monster); });
+        let pick = routes.find(function (r) { return !isCrowded(r.monster); });
+        // Stay on the current drop spot while it is nearly as good (within 15 % XP): the
+        // guide flips spots like poisios between trial and safe, and every flip walked the
+        // warrior between crocs and poisios (2026-11-17).
+        const stay = pick && routes.find(function (r) { return r.name + "@" + r.monster === lastPick && !isCrowded(r.monster); });
+        if (stay && (stay.xp || 0) >= (pick.xp || 0) * 0.85) pick = stay;
         if (!pick) {
             if (lastPick) {
                 const was = lastPick.split("@");
