@@ -1355,7 +1355,7 @@ module.exports = function createWorkshop(ctx) {
     function armorStage(f) {
         const g = cfg.gearGoals;
         const stages = (g.stages && g.stages.length ? g.stages : [g.upTo]).slice().sort(function (a, b) { return a - b; });
-        const levels = g.slots.filter(function (s) { return s !== "mainhand"; }).map(function (s) {
+        const levels = g.slots.filter(function (s) { return s !== "mainhand" && s !== "offhand"; }).map(function (s) {
             const w = worn[f] && worn[f][s];
             return w && sellerOf(w.name) && G.items[w.name] && G.items[w.name].upgrade ? (w.level || 0) : null;
         }).filter(function (l) { return l !== null; });
@@ -1386,7 +1386,10 @@ module.exports = function createWorkshop(ctx) {
             g.slots.forEach(function (slot) {
                 const w = eq[slot];
                 const def = w && G.items[w.name];
-                const target = slot === "mainhand" ? g.upTo : stage;
+                // Offhand: only a second shop weapon (dual wield) – shields, books and
+                // quivers stay out (player decision 2026-11-17); it goes to the weapon level.
+                if (slot === "offhand" && (!def || def.type !== "weapon")) return;
+                const target = slot === "mainhand" || slot === "offhand" ? g.upTo : stage;
                 if (!target || !def || !def.upgrade || !sellerOf(w.name) || (w.level || 0) < g.fromLevel || (w.level || 0) >= target) return;
                 // A drop weapon is being readied for this fighter: its shop weapon stays as it is.
                 if (slot === "mainhand" && weaponPlans().some(function (p) { return p.fighter === f; })) return;
@@ -1405,11 +1408,18 @@ module.exports = function createWorkshop(ctx) {
         return list;
     }
 
+    // The worn piece a gear-goal slot is about: in the offhand only a weapon (dual wield).
+    function goalSlotItem(f, slot) {
+        const w = worn[f] && worn[f][slot];
+        if (!w || (slot === "offhand" && !(G.items[w.name] && G.items[w.name].type === "weapon"))) return null;
+        return w;
+    }
+
     function goalNames() {
         const names = new Set();
         config.team.fighters.forEach(function (f) {
             cfg.gearGoals.slots.forEach(function (slot) {
-                const w = worn[f] && worn[f][slot];
+                const w = goalSlotItem(f, slot);
                 if (w && (w.level || 0) >= cfg.gearGoals.fromLevel) names.add(w.name);
             });
         });
@@ -1454,7 +1464,7 @@ module.exports = function createWorkshop(ctx) {
         const open = config.team.fighters.some(function (f) {
             if (!worn[f]) return true; // unknown yet: not done
             return cfg.gearGoals.slots.some(function (slot) {
-                const w = worn[f][slot];
+                const w = goalSlotItem(f, slot);
                 if (!w || w.name !== name) return false;
                 wearers++;
                 return (w.level || 0) < upTo;

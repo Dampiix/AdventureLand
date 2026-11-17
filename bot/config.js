@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.72.0",
+    version: "1.72.1",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -489,7 +489,9 @@ module.exports = {
             // decision 2026-11-16: 170 -> 2400 copies is too steep; armor boxes / Rugged next).
             stages: [7, 8],
             everyMs: 3 * 60 * 1000,   // one gear-goal step this often even while wishes are open
-            slots: ["helmet", "chest", "pants", "shoes", "gloves", "mainhand"],
+            // offhand: a second shop weapon (dual wield) goes to upTo too, so a fresh warrior
+            // reaches the Wooden Axe wish (both hands +7); shields, books, quivers stay out.
+            slots: ["helmet", "chest", "pants", "shoes", "gloves", "mainhand", "offhand"],
             weapons: [], // fire weapons: workshop.bruteForce (weapon ladder) since 2026-11-16
             // Daily budget from income (player decision 2026-11-15): a share of the merchant's
             // net gold gain over the last 24 h; the gear goals' own spending is not counted

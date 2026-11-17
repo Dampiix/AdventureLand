@@ -136,7 +136,10 @@ module.exports = function createGear(ctx) {
         const lastStage = goals.stages && goals.stages.length ? Math.max.apply(null, goals.stages) : (goals.upTo || 7);
         return (goals.slots || []).every(function (s) {
             const w = character.slots && character.slots[s];
-            const need = s === "mainhand" ? (goals.upTo || 7) : lastStage;
+            // Offhand: only a second shop weapon counts (dual wield); empty, a shield, book
+            // or quiver is no gear goal.
+            if (s === "offhand" && !(w && G.items[w.name] && G.items[w.name].type === "weapon")) return true;
+            const need = s === "mainhand" || s === "offhand" ? (goals.upTo || 7) : lastStage;
             return !!w && (!npcSold.has(w.name) || (w.level || 0) >= need);
         });
     }
