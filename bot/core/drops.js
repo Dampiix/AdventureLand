@@ -43,6 +43,11 @@ module.exports = function createDrops(ctx) {
         return util.teamCycle(route, config.hunts && config.hunts.teamSpeedup);
     }
 
+    function isBoss(monster) {
+        const m = G.monsters[monster];
+        return !!m && ((((config.events || {}).search) || []).includes(monster) || m.respawn > 200 || !!m.cooperative);
+    }
+
     // Base XP per second of a route (monster XP / kill cycle). The guide's own route "xp"
     // rated crabs at 5663 vs crocs at 620 on 2026-11-17 - in practice crabs give little.
     function xpRate(route) {
@@ -92,6 +97,9 @@ module.exports = function createDrops(ctx) {
         tableRoutes(need.name).forEach(function (r) { list.push(r); });
         const seen = {};
         return list.sort(function (a, b) { return a.perCopy - b.perCopy; }).filter(function (r) {
+            // Bosses (searched by bot_events, or a respawn over 200 s like Dracul) are no farm
+            // spot: the team would stand at an empty spawn for 13-22 min (2026-11-17).
+            if (isBoss(r.monster)) return false;
             const k = r.monster + "@" + r.map;
             if (seen[k]) return false;
             seen[k] = true;
