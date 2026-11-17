@@ -151,6 +151,10 @@ module.exports = function createMerchant(ctx) {
             await sleep(500);
             caught = is_on_cooldown("fishing") || character.esize < freeBefore;
         }
+        // The rod costs the merchant 20 speed (class data): back into the bag after fishing.
+        if (character.slots && character.slots.mainhand && character.slots.mainhand.name === "rod" && character.esize > 0) {
+            await unequip("mainhand").catch(function () {});
+        }
         if (caught) {
             nextFishAt = Date.now() + ((G.skills.fishing && G.skills.fishing.reuse_cooldown) || 48 * 60 * 1000) + 30 * 1000;
             util.log("merchant", "caught something - next fishing in 48 min", "green");
