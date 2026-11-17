@@ -386,10 +386,20 @@ module.exports = function createTargeting(ctx) {
     // tanks three easily (2026-11-17). Uses the monster's real level (attack, HP).
     // Party leader: the team model; solo: our own hits and sustain against the pack.
     const packSeen = {}; // "type:level" -> { ok, at }
+    const packLogged = {}; // "type:level" -> last log
     function packOk(e) {
         const def = G.monsters[e.mtype];
         const n = Math.max(icfg.packOf || ts.pullAggressive || 3, densePack(e.mtype));
-        if (teamModelOn()) return teamVerdict(e.mtype, e, { pull: n }).ok;
+        if (teamModelOn()) {
+            const v = teamVerdict(e.mtype, e, { pull: n });
+            // Why a pack is too much, once per type and level every 10 min (2026-11-17).
+            const lk = e.mtype + ":" + (e.level || 1);
+            if (!v.ok && Date.now() - (packLogged[lk] || 0) > 10 * 60 * 1000) {
+                packLogged[lk] = Date.now();
+                util.log("target", e.mtype + " level " + (e.level || 1) + " one at a time - " + n + " at once: " + v.why, "white");
+            }
+            return v.ok;
+        }
         if (party.enabled) return false; // members: the leader decides who is pulled
         const me = util.combatStats();
         const d = def.damage_type === "physical" ? (me.armor || 0) - (def.apiercing || 0)
