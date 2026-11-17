@@ -816,6 +816,9 @@ module.exports = function createWorkshop(ctx) {
             util.log("workshop", "would open " + sources[0] + " for " + name + " but the bank is nearly full", "orange");
             return false;
         }
+        // Copies from earlier boxes come first: opening more while 3+ wait only piled up
+        // Rugged pants and coats (2026-11-17).
+        if (waitingBoxArmor() >= 3) return false;
         if (character.esize < (ex.keepFree || 8)) return false;
         for (const src of sources) {
             const need = G.items[src].e || 1;
@@ -1956,6 +1959,19 @@ module.exports = function createWorkshop(ctx) {
     // of every piece is upgraded towards upTo right away (normal scroll, no floor, no
     // grace – high grade): failures free bank slots, and the later chain steps are ready
     // early. One copy per piece at upTo is enough; nothing happens without such a wish.
+    // Spare copies of wished box armor still below upTo (bag + bank).
+    function waitingBoxArmor() {
+        const b = cfg.boxArmor;
+        if (!b || !b.names) return 0;
+        return b.names.filter(function (n) {
+            return fighters().some(function (f) { return wishList(f).some(function (w) { return w.name === n; }); });
+        }).reduce(function (sum, n) {
+            const copies = unlockedCopies(n);
+            if (copies.some(function (l) { return l >= b.upTo; })) return sum;
+            return sum + copies.filter(function (l) { return l < b.upTo; }).length;
+        }, 0);
+    }
+
     async function upgradeBoxArmor() {
         const b = cfg.boxArmor;
         if (!b || !b.names || !b.names.length) return false;
@@ -2076,6 +2092,9 @@ module.exports = function createWorkshop(ctx) {
             }
         }
 
+        // Waiting box armor copies are upgraded every round (not only every gear-goal step),
+        // before the wish job opens new boxes.
+        if (waitingBoxArmor() >= 3 && await upgradeBoxArmor()) return;
         // A tight bank comes first: every compound (3 -> 1) frees two slots, and the armor
         // boxes for the Rugged chain only open with 10 free (2026-11-17: 83 of 84 used).
         if (bankSnapshot && bankSnapshot.free < ((cfg.exchange || {}).onDemandBankFree || 10) && await autoCompound()) return;
