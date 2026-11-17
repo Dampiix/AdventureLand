@@ -177,9 +177,10 @@ module.exports = function createFighter(ctx, cls) {
         if (!target) {
             if (party.idleFollow()) return; // party member: stay with the leader
             if (farm.any) { util.status("waiting for monsters (" + farm.source + ")", "white"); return; }
-            if (targeting.waitForLone(farm.monster)) {
+            const hold = targeting.waitForLone(farm.monster);
+            if (hold) {
                 endSearchWalk();
-                util.status("waiting for a lone " + farm.monster, "white");
+                util.status((hold === "strong" ? "too strong: " : "waiting for a lone ") + farm.monster, "white");
                 return;
             }
             travel(farm.dest || targeting.spotFor(farm.monster, farm.map) || farm.monster, "searching " + farm.monster);

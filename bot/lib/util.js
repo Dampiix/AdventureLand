@@ -82,6 +82,7 @@ const SHORT = [
     [/^searching /, "find "],
     [/^waiting for monsters$/, "wait mobs"],
     [/^waiting for a lone /, "lone? "],
+    [/^too strong: /, "strong: "],
     [/^moving to /, "> "],
     [/^(warrior|priest|ranger|paladin|rogue|mage): /, "hit "],
     [/^visiting Daisy$/, "Daisy"],

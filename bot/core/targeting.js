@@ -435,8 +435,19 @@ module.exports = function createTargeting(ctx) {
     }
     // We see monsters of this type but none stands alone: hold position until one does,
     // instead of walking on into the pack.
+    // Returns "lone" (only packs in sight), "strong" (only ones above our level check in
+    // sight – skipped, but walking on towards the spawn's middle ran the team into the
+    // level-12 White Wolves, 2026-11-17) or null (walk on).
     function waitForLone(type) {
-        return !!icfg.enabled && safeCandidates(type).some(function (e) { return aggressive(e) && !isolated(e); });
+        if (!icfg.enabled) return null;
+        let why = null;
+        Object.values(parent.entities || {}).forEach(function (e) {
+            if (why === "lone" || !e || e.type !== "monster" || e.mtype !== type || e.dead || !e.visible || e.target) return;
+            if (!aggressive(e)) return;
+            if (util.tooSpiky(config, e) || !liveSafe(e)) why = why || "strong";
+            else if (!isolated(e)) why = "lone";
+        });
+        return why;
     }
 
     // Leader command "/safety [map]": every monster of the map (default: ours) with each
