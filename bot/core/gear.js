@@ -482,10 +482,14 @@ module.exports = function createGear(ctx) {
         })) return true;
         if (strongerWeapon(item) || strongerOffhand(item)) return true;
         // Further along a class wish chain than what we wear: the equip pass takes it.
+        // Only the slots this piece goes into: with every slot, a replace chain counted any
+        // other worn item (a helmet ...) as "behind", and the warrior kept a spare STR
+        // earring +2 next to his two +3 for good (2026-11-17).
         const steps = chainOf(item.name);
-        if (steps && !(steps.replace && !reachedStep(steps, item)) && Object.keys(slots).some(function (s) {
+        const ownSlots = SLOTS_BY_TYPE[G.items[item.name].type] || [];
+        if (steps && !steps.carry && !(steps.replace && !reachedStep(steps, item)) && ownSlots.some(function (s) {
             const w = slots[s];
-            if (!w || w.name === item.name) return false;
+            if (!w) return false;
             const p = chainProgress(steps, w);
             return (p >= 0 || steps.replace) && chainProgress(steps, item) > p;
         })) return true;
