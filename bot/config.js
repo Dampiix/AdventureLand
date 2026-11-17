@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.66.4",
+    version: "1.67.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -19,8 +19,9 @@ module.exports = {
         // Solo 2026-11-16 to 2026-11-17 (XP test: the warrior alone with Lone Wolf made 24.3M XP
         // in 30 min, the whole party 16.2M): the warrior levelled ahead as the tank (59 -> 64).
         // Party again since 2026-11-17 (booboos and wolves now pass the team check).
-        // Solo: leader "DmpxWar", phase "solo".
-        leader: "DmpxPriest",
+        // Solo again 2026-11-17: the warrior hunts the Phoenix nonstop with Lone Wolf for fire
+        // weapons (firebow for the ranger). Party: leader "DmpxPriest", phase "party".
+        leader: "DmpxWar",
         fighters: ["DmpxPriest", "DmpxWar", "DmpxRanger"],
         merchant: "DampiixMerch",                       // null for no merchant
         farm: {},                                       // optional per-character farm override, e.g. { DmpxRanger: "bee" }
@@ -28,7 +29,7 @@ module.exports = {
 
     // "solo":  only the leader fights (Lone Wolf bonus); the merchant still supports it.
     // "party": all fighters form a party around the leader.
-    phase: "party",
+    phase: "solo",
 
     party: {
         followDistance: 80,   // members idle within this distance of the leader
@@ -75,7 +76,7 @@ module.exports = {
         searchEveryMs: 30 * 60 * 1000,
         // Bosses hunted nonstop: searched again after farmBossEveryMs (player option
         // 2026-11-16; Phoenix: weapons and earrings, about half the XP/h of crocs).
-        farmBosses: [],                 // e.g. ["phoenix"]
+        farmBosses: ["phoenix"],        // nonstop Phoenix hunt (2026-11-17, solo warrior)
         farmBossEveryMs: 60 * 1000,
         searchSpotMs: 4000,             // look around this long at each spawn area
         // Boss check (bosses only; the guide never calls them safe): from everyone's stats
