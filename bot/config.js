@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.89.3",
+    version: "1.90.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -225,9 +225,9 @@ module.exports = {
             ownHits: 6,           // members/solo picking their own target: survive this many real hits
             // Solo: the HP lost over the whole fight (real damage/s minus own healing: a potion
             // per cooldown, priest self-heals, lifesteal, for the time we need to kill it) must
-            // stay below this share of max HP. 0.9 (player decision 2026-11-17): the solo rest
-            // (combat.recover) refills afterwards, so a fight may leave us at 10%.
-            soloHpUse: 0.9,
+            // stay below this share of max HP. 0.7 (player decision 2026-11-17): such a fight
+            // only starts with enough HP to end it at 30% or more (fighter: heal up first).
+            soloHpUse: 0.7,
             waitTolerance: 2.5,   // leader while the team stats are not in yet (level-5 CGoo: 1.9x)
         },
         refreshMs: 5 * 60 * 1000, // how often to ask the guide again

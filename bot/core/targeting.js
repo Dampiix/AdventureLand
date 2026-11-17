@@ -284,6 +284,7 @@ module.exports = function createTargeting(ctx) {
     const lcfg = cfg.live || {};
     const liveChecked = {}; // entity id -> { level, ok, at }
     const liveLogged = {};  // "type:level" -> last log
+    const soloCostById = {}; // entity id -> HP a solo fight against it costs (soloCheck)
     function liveSafe(e) {
         if (!e || (e.level || 1) < (lcfg.fromLevel || 2)) return true;
         const def = G.monsters[e.mtype];
@@ -338,6 +339,7 @@ module.exports = function createTargeting(ctx) {
             const killSec = (e.hp || e.max_hp || def.hp) * pull / myDps;
             const lost = Math.max(0, incoming - sustain) * killSec;
             const budget = me.max_hp * (lcfg.soloHpUse || 0.5);
+            soloCostById[e.id] = lost;
             return lost <= budget ? { ok: true }
                 : { ok: false, why: Math.round(incoming) + " dmg/s vs " + Math.round(sustain) + " healed/s for ~" + Math.round(killSec) +
                     " s: I'd lose " + Math.round(lost) + " HP (max " + Math.round(budget) + ")" };
@@ -877,5 +879,7 @@ module.exports = function createTargeting(ctx) {
     }
 
     return { currentFarm: currentFarm, pick: pick, isValid: isValid, reportSearch: reportSearch, isTeamSafe: isTeamSafe, whyUnsafe: whyUnsafe,
-        teamModelOn: teamModelOn, teamVerdict: teamVerdict, safetyReport: safetyReport, waitForLone: waitForLone, standPoint: standPoint, aggressive: aggressive, diedAt: diedAt, deathAt: deathAt, spotFor: spotFor, liveSafe: liveSafe };
+        teamModelOn: teamModelOn, teamVerdict: teamVerdict, safetyReport: safetyReport, waitForLone: waitForLone, standPoint: standPoint, aggressive: aggressive, diedAt: diedAt, deathAt: deathAt, spotFor: spotFor, liveSafe: liveSafe,
+        // HP a solo fight against this monster costs (0 if it was never checked: harmless or low level).
+        soloCost: function (e) { return (e && soloCostById[e.id]) || 0; } };
 };

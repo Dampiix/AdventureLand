@@ -178,6 +178,26 @@ module.exports = function createFighter(ctx, cls) {
         return true;
     }
 
+    let topUpSince = 0;
+    function topUpFor(target) {
+        const cost = targeting.soloCost(target);
+        if (!cost) return false;
+        const reserve = character.max_hp * (1 - ((config.targeting.live || {}).soloHpUse || 0.5));
+        const need = Math.min(character.max_hp, cost + reserve);
+        if (character.hp >= need) return false;
+        if (!topUpSince) {
+            topUpSince = Date.now();
+            util.log("combat", "healing up before " + target.mtype + ": " + Math.round(character.hp) + "/" + Math.round(need) + " HP", "yellow");
+        }
+        // Natural regeneration is slow: after the rest cap we go anyway (potions empty).
+        if (Date.now() - topUpSince > ((config.combat.recover || {}).maxMs || 90 * 1000)) return false;
+        if (!is_on_cooldown("use_hp")) use_skill("use_hp").catch(function () {});
+        if (searchWalk) endSearchWalk();
+        else if (is_moving(character)) stop();
+        util.status("heal up " + Math.round(character.hp / need * 100) + "% for " + target.mtype, "white");
+        return true;
+    }
+
     // Walk to a point; a new order only when standing or the point moved 40+ px.
     let moveDest = null;
     function moveTo(p) {
@@ -208,6 +228,12 @@ module.exports = function createFighter(ctx, cls) {
             travel(farm.dest || targeting.spotFor(farm.monster, farm.map) || farm.monster, "searching " + farm.monster);
             return;
         }
+
+        // Solo (player decision 2026-11-17): a costly fight only starts with enough HP to end it
+        // above the reserve - (1 - soloHpUse) of max HP. With soloHpUse 0.7 a fight costing 70%
+        // waits for full HP, a cheap one goes ahead at lower HP. Not for monsters already on us.
+        if (!party.enabled && target.target !== character.name && topUpFor(target)) return;
+        topUpSince = 0;
 
         if (get_targeted_monster() !== target) change_target(target);
         // A far target in sight does not end the search walk yet: it may be gone (another
