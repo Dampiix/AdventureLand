@@ -36,7 +36,9 @@ module.exports = function createSupply(ctx) {
     // the Phoenix hunter was long gone and the merchant walked back to town every time).
     let followUntil = 0;       // send our position until then (or until the merchant is done)
     let lastPosAt = 0;
-    comms.on("served", function () { followUntil = 0; });
+    // The merchant was here: the routine timer restarts even when we had nothing to hand
+    // over (it otherwise kept calling every minute after an empty visit).
+    comms.on("served", function () { followUntil = 0; lastPickup = Date.now(); });
     function sendPosition() {
         lastPosAt = Date.now();
         comms.send(merchant, "pos", { map: character.map, x: Math.round(character.x), y: Math.round(character.y) });
