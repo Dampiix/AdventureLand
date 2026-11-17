@@ -337,8 +337,11 @@ module.exports = function createWorkshop(ctx) {
     }
 
     function canSpend(k, amount) {
-        // Never below the floor: the larger of the potion reserve and workshop.keepGold.
-        const floor = Math.max(util.goldAmount(config.merchantRole.goldReserve), cfg.keepGold || 0);
+        // Never below the floor: the larger of the potion reserve and workshop.keepGold. The
+        // merchant's own wishes (stand, tools) only keep the potion reserve - a fresh account
+        // must not wait for millions to buy a 40k stand.
+        const reserve = util.goldAmount(config.merchantRole.goldReserve);
+        const floor = k.indexOf("_own:") === 0 ? reserve : Math.max(reserve, cfg.keepGold || 0);
         if (character.gold - amount < floor) return false;
         if (k === GOALS) return goalBudget().allowed >= amount;
         if (k === LADDER) return ladderBudget().allowed >= amount;
@@ -763,6 +766,55 @@ module.exports = function createWorkshop(ctx) {
         try { set(SHORT_KEY, shortages); } catch (e) { /* storage unavailable */ }
     }
     let nextDropReportAt = 0;
+
+    // ---- the merchant's own wishes (config.merchantRole.ownWishes) --------------------
+    function ownHas(name) {
+        if (Object.values(character.slots || {}).some(function (s) { return s && s.name === name; })) return true;
+        if (character.items.some(function (i) { return i && i.name === name; })) return true;
+        return !!(bankSnapshot && bankSnapshot.items.some(function (b) { return b.name === name; }));
+    }
+    function isOwnWish(name) {
+        return (config.merchantRole.ownWishes || []).some(function (w) { return w.name === name; });
+    }
+    // One missing own wish per round: bought, crafted, or its missing drop ingredient is
+    // reported as a shortage (the drop system sends a fighter for it). Returns true if done.
+    async function workOwnWishes() {
+        const now = Date.now();
+        for (const w of config.merchantRole.ownWishes || []) {
+            const def = G.items[w.name];
+            if (!def || ownHas(w.name)) continue;
+            const k = "_own:" + w.name;
+            if (blockedUntil[k] > now) continue;
+            if (character.esize < 2) return false;
+            try {
+                const seller = sellerOf(w.name);
+                if (seller) {
+                    if (!canSpend(k, def.g)) throw { reason: "budget" };
+                    util.status("buy " + w.name, "orange");
+                    await goTo(seller);
+                    await buy(w.name, 1);
+                    pay(k, def.g);
+                    util.log("workshop", "bought my own " + def.name + " for " + def.g, "green");
+                    return true;
+                }
+                if (crafterOf(w.name)) {
+                    util.status("craft " + w.name, "orange");
+                    const r = await craftItem(k, w.name);
+                    if (r.ok) return true;
+                    util.log("workshop", "can't craft my " + def.name + " yet - missing " +
+                        r.missing.map(function (m) { return (m.need - m.have) + "x " + m.name; }).join(", "), "orange");
+                    r.missing.forEach(function (m) { noteIngredientShortage(m.name, m.level, m.need, w.name); });
+                } else {
+                    noteShortage(w.name, 0);
+                }
+                blockedUntil[k] = now + cfg.giveUpForMs;
+            } catch (e) {
+                util.log("workshop", "my " + w.name + ": " + util.errReason(e), "orange");
+                blockedUntil[k] = now + pauseAfter(k, util.errReason(e));
+            }
+        }
+        return false;
+    }
 
     function noteShortage(name, level) {
         shortages[name] = { level: level, at: Date.now() };
@@ -2177,6 +2229,7 @@ module.exports = function createWorkshop(ctx) {
             readBank();
         }
 
+        if (await workOwnWishes()) return; // the merchant's own stand and tools come first
         if (await stockOneEach()) return;
         fillEmptySlots();
         deliverBetterWeapons();
@@ -2315,6 +2368,7 @@ module.exports = function createWorkshop(ctx) {
             return "budget: goals " + k(goalBudget().allowed) + ", ladder " + k(ladderBudget().allowed) +
                 " | working on: " + (list.slice(0, 6).join(", ") || "nothing") + (list.length > 6 ? " ..." : "");
         },
+        isOwnWish: isOwnWish,
         // Units of an item we hold (bag + last bank snapshot), e.g. for the stand's buy orders.
         ownedCount: function (name) {
             const bag = character.items.reduce(function (s, i) { return i && i.name === name ? s + (i.q || 1) : s; }, 0);

@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.83.1",
+    version: "1.84.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -565,6 +565,25 @@ module.exports = {
 
     // Merchant role
     merchantRole: {
+        // The merchant's own wish list (player decision 2026-11-17): things he needs himself,
+        // made the same ways as the fighters' wishes - bought (stand at Divian), crafted at Leo
+        // (Fishing Rod, Pickaxe: shop staff/blade + Spider Silk), and a missing drop ingredient
+        // is reported as a shortage, so a fighter farms it (spiders). Kept in his bag, never
+        // delivered, sold or banked; a broken tool (1% per catch) is simply wished again.
+        // Cheap and needed early: they come before the fighters' wishes and only keep the
+        // potion reserve, not workshop.keepGold.
+        ownWishes: [
+            { name: "stand0" },       // market stand (buy orders, Merrit's parcels)
+            { name: "rod" },          // fishing: Rugged pieces
+            { name: "pickaxe" },      // mining (later: the Mining Tunnel has moles)
+        ],
+        // Gathering with the merchant's own tools, whenever its cooldown is over.
+        gather: {
+            // Mainland pier by the fisherman: water within 24 px (server). One catch per
+            // 48 min (10% per cast), 99.5% a Rugged piece.
+            fishing: { enabled: true, spot: { map: "main", x: -1560, y: 470 }, maxCasts: 40 },
+            mining: { enabled: false },
+        },
         // Market stand (player decision 2026-11-17): with a Merchant Stand (stand0, bought by
         // hand) the merchant's home is a spot on the town square with the stand open - buy
         // orders for what we want, and Merrit's hourly Market Parcel for keeping a shop there
@@ -573,7 +592,6 @@ module.exports = {
         // Square: x -240..240, y -120..144; 40+ px from fixed NPCs (Merrit's rules).
         stand: {
             enabled: true,
-            buy: "stand0",            // bought from Divian once, when the gold above the reserve allows it
             home: { x: -120, y: -112 },
             reach: 390,               // NPCs this close are used without walking (server: 400)
             // Buy orders (name, exact level for upgradeable items, quantity, price per unit).
@@ -662,6 +680,7 @@ module.exports = {
                 "scroll0", "scroll1", "scroll2", "cscroll0", "cscroll1", "cscroll2",
                 "essenceoflife", "poison", // skill ingredients for priests / rangers
                 "stand0", "stand1",        // the market stand stays in the bag
+                "rod", "pickaxe",          // the merchant's tools stay in the bag
             ],
         },
     },

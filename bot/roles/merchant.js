@@ -104,26 +104,56 @@ module.exports = function createMerchant(ctx) {
         });
     }
 
-    // No stand yet (fresh account): buy one from Divian as soon as the gold above the
-    // reserve allows it - one purchase, 40k (player decision 2026-11-17: the bot must run
-    // on its own from a fresh account).
-    let nextStandCheckAt = 0;
-    async function buyStand() {
-        if (!st.enabled || !st.buy || standIndex() !== -1 || Date.now() < nextStandCheckAt) return;
-        nextStandCheckAt = Date.now() + 10 * 60 * 1000;
-        if (workshop.ownedCount("stand0") + workshop.ownedCount("stand1") > 0) return; // one in the bank
-        const name = st.buy;
-        const def = G.items[name];
-        const npc = (G.maps.main.npcs || []).find(function (n) {
-            return Array.isArray((G.npcs[n.id] || {}).items) && G.npcs[n.id].items.includes(name);
-        });
-        if (!def || !npc || !npc.position) return;
-        if (character.gold - def.g < util.goldAmount(m.goldReserve)) return; // not yet affordable
-        if (character.esize < 1) return;
-        util.status("buying a stand", "yellow");
-        await util.walk({ map: "main", x: npc.position[0], y: npc.position[1] + 30 });
-        await buy(name, 1);
-        util.log("merchant", "bought a " + def.name + " for " + def.g + " gold - the market stand opens at home", "green");
+    // ---- fishing (config.merchantRole.gather.fishing) --------------------------------
+    // With a rod and the 48-min cooldown over: walk to the pier, cast until something bites
+    // (10% per cast, the cooldown starts with the catch), back to the stand.
+    const FISH_KEY = "merchant_next_fish:" + character.name;
+    let nextFishAt = (function () { try { return get(FISH_KEY) || 0; } catch (e) { return 0; } })();
+    function fishingDue() {
+        const f = (m.gather || {}).fishing;
+        if (!f || !f.enabled || Date.now() < nextFishAt || character.esize < 2) return false;
+        if (is_on_cooldown("fishing")) return false;
+        const rod = function (i) { return i && i.name === "rod"; };
+        return util.findItemIndex(rod) !== -1 || rod(character.slots && character.slots.mainhand);
+    }
+    async function fish() {
+        const f = m.gather.fishing;
+        util.status("fishing", "yellow");
+        await util.walk(f.spot);
+        const m0 = character.slots && character.slots.mainhand;
+        if (!m0 || m0.name !== "rod") {
+            const idx = util.findItemIndex(function (i) { return i.name === "rod"; });
+            if (idx === -1) return;
+            await equip(idx);
+            await sleep(500);
+        }
+        const freeBefore = character.esize;
+        let caught = false;
+        let noWater = 0;
+        for (let cast = 0; cast < (f.maxCasts || 40) && !caught; cast++) {
+            if (character.mp < 150) { await use_skill("use_mp").catch(function () {}); await sleep(2100); }
+            await use_skill("fishing").catch(function () {});
+            await sleep(800);
+            if (!(character.c && character.c.fishing)) {
+                // No channel: not next to water (or a hiccup) - give up after a few tries.
+                if (++noWater >= 3) {
+                    util.log("merchant", "can't fish at " + f.spot.x + "," + f.spot.y + " - no water in reach", "orange");
+                    nextFishAt = Date.now() + 60 * 60 * 1000;
+                    break;
+                }
+                continue;
+            }
+            for (let t = 0; t < 40 && character.c && character.c.fishing; t++) await sleep(500);
+            await sleep(500);
+            caught = is_on_cooldown("fishing") || character.esize < freeBefore;
+        }
+        if (caught) {
+            nextFishAt = Date.now() + ((G.skills.fishing && G.skills.fishing.reuse_cooldown) || 48 * 60 * 1000) + 30 * 1000;
+            util.log("merchant", "caught something - next fishing in 48 min", "green");
+        } else if (Date.now() >= nextFishAt) {
+            nextFishAt = Date.now() + 10 * 60 * 1000; // no luck this time: try again a bit later
+        }
+        try { set(FISH_KEY, nextFishAt); } catch (e) { /* storage unavailable */ }
     }
 
     function homeSpot() {
@@ -433,12 +463,15 @@ module.exports = function createMerchant(ctx) {
             await goHome();
             if (Date.now() >= nextChoresAt) {
                 nextChoresAt = Date.now() + 30 * 1000;
-                await buyStand();
                 await sellJunk();
                 await bankIfNeeded();
                 await workshop.work();
                 await goHome();
                 await restock();
+            }
+            if (fishingDue()) {
+                await fish();
+                await goHome();
             }
             keepStand();
             // At the stand the last workshop status stays visible (player request 2026-11-17).
