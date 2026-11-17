@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.62.3",
+    version: "1.63.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -395,6 +395,11 @@ module.exports = {
         // risked; items nobody wears are left alone.
         // hoardAt (2026-11-16): spares are not risked beyond this level; +7 copies are kept.
         bruteForce: { names: ["fireblade", "firebow", "firestaff"], maxLevel: 9, hoardAt: 7 },
+        // Box armor (player decision 2026-11-17): while a fighter wishes any Rugged piece,
+        // every spare copy from the armor boxes is upgraded towards upTo at once – failures
+        // free bank slots and the next chain pieces are ready early (the bank has ~19 free
+        // slots; a new pack costs 75M).
+        boxArmor: { names: ["helmet1", "gloves1", "pants1", "coat1", "shoes1"], upTo: 7 },
         stock: [
             { name: "fireblade", upTo: 7, spares: 3 },
             { name: "firestaff", upTo: 7, spares: 3 },

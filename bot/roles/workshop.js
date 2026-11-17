@@ -1930,6 +1930,41 @@ module.exports = function createWorkshop(ctx) {
         return false;
     }
 
+    // Box armor in parallel (config.workshop.boxArmor, player decision 2026-11-17): armor
+    // boxes give all five Rugged pieces, but only one is wished at a time – the others
+    // would fill the bank. While a fighter wishes any piece of the set, every spare copy
+    // of every piece is upgraded towards upTo right away (normal scroll, no floor, no
+    // grace – high grade): failures free bank slots, and the later chain steps are ready
+    // early. One copy per piece at upTo is enough; nothing happens without such a wish.
+    async function upgradeBoxArmor() {
+        const b = cfg.boxArmor;
+        if (!b || !b.names || !b.names.length) return false;
+        // Only pieces some fighter still wishes (each Rugged chain is its own wish; a piece
+        // worn at upTo is no longer wished, so no second copy is built for it).
+        const wanted = b.names.filter(function (n) {
+            return fighters().some(function (f) { return wishList(f).some(function (w) { return w.name === n; }); });
+        });
+        if (!wanted.length) return false;
+        const now = Date.now();
+        for (const name of wanted) {
+            const k = key("_box", { name: name, level: b.upTo });
+            if (blockedUntil[k] > now) continue;
+            const copies = unlockedCopies(name);
+            if (!copies.length || copies.some(function (l) { return l >= b.upTo; })) continue; // none, or one done
+            if (character.esize < 3) return false;
+            util.status("upgrading spare " + name + " +" + Math.max.apply(null, copies) + " towards +" + b.upTo, "orange");
+            try {
+                await develop("_box", { name: name, level: b.upTo }, { budgetKey: GOALS, minChance: 0, spare: true });
+            } catch (e) {
+                const why = util.errReason(e);
+                util.log("workshop", name + " +" + b.upTo + ": " + why, "orange");
+                blockedUntil[k] = Date.now() + pauseAfter(k, why);
+            }
+            return true;
+        }
+        return false;
+    }
+
     async function work() {
         if (!cfg.enabled) return;
 
@@ -1986,6 +2021,7 @@ module.exports = function createWorkshop(ctx) {
             lastGoalStep = Date.now();
             if (await workOnBetterWeapons()) return;
             if (await bruteForceSpares()) return;
+            if (await upgradeBoxArmor()) return;
             if (await workOnGoals()) return;
             await autoExchange();
             return;
@@ -1996,6 +2032,7 @@ module.exports = function createWorkshop(ctx) {
             lastGoalStep = Date.now();
             if (await workOnBetterWeapons()) return;
             if (await bruteForceSpares()) return;
+            if (await upgradeBoxArmor()) return;
             if (await workOnGoals()) return;
         }
 
