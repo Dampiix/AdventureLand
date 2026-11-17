@@ -210,6 +210,15 @@ module.exports = function createFighter(ctx, cls) {
         }
 
         if (get_targeted_monster() !== target) change_target(target);
+        // A far target in sight does not end the search walk yet: it may be gone (another
+        // player, out of sight) the next tick, and the walk restarted - two steps, a new
+        // search, two steps on the way to the bees (2026-11-17). Close ones, ones already on
+        // us and aggressive ones (packs) end it at once.
+        const near = util.distanceTo(target) < 250 || !!target.target || targeting.aggressive(target);
+        if (!near && searchWalk && typeof smart !== "undefined" && smart.moving) {
+            util.status("moving to " + target.mtype, "orange");
+            return;
+        }
         endSearchWalk();
 
         if (!is_in_range(target)) {
