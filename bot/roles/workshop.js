@@ -95,7 +95,12 @@ module.exports = function createWorkshop(ctx) {
             if (G.items[w.name] && !list.some(function (x) { return x.name === w.name && x.level >= w.level; })) list.push(w);
         });
         return list.map(function (w) { return withMainStat(fighter, w); })
-            .filter(function (w) { return !recentlyDelivered(fighter, w); });
+            // Rings and earrings come in pairs: the second copy is not held back by the
+            // 6 h redelivery pause (player decision 2026-11-17).
+            .filter(function (w) {
+                const t = G.items[w.name] && G.items[w.name].type;
+                return t === "ring" || t === "earring" || !recentlyDelivered(fighter, w);
+            });
     }
 
     // Armor that can carry a stat always gets the fighter's main stat (str/int/dex),
