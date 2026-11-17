@@ -222,8 +222,12 @@ module.exports = function createEvents(ctx) {
         searching = true;
         try {
             util.log("event", "searching " + name, "yellow");
-            for (const spot of spawnSpots(name)) {
+            const spots = spawnSpots(name);
+            for (let si = 0; si < spots.length; si++) {
+                const spot = spots[si];
                 util.status("searching " + name + " (" + spot.map + ")", "yellow");
+                // Every spawn area in the log, so a skipped one shows up (2026-11-17).
+                util.log("event", name + ": area " + (si + 1) + "/" + spots.length + " " + spot.map + " " + spot.x + "," + spot.y, "white");
                 // Stopped on the way (the handover to the merchant at his stand stands us
                 // still) is no reason to skip a spawn area: walk on to the same spot again.
                 // Dracul's first area was skipped that way (2026-11-17).
