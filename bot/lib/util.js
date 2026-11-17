@@ -105,11 +105,11 @@ const SHORT = [
     [/ to \+/, " +"],
     [/^(\w+) scroll for /, "$1 "],            // "str scroll for coat1"
     [/^trying /, "try "],
-    [/^gear goal: /, "do "],
+    [/^gear goal: /, ""],                    // just the item (player request 2026-11-17)
     [/^crafting /, "craft "],
     [/^buying /, "buy "],
     [/^checking the bank$/, "check bank"],
-    [/^working on /, "do "],
+    [/^working on /, ""],
     [/^up (\S+) \+(\d+)>\+(\d+)$/, "$1 $2>$3"], // "helmet1 3>7"
     [/ \+(\d)/g, "+$1"],                // "intring+3"
 ];
