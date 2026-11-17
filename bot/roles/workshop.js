@@ -722,6 +722,7 @@ module.exports = function createWorkshop(ctx) {
         Object.keys(shortages).forEach(function (name) {
             const s = shortages[name];
             const target = s.forItem || name; // ingredients count while the crafted item is wished
+            if (heldBoxFor(name)) return; // opened from our own boxes, not farmed
             const wished = fighters().some(function (f) { return wishList(f).some(function (w) { return w.name === target; }); }) ||
                 weaponPlans().some(function (p) { return p.name === target; }); // e.g. Bones for a Dead weapon
             // Reported as long as it is wished and copies are missing – not only for a while
@@ -785,6 +786,16 @@ module.exports = function createWorkshop(ctx) {
     // A wished item that only comes out of something we hold (e.g. Rugged armor from
     // Armor Boxes): open one batch of that source. Sources listed in
     // config.workshop.exchange.onDemand only, while the bank keeps room for the rewards.
+    // We hold an on-demand box (exchange.onDemand) that gives `name`: it comes from
+    // opening those, not from farming (2026-11-17: the warrior farmed bats for a Rugged
+    // coat while 109 armor boxes waited in the bank behind a full bank).
+    function heldBoxFor(name) {
+        return ((cfg.exchange || {}).onDemand || []).some(function (src) {
+            const t = G.drops[src];
+            return Array.isArray(t) && t.some(function (d) { return d && d[1] === name; }) && ingredientCount(src, 0) > 0;
+        });
+    }
+
     async function openSourceFor(name) {
         const ex = cfg.exchange || {};
         const sources = (ex.onDemand || []).filter(function (src) {
