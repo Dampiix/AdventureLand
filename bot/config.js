@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.72.6",
+    version: "1.73.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -153,6 +153,7 @@ module.exports = {
             tankClasses: ["warrior", "paladin"],
             tankHits: 6, otherHits: 3, healCover: 1.5,
             pull: 2, pullAggressive: 3,
+            pullLone: 2,                   // monsters pulled one at a time (isolation): one plus a possible add
             // Aggressive monsters whose spawn area per monster is below this (px²) come as a
             // whole pack (vampire rats: 5 in 150x195 wiped the team, 2026-11-16).
             denseArea: 15000,
@@ -168,7 +169,8 @@ module.exports = {
         // way there. Walking into the middle of the White Wolf pack (rage 1) wiped the team
         // (2026-11-17); one at a time they are fine. Without rage a monster only lands a hit
         // in passing (bees 0.1, crabs, scorpions), and harmless ones never count.
-        isolation: { enabled: true, minAggro: 0.3, minRage: 0.3, radius: 120 },
+        // strongHold: too-strong ones of the farm type stop the search walk only this close.
+        isolation: { enabled: true, minAggro: 0.3, minRage: 0.3, radius: 120, strongHold: 300 },
         // Monster levels (player request 2026-11-16): from this level a monster is checked
         // again with its real stats before we pull it (team model, else its damage per
         // second must stay within tolerance x the level-1 monster's).

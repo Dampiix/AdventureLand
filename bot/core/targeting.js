@@ -230,7 +230,13 @@ module.exports = function createTargeting(ctx) {
             else if (m.damage_type === "magical") def = (f.resistance || 0) - (m.rpiercing || 0);
             return (m.attack || 0) * 1.1 * util.damageMultiplier(def);
         };
-        const pull = (m.aggro || 0) >= 1 ? Math.max(ts.pullAggressive || 3, densePack(monster)) : (ts.pull || 2);
+        // Monsters we pull one at a time (isolation) come as one plus a possible add
+        // (pullLone) – a level-12 White Wolf failed "5.1 volleys of 3" though we never pull
+        // three (2026-11-17). Dense packs still count whole.
+        const lonePull = icfg.enabled && joinsFights(m);
+        const pull = (m.aggro || 0) >= 1
+            ? Math.max(lonePull ? (ts.pullLone || 2) : (ts.pullAggressive || 3), densePack(monster))
+            : (ts.pull || 2);
         const volley = hitOn(tank) * pull;
         const tankHits = tank.max_hp / Math.max(1, volley);
         if (tankHits < (ts.tankHits || 6)) return { ok: false, why: tank.name + " survives " + tankHits.toFixed(1) + " volleys of " + pull + " (need " + (ts.tankHits || 6) + ")" };
@@ -444,7 +450,11 @@ module.exports = function createTargeting(ctx) {
         Object.values(parent.entities || {}).forEach(function (e) {
             if (why === "lone" || !e || e.type !== "monster" || e.mtype !== type || e.dead || !e.visible || e.target) return;
             if (!aggressive(e)) return;
-            if (util.tooSpiky(config, e) || !liveSafe(e)) why = why || "strong";
+            if (util.tooSpiky(config, e) || !liveSafe(e)) {
+                // Only close ones stop us: holding as soon as the first one came into sight
+                // left the team standing among the Wolfies below the White Wolves (2026-11-17).
+                if (util.distanceTo(e) < (icfg.strongHold || 300)) why = why || "strong";
+            }
             else if (!isolated(e)) why = "lone";
         });
         return why;
