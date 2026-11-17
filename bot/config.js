@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.89.1",
+    version: "1.89.2",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -122,7 +122,7 @@ module.exports = {
         searchEveryMs: 30 * 60 * 1000,
         // Bosses hunted nonstop: searched again after farmBossEveryMs (player option
         // 2026-11-16; Phoenix: weapons and earrings, about half the XP/h of crocs).
-        farmBosses: ["phoenix"],        // nonstop Phoenix hunt (solo warrior, essence test, 2026-11-17 night)
+        farmBosses: [],                 // e.g. ["phoenix"] for the nonstop hunt (off: CGoo night farm, 2026-11-17)
         // 10 s (player decision 2026-11-17): in the old 60 s the warrior seldom even reached his
         // farm spot; now he goes straight back on the round after a kill or an empty search.
         farmBossEveryMs: 10 * 1000,
@@ -171,8 +171,9 @@ module.exports = {
     },
 
     targeting: {
-        // Player decision 2026-11-17 (evening): the guide picks again (party, no CGoos).
-        farm: null,            // e.g. "squigtoad" to force a monster for everyone (null = guide)
+        // Player decision 2026-11-17 (night): the solo warrior farms CGoos overnight (gold for the
+        // budget pots after the reset, XP to 68, gems); the Phoenix is still searched every 30 min.
+        farm: "cgoo",           // e.g. "squigtoad" to force a monster for everyone (null = guide)
         fallback: "goo",          // used when the progression guide has no answer
         // Farm only where every fighter's own guide calls the spot safe; routes the guide
         // only offers as a careful trial count once proven – by the guide's own fights, or
