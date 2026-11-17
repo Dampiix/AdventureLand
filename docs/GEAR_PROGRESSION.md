@@ -149,6 +149,10 @@ axes -10 %, bashers -12 %. "Power" = attack x class modifiers, at +7.
    Scythe ~121 (rare). Two fireblades +7 give 108 single-target. Decision for later:
    stay dual (single target, bosses) or switch to an axe on group spots (needs a
    weapon swap the bot doesn't do yet). Stomp (52) needs a basher (shop Wooden Basher).
+   **Decided 2026-11-17:** Wooden Axe +8 (91 attack, ~2M with the broken copies) as a
+   carried class wish once both dual-wield weapons are +7 (`carry`, `whenWorn`); it stays in
+   the bag until an Agitate (68) / Cleave mode swaps it in. Mana for Cleave (720 MP): MP
+   potion every cooldown while the priest heals.
 
 ### Paladin (inactive since 2026-11-16 – replaced by the warrior)
 1. **Concord Mace** (12 tokens, Oathkeeper set) – +7: 70 attack (+30 %). Alternative
