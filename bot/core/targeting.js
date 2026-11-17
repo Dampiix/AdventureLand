@@ -240,7 +240,7 @@ module.exports = function createTargeting(ctx) {
         // The whole fight, not only its rate: what heals and potions don't cover is lost for
         // as long as the kill takes (a level-12 White Wolf has 312k HP). Lone pulls
         // (isolation) start with one monster; the volley check above keeps the margin for adds.
-        const fightPull = icfg.enabled && (m.aggro || 0) >= (icfg.minAggro || 0.3) ? 1 : pull;
+        const fightPull = icfg.enabled && joinsFights(m) ? 1 : pull;
         const teamDps = team.reduce(function (s, f) {
             if (f.ctype === "priest") return s; // its actions are counted as healing above
             const d = f.damage_type === "magical" ? (m.resistance || 0) - (f.rpiercing || 0) : (m.armor || 0) - (f.apiercing || 0);
@@ -371,9 +371,12 @@ module.exports = function createTargeting(ctx) {
     // Harmless ones (every fighter survives 20+ of their real hits) don't count: a whole
     // swarm of bees can't hurt us, and waiting for a lone bee left the team idle (2026-11-17).
     const harmlessSeen = {}; // "type:attack" -> { ok, at }
+    function joinsFights(def) {
+        return (def.aggro || 0) >= (icfg.minAggro || 0.3) && (def.rage || 0) >= (icfg.minRage || 0.3);
+    }
     function aggressive(e) {
         const def = e && G.monsters[e.mtype];
-        if (!def || (def.aggro || 0) < (icfg.minAggro || 0.3)) return false;
+        if (!def || !joinsFights(def)) return false;
         const k = e.mtype + ":" + Math.round(e.attack || def.attack || 0);
         const c = harmlessSeen[k];
         const now = Date.now();

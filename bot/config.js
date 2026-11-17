@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.69.3",
+    version: "1.69.4",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -158,11 +158,13 @@ module.exports = {
             // tank's max HP (level-12 White Wolves have 312k HP, 2026-11-17).
             fightHpUse: 0.5,
         },
-        // Aggressive monsters (they attack whoever passes close by) are only pulled when no
-        // other free aggressive monster stands within radius of the target, of where we will
-        // stand or of the way there. Walking into the middle of the White Wolf pack wiped the
-        // team (2026-11-17); one at a time they are fine.
-        isolation: { enabled: true, minAggro: 0.3, radius: 120 },
+        // Monsters that join a fight (aggro: they hit whoever passes close by; rage: they then
+        // stay on that player and chase him – game source) are only pulled when no other free
+        // such monster stands within radius of the target, of where we will stand or of the
+        // way there. Walking into the middle of the White Wolf pack (rage 1) wiped the team
+        // (2026-11-17); one at a time they are fine. Without rage a monster only lands a hit
+        // in passing (bees 0.1, crabs, scorpions), and harmless ones never count.
+        isolation: { enabled: true, minAggro: 0.3, minRage: 0.3, radius: 120 },
         // Monster levels (player request 2026-11-16): from this level a monster is checked
         // again with its real stats before we pull it (team model, else its damage per
         // second must stay within tolerance x the level-1 monster's).
