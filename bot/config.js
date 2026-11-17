@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.88.0",
+    version: "1.88.1",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -25,8 +25,9 @@ module.exports = {
         // Party again 2026-11-17: White Wolves to test the lone pulls.
         // Solo again 2026-11-17 (afternoon): the warrior hunts the Phoenix nonstop for firebows.
         // Party again 2026-11-17 (evening): normal farming and the Goo Brawl together.
-        // Solo: leader "DmpxWar", phase "solo".
-        leader: "DmpxPriest",
+        // Solo again 2026-11-17 (night): nonstop Phoenix to test config.dismantle (essence).
+        // Party: leader "DmpxPriest", phase "party".
+        leader: "DmpxWar",
         fighters: ["DmpxPriest", "DmpxWar", "DmpxRanger"],
         merchant: "DampiixMerch",                       // null for no merchant
         farm: {},                                       // optional per-character farm override, e.g. { DmpxRanger: "bee" }
@@ -68,7 +69,7 @@ module.exports = {
 
     // "solo":  only the leader fights (Lone Wolf bonus); the merchant still supports it.
     // "party": all fighters form a party around the leader.
-    phase: "party",
+    phase: "solo",
 
     party: {
         followDistance: 80,   // members idle within this distance of the leader
@@ -122,7 +123,7 @@ module.exports = {
         searchEveryMs: 30 * 60 * 1000,
         // Bosses hunted nonstop: searched again after farmBossEveryMs (player option
         // 2026-11-16; Phoenix: weapons and earrings, about half the XP/h of crocs).
-        farmBosses: [],                 // e.g. ["phoenix"] for the nonstop hunt (off for the spider farm, 2026-11-17)
+        farmBosses: ["phoenix"],        // nonstop Phoenix hunt (solo warrior, essence test, 2026-11-17 night)
         // 10 s (player decision 2026-11-17): in the old 60 s the warrior seldom even reached his
         // farm spot; now he goes straight back on the round after a kill or an empty search.
         farmBossEveryMs: 10 * 1000,
