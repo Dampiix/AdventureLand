@@ -89,6 +89,9 @@ module.exports = function createMerchant(ctx) {
             return;
         }
         if (Date.now() < nextOrdersAt) return;
+        // Orders count bag + bank: right after a restart the bank is not read yet, and a
+        // buy order for 4 green Lolipops went up with 26 of them in the bank (2026-11-17).
+        if (!workshop.bankKnown()) return;
         nextOrdersAt = Date.now() + 60 * 1000;
         // An open stand has 16 trade slots (24 from merchant level 70, 30 from 80 - server);
         // empty ones are not listed in character.slots, so the names are built here.
@@ -97,6 +100,16 @@ module.exports = function createMerchant(ctx) {
         for (let i = 1; i <= count; i++) slots.push("trade" + i);
         const market = config.market || {};
         const lvlText = function (name, level) { return G.items[name].upgrade || G.items[name].compound ? " +" + level : ""; };
+        // Listed buy orders no longer needed - the item left config.market.buy, or we hold
+        // "want" by now - are taken down (unequip gives the reserved gold back).
+        slots.forEach(function (s) {
+            const it = character.slots[s];
+            if (!it || !it.b) return;
+            const o = (market.buy || []).find(function (b) { return b.item === it.name && (b.level || 0) === (it.level || 0); });
+            if (o && (o.want || 1) - workshop.ownedCount(o.item) > 0) return;
+            parent.socket.emit("unequip", { slot: s });
+            util.log("merchant", "buy order for " + it.name + " taken down (" + (o ? "we hold " + workshop.ownedCount(o.item) + " of " + (o.want || 1) : "not on the list") + ")", "white");
+        });
         // Buy orders: what is missing up to "want" (bag + bank).
         (market.buy || []).forEach(function (o) {
             if (!G.items[o.item]) return;

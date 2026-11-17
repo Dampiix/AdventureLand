@@ -2439,6 +2439,7 @@ module.exports = function createWorkshop(ctx) {
         isOwnWish: isOwnWish,
         // Units of an item we hold (bag + last bank snapshot), e.g. for the stand's buy orders.
         ownedCount: ownedCount,
+        bankKnown: function () { return !!bankSnapshot; },
         // A copy waiting to be dismantled stays in the bag (unless dismantling is paused).
         waitsForDismantle: function (item) {
             return (blockedUntil._dismantle || 0) <= Date.now() && isDismantleCopy(item);
