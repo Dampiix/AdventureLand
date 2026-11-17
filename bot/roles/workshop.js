@@ -1965,6 +1965,22 @@ module.exports = function createWorkshop(ctx) {
         return false;
     }
 
+    // Shop armor with a stat nobody in the team still builds (player decision 2026-11-17):
+    // e.g. gloves +7 STR once the only STR fighter wears +8 – priest/ranger need INT/DEX.
+    // Copies in a stat some team fighter still wears below the final stage stay as bases.
+    function isOrphanStatCopy(item) {
+        if (!goalsOn() || !item || !item.stat_type || !sellerOf(item.name)) return false;
+        const def = G.items[item.name];
+        if (!def || !def.stat || (item.level || 0) >= finalStage()) return false;
+        return !config.team.fighters.some(function (f) {
+            const eq = worn[f] || {};
+            return Object.keys(eq).some(function (s) {
+                const w = eq[s];
+                return w && w.name === item.name && w.stat === item.stat_type && (w.level || 0) < finalStage();
+            });
+        });
+    }
+
     // A box armor piece we are done with (player decision 2026-11-17): nobody wishes it any
     // more and a fighter wears it at upTo (or we hold a copy at upTo) – further copies from
     // the boxes are sold. The copy at upTo itself is kept.
@@ -2044,6 +2060,9 @@ module.exports = function createWorkshop(ctx) {
         // and weapons keep growing while the guide waits on accessories.
         if (goalsOn() && Date.now() - lastGoalStep >= (cfg.gearGoals.everyMs || 0)) {
             lastGoalStep = Date.now();
+            // Compounding frees bank slots (3 -> 1): with wishes that never close (cape, class
+            // orb) it used to wait for an idle moment that never came (2026-11-17).
+            if (await autoCompound()) return;
             if (await workOnBetterWeapons()) return;
             if (await bruteForceSpares()) return;
             if (await upgradeBoxArmor()) return;
@@ -2090,7 +2109,7 @@ module.exports = function createWorkshop(ctx) {
     return {
         work: work, handOver: handOver, isReserved: isReserved, readyFor: readyFor,
         isGoalStock: isGoalStock, isGoalFinished: isGoalFinished, isOutgrownGoalCopy: isOutgrownGoalCopy,
-        isDoneBoxArmor: isDoneBoxArmor,
+        isDoneBoxArmor: isDoneBoxArmor, isOrphanStatCopy: isOrphanStatCopy,
         classOf: function (fighter) { return classes[fighter] || null; },
         oneEachFor: oneEachFor,
         markCarried: function (fighter, item) { (carries[fighter] = carries[fighter] || {})[item] = true; },

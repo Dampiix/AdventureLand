@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.63.1",
+    version: "1.64.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -543,6 +543,7 @@ module.exports = {
             // slime, ashleaf (Thistle Quiver), bat wings, spores (Oathplate), reef glass,
             // carrots (Carrot Sword).
             "snakefang", "embercoal", "rattail", "smush",
+            "cclaw",   // Crab Claw (fist weapon, 12 attack) - player decision 2026-11-17
             // Rugged and Heavy armor (armor boxes) are no longer sold since the fresh start:
             // craft bases (Oathplate, Resolute Sallet, class boots) and upgrades (2026-11-16).
         ],
