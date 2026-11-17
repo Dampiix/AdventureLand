@@ -342,6 +342,12 @@ module.exports = function createMerchant(ctx) {
         if (busy) return;
         busy = true;
         try {
+            // A (nearly) full bag first sheds its junk in town: otherwise a pickup can't take
+            // the loot (send_no_space) and the bag never empties (2026-11-17).
+            if (character.esize < 4) {
+                await goHome();
+                await sellJunk();
+            }
             const next = requests.keys().next();
             if (!next.done) {
                 await deliver(next.value);

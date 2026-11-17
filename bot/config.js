@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.64.0",
+    version: "1.64.1",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -544,6 +544,7 @@ module.exports = {
             // carrots (Carrot Sword).
             "snakefang", "embercoal", "rattail", "smush",
             "cclaw",   // Crab Claw (fist weapon, 12 attack) - player decision 2026-11-17
+            "vitscroll", "lspores", // VIT stat scrolls (we use STR/INT/DEX; the shop sells them), Large Spores - 2026-11-17
             // Rugged and Heavy armor (armor boxes) are no longer sold since the fresh start:
             // craft bases (Oathplate, Resolute Sallet, class boots) and upgrades (2026-11-16).
         ],
