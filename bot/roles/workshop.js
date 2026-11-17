@@ -2060,6 +2060,9 @@ module.exports = function createWorkshop(ctx) {
             }
         }
 
+        // A tight bank comes first: every compound (3 -> 1) frees two slots, and the armor
+        // boxes for the Rugged chain only open with 10 free (2026-11-17: 83 of 84 used).
+        if (bankSnapshot && bankSnapshot.free < ((cfg.exchange || {}).onDemandBankFree || 10) && await autoCompound()) return;
         const open = openWishes().filter(function (o) { return wishIndex(o.wish, targetLevel(o.fighter, o.wish)) === -1; });
         if (!open.length) {
             if (await autoCompound()) return;
