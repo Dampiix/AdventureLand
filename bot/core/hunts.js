@@ -236,6 +236,7 @@ module.exports = function createHunts(ctx) {
         }
     }
 
+    let interrupted = false;
     async function visitDaisy() {
         busy = true;
         try {
@@ -253,10 +254,15 @@ module.exports = function createHunts(ctx) {
             }
             if (pending.length) util.log("hunt", "left Daisy - still pending: " + pending.join(", "), "orange");
         } catch (e) {
-            util.log("hunt", "trip to Daisy failed: " + util.errReason(e), "red");
+            const reason = util.errReason(e);
+            // Stopped on the way (e.g. the handover to the merchant stands us still): go again
+            // right away instead of waiting out the trip cooldown (2026-11-17).
+            interrupted = /interrupt|stop/i.test(reason);
+            util.log("hunt", "trip to Daisy " + (interrupted ? "interrupted - going again" : "failed: " + reason), interrupted ? "yellow" : "red");
         } finally {
-            nextDaisyAt = Date.now() + cfg.visitCooldownMs;
-            lastTripAt = Date.now();
+            nextDaisyAt = interrupted ? 0 : Date.now() + cfg.visitCooldownMs;
+            lastTripAt = interrupted ? 0 : Date.now();
+            interrupted = false;
             busy = false;
         }
     }
