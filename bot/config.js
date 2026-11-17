@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.79.0",
+    version: "1.80.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -404,6 +404,8 @@ module.exports = {
             free: ["helmet1", "gloves1", "pants1", "coat1", "shoes1",
                 "ololipop", "glolipop"], // Lolipop Maces up to +7 like shop gear: (Green) Jr. drops one or two per kill
             maxScrollGrade: 2,     // try up to Rare scrolls when the normal one falls short
+            // Weapons nobody sells in normal grade use the High scroll (40k) from +4 -> +5 on.
+            higherScrollFrom: 5,
             buyStrongerScrolls: true, // only within budgetPerWish; owned/banked ones are used first
         },
         // Gold per wish (base item + scrolls, failures included): shop gear vs token/drop

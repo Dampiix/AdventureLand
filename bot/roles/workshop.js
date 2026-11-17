@@ -1296,6 +1296,12 @@ module.exports = function createWorkshop(ctx) {
             const replaceable = opts && opts.replaceable !== undefined ? opts.replaceable : !!sellerOf(w.name);
             const minChance = opts && opts.minChance !== undefined ? opts.minChance : minChanceFor(item, replaceable, 1);
             let scroll = "scroll" + grade;
+            // Weapons nobody sells, still normal grade (e.g. Lolipop Maces): from the step to
+            // risk.higherScrollFrom on, the next scroll grade – x1.2 + 1 point for 40k instead of
+            // burning copies we can't buy again (player decision 2026-11-17). A scroll two grades
+            // higher adds nothing more (server.js).
+            const hs = cfg.risk.higherScrollFrom;
+            if (hs && grade === 0 && level + 1 >= hs && !sellerOf(w.name) && G.items[w.name].type === "weapon") scroll = "scroll1";
             await ensureScroll(k, scroll, w.level - level);
             await goTo("newupgrade");
             // Buying and walking can reorder the bag: re-locate the working copy.
