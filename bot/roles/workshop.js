@@ -137,15 +137,25 @@ module.exports = function createWorkshop(ctx) {
     async function goTo(npcId) {
         const p = npcPos(npcId);
         if (!p) throw { reason: "npc " + npcId + " not found" };
-        if (character.map === p.map && util.distanceTo(p) < 100) return;
-        // At the market stand's home spot: NPCs within the server's 400 px are used from
-        // there (the stand stays open, Merrit's two minutes keep running). Checked by the
-        // spot, not character.stand: the stand opens a moment later and the merchant had
-        // already walked off to the upgrade NPC (2026-11-17).
+        // Market stand (config.merchantRole.stand): an NPC within the server's 400 px of the
+        // home spot is used from there - we walk home instead of to the NPC, so the stand
+        // reopens and Merrit's two minutes keep running. After a bank trip the merchant had
+        // walked on to Lucas and the upgrade NPC with his stand closed (2026-11-17).
         const st = config.merchantRole.stand || {};
-        const home = st.enabled && st.home && character.map === "main" && util.distanceTo({ x: st.home.x, y: st.home.y }) < 15 &&
+        const hasStand = st.enabled && st.home &&
             character.items.some(function (i) { return i && G.items[i.name] && G.items[i.name].type === "stand"; });
-        if (home && character.map === p.map && util.distanceTo(p) < (st.reach || 390)) return;
+        if (hasStand && p.map === "main") {
+            const home = { map: "main", x: st.home.x, y: st.home.y };
+            const reach = st.reach || 390;
+            if (Math.hypot(p.x - home.x, p.y - home.y) < reach) {
+                if (character.map !== "main" || util.distanceTo(home) >= 15) await util.walk(home);
+                if (!character.stand) {
+                    try { open_stand(); } catch (e) { /* the merchant's round opens it again */ }
+                }
+                return;
+            }
+        }
+        if (character.map === p.map && util.distanceTo(p) < 100) return;
         await util.walk(p);
     }
 
