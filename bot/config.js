@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.68.1",
+    version: "1.69.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -153,7 +153,16 @@ module.exports = {
             // whole pack (vampire rats: 5 in 150x195 wiped the team, 2026-11-16).
             denseArea: 15000,
             abilities: [],                 // monster abilities we accept (others: the guide decides)
+            // The whole fight: damage/s the priest's heals and the tank's potions don't cover,
+            // for as long as the team needs to kill it, must stay below this share of the
+            // tank's max HP (level-12 White Wolves have 312k HP, 2026-11-17).
+            fightHpUse: 0.5,
         },
+        // Aggressive monsters (they attack whoever passes close by) are only pulled when no
+        // other free aggressive monster stands within radius of the target, of where we will
+        // stand or of the way there. Walking into the middle of the White Wolf pack wiped the
+        // team (2026-11-17); one at a time they are fine.
+        isolation: { enabled: true, minAggro: 0.3, radius: 120 },
         // Monster levels (player request 2026-11-16): from this level a monster is checked
         // again with its real stats before we pull it (team model, else its damage per
         // second must stay within tolerance x the level-1 monster's).

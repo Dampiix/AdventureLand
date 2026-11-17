@@ -201,6 +201,14 @@ module.exports = function createTargeting(ctx) {
         return most;
     }
 
+    // HP per second from drinking a potion on every cooldown.
+    function potionHps() {
+        const cd = ((G.skills.use_hp && G.skills.use_hp.cooldown) || 2000) / 1000;
+        const potName = util.potionNames(config.potions).hp;
+        const potGives = ((G.items[potName] && G.items[potName].gives) || []).find(function (x) { return x[0] === "hp"; });
+        return (potGives ? potGives[1] : 200) / cd;
+    }
+
     // `live` (optional): a monster entity – its real attack/frequency (higher levels hit
     // harder) replace the base values from G.monsters.
     function teamVerdict(monster, live) {
@@ -228,6 +236,21 @@ module.exports = function createTargeting(ctx) {
         const incoming = volley * (m.frequency || 1);
         const healing = team.reduce(function (s, f) { return s + (f.ctype === "priest" ? (f.heal || f.attack || 0) * (f.frequency || 1) : 0); }, 0);
         if (incoming > healing * (ts.healCover || 1.5)) return { ok: false, why: Math.round(incoming) + " dmg/s on " + tank.name + " vs " + Math.round(healing) + " healing/s" };
+        // The whole fight, not only its rate: what heals and potions don't cover is lost for
+        // as long as the kill takes (a level-12 White Wolf has 312k HP). Lone pulls
+        // (isolation) start with one monster; the volley check above keeps the margin for adds.
+        const fightPull = icfg.enabled && (m.aggro || 0) >= (icfg.minAggro || 0.3) ? 1 : pull;
+        const teamDps = team.reduce(function (s, f) {
+            if (f.ctype === "priest") return s; // its actions are counted as healing above
+            const d = f.damage_type === "magical" ? (m.resistance || 0) - (f.rpiercing || 0) : (m.armor || 0) - (f.apiercing || 0);
+            return s + (f.attack || 0) * (f.frequency || 1) * util.damageMultiplier(d);
+        }, 0);
+        const monsterHp = (live && (live.hp || live.max_hp)) || m.hp || 0;
+        const killSec = monsterHp * fightPull / Math.max(1, teamDps);
+        const lost = Math.max(0, hitOn(tank) * fightPull * (m.frequency || 1) - healing - potionHps()) * killSec;
+        if (lost > tank.max_hp * (ts.fightHpUse || 0.5)) {
+            return { ok: false, why: tank.name + " would lose " + Math.round(lost) + " HP over ~" + Math.round(killSec) + " s (max " + Math.round(tank.max_hp * (ts.fightHpUse || 0.5)) + ")" };
+        }
         for (const f of team) {
             if (f === tank) continue;
             const hits = f.max_hp / Math.max(1, hitOn(f));
@@ -292,10 +315,7 @@ module.exports = function createTargeting(ctx) {
                 : def.damage_type === "magical" ? (me.resistance || 0) - (def.rpiercing || 0) : 0;
             const pull = (def.aggro || 0) >= 1 ? Math.max(1, densePack(e.mtype)) : 1;
             const incoming = (e.attack || def.attack || 0) * 1.1 * util.damageMultiplier(d) * (e.frequency || def.frequency || 1) * pull;
-            const cd = ((G.skills.use_hp && G.skills.use_hp.cooldown) || 2000) / 1000;
-            const potName = util.potionNames(config.potions).hp;
-            const potGives = ((G.items[potName] && G.items[potName].gives) || []).find(function (x) { return x[0] === "hp"; });
-            let sustain = (potGives ? potGives[1] : 200) / cd;
+            let sustain = potionHps();
             if (me.ctype === "priest") sustain += (me.heal || me.attack || 0) * (me.frequency || 1) * 0.5; // half its actions heal
             const myDef = me.damage_type === "physical" ? (def.armor || 0) - (me.apiercing || 0) : (def.resistance || 0) - (me.rpiercing || 0);
             const myDps = Math.max(1, (me.attack || 0) * (me.frequency || 1) * util.damageMultiplier(myDef));
@@ -341,17 +361,70 @@ module.exports = function createTargeting(ctx) {
         return best ? { map: best.map, x: best.x, y: best.y } : null;
     }
 
-    // Nearest free monster of this type that we may hit (damage return, live level check).
+    // ---- lone pulls -------------------------------------------------------------
+    // Aggressive monsters attack whoever passes within ~32 px of them, and with rage they
+    // stay on that player (game source). So we pull them one at a time: from our range,
+    // and only when no other free aggressive monster is near the target, near where we
+    // will stand or near the way there (config.targeting.isolation).
+    const icfg = cfg.isolation || {};
+    function aggressive(e) {
+        const def = e && G.monsters[e.mtype];
+        return !!def && (def.aggro || 0) >= (icfg.minAggro || 0.3);
+    }
+    // Where we stop to hit e: on the line from us to it, at 90% of our range.
+    function standPoint(e) {
+        const p = util.xy(e);
+        const me = util.xy(character);
+        const dx = me.x - p.x, dy = me.y - p.y;
+        const d = Math.hypot(dx, dy);
+        const r = Math.max(10, (character.range || 30) * 0.9);
+        if (d <= r) return me;
+        return { x: p.x + dx / d * r, y: p.y + dy / d * r };
+    }
+    function distToSegment(p, a, b) {
+        const vx = b.x - a.x, vy = b.y - a.y;
+        const len2 = vx * vx + vy * vy;
+        const t = len2 ? Math.max(0, Math.min(1, ((p.x - a.x) * vx + (p.y - a.y) * vy) / len2)) : 0;
+        return Math.hypot(p.x - (a.x + t * vx), p.y - (a.y + t * vy));
+    }
+    function crowdAround(e) {
+        const r = icfg.radius || 120;
+        const at = util.xy(e);
+        const me = util.xy(character);
+        const stand = standPoint(e);
+        return Object.values(parent.entities || {}).filter(function (o) {
+            if (!o || o.id === e.id || o.type !== "monster" || o.dead || !o.visible || o.target) return false;
+            if (!aggressive(o)) return false;
+            const q = util.xy(o);
+            return Math.hypot(q.x - at.x, q.y - at.y) < r || distToSegment(q, me, stand) < r;
+        }).length;
+    }
+    function isolated(e) {
+        return !icfg.enabled || !aggressive(e) || crowdAround(e) === 0;
+    }
+
+    // Free monsters of this type that we may hit (damage return, live level check).
+    function safeCandidates(type) {
+        return Object.values(parent.entities || {}).filter(function (e) {
+            if (!e || e.type !== "monster" || e.mtype !== type || e.dead || !e.visible || e.target) return false;
+            return !util.tooSpiky(config, e) && liveSafe(e);
+        });
+    }
+    // Nearest of them that stands alone (see isolated).
     function nearestSafe(type) {
         let best = null;
         let bestD = Infinity;
-        Object.values(parent.entities || {}).forEach(function (e) {
-            if (!e || e.type !== "monster" || e.mtype !== type || e.dead || !e.visible || e.target) return;
-            if (util.tooSpiky(config, e) || !liveSafe(e)) return;
+        safeCandidates(type).forEach(function (e) {
+            if (!isolated(e)) return;
             const d = util.distanceTo(e);
             if (d < bestD) { bestD = d; best = e; }
         });
         return best;
+    }
+    // We see monsters of this type but none stands alone: hold position until one does,
+    // instead of walking on into the pack.
+    function waitForLone(type) {
+        return !!icfg.enabled && safeCandidates(type).some(function (e) { return aggressive(e) && !isolated(e); });
     }
 
     // Leader command "/safety [map]": every monster of the map (default: ours) with each
@@ -724,5 +797,5 @@ module.exports = function createTargeting(ctx) {
     }
 
     return { currentFarm: currentFarm, pick: pick, isValid: isValid, reportSearch: reportSearch, isTeamSafe: isTeamSafe, whyUnsafe: whyUnsafe,
-        teamModelOn: teamModelOn, teamVerdict: teamVerdict, safetyReport: safetyReport, diedAt: diedAt, deathAt: deathAt, spotFor: spotFor, liveSafe: liveSafe };
+        teamModelOn: teamModelOn, teamVerdict: teamVerdict, safetyReport: safetyReport, waitForLone: waitForLone, standPoint: standPoint, aggressive: aggressive, diedAt: diedAt, deathAt: deathAt, spotFor: spotFor, liveSafe: liveSafe };
 };

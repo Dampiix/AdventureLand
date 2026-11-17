@@ -103,10 +103,20 @@ module.exports = function createFighter(ctx, cls) {
         else if (c.potionWhenMissing && mpMissing >= potionGives("mp")) use_skill("use_mp").catch(function () {});
     }
 
+    // A target in sight ends the search walk: smart_move kept walking to the middle of the
+    // spawn while we fought on the way – into the White Wolf pack (2026-11-17).
+    let stoppedOnPurpose = false;
+    function endSearchWalk() {
+        if (typeof smart === "undefined" || !smart.moving) return;
+        stoppedOnPurpose = true;
+        stop();
+    }
+
     function travel(destination, label) {
         util.status(label, "yellow");
         if (!is_moving(character)) {
             smart_move(destination).catch(function (e) {
+                if (stoppedOnPurpose) { stoppedOnPurpose = false; return; } // we stopped it for a target
                 util.log("move", "route to " + JSON.stringify(destination) + " failed: " + util.errReason(e), "red");
             });
         } else if (cls.move) {
@@ -126,16 +136,26 @@ module.exports = function createFighter(ctx, cls) {
         if (!target) {
             if (party.idleFollow()) return; // party member: stay with the leader
             if (farm.any) { util.status("waiting for monsters (" + farm.source + ")", "white"); return; }
+            if (targeting.waitForLone(farm.monster)) {
+                endSearchWalk();
+                util.status("waiting for a lone " + farm.monster, "white");
+                return;
+            }
             travel(farm.dest || targeting.spotFor(farm.monster, farm.map) || farm.monster, "searching " + farm.monster);
             return;
         }
 
         if (get_targeted_monster() !== target) change_target(target);
+        endSearchWalk();
 
         if (!is_in_range(target)) {
             util.status("moving to " + target.mtype, "orange");
             if (cls.move && cls.move(target)) return; // e.g. Warrior Dash closed the gap
-            if (!is_moving(character)) util.moveToEntity(target);
+            if (!is_moving(character)) {
+                // Aggressive ones: only up to our range, not into them (and past their friends).
+                if (targeting.aggressive(target)) { const p = targeting.standPoint(target); xmove(p.x, p.y); }
+                else util.moveToEntity(target);
+            }
             return;
         }
 
