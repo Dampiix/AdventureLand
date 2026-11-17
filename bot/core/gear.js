@@ -108,6 +108,7 @@ module.exports = function createGear(ctx) {
             // wield); whenWorn: { slot: level } – wished only once those worn slots reach it.
             steps.carry = !!(e && e.carry);
             steps.whenWorn = (e && e.whenWorn) || null;
+            steps.count = (e && e.count) || 1; // carried copies wanted (e.g. two maces for dual wield)
             return steps;
         }).filter(function (steps) { return steps.length; });
     }
@@ -164,11 +165,16 @@ module.exports = function createGear(ctx) {
     // Wish for a carried chain: the first step no copy in the bag reaches yet.
     function carryWish(steps) {
         if (steps.whenWorn && !wornReaches(steps.whenWorn)) return null;
-        let best = 0;
-        character.items.forEach(function (item) { if (item) best = Math.max(best, chainProgress(steps, item)); });
-        if (best >= steps.length) return null;
-        const w = steps[Math.max(0, best)];
-        return { name: w.name, level: w.level || 0, full: true }; // only the finished piece is useful
+        // Finished copies in the bag; below steps.count the next copy is wished.
+        const progress = character.items.filter(Boolean).map(function (item) { return chainProgress(steps, item); })
+            .sort(function (a, b) { return b - a; });
+        const done = progress.filter(function (p) { return p >= steps.length; }).length;
+        if (done >= steps.count) return null;
+        const best = Math.max(0, progress[done] || 0); // the furthest copy that is not finished yet
+        const w = steps[Math.min(best, steps.length - 1)];
+        const wish = { name: w.name, level: w.level || 0, full: true }; // only the finished piece is useful
+        if (steps.count > 1) wish.count = steps.count;
+        return wish;
     }
     function classWishes(have) {
         const list = [];

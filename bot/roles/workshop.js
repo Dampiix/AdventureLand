@@ -99,7 +99,7 @@ module.exports = function createWorkshop(ctx) {
             // 6 h redelivery pause (player decision 2026-11-17).
             .filter(function (w) {
                 const t = G.items[w.name] && G.items[w.name].type;
-                return t === "ring" || t === "earring" || !recentlyDelivered(fighter, w);
+                return t === "ring" || t === "earring" || (w.count || 1) > 1 || !recentlyDelivered(fighter, w);
             });
     }
 
