@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.120.0",
+    version: "1.120.1",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -33,7 +33,7 @@ module.exports = {
         // Fighters outside the party: not invited, not started by the leader (only three fighters
         // may be online). 2026-11-18 (late): the rogue joins the party for booboos and belts, the
         // ranger pauses. Before: the new rogue levelled on its own.
-        solo: ["DmpxRanger"],
+        solo: ["DmpxRogue"], // 2026-11-19: the ranger back in the party (booboo belts, level 60); the rogue solos tomorrow
         merchant: "DampiixMerch",                       // null for no merchant
         farm: {},                                       // optional per-character farm override, e.g. { DmpxRanger: "bee" }
     },
