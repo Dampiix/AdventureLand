@@ -284,8 +284,31 @@ module.exports = function createWarrior(ctx) {
     }
 
     // Returns true while the pack mode runs this tick (the normal combat waits).
+    // "swords": no pull point, no waiting - normal combat where we stand, and Agitate on every
+    // cooldown that finds free monsters, so a steady stream walks to us (player idea
+    // 2026-11-18: the pull-point version lost 15% to single targets at the arctic bees, its
+    // waiting cost more than the walking it saved). Only while few are on us already.
+    let lastStreamLog = 0;
+    function streamAgitate() {
+        if (!util.canCast("agitate") || character.mp < G.skills.agitate.mp + reserve()) return;
+        if (util.hpRatio() < (ag.minHp || 0.8)) return;
+        const coming = onMe().length;
+        if (coming > (ag.streamOnMe || 3)) return;
+        const fresh = packAround(G.skills.agitate.range).filter(function (m) { return m.target !== character.name; });
+        if (fresh.length < (ag.streamFrom || 2) || unwantedAround(G.skills.agitate.range).length) return;
+        use_skill("agitate").catch(function () {});
+        if (Date.now() - lastStreamLog > 5 * 60 * 1000) {
+            lastStreamLog = Date.now();
+            util.log("warrior", "agitate stream: " + fresh.length + " more on the way (" + coming + " on us)", "white");
+        }
+    }
+
     function packTick() {
         if (!packOn()) return false;
+        if (agMode() === "swords" && (ag.swords || "stream") === "stream") {
+            streamAgitate();
+            return false; // normal combat does the fighting
+        }
         if (pack.busy) return true;
         const now = Date.now();
         if (pack.state === "idle") {
