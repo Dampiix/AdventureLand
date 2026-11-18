@@ -144,7 +144,8 @@ module.exports = function createParty(ctx) {
             util.status("waiting for " + leader, "white");
             return true;
         }
-        if (util.distanceTo(lead) > cfg.followDistance) moveTowards(lead, "following " + leader);
+        // Another map counts as far (the distance alone compared coordinates across maps).
+        if (lead.map !== character.map || util.distanceTo(lead) > cfg.followDistance) moveTowards(lead, "following " + leader);
         else util.status("waiting near " + leader, "white");
         return true;
     }
