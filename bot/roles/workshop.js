@@ -275,7 +275,10 @@ module.exports = function createWorkshop(ctx) {
 
     // ---- bank -------------------------------------------------------------
 
+    // Only a read inside the loaded bank counts (util.bankLoaded); otherwise the old snapshot
+    // stays and false comes back.
     function readBank() {
+        if (!util.bankLoaded()) return false;
         const items = [];
         Object.keys(character.bank || {}).forEach(function (pack) {
             if (!/^items\d+$/.test(pack)) return;
@@ -284,8 +287,11 @@ module.exports = function createWorkshop(ctx) {
             });
         });
         const packs = Object.keys(character.bank || {}).filter(function (p) { return /^items\d+$/.test(p); });
-        const capacity = packs.reduce(function (sum, p) { return sum + (character.bank[p] || []).length; }, 0);
+        // Every pack holds 42 (server); a newly bought one starts as an empty list and only
+        // grows as things go in, so its list length undercounts the room.
+        const capacity = packs.length * 42;
         bankSnapshot = { at: Date.now(), items: items, free: capacity - items.length };
+        return true;
     }
 
     function bankFind(name, filter) {
@@ -296,7 +302,7 @@ module.exports = function createWorkshop(ctx) {
 
     async function retrieve(entry) {
         if (character.esize < 1) throw { reason: "bag full" };
-        await util.walk("bank");
+        if (!(await util.walkToBank())) throw { reason: "not inside the bank after the walk" };
         readBank();
         let fresh = bankSnapshot.items.find(function (b) { return b.pack === entry.pack && b.index === entry.index && b.name === entry.name; });
         // An older snapshot (we took a copy since, or the player moved things): any slot with
@@ -548,7 +554,7 @@ module.exports = function createWorkshop(ctx) {
     async function gatherIngredient(name, q, level) {
         if (stackable(name)) {
             if (util.findItemIndex(function (i) { return i.name === name && (i.q || 1) >= q; }) !== -1) return;
-            await util.walk("bank");
+            if (!(await util.walkToBank())) throw { reason: "not inside the bank after the walk" };
             // Bag stacks go into the bank first: storing merges them into one stack.
             for (let i = character.items.length - 1; i >= 0; i--) {
                 if (character.items[i] && character.items[i].name === name) await bank_store(i);
@@ -2292,7 +2298,7 @@ module.exports = function createWorkshop(ctx) {
 
         if (!bankSnapshot || Date.now() - bankSnapshot.at > cfg.bankScanEveryMs) {
             util.status("checking the bank", "yellow");
-            await util.walk("bank");
+            if (!(await util.walkToBank())) return; // walk cut short: next round
             readBank();
         }
 

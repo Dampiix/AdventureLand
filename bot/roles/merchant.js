@@ -522,10 +522,10 @@ module.exports = function createMerchant(ctx) {
     // Walk into the bank and store what we can. Returns the number of stacks stored.
     async function bankTrip() {
         util.status("banking", "yellow");
-        await util.walk("bank");
         // smart_move can end outside the bank (interrupted by another move, e.g. a pickup
         // call): then every store fails with not_in_bank – try again on the next round.
-        if (!character.bank) {
+        // (character.bank is {} outside, so walkToBank checks for loaded packs.)
+        if (!(await util.walkToBank())) {
             util.log("merchant", "not inside the bank after the walk - banking later", "white");
             return 0;
         }

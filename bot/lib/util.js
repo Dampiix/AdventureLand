@@ -169,6 +169,22 @@ async function walk(dest) {
     return smart_move(dest);
 }
 
+// Inside a bank map with its packs loaded. Outside, character.bank is {} (not undefined),
+// and right after entering the server sends the packs a moment later. A bank read in
+// either state saw no packs, took the bank for empty and full and stopped the exchanges
+// ("bank full!", 2026-11-18, walks cut short by a pickup call).
+function bankLoaded() {
+    return /^bank/.test(character.map) &&
+        Object.keys(character.bank || {}).some(function (p) { return /^items\d+$/.test(p); });
+}
+// Walk into the bank and wait up to 5 s for its packs. False when we did not get in
+// (smart_move interrupted by another move): the caller tries again later.
+async function walkToBank() {
+    try { await walk("bank"); } catch (e) { /* checked below */ }
+    for (let i = 0; i < 50 && !bankLoaded() && /^bank/.test(character.map); i++) await sleep(100);
+    return bankLoaded();
+}
+
 function moveToEntity(e) {
     const p = xy(e);
     return xmove(p.x, p.y);
@@ -307,6 +323,8 @@ module.exports = {
     distanceTo: distanceTo,
     moveToEntity: moveToEntity,
     walk: walk,
+    bankLoaded: bankLoaded,
+    walkToBank: walkToBank,
     openStand: openStand,
     isNear: isNear,
     countItem: countItem,
