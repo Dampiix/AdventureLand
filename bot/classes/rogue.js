@@ -57,7 +57,7 @@ module.exports = function createRogue(ctx) {
     // Assassin's Smoke as an escape (player idea 2026-11-18): the monsters lose us, we stop
     // attacking (a hit would show us again), walk to a quiet spot - no monster within
     // smokeClear px - and drink there until smokeUntil of max HP, then fight on.
-    let hiding = false, hideSpot = null, hideSince = 0;
+    let hiding = false, hideSpot = null, hideSince = 0, lastUnhide = 0;
     function invisible() {
         return !!(character.s && character.s.invis);
     }
@@ -102,6 +102,15 @@ module.exports = function createRogue(ctx) {
 
         always: function () {
             swiftness();
+            // In a party, following the leader: show ourselves again once we are done hiding
+            // (player request 2026-11-18) - invisible, the priest can't see or heal us and the
+            // leader waits for us. Alone the smoke lasts until we attack, as before.
+            if (!hiding && invisible() && ctx.party.isMember && !(ctx.party.detached && ctx.party.detached()) &&
+                Date.now() - lastUnhide > 3000) {
+                lastUnhide = Date.now();
+                stop("invis").catch(function () {});
+                util.log("rogue", "visible again for the party", "white");
+            }
         },
 
         survive: function () {
