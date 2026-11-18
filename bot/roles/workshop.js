@@ -2015,9 +2015,10 @@ module.exports = function createWorkshop(ctx) {
     const filledAt = {}; // "fighter|type" -> last delivery of such an item
 
     // A piece some team fighter could put into an EMPTY slot of its own (player decision
-    // 2026-11-18): never sold - a new character (the rogue) takes it. Stat armor counts only
-    // with that fighter's main stat (or no stat yet). Once the slot is filled the usual
-    // selling rules apply again. A fighter we know nothing about yet counts as all empty.
+    // 2026-11-18): never sold - a new character (the rogue) takes it. Any stat: a stat scroll
+    // overwrites the old stat (server.js), so a STR piece can become DEX for 1-10 scrolls.
+    // Once the slot is filled the usual selling rules apply again. A fighter we know nothing
+    // about yet counts as all empty.
     function fillsEmptySlot(item) {
         const def = item && G.items[item.name];
         const slots = def && SLOTS_BY_TYPE[def.type];
@@ -2025,7 +2026,6 @@ module.exports = function createWorkshop(ctx) {
         return config.team.fighters.some(function (f) {
             const cls = fighterClass(f);
             if (!cls || !usableBy(def, cls)) return false;
-            if (item.stat_type && def.stat && item.stat_type !== G.classes[cls].main_stat) return false;
             const eq = worn[f] || {};
             return slots.some(function (s) { return !eq[s]; });
         });
