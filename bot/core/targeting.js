@@ -697,7 +697,17 @@ module.exports = function createTargeting(ctx) {
                     return teamList.find(function (c) { return !(crowdedUntil[c.monster] > now); }) || teamList[0];
                 }
             }
-            const raw = (advice.choices || [])
+            // The guide's safe routes ranked by its XP number (XP/s), best three monsters
+            // (player decision 2026-11-18): its own short list (advice.choices) is not ranked by
+            // XP - a level-71 warrior on his own got goo, irritated goo and poisio.
+            const seenRaw = {};
+            const ranked = Array.isArray(advice.routes) ? advice.routes
+                .filter(function (r) { return r && r.safe && G.monsters[r.monster]; })
+                .sort(function (a, b) { return (b.xp || 0) - (a.xp || 0); })
+                .filter(function (r) { if (seenRaw[r.monster]) return false; seenRaw[r.monster] = true; return true; })
+                .slice(0, 3)
+                .map(function (r) { return { kind: "farm", monster: r.monster, map: r.map }; }) : [];
+            const raw = ranked.length ? ranked : (advice.choices || [])
                 .filter(function (c) { return c.kind === "farm" && G.monsters[c.monster]; });
             list = raw
                 .filter(function (c) { return !lastingObjector(c.monster, own); })
