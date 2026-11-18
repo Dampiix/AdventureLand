@@ -165,8 +165,15 @@ module.exports = function createGear(ctx) {
     }
     // Wish for a carried chain: the first step no copy in the bag reaches yet.
     // Finished copies of a carried chain in the bag.
+    // Worn copies count too: a class mode (warrior Agitate) wears the carried maces for a
+    // while, and the wish report sent right after the pull asked the merchant for two more
+    // green Lolipops +7 (2026-11-18).
+    function carriedItems() {
+        const worn = Object.keys(character.slots || {}).map(function (s) { return character.slots[s]; });
+        return character.items.concat(worn).filter(Boolean);
+    }
     function carriedDone(steps) {
-        return character.items.filter(function (item) { return item && chainProgress(steps, item) >= steps.length; }).length;
+        return carriedItems().filter(function (item) { return chainProgress(steps, item) >= steps.length; }).length;
     }
     // How many copies of this carried chain are still needed: a stand-in (insteadOf) only
     // covers what the preferred item does not have finished yet.
@@ -178,7 +185,7 @@ module.exports = function createGear(ctx) {
     function carryWish(steps) {
         if (steps.whenWorn && !wornReaches(steps.whenWorn)) return null;
         // Finished copies in the bag; below the needed count the next copy is wished.
-        const progress = character.items.filter(Boolean).map(function (item) { return chainProgress(steps, item); })
+        const progress = carriedItems().map(function (item) { return chainProgress(steps, item); })
             .sort(function (a, b) { return b - a; });
         const done = progress.filter(function (p) { return p >= steps.length; }).length;
         if (done >= carryNeed(steps)) return null;
