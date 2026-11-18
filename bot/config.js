@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.91.1",
+    version: "1.92.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -69,6 +69,25 @@ module.exports = {
         enabled: true,
         names: ["fireblade", "firestaff", "firebow"],
         maxLevel: 0, // +1 and higher copies stay (they would only give one essence as well)
+    },
+
+    // Essence goals (player decision 2026-11-18): weapons crafted from the dismantled material
+    // (e.g. Essence of Fire + shop weapon + 20k at Leo) and pushed up the normal upgrade ladder,
+    // one copy at a time, until the goal is reached - then no further essence is touched.
+    //   auto:  for every team fighter, the best weapon its class can wield that is crafted from
+    //          `material`, at `upTo`; a goal when it beats the worn weapon (a second one for a
+    //          weapon in the offhand). Delivered like a wish once done.
+    //   extra: more goals on top, { item, level, count } - e.g. a spare to keep or sell.
+    // A copy we already hold (a drop) is the base before a new one is crafted, and copies an
+    // open goal needs are not dismantled. Normal scrolls only; the weapon ladder's budget pays.
+    essenceGoals: {
+        enabled: true,
+        material: "essenceoffire",
+        auto: true,
+        upTo: 7,
+        reserve: 0,          // essences that always stay in the bank
+        maxPerGoal: null,    // null = no limit: a goal is a goal (player decision 2026-11-18)
+        extra: [],
     },
 
     // "solo":  only the leader fights (Lone Wolf bonus); the merchant still supports it.
