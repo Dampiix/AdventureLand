@@ -569,8 +569,19 @@ module.exports = function createFighter(ctx, cls) {
             const on = all.filter(function (e) { return grown(e) && e.target === character.name; });
             if (on.length >= (cv.emergencyOnMe || 1)) return callCavalry("emergency, " + Math.round(util.hpRatio() * 100) + "% HP, " + on.length + " on me");
         }
+        // Reset/nuke: the Cavalry takes the NEAREST level-3+ monsters of any kind, and one it hits
+        // goes for the caller (it never targets the Cavalry). 2026-11-19: a passive green fairy
+        // (3,000 magic damage, whole-map reach) near the dinos was taken and killed the priest.
+        // So no call while another kind of level-3+ monster is within foreignClear px.
+        const foreign = function (type) {
+            return all.some(function (e) {
+                return e && e.type === "monster" && !e.dead && e.mtype !== type && (e.level || 1) >= 3 &&
+                    G.monsters[e.mtype] && !G.monsters[e.mtype].cooperative && util.distanceTo(e) <= (cv.foreignClear || 420);
+            });
+        };
         // Reset: the spot picker at its farm target, not during events.
         if (ctx.events.current() || !lastFarm || !lastFarm.monster || lastFarm.any) return;
+        if (foreign(lastFarm.monster)) return;
         if (party.enabled && party.isMember && !party.detached()) return;
         // Cavalry plan (targeting): nuke = any level-3+ one of the kind in reach; reset = grown ones.
         const src = String(lastFarm.source || "");
