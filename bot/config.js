@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.105.2",
+    version: "1.106.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -26,8 +26,9 @@ module.exports = {
         // Solo again 2026-11-17 (afternoon): the warrior hunts the Phoenix nonstop for firebows.
         // Party again 2026-11-17 (evening): normal farming and the Goo Brawl together.
         // Solo again 2026-11-17 (night): nonstop Phoenix to test config.dismantle (essence).
-        // Party: leader "DmpxPriest", phase "party".
-        leader: "DmpxWar",
+        // Party again 2026-11-18 (evening): Agitate with the team at the bats, the ranger
+        // collects his gear. Solo: leader "DmpxWar", phase "solo".
+        leader: "DmpxPriest",
         fighters: ["DmpxPriest", "DmpxWar", "DmpxRanger"],
         merchant: "DampiixMerch",                       // null for no merchant
         farm: {},                                       // optional per-character farm override, e.g. { DmpxRanger: "bee" }
@@ -95,7 +96,7 @@ module.exports = {
 
     // "solo":  only the leader fights (Lone Wolf bonus); the merchant still supports it.
     // "party": all fighters form a party around the leader.
-    phase: "solo",
+    phase: "party",
 
     party: {
         followDistance: 80,   // members idle within this distance of the leader
