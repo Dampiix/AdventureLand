@@ -337,8 +337,12 @@ module.exports = function createWarrior(ctx) {
             const n = splashNeighbours(m, mine);
             if (n > bestN || (n === bestN && best && m.hp < best.hp)) { best = m; bestN = n; }
         });
+        if (!best && mine.length > (ag.chaseFrom || 3)) {
+            util.status("agitate: waiting for the pack (" + mine.length + ")", "orange");
+            return true;
+        }
         if (!best) {
-            // Nobody in range: meet the nearest one instead of waiting (player request
+            // Only stragglers left (chaseFrom or fewer): meet the nearest one instead of waiting (player request
             // 2026-11-18: the last 2-3 from the far side took long to arrive). Monsters first
             // walk to where we cast Agitate, then to us - so going to them is the shortest.
             const near = mine.slice().sort(function (a, b) { return util.distanceTo(a) - util.distanceTo(b); })[0];

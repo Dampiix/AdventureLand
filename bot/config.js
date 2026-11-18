@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.97.4",
+    version: "1.97.5",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -352,6 +352,7 @@ module.exports = {
                 sideStep: 50,         // "center": step out of the pack after Agitate (0 = stay)
                 adjustStep: 40, adjustEveryMs: 4000, // "center": step when monsters come from behind
                 waitShare: 0.7, waitMs: 3000, // first swing once this share of the pulled pack is in range (at most waitMs)
+                chaseFrom: 3,         // with this many or fewer left and none in range: walk to the nearest one
                 kiteStep: 120,        // "step" (and backing off): this far
                 gatherMs: 2500,
                 regroupBelow: 0.5, regroupEveryMs: 8000,
