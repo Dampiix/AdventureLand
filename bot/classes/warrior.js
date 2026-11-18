@@ -245,7 +245,9 @@ module.exports = function createWarrior(ctx) {
         const c = safeCache[type];
         if (c && Date.now() - c.at < 10 * 1000) return c.n;
         const def = G.monsters[type] || {};
-        const live = Object.values(parent.entities || {}).filter(function (e) { return e && e.type === "monster" && e.mtype === type && !e.dead; })
+        // Only those Agitate would reach (plus levelMargin px for ones walking in), not every one in sight.
+        const reach = G.skills.agitate.range + (ag.levelMargin || 80);
+        const live = Object.values(parent.entities || {}).filter(function (e) { return e && e.type === "monster" && e.mtype === type && !e.dead && util.distanceTo(e) <= reach; })
             .sort(function (a, b) { return (b.level || 1) - (a.level || 1); })[0];
         const e = live || { mtype: type, attack: def.attack, hp: def.hp, max_hp: def.hp, frequency: def.frequency, level: 1 };
         let n = 0;
