@@ -78,6 +78,7 @@ module.exports = function createMerchant(ctx) {
     }
     // Every walk goes through util.walk, which closes the stand first (speed 10 with it open).
     let nextOrdersAt = 0;
+    const missingSince = {}; // item -> first time a buy-order shortage was seen
     // Open the stand at home and keep the buy orders listed (exact name and level).
     function keepStand() {
         if (!useStand() || !atHome()) return;
@@ -126,7 +127,12 @@ module.exports = function createMerchant(ctx) {
             });
             if (listed || character.gold < o.price) return; // a buy order must be funded
             const missing = (o.want || 1) - workshop.ownedCount(o.item);
-            if (missing <= 0) return;
+            if (missing <= 0) { delete missingSince[o.item]; return; }
+            // Only a shortage that lasts: while the workshop moves a stack between bag and bank
+            // (crafting from 85 essences) the count read 0 for a moment and a buy order for 10
+            // went up (2026-11-18).
+            if (!missingSince[o.item]) missingSince[o.item] = Date.now();
+            if (Date.now() - missingSince[o.item] < 2 * 60 * 1000) return;
             const free = slots.find(function (s) { return !character.slots[s]; });
             if (!free) return;
             character.slots[free] = { name: o.item, b: true }; // claimed until the server answers
