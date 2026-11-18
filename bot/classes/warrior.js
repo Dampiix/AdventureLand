@@ -558,13 +558,22 @@ module.exports = function createWarrior(ctx) {
         }
         // Emergency in the stream modes too: below abortHp with monsters on us, walk away from
         // them (we are faster than pack monsters); Hard Shell and potions do the rest.
+        // Never at the cost of fighting back (2026-11-18: in the cave he stepped off, stood and let
+        // the bats hit him): only while a step is possible, nothing is in our reach, and for at
+        // most backOffMs at a time - otherwise the normal stream fight goes on (Hard Shell, potions).
         if (["splashstream", "swords"].includes(effectiveMode()) && util.hpRatio() < (ag.abortHp || 0.3)) {
             const on = onMe();
-            if (on.length) {
-                if (!is_moving(character)) stepAway(on, 150);
-                util.status("agitate: backing off", "red");
-                return true;
+            const inReach = on.some(function (m) { return is_in_range(m); });
+            const t0 = Date.now();
+            if (on.length && !inReach && t0 - (pack.backOffSince || t0) < (ag.backOffMs || 6000)) {
+                if (!pack.backOffSince) pack.backOffSince = t0;
+                if (is_moving(character) || stepAway(on, 150)) {
+                    util.status("agitate: backing off", "red");
+                    return true;
+                }
             }
+        } else {
+            pack.backOffSince = 0;
         }
         if (effectiveMode() === "splashstream") {
             // Stream with the splash weapons on (player test 2026-11-18).
