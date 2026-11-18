@@ -239,10 +239,13 @@ module.exports = function createWarrior(ctx) {
     }
     const safeCache = {}; // type -> { at, n }
     function safeLimit(type) {
+        // Monsters level up while we fight them (2026-11-18: bats went from level 5 to 9 during
+        // the pull and killed the warrior): judged by the strongest one in sight, every 10 s.
         const c = safeCache[type];
-        if (c && Date.now() - c.at < 60 * 1000) return c.n;
+        if (c && Date.now() - c.at < 10 * 1000) return c.n;
         const def = G.monsters[type] || {};
-        const live = Object.values(parent.entities || {}).find(function (e) { return e && e.type === "monster" && e.mtype === type && !e.dead; });
+        const live = Object.values(parent.entities || {}).filter(function (e) { return e && e.type === "monster" && e.mtype === type && !e.dead; })
+            .sort(function (a, b) { return (b.level || 1) - (a.level || 1); })[0];
         const e = live || { mtype: type, attack: def.attack, hp: def.hp, max_hp: def.hp, frequency: def.frequency, level: 1 };
         let n = 0;
         for (let k = ag.maxOnMe || 8; k >= 1; k--) {
@@ -258,7 +261,10 @@ module.exports = function createWarrior(ctx) {
         if (def.dreturn > 0 || (def.hp || 0) > (ag.maxHp || 50000)) return { ok: false, why: "damage return or boss" };
         const abil = Object.keys(def.abilities || {}).filter(function (a) { return !(ag.abilities || []).includes(a); });
         if (abil.length) return { ok: false, why: "abilities " + abil.join(",") };
-        if ((def.speed || 0) >= (character.speed || 0) * 0.9) return { ok: false, why: "as fast as we are" };
+        // Our usual speed, not the current one: Hard Shell slows us, and the decision flipped
+        // to "off" mid-pull and swapped weapons (2026-11-18).
+        speedRef = Math.max(speedRef, character.speed || 0);
+        if ((def.speed || 0) >= speedRef * 0.9) return { ok: false, why: "as fast as we are" };
         const n = safeLimit(type);
         if (n < 2) return { ok: false, why: "pack check allows " + n };
         return { ok: true, n: n };
@@ -267,8 +273,12 @@ module.exports = function createWarrior(ctx) {
     function farmType() {
         try { const fm = ctx.targeting.currentFarm(); return fm && !fm.any ? fm.monster : null; } catch (e) { return null; }
     }
+    let speedRef = 0;
     function autoMode() {
         if (Date.now() - auto.at < 15 * 1000) return auto.mode;
+        // While monsters are on us the decision stands (no weapon swap mid-fight) - only a
+        // denied kind (death) ends it at once.
+        if (auto.type && onMe().length && !((statOf(auto.type).denyUntil || 0) > Date.now())) return auto.mode;
         auto.at = Date.now();
         const type = farmType();
         const a = type ? autoAllowed(type) : { ok: false, why: "no farm target" };
@@ -449,6 +459,8 @@ module.exports = function createWarrior(ctx) {
     }
     function streamAgitate(splash) {
         if (!util.canCast("agitate") || character.mp < G.skills.agitate.mp + reserve()) return;
+        // Not on the way: a route walk (smart_move) pulled bats before we reached the spot (2026-11-18).
+        if (typeof smart !== "undefined" && smart.moving) return;
         const coming = onMe().length;
         if (coming >= streamLimit(splash)) return; // Agitate only while fewer than the limit attack us
         const fresh = packAround(G.skills.agitate.range).filter(function (m) { return m.target !== character.name; });
@@ -507,24 +519,38 @@ module.exports = function createWarrior(ctx) {
                 if (score > bestScore) { bestScore = score; goal = m; }
             });
         }
+        // Only goals we can walk to in a straight line: path finding to unreachable ones in the
+        // cave ("Lost the path..." x12) left us standing while the bats hit us (2026-11-18).
+        if (!can_move_to(util.xy(goal).x, util.xy(goal).y)) {
+            goal = around.find(function (m) { const q = util.xy(m); return can_move_to(q.x, q.y); });
+            if (!goal) return false; // nothing reachable: the normal combat decides
+        }
         const p = util.xy(goal);
         if (!is_moving(character) || !streamWalkTo || Math.hypot(streamWalkTo.x - p.x, streamWalkTo.y - p.y) > 25) {
             streamWalkTo = p;
-            if (can_move_to(p.x, p.y)) move(p.x, p.y);
-            else xmove(p.x, p.y);
+            move(p.x, p.y);
         }
         util.status("agitate stream: to " + (goal === around[0] ? "the nearest " : "a clump of ") + goal.mtype, "orange");
         return true;
     }
 
     let lastAgitate = { at: 0, type: null };
-    let wasDead = false;
     function packTick() {
         if (!packOn()) return false;
         // Learning: a low-HP moment under attack counts against that monster kind.
         if (util.hpRatio() < (ag.streamStopHp || 0.4)) {
             const on = onMe();
             if (on.length) noteLowHp(on[0].mtype);
+        }
+        // Emergency in the stream modes too: below abortHp with monsters on us, walk away from
+        // them (we are faster than pack monsters); Hard Shell and potions do the rest.
+        if (["splashstream", "swords"].includes(effectiveMode()) && util.hpRatio() < (ag.abortHp || 0.3)) {
+            const on = onMe();
+            if (on.length) {
+                if (!is_moving(character)) stepAway(on, 150);
+                util.status("agitate: backing off", "red");
+                return true;
+            }
         }
         if (effectiveMode() === "splashstream") {
             // Stream with the splash weapons on (player test 2026-11-18).
@@ -709,17 +735,19 @@ module.exports = function createWarrior(ctx) {
         // boss searches and Daisy trips too (player request 2026-11-16).
         always: function () {
             if (c.useCharge && is_moving(character)) tryCharge();
-            // Learning: a death within 90 s of an Agitate - no Agitate on that kind for a while.
-            if (character.rip && !wasDead) {
-                wasDead = true;
-                if (lastAgitate.type && Date.now() - lastAgitate.at < 90 * 1000) {
-                    statOf(lastAgitate.type).denyUntil = Date.now() + (ag.deathDenyMs || 2 * 60 * 60 * 1000);
-                    saveStats(true);
-                    auto.at = 0;
-                    util.log("warrior", "agitate: died while agitating " + lastAgitate.type + " - no Agitate there for " +
-                        Math.round((ag.deathDenyMs || 2 * 60 * 60 * 1000) / 60000) + " min", "red");
-                }
-            } else if (!character.rip) wasDead = false;
+        },
+
+        // Called once by the fighter when we die (the class ticks pause while dead - the check
+        // in always() never ran, 2026-11-18). A death within 90 s of an Agitate: no Agitate on
+        // that kind for agitate.deathDenyMs.
+        onDeath: function () {
+            if (!lastAgitate.type || Date.now() - lastAgitate.at > 90 * 1000) return;
+            statOf(lastAgitate.type).denyUntil = Date.now() + (ag.deathDenyMs || 2 * 60 * 60 * 1000);
+            saveStats(true);
+            auto.at = 0;
+            pack.state = "idle";
+            util.log("warrior", "agitate: died while agitating " + lastAgitate.type + " - no Agitate there for " +
+                Math.round((ag.deathDenyMs || 2 * 60 * 60 * 1000) / 60000) + " min", "red");
         },
 
         survive: function () {

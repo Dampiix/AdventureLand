@@ -42,6 +42,7 @@ module.exports = function createFighter(ctx, cls) {
         if (!character.rip) { deathReported = false; return false; }
         if (!deathReported) {
             deathReported = true;
+            if (cls.onDeath) { try { cls.onDeath(); } catch (e) { /* class hook only */ } }
             // Blame the killer, not the farm target: a death on the way (e.g. vampire rats at
             // the underground entrance on the way to the CGoos) must not close the farm spot.
             // Monsters on us first, else the nearest one close by; the farm target only when
