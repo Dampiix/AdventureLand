@@ -64,6 +64,7 @@ module.exports = function createMerchant(ctx) {
 
     function survive() {
         if (is_on_cooldown("use_hp")) return;
+        if (util.townChannel() && util.hpRatio() >= 0.3) return; // a potion would cancel the Town teleport
         if (util.hpRatio() < 0.5) use_skill("use_hp").catch(function () {});
         else if (util.mpRatio() < 0.2) use_skill("use_mp").catch(function () {});
     }

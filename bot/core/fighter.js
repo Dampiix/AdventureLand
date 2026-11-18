@@ -154,6 +154,8 @@ module.exports = function createFighter(ctx, cls) {
     function handlePotions() {
         const loss = hpLossRate();
         if (is_on_cooldown("use_hp")) return;
+        // No potion while Town channels (it would cancel the teleport) - unless HP is critical.
+        if (util.townChannel() && util.hpRatio() >= (config.combat.hpCriticalBelow || 0.3)) return;
         // With a healer potions are only an emergency - unless we lose HP fast: Jr. took the
         // warrior from full to dead in 10 s next to the priest, 2 HP potions drunk (2026-11-18).
         // Then the solo rules apply (a potion on every cooldown when one is missing).
@@ -232,7 +234,7 @@ module.exports = function createFighter(ctx, cls) {
         if (attacked) return false; // something hits us while we rest: fight back
         // Drink up to the targets: the normal rule only drinks once a whole potion is
         // missing, so a 935-MP warrior stopped at ~46% MP and rested for good (2026-11-17).
-        if (!is_on_cooldown("use_hp")) {
+        if (!is_on_cooldown("use_hp") && !util.townChannel()) {
             if (hp < r.hpUntil && (hp / r.hpUntil <= mp / r.mpUntil || mp >= r.mpUntil)) use_skill("use_hp").catch(function () {});
             else if (mp < r.mpUntil) use_skill("use_mp").catch(function () {});
         }

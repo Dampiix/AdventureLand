@@ -173,6 +173,13 @@ async function walk(dest) {
 // and right after entering the server sends the packs a moment later. A bank read in
 // either state saw no packs, took the bank for empty and full and stopped the exchanges
 // ("bank full!", 2026-11-18, walks cut short by a pickup call).
+// The Town teleport is channeling (3 s). The server drops every channel on an equip - and a
+// potion is drunk through equip (server.js "equip": player.c = {}) - so a potion or a gear swap
+// in that time cancels the teleport (player report 2026-11-18).
+function townChannel() {
+    return !!(character.c && character.c.town);
+}
+
 function bankLoaded() {
     return /^bank/.test(character.map) &&
         Object.keys(character.bank || {}).some(function (p) { return /^items\d+$/.test(p); });
@@ -324,6 +331,7 @@ module.exports = {
     moveToEntity: moveToEntity,
     walk: walk,
     bankLoaded: bankLoaded,
+    townChannel: townChannel,
     walkToBank: walkToBank,
     openStand: openStand,
     isNear: isNear,

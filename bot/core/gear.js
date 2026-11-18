@@ -534,7 +534,7 @@ module.exports = function createGear(ctx) {
         sendWishes();
         const key = bagKey();
         if (key !== lastBag) trackBag();
-        if (!equipping && key !== lastBag && Date.now() >= nextEquipAt) {
+        if (!equipping && key !== lastBag && Date.now() >= nextEquipAt && !util.townChannel()) { // an equip cancels Town
             lastBag = key;
             nextEquipAt = Date.now() + 3000;
             equipPass();
