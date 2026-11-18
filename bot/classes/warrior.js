@@ -276,6 +276,12 @@ module.exports = function createWarrior(ctx) {
             }) : { ok: true, lost: 0 };
             if (v.ok && (v.lost || 0) <= allowed) { n = k; break; }
         }
+        // Fear (server.js): more attackers of one damage type than our courage for it cuts our
+        // attack to 60/40/20 % (2026-11-18: booboos deal pure damage, warrior pure courage 2 -
+        // "You are getting scared" / "terrified"). Never more of them than courage + fearMax.
+        const dtype = e.damage_type || def.damage_type || "physical";
+        const courage = dtype === "pure" ? character.pcourage : dtype === "magical" ? character.mcourage : character.courage;
+        if (typeof courage === "number") n = Math.min(n, courage + (ag.fearMax || 0));
         safeLevel[type] = live ? (live.level || 1) : 1;
         safeCache[type] = { at: Date.now(), n: n };
         return n;
