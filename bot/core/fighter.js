@@ -631,6 +631,7 @@ module.exports = function createFighter(ctx, cls) {
         if (!ctx.events.current() && ctx.hunts.tick() === "busy") return; // no Daisy trips during events
         const ev = ctx.events.current();
         if (party.keepUp(!!(ev && ev.join))) return;
+        if (party.leaderTravels && party.leaderTravels()) { party.idleFollow(); return; } // no fights on the way
         if (cls.support()) return;
         handleCombat();
     }

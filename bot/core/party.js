@@ -78,6 +78,7 @@ module.exports = function createParty(ctx) {
             y: Math.round(character.y),
             farm: farm ? farm.monster : null,
             target: target ? target.id : null,
+            moving: typeof smart !== "undefined" && !!smart.moving, // on a route (members don't fight meanwhile)
             event: event ? { name: event.name, join: !!event.join, monster: event.monster || null } : null,
         });
     }
@@ -112,6 +113,14 @@ module.exports = function createParty(ctx) {
                 : "back with " + leader, "yellow");
         }
         return now;
+    }
+
+    // Members (player request 2026-11-18): while the leader is on a route and fights nothing,
+    // we follow and don't fight either - the warrior kept getting into fights on the way.
+    function leaderTravels() {
+        if (!enabled || isLeader || detached()) return false;
+        const lead = leaderInfo();
+        return !!(lead && lead.moving && !lead.target && !lead.event);
     }
 
     // Members: hard leash. Returns true when we must move instead of fighting.
@@ -163,5 +172,6 @@ module.exports = function createParty(ctx) {
         keepUp: keepUp,
         idleFollow: idleFollow,
         detached: detached,
+        leaderTravels: leaderTravels,
     };
 };
