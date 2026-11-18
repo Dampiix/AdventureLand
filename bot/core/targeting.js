@@ -360,8 +360,43 @@ module.exports = function createTargeting(ctx) {
     // else the biggest pack of that monster anywhere. smart_move("cgoo") picked the nearest
     // spawn, through the vampire rats at the underground entrance, while 32 CGoos wait in
     // the arena right next to town.
+    // Spots where other players farm (2026-11-18: the warrior joined the Eagle party at the
+    // biggest bat group while three other bat groups were free): skipped for occupiedForMs,
+    // and their free monsters are left alone - ones on us are still fought.
+    const occupiedUntil = {}; // "map:x:y" -> timestamp
+    let lastSpot = null;
+    function spotKey(s) { return s.map + ":" + s.x + ":" + s.y; }
+    function strangersNear(p, r) {
+        return Object.values(parent.entities || {}).filter(function (e) {
+            return e && e.type === "character" && !e.npc && !e.rip && !config.characters[e.name] &&
+                Math.hypot(e.real_x - p.x, e.real_y - p.y) <= r;
+        });
+    }
+    function occupiedSpots() {
+        const now = Date.now();
+        return Object.keys(occupiedUntil).filter(function (k) { return occupiedUntil[k] > now; }).map(function (k) {
+            const p = k.split(":");
+            return { map: p[0], x: Number(p[1]), y: Number(p[2]) };
+        });
+    }
+    function inOccupied(e) {
+        const p = util.xy(e);
+        const r = cfg.occupiedRadius || 300;
+        return occupiedSpots().some(function (s) { return s.map === character.map && Math.hypot(p.x - s.x, p.y - s.y) <= r; });
+    }
+    function checkOccupied() {
+        const s = lastSpot;
+        if (!s || character.map !== s.map || occupiedUntil[spotKey(s)] > Date.now()) return;
+        if (Math.hypot(character.real_x - s.x, character.real_y - s.y) > 400) return; // judged on the spot only
+        const others = strangersNear(s, cfg.occupiedRadius || 300);
+        if (others.length < (cfg.occupiedBy || 1)) return;
+        occupiedUntil[spotKey(s)] = Date.now() + (cfg.occupiedForMs || 20 * 60 * 1000);
+        util.log("target", "spot " + s.map + " " + s.x + "," + s.y + " is taken by " + others.map(function (e) { return e.name; }).join(", ") +
+            " - another one for " + Math.round((cfg.occupiedForMs || 20 * 60 * 1000) / 60000) + " min", "orange");
+    }
     function spotFor(type, mapName) {
-        let best = null;
+        let best = null, bestFree = null;
+        const now = Date.now();
         Object.keys(G.maps).forEach(function (m) {
             const map = G.maps[m];
             if (map.ignore || map.instance) return;
@@ -371,11 +406,15 @@ module.exports = function createTargeting(ctx) {
                 boxes.forEach(function (b) {
                     const spot = { map: b[0], x: Math.round((b[1] + b[3]) / 2), y: Math.round((b[2] + b[4]) / 2), count: pack.count || 1 };
                     const score = (mapName && spot.map === mapName ? 1000 : 0) + spot.count;
-                    if (!best || score > best.score) best = Object.assign(spot, { score: score });
+                    spot.score = score;
+                    if (!best || score > best.score) best = spot;
+                    if (!(occupiedUntil[spotKey(spot)] > now) && (!bestFree || score > bestFree.score)) bestFree = spot;
                 });
             });
         });
-        return best ? { map: best.map, x: best.x, y: best.y } : null;
+        const pickSpot = bestFree || best; // every spot taken: the best one anyway
+        if (pickSpot) lastSpot = { map: pickSpot.map, x: pickSpot.x, y: pickSpot.y };
+        return pickSpot ? { map: pickSpot.map, x: pickSpot.x, y: pickSpot.y } : null;
     }
 
     // ---- lone pulls -------------------------------------------------------------
@@ -480,6 +519,7 @@ module.exports = function createTargeting(ctx) {
         let bestD = Infinity;
         safeCandidates(type).forEach(function (e) {
             if (!isolated(e)) return;
+            if (!e.target && inOccupied(e)) return; // another player's spot
             const d = util.distanceTo(e);
             if (d < bestD) { bestD = d; best = e; }
         });
@@ -828,6 +868,7 @@ module.exports = function createTargeting(ctx) {
     }
 
     function pick(farmTarget) {
+        checkOccupied();
         const current = get_targeted_monster();
         // A lone pull we are still walking up to must stay alone until it is engaged: the
         // White Wolf wandered deeper into the pack while the priest followed it (2026-11-17).
@@ -879,7 +920,7 @@ module.exports = function createTargeting(ctx) {
     }
 
     return { currentFarm: currentFarm, pick: pick, isValid: isValid, reportSearch: reportSearch, isTeamSafe: isTeamSafe, whyUnsafe: whyUnsafe,
-        teamModelOn: teamModelOn, teamVerdict: teamVerdict, safetyReport: safetyReport, waitForLone: waitForLone, standPoint: standPoint, aggressive: aggressive, diedAt: diedAt, deathAt: deathAt, spotFor: spotFor, liveSafe: liveSafe,
+        teamModelOn: teamModelOn, teamVerdict: teamVerdict, safetyReport: safetyReport, waitForLone: waitForLone, standPoint: standPoint, aggressive: aggressive, diedAt: diedAt, deathAt: deathAt, spotFor: spotFor, liveSafe: liveSafe, inOccupied: inOccupied,
         // HP a solo fight against this monster costs (0 if it was never checked: harmless or low level).
         soloCost: function (e) { return (e && soloCostById[e.id]) || 0; } };
 };

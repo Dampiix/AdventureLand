@@ -126,7 +126,8 @@ module.exports = function createWarrior(ctx) {
     function packAround(range) {
         return Object.values(parent.entities || {}).filter(function (e) {
             return e && e.type === "monster" && !e.dead && e.visible && packWanted(e) &&
-                util.distanceTo(e) <= range && (!e.target || e.target === character.name);
+                util.distanceTo(e) <= range && (!e.target || e.target === character.name) &&
+                !(ctx.targeting.inOccupied && ctx.targeting.inOccupied(e)); // another player's spot
         });
     }
     // Monsters Agitate would pull as well although we don't want them: other kinds (when
