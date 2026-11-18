@@ -166,7 +166,9 @@ module.exports = function createWarrior(ctx) {
         return isSplash(character.slots && character.slots.mainhand);
     }
     function packWanted(e) {
-        if (ag.monsters === "auto") return !!auto.type && e.mtype === auto.type && auto.mode !== "off";
+        // Auto: the farm target, and any other kind in reach that passes the same safety check
+        // (player decision 2026-11-18: pull the plain snakes along with the slow O-Snakes).
+        if (ag.monsters === "auto") return !!auto.type && auto.mode !== "off" && (e.mtype === auto.type || kindOk(e.mtype));
         return !ag.monsters || !ag.monsters.length || ag.monsters.includes(e.mtype);
     }
 
@@ -283,8 +285,10 @@ module.exports = function createWarrior(ctx) {
         speedRef = Math.max(speedRef, character.speed || 0);
         if ((def.speed || 0) >= speedRef * 0.9) return { ok: false, why: "as fast as we are" };
         const n = safeLimit(type);
-        // Grown monsters (+50% base HP and +12.5% attack per level - server.js): not above maxLevel.
-        if ((safeLevel[type] || 1) > (ag.maxLevel || 3)) return { ok: false, why: "level " + safeLevel[type] + " in sight (max " + (ag.maxLevel || 3) + ")" };
+        // No fixed level cap (player decision 2026-11-18): safeLimit judges the strongest one in
+        // reach with its real stats - grown monsters fail it by themselves when they are too much.
+        // agitate.maxLevel (a number) can still cap it by hand.
+        if (typeof ag.maxLevel === "number" && (safeLevel[type] || 1) > ag.maxLevel) return { ok: false, why: "level " + safeLevel[type] + " in reach (max " + ag.maxLevel + ")" };
         if (n < 2) return { ok: false, why: "pack check allows " + n };
         return { ok: true, n: n };
     }
@@ -310,9 +314,24 @@ module.exports = function createWarrior(ctx) {
         return mode;
     }
     // The current type's safe count, for the stream limit (null = no automatic cap).
+    // Other kinds pulled along: each must pass the safety check itself (cached 10 s).
+    const kindCache = {};
+    function kindOk(type) {
+        const c = kindCache[type];
+        if (c && Date.now() - c.at < 10 * 1000) return c.ok;
+        const ok = autoAllowed(type).ok;
+        kindCache[type] = { at: Date.now(), ok: ok };
+        return ok;
+    }
+    // The safe count for what is in reach now: the most careful of all kinds there.
     function autoCap() {
         if (ag.monsters !== "auto" || !auto.type) return null;
-        return Math.max(1, Math.floor(safeLimit(auto.type) * scaleOf(auto.type)));
+        const kinds = {};
+        kinds[auto.type] = true;
+        Object.values(parent.entities || {}).forEach(function (e) {
+            if (e && e.type === "monster" && !e.dead && util.distanceTo(e) <= G.skills.agitate.range && packWanted(e)) kinds[e.mtype] = true;
+        });
+        return Math.max(1, Math.min.apply(null, Object.keys(kinds).map(function (t) { return Math.floor(safeLimit(t) * scaleOf(t)); })));
     }
     // Free monsters of the wanted kind around us (not fighting another player).
     function packAround(range) {
@@ -482,7 +501,7 @@ module.exports = function createWarrior(ctx) {
         if (fresh.length < (ag.streamFrom || 1) || unwantedAround(G.skills.agitate.range).length) return;
         // Auto: every single cast checks the levels too - the decision is held during fights, and
         // two grown bats came along with a stream pull (2026-11-18).
-        if (ag.monsters === "auto" && fresh.some(function (m) { return (m.level || 1) > (ag.maxLevel || 3); })) return;
+        if (ag.monsters === "auto" && typeof ag.maxLevel === "number" && fresh.some(function (m) { return (m.level || 1) > ag.maxLevel; })) return;
         use_skill("agitate").catch(function () {});
         lastAgitate = { at: Date.now(), type: fresh[0].mtype };
         if (Date.now() - lastStreamLog > 5 * 60 * 1000) {
