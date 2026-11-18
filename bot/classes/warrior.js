@@ -103,8 +103,31 @@ module.exports = function createWarrior(ctx) {
     const pack = { state: "idle", busy: false, since: 0, pulled: [], startHp: 0, attacks: 0, neighborSum: 0,
         recent: [], lastRegroup: 0, gatherAt: 0, noWeaponsLogged: false };
 
+    // Mode: "off" (single targets), "swords" (Agitate, usual weapons - pull everything, kill one
+    // by one, no walking) or "splash" (Agitate with the splash weapons). From the config
+    // (enabled + weapons "keep"/"splash"), or switched at runtime with the chat command
+    // "/agitate off|swords|splash|config" (kept across restarts; for A/B tests, 2026-11-18).
+    const MODE_KEY = "agitate_mode:" + character.name;
+    let modeCache = { at: 0, v: null }, lastMode = null;
+    function agMode() {
+        if (Date.now() - modeCache.at > 2000) {
+            let v = null;
+            try { v = get(MODE_KEY) || null; } catch (e) { /* storage unavailable */ }
+            modeCache = { at: Date.now(), v: v };
+        }
+        const m = modeCache.v || (!ag.enabled ? "off" : ag.weapons === "keep" ? "swords" : "splash");
+        if (m !== lastMode) {
+            if (lastMode !== null) {
+                util.log("warrior", "agitate mode: " + m, "yellow");
+                if (m !== "splash") ctx.gear.holdWeapons(0); // usual weapons back at once
+                pack.state = "idle";
+            }
+            lastMode = m;
+        }
+        return m;
+    }
     function packOn() {
-        return !!(ag.enabled && !ctx.party.enabled && G.skills.agitate && character.level >= (G.skills.agitate.level || 68));
+        return agMode() !== "off" && !ctx.party.enabled && !!G.skills.agitate && character.level >= (G.skills.agitate.level || 68);
     }
     function isSplash(item) {
         const def = item && G.items[item.name];
@@ -152,8 +175,15 @@ module.exports = function createWarrior(ctx) {
             return Math.max(0, Math.hypot(a.real_x - b.real_x, a.real_y - b.real_y) - 20);
         }
     }
+    // The splash radius we have - or, with our usual weapons ("swords"), the one the splash
+    // weapons in the bag would give: the neighbour count then says what splash would have hit.
     function splashRadius() {
-        return (character.explosion || 0) / 3.6;
+        if (character.explosion) return character.explosion / 3.6;
+        let sum = 0;
+        splashWeapons().slice(0, 2).forEach(function (x) {
+            try { sum += parent.calculate_item_properties(x.it).explosion || 0; } catch (e) { sum += G.items[x.it.name].explosion || 0; }
+        });
+        return sum / 3.6;
     }
     function splashNeighbours(t, list) {
         const r = splashRadius();
@@ -246,11 +276,11 @@ module.exports = function createWarrior(ctx) {
         const dead = pack.pulled.filter(function (id) { const e = parent.entities[id]; return !e || e.dead; }).length;
         const avg = pack.attacks ? (pack.neighborSum / pack.attacks).toFixed(2) : "0";
         const hpUsed = Math.round((pack.startHp - character.hp) / character.max_hp * 100);
-        util.log("warrior", "pull done (" + reason + "): " + pack.pulled.length + " pulled, " + dead + " dead, " + secs + " s, " +
+        util.log("warrior", "pull done [" + agMode() + "] (" + reason + "): " + pack.pulled.length + " pulled, " + dead + " dead, " + secs + " s, " +
             pack.attacks + " hits, " + avg + " splash neighbours per hit, HP used " + hpUsed + "%", "green");
         pack.state = "idle";
         // Keep the splash weapons a little while for the next pull, then the usual ones go back on.
-        ctx.gear.holdWeapons(ag.keepMs || 60 * 1000);
+        if (agMode() === "splash") ctx.gear.holdWeapons(ag.keepMs || 60 * 1000);
     }
 
     // Returns true while the pack mode runs this tick (the normal combat waits).
@@ -271,7 +301,7 @@ module.exports = function createWarrior(ctx) {
                 util.status("agitate: waiting - " + others.length + "x " + others[0].mtype + " in reach", "white");
                 return false; // normal combat meanwhile; the next round may stand better
             }
-            if (!wearingSplash()) {
+            if (agMode() === "splash" && !wearingSplash()) {
                 if (!splashWeapons().length) {
                     if (!pack.noWeaponsLogged) util.log("warrior", "agitate mode: no splash weapon in the bag", "orange");
                     pack.noWeaponsLogged = true;
@@ -295,7 +325,7 @@ module.exports = function createWarrior(ctx) {
             pack.walkTo = null;
             if (util.canCast("warcry") && character.mp >= G.skills.agitate.mp + G.skills.warcry.mp) use_skill("warcry").catch(function () {});
             use_skill("agitate").catch(function () {});
-            ctx.gear.holdWeapons(ag.holdMs || 10 * 60 * 1000);
+            if (agMode() === "splash") ctx.gear.holdWeapons(ag.holdMs || 10 * 60 * 1000);
             const pulledNow = packAround(G.skills.agitate.range);
             pack.pulled = pulledNow.map(function (m) { return m.id; });
             pack.since = now; pack.startHp = character.hp; pack.attacks = 0; pack.neighborSum = 0; pack.recent = [];

@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.97.5",
+    version: "1.98.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -141,7 +141,7 @@ module.exports = {
         },
         // "always" only applies once every fighter has reached this level
         minLevel: { phoenix: 40, goobrawl: 20, snowman: 10, graveyard: 40, mvampire: 50, jr: 40, greenjr: 40 },
-        search: ["phoenix", "mvampire", "jr", "greenjr"], // roaming bosses the leader looks for
+        search: [],  // off for the Agitate A/B test 2026-11-18 - normally ["phoenix", "mvampire", "jr", "greenjr"] (roaming bosses the leader looks for)
         // Search again this long after a miss or a kill (player decision 2026-11-15: 30 min,
         // the walk costs farm time). Respawn times (game source): the Phoenix (respawn 32)
         // comes back ~32 s after its death at a random one of its 5 spots; Dracul (1080)
@@ -342,6 +342,7 @@ module.exports = {
             agitate: {
                 enabled: true,
                 monsters: ["arcticbee"], // only these start a pull (empty = any) - test (crocs, bats done)
+                weapons: "splash",    // "splash": put on the splash weapons; "keep": pull with the usual ones ("/agitate off|swords|splash" switches at runtime)
                 minPack: 3,
                 minHp: 0.8,           // start a pull only above this HP share
                 abortHp: 0.3,         // below: walk away from the pack

@@ -125,6 +125,18 @@ function handle_command(command, args) {
         botSupply.requestNow();
         return true;
     }
+    // "/agitate off|swords|splash|config": the warrior's Agitate mode, kept across restarts
+    // ("config" = back to config.classes.warrior.agitate).
+    if (command === "agitate") {
+        const v = (Array.isArray(args) ? args[0] : args) || "";
+        if (["off", "swords", "splash", "config"].includes(v)) {
+            set("agitate_mode:" + character.name, v === "config" ? null : v);
+            game_log("[warrior] agitate mode set to " + v, "yellow");
+        } else {
+            game_log("usage: /agitate off|swords|splash|config", "orange");
+        }
+        return true;
+    }
     // "/safety [map]": per-member guide verdicts and the team model for every monster there.
     if (command === "safety" && botTargeting) {
         botTargeting.safetyReport(Array.isArray(args) ? args.join(" ") : (args || ""));
