@@ -67,6 +67,12 @@ module.exports = function createGear(ctx) {
             }
             if (!req || !req.name || !G.items[req.name]) return;
             if (!WEARABLE.includes(G.items[req.name].type)) return;
+            // The guide reads the weapons in hand: during a splash mode (Lolipops) it asked for
+            // a Blade +7 and the merchant burned Blades at +3 (2026-11-18). No weapon wishes
+            // from the guide while a splash weapon is in hand - our usual weapons are not.
+            if (G.items[req.name].type === "weapon" && ["mainhand", "offhand"].some(function (s) {
+                return isSplashWeapon(character.slots && character.slots[s]);
+            })) return;
             const level = req.level || 0;
             if (seen[req.name] !== undefined && seen[req.name] >= level) return;
             seen[req.name] = level;
