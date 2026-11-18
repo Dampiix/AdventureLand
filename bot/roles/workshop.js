@@ -1005,6 +1005,26 @@ module.exports = function createWorkshop(ctx) {
             util.log("workshop", n.name + " +" + level + " goes to " + n.fighter + " (essence goal)", "yellow");
         });
     }
+    // The pot an essence run pays from: the weapon ladder's, or - when that is empty and
+    // essenceGoals.borrowFrom is "goals" - the gear goals' pot while every gear goal is done
+    // or has its finished copy waiting for delivery (their money would only lie idle).
+    function gearGoalsIdle() {
+        if (!goalsOn()) return true;
+        const needs = goalNeedsAll();
+        const assigned = goalAssignments(needs);
+        return needs.every(function (n) { return assigned.some(function (a) { return a.need === n; }); });
+    }
+    let lastBorrowLog = 0;
+    function essenceBudgetKey() {
+        if (config.essenceGoals.borrowFrom !== "goals" || ladderBudget().allowed >= 250000) return LADDER;
+        if (!gearGoalsIdle() || goalBudget().allowed < 250000) return LADDER;
+        if (Date.now() - lastBorrowLog > 30 * 60 * 1000) {
+            lastBorrowLog = Date.now();
+            util.log("workshop", "essence goals pay from the gear goals' pot (ladder pot empty, gear goals idle)", "yellow");
+        }
+        return GOALS;
+    }
+
     // One craft-and-upgrade run for the first open goal. Returns true when something was done.
     async function workOnEssenceGoals() {
         if (!essenceOn()) return false;
@@ -1023,7 +1043,7 @@ module.exports = function createWorkshop(ctx) {
             util.status("essence goal: " + g.name + " +" + g.level, "orange");
             try {
                 // Normal scrolls only, any chance: every copy is one attempt (player decision).
-                await develop("_essence", { name: g.name, level: g.level }, { budgetKey: LADDER, replaceable: true, spare: true, minChance: 0 });
+                await develop("_essence", { name: g.name, level: g.level }, { budgetKey: essenceBudgetKey(), replaceable: true, spare: true, minChance: 0 });
             } catch (e) {
                 const reason = util.errReason(e);
                 util.log("workshop", "essence goal " + g.name + " +" + g.level + ": " + reason, "orange");
