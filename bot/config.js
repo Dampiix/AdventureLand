@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.99.2",
+    version: "1.99.3",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -271,7 +271,8 @@ module.exports = {
     },
 
     combat: {
-        // Kiting (solo, player decision 2026-11-18): a fighter with more range than a monster
+        // Kiting (solo and in a party - there within the leash, towards a tank class; player
+        // decisions 2026-11-18): a fighter with more range than a monster
         // (margin px) that is also faster steps `step` px back when that monster would reach it
         // before it dies - not for ones that die in time. Away from the pack and from free
         // monsters (avoidRadius). The warrior never qualifies (range 38).

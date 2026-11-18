@@ -213,7 +213,11 @@ module.exports = function createFighter(ctx, cls) {
     let lastKite = 0;
     function kiteStep(target) {
         const k = config.combat.kite;
-        if (!k || !k.enabled || party.enabled) return false;
+        if (!k || !k.enabled) return false;
+        // In a party too (player decision 2026-11-18): only monsters on us count anyway, and not
+        // every team has a taunting tank. There the step prefers the way to a tank class and
+        // never leaves the leash around the leader.
+        const team = kiteTeam();
         const attackers = Object.values(parent.entities || {}).filter(function (e) {
             return e && e.type === "monster" && !e.dead && e.target === character.name;
         });
@@ -256,14 +260,15 @@ module.exports = function createFighter(ctx, cls) {
             if (!can_move_to(x, y)) continue;
             // Away from the pack, and not next to free monsters (they would join).
             const crowd = free.filter(function (p) { return Math.hypot(p.x - x, p.y - y) < (k.avoidRadius || 120); }).length;
-            const score = Math.hypot(x - cx, y - cy) - crowd * 100 - Math.abs(turn) * 10;
+            if (!team.allows(x, y)) continue;
+            const score = Math.hypot(x - cx, y - cy) - crowd * 100 - Math.abs(turn) * 10 + team.towardTank(me, x, y);
             if (score > bestScore) { bestScore = score; best = { x: x, y: y }; }
         }
         if (!best) {
             // Cornered (no straight step back is free): run to open ground instead of standing
             // and tanking (player idea 2026-11-18) - a point 150-300 px away, far from the pack,
             // with no free monster near, open in most directions (through the pack is fine).
-            const esc = escapePoint(me, { x: cx, y: cy }, free, k);
+            const esc = escapePoint(me, { x: cx, y: cy }, free, k, team);
             if (!esc) return false; // nowhere to go: stand and fight
             lastKite = Date.now();
             xmove(esc.x, esc.y);
@@ -275,7 +280,26 @@ module.exports = function createFighter(ctx, cls) {
         util.status("kiting " + threat.mtype, "orange");
         return true;
     }
-    function escapePoint(me, pack, free, k) {
+    // Party rules for kiting: points within the leash around the leader; a bonus for steps
+    // towards a tank class (config.targeting.teamSafety.tankClasses) that can take the monster.
+    function kiteTeam() {
+        const none = { allows: function () { return true; }, towardTank: function () { return 0; } };
+        if (!party.enabled) return none;
+        const lead = party.leaderInfo();
+        const leash = (config.party && config.party.leash) || 300;
+        const tanks = ((config.targeting.teamSafety || {}).tankClasses) || [];
+        let tank = null;
+        party.memberNames().forEach(function (n) {
+            if (n === character.name || tank) return;
+            const p = get_player(n);
+            if (p && !p.rip && tanks.includes(p.ctype)) tank = util.xy(p);
+        });
+        return {
+            allows: function (x, y) { return !lead || Math.hypot(x - lead.x, y - lead.y) <= leash * 0.9; },
+            towardTank: function (me, x, y) { return tank ? (Math.hypot(me.x - tank.x, me.y - tank.y) - Math.hypot(x - tank.x, y - tank.y)) * 0.8 : 0; },
+        };
+    }
+    function escapePoint(me, pack, free, k, team) {
 
         let best = null, bestScore = -Infinity;
         for (const r of [150, 220, 300]) {
@@ -291,6 +315,7 @@ module.exports = function createFighter(ctx, cls) {
                     if (canMoveFrom(x, y, x + Math.cos(b) * 60, y + Math.sin(b) * 60)) open++;
                 }
                 if (open < 4) continue; // another corner
+                if (team && !team.allows(x, y)) continue;
                 const score = Math.hypot(x - pack.x, y - pack.y) + open * 25 - r * 0.2;
                 if (score > bestScore) { bestScore = score; best = { x: x, y: y }; }
             }
