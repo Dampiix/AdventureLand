@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.101.0",
+    version: "1.102.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -375,6 +375,10 @@ module.exports = {
                 splashOnMe: 5, sugarBonus: 2, // "splashstream": up to 5 on us (7 during Sugar Rush) ...
                 streamLowHp: 0.6, streamStopHp: 0.4, // ... at most 2 below 60% HP, no Agitate below 40%
                 streamToClump: true, clumpRadius: 60, clumpStep: 80, // "splashstream": walk to clumps (each neighbour within 60 px is worth 80 px of way)
+                // In a party (2026-11-18): only a stream mode, on the leash - no pull points, no walking
+                // off to clumps; the protective Taunt/Agitate for allies goes first. With a priest
+                // close by up to partyOnMe may be on us.
+                partyMode: "splashstream", partyOnMe: 7,
                 kiteStep: 120,        // "step" (and backing off): this far
                 gatherMs: 2500,
                 regroupBelow: 0.5, regroupEveryMs: 8000,

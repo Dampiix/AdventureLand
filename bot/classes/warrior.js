@@ -128,11 +128,21 @@ module.exports = function createWarrior(ctx) {
     }
     const SPLASH_MODES = ["splash", "chain", "splashstream"];
     function splashMode() {
-        const m = agMode();
+        const m = effectiveMode();
         return SPLASH_MODES.includes(m); // "chain": splash pulls that start the next pull early; "splashstream": stream with splash
     }
+    // In a party only the stream modes run (player decision 2026-11-18): the leader picks the
+    // spot and walks, we stay on the leash - Agitate where we stand, fight what comes.
+    // agitate.partyMode decides which ("splashstream", "swords" or "off").
+    function partyStream() {
+        return ctx.party.enabled && ["splashstream", "swords"].includes(ag.partyMode || "off");
+    }
+    function effectiveMode() {
+        return ctx.party.enabled ? (partyStream() ? ag.partyMode : "off") : agMode();
+    }
     function packOn() {
-        return agMode() !== "off" && !ctx.party.enabled && !!G.skills.agitate && character.level >= (G.skills.agitate.level || 68);
+        if (ctx.party.enabled ? !partyStream() : agMode() === "off") return false;
+        return !!G.skills.agitate && character.level >= (G.skills.agitate.level || 68);
     }
     function isSplash(item) {
         const def = item && G.items[item.name];
@@ -300,6 +310,11 @@ module.exports = function createWarrior(ctx) {
     function streamLimit(splash) {
         let n = splash ? (ag.splashOnMe || 5) : (ag.streamOnMe || 3);
         if (splash && character.s && character.s.sugarrush) n += (ag.sugarBonus || 2);
+        // A living priest close by heals us: the party takes more at once (agitate.partyOnMe).
+        if (ctx.party.enabled && ctx.party.memberNames().some(function (nm) {
+            const p = nm !== character.name && get_player(nm);
+            return p && !p.rip && p.ctype === "priest" && util.distanceTo(p) < 400;
+        })) n = Math.max(n, ag.partyOnMe || 7);
         const hp = util.hpRatio();
         if (hp < (ag.streamStopHp || 0.4)) return 0;
         if (hp < (ag.streamLowHp || 0.6)) n = Math.min(n, 2);
@@ -323,6 +338,7 @@ module.exports = function createWarrior(ctx) {
     // or free - instead of waiting. False when nothing is around (normal search takes over).
     let streamWalkTo = null;
     function streamFight(splash) {
+        const inParty = ctx.party.enabled;
         const around = Object.values(parent.entities || {}).filter(function (e) {
             if (!e || e.type !== "monster" || e.dead || !e.visible) return false;
             if (e.target === character.name) return true;
@@ -331,6 +347,8 @@ module.exports = function createWarrior(ctx) {
         }).sort(function (a, b) { return util.distanceTo(a) - util.distanceTo(b); });
         if (!around.length) return false;
         const inRange = around.filter(function (m) { return is_in_range(m); });
+        // In a party we never walk off on our own: the normal combat (follow, assist) takes over.
+        if (inParty && !inRange.length) return false;
         if (inRange.length) {
             let t = inRange.find(function (m) { return m.target === character.name; }) || inRange[0];
             if (splash) {
@@ -370,7 +388,7 @@ module.exports = function createWarrior(ctx) {
 
     function packTick() {
         if (!packOn()) return false;
-        if (agMode() === "splashstream") {
+        if (effectiveMode() === "splashstream") {
             // Stream with the splash weapons on (player test 2026-11-18).
             if (!wearingSplash()) {
                 if (!splashWeapons().length) return false;
@@ -381,6 +399,7 @@ module.exports = function createWarrior(ctx) {
             streamAgitate(true);
             return streamFight(true);
         }
+        if (ctx.party.enabled) return false; // pull-point modes are solo only
         if (agMode() === "swords" && (ag.swords || "stream") === "stream") {
             streamAgitate();
             return streamFight();
@@ -562,12 +581,14 @@ module.exports = function createWarrior(ctx) {
         // Agitate "stream": while Agitate can't be cast, walk to the incoming monsters instead
         // of waiting for them (player request 2026-11-18).
         meetIncoming: function () {
-            return packOn() && agMode() === "swords" && (ag.swords || "stream") === "stream" &&
+            return packOn() && !ctx.party.enabled && agMode() === "swords" && (ag.swords || "stream") === "stream" &&
                 (!util.canCast("agitate") || character.mp < G.skills.agitate.mp + reserve());
         },
 
         support: function () {
-            if (packTick()) return true; // Agitate pack mode (solo test)
+            // In a party the protective Taunt/Agitate for allies comes first, then the stream.
+            if (!ctx.party.enabled && packTick()) return true; // Agitate pack mode (solo)
+            if (ctx.party.enabled && onOthers().length === 0 && packTick()) return true;
             const others = onOthers();
             if (!others.length) return false;
             // Agitate: everything nearby comes to us when several monsters are on allies.
