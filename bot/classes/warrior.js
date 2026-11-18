@@ -111,6 +111,7 @@ module.exports = function createWarrior(ctx) {
     // "/agitate off|swords|splash|config" (kept across restarts; for A/B tests, 2026-11-18).
     const MODE_KEY = "agitate_mode:" + character.name;
     let modeCache = { at: 0, v: null }, lastMode = null;
+    function agOverride() { agMode(); return !!modeCache.v; }
     function agMode() {
         if (Date.now() - modeCache.at > 2000) {
             let v = null;
@@ -627,8 +628,18 @@ module.exports = function createWarrior(ctx) {
         util.status("escaping " + Math.round(util.hpRatio() * 100) + "%", "red");
         return true;
     }
+    // Splash weapons only where splash is right (player decision 2026-11-18): away from the farm
+    // target - travelling, an event, a fight with something else - the usual weapons go back on.
+    // On the way to the Phoenix a Big Bird taunted off the priest got the Lolipops, and their
+    // splash pulled every Big Bird spawning next to the party.
+    function releaseSplash() {
+        if (ag.monsters === "auto" && !agOverride() && wearingSplash() && ctx.gear.weaponsHeld()) {
+            ctx.gear.holdWeapons(0);
+            util.log("warrior", "splash weapons off (no farm target around)", "white");
+        }
+    }
     function packTick() {
-        if (!packOn()) return false;
+        if (!packOn()) { releaseSplash(); return false; }
         // Learning: a low-HP moment under attack counts against that monster kind.
         if (util.hpRatio() < (ag.streamStopHp || 0.4)) {
             const on = onMe();
@@ -643,9 +654,11 @@ module.exports = function createWarrior(ctx) {
             const leash = (ctx.config.party && ctx.config.party.leash) || 300;
             if (lead && (lead.map !== character.map || Math.hypot(lead.x - character.x, lead.y - character.y) > leash)) return false;
         }
-        if (ag.monsters === "auto" && auto.type && !onMe().length && !Object.values(parent.entities || {}).some(function (e) {
+        // Without the farm target around the normal combat fights whatever is on us, with the
+        // usual weapons.
+        if (ag.monsters === "auto" && auto.type && !Object.values(parent.entities || {}).some(function (e) {
             return e && e.type === "monster" && !e.dead && e.mtype === auto.type && util.distanceTo(e) <= 600;
-        })) return false;
+        })) { releaseSplash(); return false; }
         if (effectiveMode() === "splashstream") {
             // Stream with the splash weapons on (player test 2026-11-18).
             if (!wearingSplash()) {
