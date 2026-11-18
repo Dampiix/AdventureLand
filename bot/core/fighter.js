@@ -259,11 +259,49 @@ module.exports = function createFighter(ctx, cls) {
             const score = Math.hypot(x - cx, y - cy) - crowd * 100 - Math.abs(turn) * 10;
             if (score > bestScore) { bestScore = score; best = { x: x, y: y }; }
         }
-        if (!best) return false; // cornered: stand and fight
+        if (!best) {
+            // Cornered (no straight step back is free): run to open ground instead of standing
+            // and tanking (player idea 2026-11-18) - a point 150-300 px away, far from the pack,
+            // with no free monster near, open in most directions, not on the far side of the pack.
+            const esc = escapePoint(me, { x: cx, y: cy }, free, k);
+            if (!esc) return false; // nowhere to go: stand and fight
+            lastKite = Date.now();
+            xmove(esc.x, esc.y);
+            util.status("kiting " + threat.mtype + " - out of the corner", "orange");
+            return true;
+        }
         lastKite = Date.now();
         move(best.x, best.y);
         util.status("kiting " + threat.mtype, "orange");
         return true;
+    }
+    function escapePoint(me, pack, free, k) {
+        const awayX = me.x - pack.x, awayY = me.y - pack.y;
+        let best = null, bestScore = -Infinity;
+        for (const r of [150, 220, 300]) {
+            for (let i = 0; i < 16; i++) {
+                const a = i * Math.PI / 8;
+                const x = me.x + Math.cos(a) * r, y = me.y + Math.sin(a) * r;
+                // Not through the pack: the point lies on our side of it.
+                if ((x - me.x) * awayX + (y - me.y) * awayY < -0.3 * r * Math.hypot(awayX, awayY)) continue;
+                if (free.some(function (p) { return Math.hypot(p.x - x, p.y - y) < (k.avoidRadius || 120); })) continue;
+                let open = 0;
+                for (let j = 0; j < 8; j++) {
+                    const b = j * Math.PI / 4;
+                    if (canMoveFrom(x, y, x + Math.cos(b) * 60, y + Math.sin(b) * 60)) open++;
+                }
+                if (open < 4) continue; // another corner
+                const score = Math.hypot(x - pack.x, y - pack.y) + open * 25 - r * 0.2;
+                if (score > bestScore) { bestScore = score; best = { x: x, y: y }; }
+            }
+        }
+        return best;
+    }
+    // Walkable straight line between two points (not only from where we stand).
+    function canMoveFrom(x1, y1, x2, y2) {
+        try {
+            return !!parent.can_move({ map: character.map, x: x1, y: y1, going_x: x2, going_y: y2, base: character.base });
+        } catch (e) { return true; }
     }
 
     function handleCombat() {
