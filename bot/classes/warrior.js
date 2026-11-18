@@ -134,14 +134,20 @@ module.exports = function createWarrior(ctx) {
     // In a party only the stream modes run (player decision 2026-11-18): the leader picks the
     // spot and walks, we stay on the leash - Agitate where we stand, fight what comes.
     // agitate.partyMode decides which ("splashstream", "swords" or "off").
+    // "auto" (2026-11-18): the automatic decision for the leader's farm target - a pull-point
+    // result becomes its stream counterpart (no own walking in a party).
     function partyStream() {
-        return ctx.party.enabled && ["splashstream", "swords"].includes(ag.partyMode || "off");
+        return ctx.party.enabled && ["splashstream", "swords", "auto"].includes(ag.partyMode || "off");
     }
     function effectiveMode() {
-        return ctx.party.enabled ? (partyStream() ? ag.partyMode : "off") : agMode();
+        if (!ctx.party.enabled) return agMode();
+        if (!partyStream()) return "off";
+        if (ag.partyMode !== "auto") return ag.partyMode;
+        const m = autoMode();
+        return m === "off" ? "off" : SPLASH_MODES.includes(m) ? "splashstream" : "swords";
     }
     function packOn() {
-        if (ctx.party.enabled ? !partyStream() : agMode() === "off") return false;
+        if (ctx.party.enabled ? effectiveMode() === "off" : agMode() === "off") return false;
         return !!G.skills.agitate && character.level >= (G.skills.agitate.level || 68);
     }
     function isSplash(item) {
@@ -531,7 +537,10 @@ module.exports = function createWarrior(ctx) {
             streamAgitate(true);
             return streamFight(true);
         }
-        if (ctx.party.enabled) return false; // pull-point modes are solo only
+        if (ctx.party.enabled) {
+            if (effectiveMode() === "swords") { streamAgitate(); return streamFight(); }
+            return false; // pull-point modes are solo only
+        }
         if (agMode() === "swords" && (ag.swords || "stream") === "stream") {
             streamAgitate();
             return streamFight();

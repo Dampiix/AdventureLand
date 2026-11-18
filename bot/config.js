@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.103.0",
+    version: "1.103.1",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -383,7 +383,7 @@ module.exports = {
                 // In a party (2026-11-18): only a stream mode, on the leash - no pull points, no walking
                 // off to clumps; the protective Taunt/Agitate for allies goes first. With a priest
                 // close by up to partyOnMe may be on us.
-                partyMode: "splashstream", partyOnMe: 7,
+                partyMode: "auto", partyOnMe: 7, // "auto": the automatic decision for the leader's farm target
                 kiteStep: 120,        // "step" (and backing off): this far
                 gatherMs: 2500,
                 regroupBelow: 0.5, regroupEveryMs: 8000,
