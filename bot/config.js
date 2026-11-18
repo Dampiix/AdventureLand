@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.103.3",
+    version: "1.103.4",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -361,6 +361,7 @@ module.exports = {
                 // see the warrior module); a list forces these kinds; deny excludes kinds.
                 monsters: "auto", deny: [],
                 maxOnMe: 8, maxHp: 50000, abilities: [], // auto: at most this many at once; no bosses / unknown abilities
+                maxLevel: 3, safetyShare: 0.5, // auto: no Agitate with one above this level in sight; a pull may cost only half the HP the pack check allows
                 splashMin: 1.0, learnHits: 40, denseCount: 5, denseSpacing: 130, // auto: lolipops from 1.0 splash per hit (guess from spawn density first)
                 deathDenyMs: 2 * 60 * 60 * 1000, // auto: no Agitate on a kind for this long after dying to it
                 weapons: "splash",    // "splash": put on the splash weapons; "keep": pull with the usual ones ("/agitate off|swords|splash" switches at runtime)

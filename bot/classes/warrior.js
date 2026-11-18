@@ -238,6 +238,7 @@ module.exports = function createWarrior(ctx) {
         return spawnDense(type);
     }
     const safeCache = {}; // type -> { at, n }
+    const safeLevel = {}; // type -> level of the strongest one in sight at the last check
     function safeLimit(type) {
         // Monsters level up while we fight them (2026-11-18: bats went from level 5 to 9 during
         // the pull and killed the warrior): judged by the strongest one in sight, every 10 s.
@@ -248,9 +249,15 @@ module.exports = function createWarrior(ctx) {
             .sort(function (a, b) { return (b.level || 1) - (a.level || 1); })[0];
         const e = live || { mtype: type, attack: def.attack, hp: def.hp, max_hp: def.hp, frequency: def.frequency, level: 1 };
         let n = 0;
+        // A safety share on top (2026-11-18): the pack check assumes an HP potion on every
+        // cooldown, but Agitate burns MP and both potions share one cooldown - a pull only counts
+        // as safe at safetyShare of the HP the check allows.
+        const allowed = character.max_hp * (((ctx.config.targeting || {}).live || {}).soloHpUse || 0.5) * (ag.safetyShare || 0.5);
         for (let k = ag.maxOnMe || 8; k >= 1; k--) {
-            if (!ctx.targeting.packVerdict || ctx.targeting.packVerdict(e, k).ok) { n = k; break; }
+            const v = ctx.targeting.packVerdict ? ctx.targeting.packVerdict(e, k) : { ok: true, lost: 0 };
+            if (v.ok && (v.lost || 0) <= allowed) { n = k; break; }
         }
+        safeLevel[type] = live ? (live.level || 1) : 1;
         safeCache[type] = { at: Date.now(), n: n };
         return n;
     }
@@ -266,6 +273,8 @@ module.exports = function createWarrior(ctx) {
         speedRef = Math.max(speedRef, character.speed || 0);
         if ((def.speed || 0) >= speedRef * 0.9) return { ok: false, why: "as fast as we are" };
         const n = safeLimit(type);
+        // Grown monsters (+50% base HP and +12.5% attack per level - server.js): not above maxLevel.
+        if ((safeLevel[type] || 1) > (ag.maxLevel || 3)) return { ok: false, why: "level " + safeLevel[type] + " in sight (max " + (ag.maxLevel || 3) + ")" };
         if (n < 2) return { ok: false, why: "pack check allows " + n };
         return { ok: true, n: n };
     }
