@@ -71,6 +71,7 @@ function hideGoldLogs() {
     }
 }
 
+var BOT_DPS_REPORT = null;  // damage meter report (set by bot_fighter)
 var BOT_FOLLOWS_LEADER = null; // party member following its leader (set in startBot)
 
 function startBot() {
@@ -187,6 +188,11 @@ function handle_command(command, args) {
         } else {
             game_log("usage: /agitate off|swords|splash|chain|splashstream|config", "orange");
         }
+        return true;
+    }
+    // "/dps": the damage meter now (bot_fighter, the leader counts the whole party).
+    if (command === "dps") {
+        if (typeof BOT_DPS_REPORT === "function") BOT_DPS_REPORT(); else game_log("no damage meter here", "orange");
         return true;
     }
     // "/safety [map]": per-member guide verdicts and the team model for every monster there.

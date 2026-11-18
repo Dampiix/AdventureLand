@@ -60,6 +60,47 @@ module.exports = function createFighter(ctx, cls) {
         };
         PAGE.socket.on("hit", PAGE.__dmpxHitFn);
     } catch (e) { /* no socket */ }
+    // Damage meter (player request 2026-11-19): real damage per second from the game's "hit"
+    // events - ours, and on the leader every party member's it sees. Logged every
+    // config.meter.everyMs, "/dps" prints it now. Listener swapped on each load like the one above.
+    const meterCfg = config.meter || {};
+    try {
+        if (PAGE.__dmpxDpsFn) PAGE.socket.off("hit", PAGE.__dmpxDpsFn);
+        PAGE.__dmpxDps = PAGE.__dmpxDps || [];
+        PAGE.__dmpxDpsFn = function (d) {
+            try {
+                if (!d || !d.damage || !PAGE.entities || !d.hid) return;
+                const target = PAGE.entities[d.id];
+                if (!target || target.type !== "monster") return; // damage on monsters only (no heals, no hits on us)
+                PAGE.__dmpxDps.push({ t: Date.now(), who: String(d.hid), dmg: d.damage, kill: !!d.kill });
+                const keep = (meterCfg.windowMs || 5 * 60 * 1000) + 5000;
+                while (PAGE.__dmpxDps.length && Date.now() - PAGE.__dmpxDps[0].t > keep) PAGE.__dmpxDps.shift();
+            } catch (e) { /* meter only */ }
+        };
+        PAGE.socket.on("hit", PAGE.__dmpxDpsFn);
+    } catch (e) { /* no socket */ }
+    const meterStart = Date.now();
+    let lastMeterLog = Date.now();
+    function meterReport(force) {
+        const now = Date.now();
+        if (!force && (!meterCfg.everyMs || now - lastMeterLog < meterCfg.everyMs)) return;
+        lastMeterLog = now;
+        const win = Math.min(meterCfg.windowMs || 5 * 60 * 1000, now - meterStart);
+        if (win < 10 * 1000) return;
+        const team = party.enabled ? party.memberNames() : [character.name];
+        const per = {}; let total = 0, kills = 0;
+        (PAGE.__dmpxDps || []).forEach(function (h) {
+            if (now - h.t > win || !team.includes(h.who)) return;
+            per[h.who] = (per[h.who] || 0) + h.dmg; total += h.dmg;
+            if (h.kill) kills++;
+        });
+        const sec = win / 1000;
+        const parts = Object.keys(per).sort(function (a, b) { return per[b] - per[a]; })
+            .map(function (n) { return n.replace(/^Dmpx/, "") + " " + Math.round(per[n] / sec); });
+        util.log("dps", (team.length > 1 ? "team " : "") + Math.round(total / sec) + "/s over " + Math.round(sec / 60 * 10) / 10 + " min" +
+            (parts.length > 1 ? " (" + parts.join(", ") + ")" : "") + ", " + kills + " kills", "white");
+    }
+    BOT_DPS_REPORT = function () { meterReport(true); };
     const potSamples = []; // { t, hp, mp } potion counts, one per second
     function samplePotions() {
         const now = Date.now();
@@ -641,6 +682,7 @@ module.exports = function createFighter(ctx, cls) {
     function tick() {
         if (handleDeath()) return;
         samplePotions();
+        if (!party.enabled || party.isLeader) meterReport(false); // the leader sees the whole team
         if (!cls.survive()) handlePotions();
         if (cls.always) cls.always(); // every tick, also while a trip keeps the loop busy
         loot();

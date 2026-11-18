@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.120.1",
+    version: "1.121.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -117,6 +117,10 @@ module.exports = {
         // of only assisting (e.g. a 500-goo hunt).
         spread: { enabled: true, maxHits: 3, maxDamageRatio: 0.05 },
     },
+
+    // Damage meter (2026-11-19): every everyMs the leader (or a solo fighter) logs the real damage per
+    // second over the last windowMs, per member, from the game's hit events. "/dps" prints it now.
+    meter: { everyMs: 5 * 60 * 1000, windowMs: 5 * 60 * 1000 },
 
     tickMs: 250,
 
