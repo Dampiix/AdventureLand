@@ -259,7 +259,8 @@ module.exports = function createWorkshop(ctx) {
             util.log("workshop", "delivered " + item.name + " +" + (item.level || 0) + " to " + fighter, "green");
             markDelivered(fighter, w);
             if (G.items[item.name]) filledAt[fighter + "|" + G.items[item.name].type] = Date.now();
-            delete earmarks[fighter + "|" + w.name];
+            if (earmarks[fighter + "|" + w.name]) delete earmarks[fighter + "|" + w.name];
+            else delete earmarks[fighter + "|" + w.name + "|2"]; // the second copy of a weapon pair
             saveEarmarks();
             wishes[fighter] = (wishes[fighter] || []).filter(function (x) { return x !== w; });
         }
@@ -2090,6 +2091,33 @@ module.exports = function createWorkshop(ctx) {
                     util.log("workshop", p.name + " +" + p.level + (p.stat ? " " + p.stat : "") + " goes to " + f + " (empty " + type + " slot)", "yellow");
                 }
             });
+            // Two one-handed weapons over a two-handed one (player request 2026-11-18: two Stingers
+            // +7/+5 beat the rogue's Fireblade +7). Both are earmarked; the second copy of the same
+            // name under its own key, delivered after the first.
+            if (eq.mainhand && util.isDoublehand(eq.mainhand.name, classes[f]) && !eq.offhand &&
+                Date.now() - (filledAt[f + "|pair"] || 0) >= 10 * 60 * 1000 &&
+                !activeEarmarks().some(function (e) { return e.fighter === f && G.items[e.name] && G.items[e.name].type === "weapon"; })) {
+                const pc = G.classes[classes[f]] || {};
+                const pbw = cfg.betterWeapons || {};
+                const pbar = util.weaponPower(eq.mainhand.name, eq.mainhand.level || 0, classes[f]) * (1 + (pbw.margin || 0));
+                const one = function (p) { const d = G.items[p.name]; return d && d.type === "weapon" && !NO_EQUIP.has(d) && !util.isDoublehand(p.name, classes[f]); };
+                let ai = -1, ap = 0;
+                pool.forEach(function (p, i) { if (!one(p) || !(pc.mainhand || {})[G.items[p.name].wtype]) return; const pw = util.weaponPower(p.name, p.level, classes[f]); if (pw > ap) { ap = pw; ai = i; } });
+                let bi = -1, bp = 0;
+                pool.forEach(function (p, i) { if (i === ai || !one(p) || !(pc.offhand || {})[G.items[p.name].wtype]) return; const pw = util.weaponPower(p.name, p.level, classes[f]); if (pw > bp) { bp = pw; bi = i; } });
+                if (ai !== -1 && bi !== -1 && ap + bp > pbar) {
+                    const a = pool[ai], b = pool[bi];
+                    earmark(f, a.name, a.level);
+                    if (b.name === a.name) earmarks[f + "|" + b.name + "|2"] = { fighter: f, name: b.name, level: b.level, stat: null, at: Date.now() };
+                    else earmark(f, b.name, b.level);
+                    saveEarmarks();
+                    pool.splice(Math.max(ai, bi), 1); pool.splice(Math.min(ai, bi), 1);
+                    filledAt[f + "|pair"] = Date.now();
+                    util.log("workshop", a.name + " +" + a.level + " and " + b.name + " +" + b.level + " go to " + f + " (" + Math.round(ap + bp) +
+                        " together beat its " + eq.mainhand.name + " +" + (eq.mainhand.level || 0) + ")", "yellow");
+                    return;
+                }
+            }
             // Dual wield (warrior): an empty offhand next to a one-handed weapon – or one
             // holding a clearly weaker weapon (e.g. the guide's blade) – gets the strongest
             // offhand-capable weapon we hold. Waits while a weapon is on its way.

@@ -369,6 +369,15 @@ module.exports = function createGear(ctx) {
                 util.log("gear", "equipped " + item.name + " +" + (item.level || 0) + " -> " + up.slot + " (next class wish step)", "green");
                 return;
             }
+            // Two one-handers that together beat the worn two-hander: mainhand first (the
+            // two-hander goes to the bag), the empty offhand is filled on the next pass.
+            const pair = pairInBag();
+            if (pair) {
+                const item = character.items[pair.main];
+                await equip(pair.main, "mainhand");
+                util.log("gear", "equipped " + item.name + " +" + (item.level || 0) + " -> mainhand (weapon pair, " + Math.round(pair.power) + " together)", "green");
+                return;
+            }
             // A stronger weapon (e.g. a Phoenix weapon the merchant upgraded for us): the
             // guide only suggests weapons it planned itself.
             for (let num = 0; num < character.items.length; num++) {
@@ -467,6 +476,34 @@ module.exports = function createGear(ctx) {
     }
     // A bag weapon clearly stronger in our hands than the worn one (same rule as the
     // merchant's config.workshop.betterWeapons).
+    // Two one-handed weapons over a two-handed one (2026-11-18, rogue: Stingers +7/+5 vs
+    // Fireblade +7). pairInBag: the best main/off pair in the bag when it beats the worn
+    // two-hander; pairPart: a one-hander worth keeping for such a pair (two like it would win).
+    function wornTwoHanderPower() {
+        const m = character.slots && character.slots.mainhand;
+        if (!m || !util.isDoublehand(m.name, character.ctype) || (character.slots && character.slots.offhand)) return 0;
+        const bw = config.workshop && config.workshop.betterWeapons;
+        return util.weaponPower(m.name, m.level || 0, character.ctype) * (1 + ((bw && bw.margin) || 0));
+    }
+    function oneHander(item, slot) {
+        const def = item && G.items[item.name];
+        const cls = G.classes[character.ctype] || {};
+        return !!(def && def.type === "weapon" && usable(def) && !isCarry(item.name) && !util.isDoublehand(item.name, character.ctype) &&
+            (slot === "offhand" ? cls.offhand : cls.mainhand) && (slot === "offhand" ? cls.offhand : cls.mainhand)[def.wtype]);
+    }
+    function pairInBag() {
+        const bar = wornTwoHanderPower();
+        if (!bar) return null;
+        let a = -1, ap = 0, b = -1, bp = 0;
+        character.items.forEach(function (it, n) { if (oneHander(it, "mainhand")) { const p = util.weaponPower(it.name, it.level || 0, character.ctype); if (p > ap) { ap = p; a = n; } } });
+        character.items.forEach(function (it, n) { if (n !== a && oneHander(it, "offhand")) { const p = util.weaponPower(it.name, it.level || 0, character.ctype); if (p > bp) { bp = p; b = n; } } });
+        return a !== -1 && b !== -1 && ap + bp > bar ? { main: a, off: b, power: ap + bp } : null;
+    }
+    function pairPart(item) {
+        const bar = wornTwoHanderPower();
+        if (!bar || !(oneHander(item, "mainhand") || oneHander(item, "offhand"))) return false;
+        return util.weaponPower(item.name, item.level || 0, character.ctype) * 2 > bar;
+    }
     function strongerWeapon(item) {
         const def = G.items[item.name];
         if (!def || def.type !== "weapon" || !usable(def) || isCarry(item.name)) return false;
@@ -566,6 +603,7 @@ module.exports = function createGear(ctx) {
 
     // Items the supply module must not hand to the merchant.
     function isReserved(item) {
+        if (pairPart(item)) return true; // half of a weapon pair that beats our two-hander
         if (wishes.some(function (w) { return w.name === item.name && (item.level || 0) >= w.level; })) return true;
         const carried = chainOf(item.name);
         // A finished carried piece – a stand-in only while the preferred copies are missing.
