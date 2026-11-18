@@ -381,7 +381,11 @@ module.exports = function createFighter(ctx, cls) {
         const target = targeting.pick(farm);
         // Only time actually fighting counts for the crowded-spot check: running after a
         // monster that another player kills on the way is time without a target too.
-        targeting.reportSearch(!!target && is_in_range(target));
+        // A monster attacking one of us counts as work too, in our range or not: after the
+        // warrior's Agitate the leader saw no free bee in its own range, called the spot crowded
+        // and the party shuttled between bee spots (2026-11-18).
+        const busy = !!target && (is_in_range(target) || (target.target && (target.target === character.name || party.memberNames().includes(target.target))));
+        targeting.reportSearch(busy);
         lastFarm = farm;
         lastTarget = target;
 
