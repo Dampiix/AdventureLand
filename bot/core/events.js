@@ -29,7 +29,15 @@ module.exports = function createEvents(ctx) {
     // searching right after a kill.
     const SEARCH_KEY = "dmpx_boss_search:" + character.name;
     const nextSearchAt = (function () {
-        try { return get(SEARCH_KEY) || {}; } catch (e) { return {}; }
+        let stored = {};
+        try { stored = get(SEARCH_KEY) || {}; } catch (e) { /* storage unavailable */ }
+        // A boss just put on farmBosses still carried the old searchEveryMs time from storage,
+        // so the nonstop hunt started up to 30 min late (2026-11-18): cut it to farmBossEveryMs.
+        (cfg.farmBosses || []).forEach(function (name) {
+            const soon = Date.now() + (cfg.farmBossEveryMs || 60 * 1000);
+            if ((stored[name] || 0) > soon) stored[name] = soon;
+        });
+        return stored;
     })();
     // Bosses on config.events.farmBosses are hunted nonstop: the next search comes after
     // farmBossEveryMs instead of searchEveryMs (the Phoenix respawns ~32 s after its death).
