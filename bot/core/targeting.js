@@ -394,11 +394,18 @@ module.exports = function createTargeting(ctx) {
         const r = cfg.occupiedRadius || 300;
         return occupiedSpots().some(function (s) { return s.map === character.map && Math.hypot(p.x - s.x, p.y - s.y) <= r; });
     }
+    const strangerSince = {}; // name -> first seen on our spot (checkOccupied)
     function checkOccupied() {
         const s = lastSpot;
         if (!s || character.map !== s.map || occupiedUntil[spotKey(s)] > Date.now()) return;
         if (Math.hypot(character.real_x - s.x, character.real_y - s.y) > 400) return; // judged on the spot only
-        const others = strangersNear(s, cfg.occupiedRadius || 300);
+        // Only players who stay: merchants never count, and a fighter must be seen on the spot
+        // for occupiedAfterMs (2026-11-18: a merchant walking past blocked the goo spot for 20 min).
+        const now = Date.now();
+        const here = strangersNear(s, cfg.occupiedRadius || 300).filter(function (e) { return e.ctype !== "merchant"; });
+        Object.keys(strangerSince).forEach(function (n) { if (!here.some(function (e) { return e.name === n; })) delete strangerSince[n]; });
+        here.forEach(function (e) { if (!strangerSince[e.name]) strangerSince[e.name] = now; });
+        const others = here.filter(function (e) { return now - strangerSince[e.name] >= (cfg.occupiedAfterMs || 20000); });
         if (others.length < (cfg.occupiedBy || 1)) return;
         occupiedUntil[spotKey(s)] = Date.now() + (cfg.occupiedForMs || 20 * 60 * 1000);
         util.log("target", "spot " + s.map + " " + s.x + "," + s.y + " is taken by " + others.map(function (e) { return e.name; }).join(", ") +
