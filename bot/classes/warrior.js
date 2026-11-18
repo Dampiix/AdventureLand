@@ -518,6 +518,10 @@ module.exports = function createWarrior(ctx) {
         const fresh = packAround(G.skills.agitate.range).filter(function (m) { return m.target !== character.name; });
         if (fresh.length < (ag.streamFrom || 1) || unwantedAround(G.skills.agitate.range).length) return;
         if (!farmTargetIn(fresh)) return;
+        // Agitate taunts everything in reach, not just up to our limit: the safe count must cover
+        // all of them (2026-11-18: "up to 2" booboos, but 5 stood in reach - the warrior died).
+        const cap = autoCap();
+        if (cap !== null && coming + fresh.length > cap) return;
         // Auto: every single cast checks the levels too - the decision is held during fights, and
         // two grown bats came along with a stream pull (2026-11-18).
         if (ag.monsters === "auto" && typeof ag.maxLevel === "number" && fresh.some(function (m) { return (m.level || 1) > ag.maxLevel; })) return;
@@ -565,6 +569,9 @@ module.exports = function createWarrior(ctx) {
             util.status("agitate stream: " + t.mtype + " (" + onMe().length + " on us)", "green");
             return true;
         }
+        // A party member never walks off to free monsters: the leader picks them one at a time
+        // (2026-11-18: the warrior walked into the middle of the booboos, 5 came at once).
+        if (inParty && ctx.party.isMember && !ctx.party.detached()) return false;
         // Splash: not simply the nearest one, the one with the most others around it (a clump
         // is worth a few steps more - player idea 2026-11-18): neighbours within clumpRadius
         // count clumpStep px of way each.
