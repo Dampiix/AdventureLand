@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.98.0",
+    version: "1.99.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -271,6 +271,11 @@ module.exports = {
     },
 
     combat: {
+        // Kiting (solo, player decision 2026-11-18): a fighter with more range than a monster
+        // (margin px) that is also faster steps `step` px back when that monster would reach it
+        // before it dies - not for ones that die in time. Away from the pack and from free
+        // monsters (avoidRadius). The warrior never qualifies (range 38).
+        kite: { enabled: true, margin: 30, step: 60, everyMs: 600, avoidRadius: 120 },
         potionHpBelow: 0.8,      // below this: an HP potion on every cooldown (player decision 2026-11-16, was 0.45)
         potionMpBelow: 0.3,
         // Otherwise drink as soon as a whole potion's worth is missing (HP before MP), i.e.

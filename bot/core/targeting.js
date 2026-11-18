@@ -451,11 +451,40 @@ module.exports = function createTargeting(ctx) {
             return v.ok;
         }
         if (party.enabled) return false; // members: the leader decides who is pulled
+        const v = packVerdict(e, n);
+        const lk = e.mtype + ":" + (e.level || 1);
+        if (!v.ok && Date.now() - (packLogged[lk] || 0) > 10 * 60 * 1000) {
+            packLogged[lk] = Date.now();
+            util.log("target", e.mtype + " level " + (e.level || 1) + " one at a time - " + n + " at once: " + v.why, "white");
+        }
+        return v.ok;
+    }
+    // Solo: can we take n of these at once - the burst (ownHits of their combined hits) AND the
+    // whole fight: their damage per second (falling as they die, so on average (n+1)/2 of them)
+    // against what we heal, for as long as killing all n takes, within live.soloHpUse of max HP.
+    // The burst check alone let the warrior walk into the Boo Boo pack (2026-11-17: 10k HP
+    // survive three hits easily, but five 8k-HP Boo Boos hit for minutes). Shared with the
+    // Agitate decision (a pull is a pack on purpose). { ok, why, lost, killSec }
+    function packVerdict(e, n) {
+        const def = G.monsters[e.mtype] || {};
         const me = util.combatStats();
         const d = def.damage_type === "physical" ? (me.armor || 0) - (def.apiercing || 0)
             : def.damage_type === "magical" ? (me.resistance || 0) - (def.rpiercing || 0) : 0;
         const hit = (e.attack || def.attack || 0) * 1.1 * util.damageMultiplier(d);
-        return me.max_hp / Math.max(1, hit * n) >= (lcfg.ownHits || 6);
+        const hits = me.max_hp / Math.max(1, hit * n);
+        if (hits < (lcfg.ownHits || 6)) return { ok: false, why: "I survive " + hits.toFixed(1) + " of their combined hits (need " + (lcfg.ownHits || 6) + ")" };
+        let sustain = potionHps();
+        if (me.ctype === "priest") sustain += (me.heal || me.attack || 0) * (me.frequency || 1) * 0.5;
+        const myDef = me.damage_type === "physical" ? (def.armor || 0) - (me.apiercing || 0) : (def.resistance || 0) - (me.rpiercing || 0);
+        const myDps = Math.max(1, (me.attack || 0) * (me.frequency || 1) * util.damageMultiplier(myDef));
+        sustain += myDps * ((character.lifesteal || 0) / 100);
+        const incoming = hit * (e.frequency || def.frequency || 1) * (n + 1) / 2;
+        const killSec = (e.max_hp || def.hp || 1) * n / myDps;
+        const lost = Math.max(0, incoming - sustain) * killSec;
+        const budget = me.max_hp * (lcfg.soloHpUse || 0.5);
+        return lost <= budget ? { ok: true, lost: lost, killSec: killSec }
+            : { ok: false, lost: lost, killSec: killSec, why: Math.round(incoming) + " dmg/s vs " + Math.round(sustain) + " healed/s for ~" +
+                Math.round(killSec) + " s: I'd lose " + Math.round(lost) + " HP (max " + Math.round(budget) + ")" };
     }
     function aggressive(e) {
         const def = e && G.monsters[e.mtype];
@@ -920,7 +949,7 @@ module.exports = function createTargeting(ctx) {
     }
 
     return { currentFarm: currentFarm, pick: pick, isValid: isValid, reportSearch: reportSearch, isTeamSafe: isTeamSafe, whyUnsafe: whyUnsafe,
-        teamModelOn: teamModelOn, teamVerdict: teamVerdict, safetyReport: safetyReport, waitForLone: waitForLone, standPoint: standPoint, aggressive: aggressive, diedAt: diedAt, deathAt: deathAt, spotFor: spotFor, liveSafe: liveSafe, inOccupied: inOccupied,
+        teamModelOn: teamModelOn, teamVerdict: teamVerdict, safetyReport: safetyReport, waitForLone: waitForLone, standPoint: standPoint, aggressive: aggressive, diedAt: diedAt, deathAt: deathAt, spotFor: spotFor, liveSafe: liveSafe, inOccupied: inOccupied, packVerdict: packVerdict,
         // HP a solo fight against this monster costs (0 if it was never checked: harmless or low level).
         soloCost: function (e) { return (e && soloCostById[e.id]) || 0; } };
 };

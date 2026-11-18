@@ -206,6 +206,66 @@ module.exports = function createFighter(ctx, cls) {
         xmove(p.x, p.y);
     }
 
+    // Kiting (config.combat.kite, solo; player decision 2026-11-18): a fighter that outranges
+    // and outruns a monster steps back when that monster would reach it before it dies - not
+    // for ones that die in time (1-2 hits). The step leads away from everything on us and from
+    // other free monsters. Attacks go on while walking.
+    let lastKite = 0;
+    function kiteStep(target) {
+        const k = config.combat.kite;
+        if (!k || !k.enabled || party.enabled) return false;
+        const attackers = Object.values(parent.entities || {}).filter(function (e) {
+            return e && e.type === "monster" && !e.dead && e.target === character.name;
+        });
+        if (!attackers.length) return false;
+        const myRange = character.range || 0, mySpeed = character.speed || 0;
+        let threat = null, threatTime = Infinity;
+        for (const m of attackers) {
+            const def = G.monsters[m.mtype] || {};
+            const mRange = m.range || def.range || 20, mSpeed = m.speed || def.speed || 0;
+            if (myRange < mRange + (k.margin || 30) || mSpeed >= mySpeed * 0.9) return false; // can't kite this one
+            let dist;
+            try { dist = parent.distance(character, m); } catch (e) { dist = util.distanceTo(m); }
+            if (dist > mRange + (k.margin || 30)) continue; // still far enough
+            // Would it reach us before it dies? The target dies after its HP / our damage per
+            // second; any other attacker only after the target.
+            const myDef = (def.armor || 0) - (character.apiercing || 0);
+            const myDps = Math.max(1, (character.attack || 0) * (character.frequency || 1) * util.damageMultiplier(myDef));
+            const killSec = (m === target ? m.hp : m.hp + (target ? target.hp : 0)) / myDps;
+            const reachSec = Math.max(0, dist - mRange) / Math.max(1, mSpeed);
+            if (killSec <= reachSec) continue; // dies first
+            if (reachSec < threatTime) { threat = m; threatTime = reachSec; }
+        }
+        if (!threat) return false;
+        if (is_moving(character) && Date.now() - lastKite < (k.everyMs || 600)) return true;
+        const me = util.xy(character);
+        let cx = 0, cy = 0;
+        attackers.forEach(function (m) { const p = util.xy(m); cx += p.x; cy += p.y; });
+        cx /= attackers.length; cy /= attackers.length;
+        let dx = me.x - cx, dy = me.y - cy;
+        const len = Math.hypot(dx, dy) || 1;
+        dx /= len; dy /= len;
+        const free = Object.values(parent.entities || {}).filter(function (e) {
+            return e && e.type === "monster" && !e.dead && !e.target;
+        }).map(util.xy);
+        const step = k.step || 60;
+        let best = null, bestScore = -Infinity;
+        for (const turn of [0, 0.5, -0.5, 1, -1, 1.5, -1.5]) {
+            const ux = dx * Math.cos(turn) - dy * Math.sin(turn), uy = dx * Math.sin(turn) + dy * Math.cos(turn);
+            const x = me.x + ux * step, y = me.y + uy * step;
+            if (!can_move_to(x, y)) continue;
+            // Away from the pack, and not next to free monsters (they would join).
+            const crowd = free.filter(function (p) { return Math.hypot(p.x - x, p.y - y) < (k.avoidRadius || 120); }).length;
+            const score = Math.hypot(x - cx, y - cy) - crowd * 100 - Math.abs(turn) * 10;
+            if (score > bestScore) { bestScore = score; best = { x: x, y: y }; }
+        }
+        if (!best) return false; // cornered: stand and fight
+        lastKite = Date.now();
+        move(best.x, best.y);
+        util.status("kiting " + threat.mtype, "orange");
+        return true;
+    }
+
     function handleCombat() {
         if (resting()) return;
         const farm = targeting.currentFarm();
@@ -286,7 +346,8 @@ module.exports = function createFighter(ctx, cls) {
             return;
         }
 
-        util.status(cls.name + ": " + target.mtype, "green");
+        const kiting = kiteStep(target);
+        if (!kiting) util.status(cls.name + ": " + target.mtype, "green");
         if (cls.fight(target)) return;
         if (can_attack(target)) attack(target).catch(function () {});
     }
