@@ -454,7 +454,8 @@ module.exports = function createFighter(ctx, cls) {
         if (!target) {
             if (party.idleFollow()) return; // party member: stay with the leader
             if (farm.any) { util.status("waiting for monsters (" + farm.source + ")", "white"); return; }
-            const hold = targeting.waitForLone(farm.monster);
+            // A Cavalry plan walks right into the spot (the call needs the monsters within 320 px).
+            const hold = String(farm.source || "").startsWith("cavalry") ? null : targeting.waitForLone(farm.monster);
             if (hold) {
                 endSearchWalk();
                 util.status((hold === "strong" ? "too strong: " : "waiting for a lone ") + farm.monster, "white");
@@ -548,7 +549,7 @@ module.exports = function createFighter(ctx, cls) {
         util.log("cavalry", "calling the Cavalry: " + why, "yellow");
         interact("cavalry").then(function (r) {
             const wait = (r && (r.cooldown_ms || (r.next_call ? new Date(r.next_call).getTime() - Date.now() : 0))) || 0;
-            try { set(CAV_KEY, Date.now() + Math.max(wait, 10 * 60 * 1000)); } catch (e) { /* storage unavailable */ }
+            try { set(CAV_KEY, Date.now() + Math.max(wait, 10 * 60 * 1000)); set("dmpx_cavalry_called", Date.now()); } catch (e) { /* storage unavailable */ }
             util.log("cavalry", "Cavalry answered (" + ((r && r.assigned) || 0) + " sentries" + (r && r.queued ? ", queued" : "") + ")", "green");
         }).catch(function (e) {
             const ms = e && (e.cooldown_ms || e.ms);
@@ -569,8 +570,17 @@ module.exports = function createFighter(ctx, cls) {
             if (on.length >= (cv.emergencyOnMe || 1)) return callCavalry("emergency, " + Math.round(util.hpRatio() * 100) + "% HP, " + on.length + " on me");
         }
         // Reset: the spot picker at its farm target, not during events.
-        if (!cv.reset || ctx.events.current() || !lastFarm || !lastFarm.monster || lastFarm.any) return;
+        if (ctx.events.current() || !lastFarm || !lastFarm.monster || lastFarm.any) return;
         if (party.enabled && party.isMember && !party.detached()) return;
+        // Cavalry plan (targeting): nuke = any level-3+ one of the kind in reach; reset = grown ones.
+        const src = String(lastFarm.source || "");
+        if (src === "cavalry nuke" || src === "cavalry reset") {
+            const lvl = src === "cavalry reset" ? (cv.resetFromLevel || 5) : 3;
+            const these = all.filter(function (e) { return grown(e) && e.mtype === lastFarm.monster && (e.level || 1) >= lvl; });
+            if (these.length) callCavalry(src.slice(8) + " " + these.length + "x " + lastFarm.monster + " (levels " + these.map(function (e) { return e.level || 1; }).join(",") + ")");
+            return;
+        }
+        if (!cv.reset) return;
         const big = all.filter(function (e) { return grown(e) && e.mtype === lastFarm.monster && (e.level || 1) >= (cv.resetFromLevel || 5); });
         if (big.length >= (cv.resetMinCount || 2)) {
             callCavalry("reset " + big.length + "x " + lastFarm.monster + " (levels " + big.map(function (e) { return e.level || 1; }).join(",") + ")");

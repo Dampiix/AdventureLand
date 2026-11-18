@@ -823,10 +823,12 @@ module.exports = function createTargeting(ctx) {
         win = null;
         nextPickAt = 0; // pick again right away
     }
+    let lastFoundAt = 0; // last time we had a target at our farm spot (cavalryPlan)
     function reportSearch(found) {
         const src = farm ? String(farm.source) : "";
         const now = Date.now();
-        if (!farm || !(src.startsWith("guide") || src.startsWith("drop")) || character.map !== farm.map) {
+        if (found) lastFoundAt = now;
+        if (!farm || !(src.startsWith("guide") || src.startsWith("drop") || src === "config list") || character.map !== farm.map) {
             idleSince = 0;
             win = null;
             return;
@@ -907,9 +909,25 @@ module.exports = function createTargeting(ctx) {
             return farm;
         }
 
+        // Cavalry plan (player design 2026-11-19): the first farm target too strong (skipped as
+        // crowded) -> go there and reset it with the Cavalry; the first one fine -> nuke the first
+        // spot of cavalry.targets (e.g. dinos: loot at high level) and come back.
+        const plan = cavalryPlan(override);
+        if (plan) {
+            if (!farm || farm.monster !== plan.monster || farm.source !== plan.source) util.log("target", "farm target: " + plan.monster + " (" + plan.source + ")", "yellow");
+            farm = plan;
+            nextPickAt = 0;
+            return farm;
+        }
+
         if (farm && now < nextPickAt) return farm; // hunt/leader/drop targets reset nextPickAt to 0
 
-        let next = override ? { monster: override, source: "config" } : fromProgression();
+        // config.targeting.farm: one monster or a list - the first one not skipped (crowded or too
+        // strong, every spot taken, a recent death), else the guide's choice (2026-11-19).
+        const list = farmList(override);
+        const listed = list.find(function (m) { return !farmBlocked(m); });
+        let next = listed ? { monster: listed, source: list.length > 1 ? "config list" : "config" } : (list.length === 1 ? { monster: list[0], source: "config" } : null);
+        if (!next) next = fromProgression();
         if (!next) next = { monster: config.targeting.fallback, source: "fallback" };
 
         // The guide may not be ready right after login: retry soon instead of waiting minutes.
@@ -920,6 +938,56 @@ module.exports = function createTargeting(ctx) {
         }
         farm = next;
         return farm;
+    }
+
+    function farmList(override) {
+        return override ? (Array.isArray(override) ? override.slice() : [override]) : [];
+    }
+    function farmBlocked(m) {
+        return crowdedUntil[m] > Date.now() || recentDeath(m) || allSpotsTaken(m);
+    }
+    // Cavalry readiness as the fighter records it (account-wide, see fighter.cavalryTick).
+    function cavalryReady() {
+        let next = 0;
+        try { next = get("dmpx_cavalry_next") || 0; } catch (e) { /* storage unavailable */ }
+        return Date.now() >= next;
+    }
+    function cavalryCalledAt() {
+        try { return get("dmpx_cavalry_called") || 0; } catch (e) { return 0; }
+    }
+    let cavPlan = null; // { monster, mode: "reset" | "nuke", since }
+    function cavalryPlan(override) {
+        const cv = config.cavalry || {};
+        const list = farmList(override);
+        if (!cv.enabled || !list.length || (party.enabled && party.isMember && !party.detached())) { cavPlan = null; return null; }
+        const now = Date.now();
+        if (cavPlan) {
+            const called = cavalryCalledAt();
+            const done = called > cavPlan.since && now - called > (cv.planStayMs || 100 * 1000);
+            const tooLong = now - cavPlan.since > (cv.planMaxMs || 10 * 60 * 1000);
+            if (done || tooLong) {
+                util.log("target", "cavalry " + cavPlan.mode + " at " + cavPlan.monster + (done ? " done" : " gave up") + " - back to the farm list", done ? "green" : "orange");
+                if (done && cavPlan.mode === "reset") {
+                    delete crowdedUntil[cavPlan.monster];
+                    delete crowdHistory[cavPlan.monster];
+                    try { set(CROWD_KEY, crowdHistory); } catch (e) { /* storage unavailable */ }
+                }
+                cavPlan = null;
+                nextPickAt = 0;
+                return null;
+            }
+            return { monster: cavPlan.monster, source: "cavalry " + cavPlan.mode };
+        }
+        if (!cavalryReady() || recentDeath(list[0])) return null;
+        if (crowdedUntil[list[0]] > now && !allSpotsTaken(list[0])) cavPlan = { monster: list[0], mode: "reset", since: now };
+        // Nuke only while we actually farm the first target (fighting there within the last
+        // minute) - arriving at grown booboos must lead to their reset, not to the dinos.
+        else if (!farmBlocked(list[0]) && farm && farm.monster === list[0] && now - lastFoundAt < 60 * 1000) {
+            const t = (cv.targets || []).find(function (m) { return G.monsters[m] && !recentDeath(m) && !allSpotsTaken(m); });
+            if (t) cavPlan = { monster: t, mode: "nuke", since: now };
+        }
+        if (cavPlan) util.log("target", "Cavalry ready: " + cavPlan.mode + " at " + cavPlan.monster, "yellow");
+        return cavPlan ? { monster: cavPlan.monster, source: "cavalry " + cavPlan.mode } : null;
     }
 
     function isOurs(name) {

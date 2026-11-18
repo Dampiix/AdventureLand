@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.118.3",
+    version: "1.119.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -218,7 +218,7 @@ module.exports = {
         // Player decision 2026-11-17 (night): the solo warrior farms CGoos overnight (gold for the
         // budget pots after the reset, XP to 68, gems); the Phoenix is still searched every 30 min.
         // Boo Boo solo test 2026-11-17 (late) failed: he walked into the pack and died. Back to CGoos.
-        farm: "booboo",         // 2026-11-19: booboos (the next Cavalry resets them). null = the guide picks
+        farm: ["booboo", "stoneworm"], // a list (2026-11-19): the first one not too strong/crowded; null = the guide picks
         fallback: "goo",          // used when the progression guide has no answer
         // Farm only where every fighter's own guide calls the spot safe; routes the guide
         // only offers as a careful trial count once proven – by the guide's own fights, or
@@ -289,7 +289,11 @@ module.exports = {
 
     // Cavalry (Tracktrix): emergency rescue and resetting grown farm spots (2026-11-18).
     // Strong only while the account's highest level is below 80.
-    cavalry: { enabled: true, emergencyHpBelow: 0.35, emergencyOnMe: 1, reset: true, resetFromLevel: 5, resetMinCount: 2 },
+    // targets (2026-11-19): spots nuked whenever the Cavalry is ready and the first farm target is
+    // fine (loot at high level, e.g. dinos for bones); with the first farm target too strong the
+    // Cavalry resets that one instead. Then back to the farm list.
+    cavalry: { enabled: true, emergencyHpBelow: 0.35, emergencyOnMe: 1, reset: true, resetFromLevel: 5, resetMinCount: 2,
+        targets: ["odino"], planStayMs: 100 * 1000, planMaxMs: 10 * 60 * 1000 },
 
     combat: {
         // Kiting (solo and in a party - there within the leash, towards a tank class; player
