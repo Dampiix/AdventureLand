@@ -101,8 +101,11 @@ module.exports = function createFighter(ctx, cls) {
             const farmNear = farmType && near.find(function (e) { return e.mtype === farmType && util.distanceTo(e) < 500; });
             const monster = onMe ? onMe.mtype : close ? close.mtype : farmNear ? farmType : null;
             if (monster) {
+                // A member reports to the leader and notes it itself as well: farming on its own
+                // (detached) it picks with its own records (2026-11-18: the warrior died three
+                // times at the moles, the spot was closed only for the leader).
                 if (party.isMember) ctx.comms.send(config.leader, "died", { monster: monster });
-                else targeting.diedAt(monster, character.name);
+                targeting.diedAt(monster, character.name);
             }
         }
         if (Date.now() < reviveWaitUntil) {

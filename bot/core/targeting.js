@@ -815,6 +815,10 @@ module.exports = function createTargeting(ctx) {
         return Object.keys(types);
     }
 
+    // Source kind of a farm target ("leader", "hunt", "drop", "guide" ...): the log line
+    // also shows a change of source, not only of the monster (2026-11-18: a member farming on
+    // its own kept the leader's mole without a line and died there three times).
+    function srcKind(f) { return f ? String(f.source || "").split(",")[0].replace(/ of .*/, "") : ""; }
     function currentFarm() {
         shareSafe(); // members: tell the leader where we can fight safely
         clock();     // leader: our own experience with the current farm target
@@ -832,7 +836,7 @@ module.exports = function createTargeting(ctx) {
 
         const lead = party.leaderInfo();
         if (lead && lead.farm && !party.detached()) {
-            if (!farm || farm.monster !== lead.farm) util.log("target", "farm target: " + lead.farm + " (leader)", "yellow");
+            if (!farm || farm.monster !== lead.farm || srcKind(farm) !== "leader") util.log("target", "farm target: " + lead.farm + " (leader)", "yellow");
             farm = { monster: lead.farm, source: "leader" };
             nextPickAt = 0;
             return farm;
@@ -845,7 +849,7 @@ module.exports = function createTargeting(ctx) {
         // the configured target only replaces the guide's choice.
         const hunt = ctx.hunts ? ctx.hunts.target() : null;
         if (hunt) {
-            if (!farm || farm.monster !== hunt.monster) util.log("target", "farm target: " + hunt.monster + " (" + hunt.source + ")", "yellow");
+            if (!farm || farm.monster !== hunt.monster || srcKind(farm) !== srcKind(hunt)) util.log("target", "farm target: " + hunt.monster + " (" + hunt.source + ")", "yellow");
             farm = hunt;
             nextPickAt = 0; // re-evaluate the guide as soon as the hunt is over
             return farm;
@@ -857,7 +861,7 @@ module.exports = function createTargeting(ctx) {
         // missing, the guide names the drop route (bot_drops).
         const drop = !override && ctx.drops ? ctx.drops.target(function (m) { return crowdedUntil[m] > now; }) : null;
         if (drop) {
-            if (!farm || farm.monster !== drop.monster) util.log("target", "farm target: " + drop.monster + " (" + drop.source + ")", "yellow");
+            if (!farm || farm.monster !== drop.monster || srcKind(farm) !== srcKind(drop)) util.log("target", "farm target: " + drop.monster + " (" + drop.source + ")", "yellow");
             farm = drop;
             nextPickAt = 0; // back to the guide as soon as the item is complete
             return farm;
@@ -871,7 +875,7 @@ module.exports = function createTargeting(ctx) {
         // The guide may not be ready right after login: retry soon instead of waiting minutes.
         nextPickAt = now + (next.source === "fallback" ? 30 * 1000 : config.targeting.refreshMs);
 
-        if (!farm || farm.monster !== next.monster) {
+        if (!farm || farm.monster !== next.monster || srcKind(farm) !== srcKind(next)) {
             util.log("target", "farm target: " + next.monster + " (" + next.source + ")", "yellow");
         }
         farm = next;
