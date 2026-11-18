@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.100.0",
+    version: "1.100.1",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -597,7 +597,8 @@ module.exports = {
         // a drop – the fighter keeps its shop weapon. Gear-goal budget, normal scrolls.
         betterWeapons: {
             enabled: true,
-            names: ["fireblade", "firestaff", "firebow", "concordmace", "maceofthedead", "staffofthedead", "bowofthedead"],
+            names: ["fireblade", "firestaff", "firebow", "concordmace", "maceofthedead", "staffofthedead", "bowofthedead",
+                "daggerofthedead"], // daggers for the rogue (2026-11-18: bought at Ponty)
             maxLevel: 7,
             margin: 0.03,   // at least 3% stronger than the worn weapon
             // Next weapon step (player decision 2026-11-16): once a fighter's weapon (shop or
