@@ -488,6 +488,53 @@ module.exports = function createFighter(ctx, cls) {
         if (can_attack(target)) attack(target).catch(function () {});
     }
 
+    // Cavalry (Tracktrix, interact("cavalry"); player decision 2026-11-18). Below account level 80
+    // the four sentries fight up to 24 level-3+ monsters within 320 px for 90 s, and those they hit
+    // respawn at level 1. One call per ~10 min + 1 min per level, shared by the whole account.
+    //   emergency: any fighter low on HP with level-3+ monsters on it
+    //   reset:     the one who picks the spot (leader, solo, farming on its own) at its farm target
+    //              when several of them in reach have grown (resetFromLevel)
+    const CAV_KEY = "dmpx_cavalry_next"; // account-wide: next possible call (ms)
+    let cavTryAt = 0;
+    function cavalryReady() {
+        let next = 0;
+        try { next = get(CAV_KEY) || 0; } catch (e) { /* storage unavailable */ }
+        return Date.now() >= next && Date.now() >= cavTryAt;
+    }
+    function callCavalry(why) {
+        cavTryAt = Date.now() + 60 * 1000; // one try per minute at most
+        util.log("cavalry", "calling the Cavalry: " + why, "yellow");
+        interact("cavalry").then(function (r) {
+            const wait = (r && (r.cooldown_ms || (r.next_call ? new Date(r.next_call).getTime() - Date.now() : 0))) || 0;
+            try { set(CAV_KEY, Date.now() + Math.max(wait, 10 * 60 * 1000)); } catch (e) { /* storage unavailable */ }
+            util.log("cavalry", "Cavalry answered (" + ((r && r.assigned) || 0) + " sentries" + (r && r.queued ? ", queued" : "") + ")", "green");
+        }).catch(function (e) {
+            const ms = e && (e.cooldown_ms || e.ms);
+            if (ms) try { set(CAV_KEY, Date.now() + ms); } catch (x) { /* storage unavailable */ }
+            util.log("cavalry", "Cavalry refused: " + util.errReason(e), "orange");
+        });
+    }
+    function cavalryTick() {
+        const cv = config.cavalry || {};
+        if (!cv.enabled || character.rip || !cavalryReady()) return;
+        if (!["tracker", "supercomputer"].some(function (n) { return util.countItem(n) > 0; })) return;
+        const reach = 320;
+        const grown = function (e) { return e && e.type === "monster" && !e.dead && (e.level || 1) >= 3 && util.distanceTo(e) <= reach && G.monsters[e.mtype] && !G.monsters[e.mtype].cooperative; };
+        const all = Object.values(parent.entities || {});
+        // Emergency: low HP with level-3+ monsters on us (only those can be taken).
+        if (util.hpRatio() < (cv.emergencyHpBelow || 0.35)) {
+            const on = all.filter(function (e) { return grown(e) && e.target === character.name; });
+            if (on.length >= (cv.emergencyOnMe || 1)) return callCavalry("emergency, " + Math.round(util.hpRatio() * 100) + "% HP, " + on.length + " on me");
+        }
+        // Reset: the spot picker at its farm target, not during events.
+        if (!cv.reset || ctx.events.current() || !lastFarm || !lastFarm.monster || lastFarm.any) return;
+        if (party.enabled && party.isMember && !party.detached()) return;
+        const big = all.filter(function (e) { return grown(e) && e.mtype === lastFarm.monster && (e.level || 1) >= (cv.resetFromLevel || 5); });
+        if (big.length >= (cv.resetMinCount || 2)) {
+            callCavalry("reset " + big.length + "x " + lastFarm.monster + " (levels " + big.map(function (e) { return e.level || 1; }).join(",") + ")");
+        }
+    }
+
     // Leader: wait for fighters far behind (player request 2026-11-18: the priest walked into the
     // farm spot while warrior and ranger were still on the way). Only while nothing attacks us;
     // members farming on their own (damage return) and dead ones are not waited for; after
@@ -529,6 +576,7 @@ module.exports = function createFighter(ctx, cls) {
         // so members never lose track (party.broadcast throttles itself).
         party.broadcast(lastFarm, lastTarget, ctx.events.current());
         ctx.gear.tick();
+        cavalryTick();
         if (waitForTeam()) return;
         if (supply.tick() === "busy") return;
         if (ctx.events.tick() === "busy") return;

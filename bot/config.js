@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.111.2",
+    version: "1.112.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -279,6 +279,10 @@ module.exports = {
         occupiedBy: 1, occupiedRadius: 300, occupiedForMs: 20 * 60 * 1000,
         crowdedMaxMs: 6 * 60 * 60 * 1000, // doubled each time the same spot is crowded again within a day
     },
+
+    // Cavalry (Tracktrix): emergency rescue and resetting grown farm spots (2026-11-18).
+    // Strong only while the account's highest level is below 80.
+    cavalry: { enabled: true, emergencyHpBelow: 0.35, emergencyOnMe: 1, reset: true, resetFromLevel: 5, resetMinCount: 2 },
 
     combat: {
         // Kiting (solo and in a party - there within the leash, towards a tank class; player
