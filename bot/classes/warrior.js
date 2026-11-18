@@ -294,11 +294,21 @@ module.exports = function createWarrior(ctx) {
     // 2026-11-18: the pull-point version lost 15% to single targets at the arctic bees, its
     // waiting cost more than the walking it saved). Only while few are on us already.
     let lastStreamLog = 0;
-    function streamAgitate() {
+    // How many may be on us before the next Agitate (player decision 2026-11-18): with splash
+    // more pay off (splashOnMe), during Sugar Rush (3x attack speed) sugarBonus more; low HP
+    // fewer (below lowHp: 2, below minHp of the pull mode none) - also saves potions.
+    function streamLimit(splash) {
+        let n = splash ? (ag.splashOnMe || 5) : (ag.streamOnMe || 3);
+        if (splash && character.s && character.s.sugarrush) n += (ag.sugarBonus || 2);
+        const hp = util.hpRatio();
+        if (hp < (ag.streamStopHp || 0.4)) return 0;
+        if (hp < (ag.streamLowHp || 0.6)) n = Math.min(n, 2);
+        return n;
+    }
+    function streamAgitate(splash) {
         if (!util.canCast("agitate") || character.mp < G.skills.agitate.mp + reserve()) return;
-        if (util.hpRatio() < (ag.minHp || 0.8)) return;
         const coming = onMe().length;
-        if (coming >= (ag.streamOnMe || 3)) return; // Agitate only while fewer than streamOnMe attack us
+        if (coming >= streamLimit(splash)) return; // Agitate only while fewer than the limit attack us
         const fresh = packAround(G.skills.agitate.range).filter(function (m) { return m.target !== character.name; });
         if (fresh.length < (ag.streamFrom || 1) || unwantedAround(G.skills.agitate.range).length) return;
         use_skill("agitate").catch(function () {});
@@ -335,13 +345,26 @@ module.exports = function createWarrior(ctx) {
             util.status("agitate stream: " + t.mtype + " (" + onMe().length + " on us)", "green");
             return true;
         }
-        const p = util.xy(around[0]);
+        // Splash: not simply the nearest one, the one with the most others around it (a clump
+        // is worth a few steps more - player idea 2026-11-18): neighbours within clumpRadius
+        // count clumpStep px of way each.
+        let goal = around[0];
+        if (splash && ag.streamToClump !== false) {
+            let bestScore = -Infinity;
+            around.forEach(function (m) {
+                const q = util.xy(m);
+                const n = around.filter(function (o) { return o !== m && Math.hypot(util.xy(o).x - q.x, util.xy(o).y - q.y) <= (ag.clumpRadius || 60); }).length;
+                const score = n * (ag.clumpStep || 80) - util.distanceTo(m);
+                if (score > bestScore) { bestScore = score; goal = m; }
+            });
+        }
+        const p = util.xy(goal);
         if (!is_moving(character) || !streamWalkTo || Math.hypot(streamWalkTo.x - p.x, streamWalkTo.y - p.y) > 25) {
             streamWalkTo = p;
             if (can_move_to(p.x, p.y)) move(p.x, p.y);
             else xmove(p.x, p.y);
         }
-        util.status("agitate stream: to the nearest " + around[0].mtype, "orange");
+        util.status("agitate stream: to " + (goal === around[0] ? "the nearest " : "a clump of ") + goal.mtype, "orange");
         return true;
     }
 
@@ -355,7 +378,7 @@ module.exports = function createWarrior(ctx) {
                 return true;
             }
             ctx.gear.holdWeapons(ag.keepMs || 60 * 1000);
-            streamAgitate();
+            streamAgitate(true);
             return streamFight(true);
         }
         if (agMode() === "swords" && (ag.swords || "stream") === "stream") {

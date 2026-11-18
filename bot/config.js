@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.100.4",
+    version: "1.101.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -372,6 +372,9 @@ module.exports = {
                 chaseFrom: 3,         // with this many or fewer left and none in range: walk to the nearest one
                 swords: "stream",     // mode "swords": "stream" = Agitate on every cooldown where we stand (normal combat), "pull" = the pull-point version
                 streamFrom: 1, streamOnMe: 3, // "stream": Agitate when this many free ones are in reach and fewer than streamOnMe attack us
+                splashOnMe: 5, sugarBonus: 2, // "splashstream": up to 5 on us (7 during Sugar Rush) ...
+                streamLowHp: 0.6, streamStopHp: 0.4, // ... at most 2 below 60% HP, no Agitate below 40%
+                streamToClump: true, clumpRadius: 60, clumpStep: 80, // "splashstream": walk to clumps (each neighbour within 60 px is worth 80 px of way)
                 kiteStep: 120,        // "step" (and backing off): this far
                 gatherMs: 2500,
                 regroupBelow: 0.5, regroupEveryMs: 8000,
