@@ -339,6 +339,13 @@ module.exports = function createWarrior(ctx) {
         });
         return Math.max(1, Math.min.apply(null, Object.keys(kinds).map(function (t) { return Math.floor(safeLimit(t) * scaleOf(t)); })));
     }
+    // Auto: an Agitate needs the farm target among the free ones in reach (player decision
+    // 2026-11-18): other kinds only come along. Plain snakes alone kept the warrior agitating at
+    // the snake spot after the O-Snakes were gone, and the party came back instead of moving on.
+    function farmTargetIn(list) {
+        if (ag.monsters !== "auto" || !auto.type) return true;
+        return list.some(function (m) { return m.mtype === auto.type; });
+    }
     // Free monsters of the wanted kind around us (not fighting another player).
     function packAround(range) {
         return Object.values(parent.entities || {}).filter(function (e) {
@@ -509,6 +516,7 @@ module.exports = function createWarrior(ctx) {
         if (coming >= streamLimit(splash)) return; // Agitate only while fewer than the limit attack us
         const fresh = packAround(G.skills.agitate.range).filter(function (m) { return m.target !== character.name; });
         if (fresh.length < (ag.streamFrom || 1) || unwantedAround(G.skills.agitate.range).length) return;
+        if (!farmTargetIn(fresh)) return;
         // Auto: every single cast checks the levels too - the decision is held during fights, and
         // two grown bats came along with a stream pull (2026-11-18).
         if (ag.monsters === "auto" && typeof ag.maxLevel === "number" && fresh.some(function (m) { return (m.level || 1) > ag.maxLevel; })) return;
@@ -676,6 +684,7 @@ module.exports = function createWarrior(ctx) {
                 util.status("agitate: to the pull point (" + spot.count + ")", "orange");
                 return true;
             }
+            if (!farmTargetIn(packAround(G.skills.agitate.range))) return false; // only other kinds here
             if (spot && is_moving(character)) stop();
             pack.walkTo = null;
             if (util.canCast("warcry") && character.mp >= G.skills.agitate.mp + G.skills.warcry.mp) use_skill("warcry").catch(function () {});
