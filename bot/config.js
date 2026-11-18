@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.102.0",
+    version: "1.103.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -357,7 +357,12 @@ module.exports = {
             // Each pull is logged ("pull done: ... splash neighbours per hit").
             agitate: {
                 enabled: true,
-                monsters: ["arcticbee"], // only these start a pull (empty = any) - test (crocs, bats done)
+                // "auto" (2026-11-18): the bot decides per farm target (safety, learned splash -
+                // see the warrior module); a list forces these kinds; deny excludes kinds.
+                monsters: "auto", deny: [],
+                maxOnMe: 8, maxHp: 50000, abilities: [], // auto: at most this many at once; no bosses / unknown abilities
+                splashMin: 1.0, learnHits: 40, denseCount: 5, denseSpacing: 130, // auto: lolipops from 1.0 splash per hit (guess from spawn density first)
+                deathDenyMs: 2 * 60 * 60 * 1000, // auto: no Agitate on a kind for this long after dying to it
                 weapons: "splash",    // "splash": put on the splash weapons; "keep": pull with the usual ones ("/agitate off|swords|splash" switches at runtime)
                 minPack: 3,
                 minHp: 0.8,           // start a pull only above this HP share

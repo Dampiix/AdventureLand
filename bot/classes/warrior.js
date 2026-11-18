@@ -115,7 +115,7 @@ module.exports = function createWarrior(ctx) {
             try { v = get(MODE_KEY) || null; } catch (e) { /* storage unavailable */ }
             modeCache = { at: Date.now(), v: v };
         }
-        const m = modeCache.v || (!ag.enabled ? "off" : ag.weapons === "keep" ? "swords" : "splash");
+        const m = modeCache.v || (!ag.enabled ? "off" : ag.monsters === "auto" ? autoMode() : ag.weapons === "keep" ? "swords" : "splash");
         if (m !== lastMode) {
             if (lastMode !== null) {
                 util.log("warrior", "agitate mode: " + m, "yellow");
@@ -158,7 +158,126 @@ module.exports = function createWarrior(ctx) {
         return isSplash(character.slots && character.slots.mainhand);
     }
     function packWanted(e) {
+        if (ag.monsters === "auto") return !!auto.type && e.mtype === auto.type && auto.mode !== "off";
         return !ag.monsters || !ag.monsters.length || ag.monsters.includes(e.mtype);
+    }
+
+    // ---- automatic Agitate decision (agitate.monsters "auto", player decisions 2026-11-18) ----
+    //   allowed:  only safety decides - the farm target, not denied, no damage return, no boss
+    //             (maxHp), no unknown abilities, slower than us, and the pack check
+    //             (targeting.packVerdict) passes for at least 2 at once
+    //   how many: the most the pack check allows (up to maxOnMe), scaled down by experience
+    //   weapons:  splash when the learned splash neighbours per hit reach splashMin (measured
+    //             with the usual weapons too: "would have hit"), until learnHits a guess from the
+    //             spawn density; else the usual weapons
+    //   learning: per monster kind, kept across restarts - splash per hit (rolling), low-HP
+    //             moments (3 in 10 min: fewer at once), a death while agitating: no Agitate
+    //             there for deathDenyMs
+    const STATS_KEY = "agitate_stats:" + character.name;
+    const stats = (function () { try { return get(STATS_KEY) || {}; } catch (e) { return {}; } })();
+    let statsSavedAt = 0;
+    function saveStats(force) {
+        if (!force && Date.now() - statsSavedAt < 30 * 1000) return;
+        statsSavedAt = Date.now();
+        try { set(STATS_KEY, stats); } catch (e) { /* storage unavailable */ }
+    }
+    function statOf(type) {
+        return stats[type] = stats[type] || { hits: 0, nsum: 0, scale: 1, lows: [], denyUntil: 0, calmSince: Date.now() };
+    }
+    function noteHit(type, neighbours) {
+        if (!type) return;
+        const st = statOf(type);
+        st.hits = st.hits * 0.995 + 1;      // about the last 200 hits count
+        st.nsum = st.nsum * 0.995 + neighbours;
+        saveStats(false);
+    }
+    function noteLowHp(type) {
+        if (!type) return;
+        const st = statOf(type), now = Date.now();
+        st.lows = (st.lows || []).filter(function (t) { return now - t < 10 * 60 * 1000; });
+        if (st.lows.length && now - st.lows[st.lows.length - 1] < 20 * 1000) return;
+        st.lows.push(now);
+        st.calmSince = now;
+        if (st.lows.length >= 3) {
+            st.scale = Math.max(0.3, (st.scale || 1) * 0.7);
+            st.lows = [];
+            util.log("warrior", "agitate: " + type + " too hot - fewer at once (x" + st.scale.toFixed(2) + ")", "orange");
+        }
+        saveStats(true);
+    }
+    function scaleOf(type) {
+        const st = statOf(type), now = Date.now();
+        // Calm for 10 min: back up by 0.1.
+        if ((st.scale || 1) < 1 && now - (st.calmSince || 0) > 10 * 60 * 1000) {
+            st.scale = Math.min(1, st.scale + 0.1);
+            st.calmSince = now;
+            saveStats(true);
+        }
+        return st.scale || 1;
+    }
+    function spawnDense(type) {
+        let dense = false;
+        Object.keys(G.maps).forEach(function (m) {
+            (G.maps[m].monsters || []).forEach(function (p) {
+                if (p.type !== type || !p.boundary || (p.count || 1) < (ag.denseCount || 5)) return;
+                const b = p.boundary, area = (b[2] - b[0]) * (b[3] - b[1]);
+                if (Math.sqrt(area / (p.count || 1)) <= (ag.denseSpacing || 130)) dense = true;
+            });
+        });
+        return dense;
+    }
+    function splashWorth(type) {
+        const st = statOf(type);
+        if (st.hits >= (ag.learnHits || 40)) return st.nsum / st.hits >= (ag.splashMin || 1);
+        return spawnDense(type);
+    }
+    const safeCache = {}; // type -> { at, n }
+    function safeLimit(type) {
+        const c = safeCache[type];
+        if (c && Date.now() - c.at < 60 * 1000) return c.n;
+        const def = G.monsters[type] || {};
+        const live = Object.values(parent.entities || {}).find(function (e) { return e && e.type === "monster" && e.mtype === type && !e.dead; });
+        const e = live || { mtype: type, attack: def.attack, hp: def.hp, max_hp: def.hp, frequency: def.frequency, level: 1 };
+        let n = 0;
+        for (let k = ag.maxOnMe || 8; k >= 1; k--) {
+            if (!ctx.targeting.packVerdict || ctx.targeting.packVerdict(e, k).ok) { n = k; break; }
+        }
+        safeCache[type] = { at: Date.now(), n: n };
+        return n;
+    }
+    function autoAllowed(type) {
+        const def = G.monsters[type];
+        if (!def || (ag.deny || []).includes(type) || def.cooperative) return { ok: false, why: "not for this kind" };
+        if ((statOf(type).denyUntil || 0) > Date.now()) return { ok: false, why: "died here recently" };
+        if (def.dreturn > 0 || (def.hp || 0) > (ag.maxHp || 50000)) return { ok: false, why: "damage return or boss" };
+        const abil = Object.keys(def.abilities || {}).filter(function (a) { return !(ag.abilities || []).includes(a); });
+        if (abil.length) return { ok: false, why: "abilities " + abil.join(",") };
+        if ((def.speed || 0) >= (character.speed || 0) * 0.9) return { ok: false, why: "as fast as we are" };
+        const n = safeLimit(type);
+        if (n < 2) return { ok: false, why: "pack check allows " + n };
+        return { ok: true, n: n };
+    }
+    const auto = { at: 0, type: null, mode: "off", why: "" };
+    function farmType() {
+        try { const fm = ctx.targeting.currentFarm(); return fm && !fm.any ? fm.monster : null; } catch (e) { return null; }
+    }
+    function autoMode() {
+        if (Date.now() - auto.at < 15 * 1000) return auto.mode;
+        auto.at = Date.now();
+        const type = farmType();
+        const a = type ? autoAllowed(type) : { ok: false, why: "no farm target" };
+        const mode = !a.ok ? "off" : splashWorth(type) ? "splashstream" : "swords";
+        const st = type ? statOf(type) : null;
+        const why = !a.ok ? a.why : "up to " + Math.max(1, Math.floor(a.n * scaleOf(type))) + " at once, splash " +
+            (st && st.hits >= (ag.learnHits || 40) ? (st.nsum / st.hits).toFixed(2) + " learned" : "guessed");
+        if (type !== auto.type || mode !== auto.mode) util.log("warrior", "agitate auto: " + (type || "-") + " -> " + mode + " (" + why + ")", "yellow");
+        auto.type = type; auto.mode = mode; auto.why = why;
+        return mode;
+    }
+    // The current type's safe count, for the stream limit (null = no automatic cap).
+    function autoCap() {
+        if (ag.monsters !== "auto" || !auto.type) return null;
+        return Math.max(1, Math.floor(safeLimit(auto.type) * scaleOf(auto.type)));
     }
     // Free monsters of the wanted kind around us (not fighting another player).
     function packAround(range) {
@@ -309,6 +428,7 @@ module.exports = function createWarrior(ctx) {
     // fewer (below lowHp: 2, below minHp of the pull mode none) - also saves potions.
     function streamLimit(splash) {
         let n = splash ? (ag.splashOnMe || 5) : (ag.streamOnMe || 3);
+        const cap = ctx.party.enabled ? null : autoCap(); // auto: what the pack check and experience allow
         if (splash && character.s && character.s.sugarrush) n += (ag.sugarBonus || 2);
         // A living priest close by heals us: the party takes more at once (agitate.partyOnMe).
         if (ctx.party.enabled && ctx.party.memberNames().some(function (nm) {
@@ -318,6 +438,7 @@ module.exports = function createWarrior(ctx) {
         const hp = util.hpRatio();
         if (hp < (ag.streamStopHp || 0.4)) return 0;
         if (hp < (ag.streamLowHp || 0.6)) n = Math.min(n, 2);
+        if (cap !== null) n = Math.min(n, cap);
         return n;
     }
     function streamAgitate(splash) {
@@ -327,6 +448,7 @@ module.exports = function createWarrior(ctx) {
         const fresh = packAround(G.skills.agitate.range).filter(function (m) { return m.target !== character.name; });
         if (fresh.length < (ag.streamFrom || 1) || unwantedAround(G.skills.agitate.range).length) return;
         use_skill("agitate").catch(function () {});
+        lastAgitate = { at: Date.now(), type: fresh[0].mtype };
         if (Date.now() - lastStreamLog > 5 * 60 * 1000) {
             lastStreamLog = Date.now();
             util.log("warrior", "agitate stream: " + fresh.length + " more on the way (" + coming + " on us)", "white");
@@ -358,7 +480,10 @@ module.exports = function createWarrior(ctx) {
                 inRange.forEach(function (m) { const n = splashNeighbours(m, mine); if (n > bestN) { bestN = n; t = m; } });
             }
             if (get_targeted_monster() !== t) change_target(t);
-            if (can_attack(t)) attack(t).catch(function () {});
+            if (can_attack(t)) {
+                attack(t).catch(function () {});
+                noteHit(t.mtype, splashNeighbours(t, onMe())); // learning: (would-have) splash per hit
+            }
             streamWalkTo = null;
             util.status("agitate stream: " + t.mtype + " (" + onMe().length + " on us)", "green");
             return true;
@@ -386,8 +511,15 @@ module.exports = function createWarrior(ctx) {
         return true;
     }
 
+    let lastAgitate = { at: 0, type: null };
+    let wasDead = false;
     function packTick() {
         if (!packOn()) return false;
+        // Learning: a low-HP moment under attack counts against that monster kind.
+        if (util.hpRatio() < (ag.streamStopHp || 0.4)) {
+            const on = onMe();
+            if (on.length) noteLowHp(on[0].mtype);
+        }
         if (effectiveMode() === "splashstream") {
             // Stream with the splash weapons on (player test 2026-11-18).
             if (!wearingSplash()) {
@@ -443,6 +575,7 @@ module.exports = function createWarrior(ctx) {
             pack.walkTo = null;
             if (util.canCast("warcry") && character.mp >= G.skills.agitate.mp + G.skills.warcry.mp) use_skill("warcry").catch(function () {});
             use_skill("agitate").catch(function () {});
+            lastAgitate = { at: now, type: (spot && auto.type) || (packAround(G.skills.agitate.range)[0] || {}).mtype || null };
             if (splashMode()) ctx.gear.holdWeapons(ag.holdMs || 10 * 60 * 1000);
             const pulledNow = packAround(G.skills.agitate.range);
             pack.pulled = pulledNow.map(function (m) { return m.id; });
@@ -547,6 +680,7 @@ module.exports = function createWarrior(ctx) {
             attack(best).catch(function () {});
             pack.attacks++;
             pack.neighborSum += bestN;
+            noteHit(best.mtype, bestN);
             pack.recent.push(bestN);
             if (pack.recent.length > 6) pack.recent.shift();
         }
@@ -566,6 +700,17 @@ module.exports = function createWarrior(ctx) {
         // boss searches and Daisy trips too (player request 2026-11-16).
         always: function () {
             if (c.useCharge && is_moving(character)) tryCharge();
+            // Learning: a death within 90 s of an Agitate - no Agitate on that kind for a while.
+            if (character.rip && !wasDead) {
+                wasDead = true;
+                if (lastAgitate.type && Date.now() - lastAgitate.at < 90 * 1000) {
+                    statOf(lastAgitate.type).denyUntil = Date.now() + (ag.deathDenyMs || 2 * 60 * 60 * 1000);
+                    saveStats(true);
+                    auto.at = 0;
+                    util.log("warrior", "agitate: died while agitating " + lastAgitate.type + " - no Agitate there for " +
+                        Math.round((ag.deathDenyMs || 2 * 60 * 60 * 1000) / 60000) + " min", "red");
+                }
+            } else if (!character.rip) wasDead = false;
         },
 
         survive: function () {
