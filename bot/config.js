@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.113.0",
+    version: "1.113.1",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -705,6 +705,10 @@ module.exports = {
         compound: {
             auto: true,   // combine spare accessories/books when no wish is open
             autoUpTo: 3,  // ...up to this level (each step still needs the risk tier's chance)
+            // Copies held back from auto compounding ("name:level": count). DEX belts +2 are the
+            // ranger's belt and the base of the rogue's Knife Belt (2026-11-18): a try at +3 only
+            // with five spare ones.
+            keep: { "dexbelt:2": 2 },
         },
         // Exchange (approved 2026-11-15: everything except seasonal items).
         exchange: {

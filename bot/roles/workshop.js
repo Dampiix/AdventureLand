@@ -1141,7 +1141,11 @@ module.exports = function createWorkshop(ctx) {
         (bankSnapshot ? bankSnapshot.items : []).forEach(function (b) { add(b.name, b.level); });
 
         const now = Date.now();
-        const id = Object.keys(counts).find(function (x) { return counts[x] >= 3 && !(blockedUntil["auto:" + x] > now); });
+        // compound.keep (player decision 2026-11-18): copies of "name:level" held back from auto
+        // compounding, e.g. DEX belts +2 (ranger, Knife Belt for the rogue) - with keep 2 the
+        // first try at +3 needs five spare copies.
+        const keep = cfg.compound.keep || {};
+        const id = Object.keys(counts).find(function (x) { return counts[x] - (keep[x] || 0) >= 3 && !(blockedUntil["auto:" + x] > now); });
         if (!id) return false;
         const parts = id.split(":");
         const k = "auto:" + id;
