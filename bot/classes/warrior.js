@@ -630,6 +630,12 @@ module.exports = function createWarrior(ctx) {
             const on = onMe();
             if (on.length) noteLowHp(on[0].mtype);
         }
+        // Auto: the stream runs only where the farm target is (player report 2026-11-18): other
+        // harmless kinds only come along. With booboo as the target the stream walked from goo
+        // clump to goo clump in town instead of letting the normal combat travel to Spooky Town.
+        if (ag.monsters === "auto" && auto.type && !onMe().length && !Object.values(parent.entities || {}).some(function (e) {
+            return e && e.type === "monster" && !e.dead && e.mtype === auto.type && util.distanceTo(e) <= 600;
+        })) return false;
         if (effectiveMode() === "splashstream") {
             // Stream with the splash weapons on (player test 2026-11-18).
             if (!wearingSplash()) {
