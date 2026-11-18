@@ -101,14 +101,20 @@ module.exports = function createMerchant(ctx) {
         const market = config.market || {};
         const lvlText = function (name, level) { return G.items[name].upgrade || G.items[name].compound ? " +" + level : ""; };
         // Listed buy orders no longer needed - the item left config.market.buy, or we hold
-        // "want" by now - are taken down (unequip removes the listing).
+        // "want" by now - are taken down (unequip removes the listing). So is one whose price
+        // differs from the config (an orange Lolipop order from an old config sat at 50k for
+        // days, 2026-11-18); the next pass lists it again at the current price.
         slots.forEach(function (s) {
             const it = character.slots[s];
             if (!it || !it.b) return;
             const o = (market.buy || []).find(function (b) { return b.item === it.name && (b.level || 0) === (it.level || 0); });
-            if (o && (o.want || 1) - workshop.ownedCount(o.item) > 0) return;
+            const needed = o && (o.want || 1) - workshop.ownedCount(o.item) > 0;
+            if (needed && it.price === o.price) return;
             parent.socket.emit("unequip", { slot: s });
-            util.log("merchant", "buy order for " + it.name + " taken down (" + (o ? "we hold " + workshop.ownedCount(o.item) + " of " + (o.want || 1) : "not on the list") + ")", "white");
+            const why = !o ? "not on the list"
+                : !needed ? "we hold " + workshop.ownedCount(o.item) + " of " + (o.want || 1)
+                : "price " + it.price + " -> " + o.price + ", listed again";
+            util.log("merchant", "buy order for " + it.name + " taken down (" + why + ")", "white");
         });
         // Buy orders: what is missing up to "want" (bag + bank).
         (market.buy || []).forEach(function (o) {
