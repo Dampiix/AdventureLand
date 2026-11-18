@@ -453,8 +453,23 @@ module.exports = function createGear(ctx) {
         return slotsFor(def).some(function (s) { return !(character.slots && character.slots[s]); });
     }
 
+    // A class mode wears other weapons for a while (warrior Agitate: splash maces): no equip
+    // pass would put the usual ones back, and no wish report would tell the merchant we wear
+    // the mode's weapons (it would start building our usual ones again from essence).
+    // When the hold ends, the next equip pass puts the stronger weapons back on.
+    let heldUntil = 0;
+    function holdWeapons(ms) {
+        heldUntil = ms ? Date.now() + ms : 0;
+        if (!ms) lastBag = ""; // released: re-check the bag at once
+    }
+    function weaponsHeld() {
+        return Date.now() < heldUntil;
+    }
+
     function tick() {
         if (!cfg.enabled) return;
+        if (weaponsHeld()) return;
+        if (heldUntil) { heldUntil = 0; lastBag = ""; } // the hold ran out on its own
         sendWishes();
         const key = bagKey();
         if (key !== lastBag) trackBag();
@@ -513,5 +528,5 @@ module.exports = function createGear(ctx) {
         return equipRows.rows.some(function (r) { return r.action.name === item.name && (r.action.level || 0) === (item.level || 0); });
     }
 
-    return { tick: tick, isReserved: isReserved };
+    return { tick: tick, isReserved: isReserved, holdWeapons: holdWeapons, weaponsHeld: weaponsHeld };
 };

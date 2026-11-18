@@ -91,6 +91,193 @@ module.exports = function createWarrior(ctx) {
         return true;
     }
 
+    // ---- Agitate pack mode (config.classes.warrior.agitate, test since 2026-11-18) ----------
+    //
+    // Solo: when enough free monsters stand within Agitate range, the warrior puts on his
+    // splash weapons (explosion, e.g. Lolipop Maces), casts War Cry and Agitate, walks a step
+    // away so the pack follows from one side and bunches up, then always hits the monster with
+    // the most others inside the splash radius (explosion / 3.6 px, hitbox edge to edge -
+    // server.js). When the pack spreads around him he steps away again. Each pull ends with
+    // a summary line (pulled, time, splash neighbours per hit, HP used) to judge the mode.
+    const ag = c.agitate || {};
+    const pack = { state: "idle", busy: false, since: 0, pulled: [], startHp: 0, attacks: 0, neighborSum: 0,
+        recent: [], lastRegroup: 0, gatherAt: 0, noWeaponsLogged: false };
+
+    function packOn() {
+        return !!(ag.enabled && !ctx.party.enabled && G.skills.agitate && character.level >= (G.skills.agitate.level || 68));
+    }
+    function isSplash(item) {
+        const def = item && G.items[item.name];
+        return !!(def && def.type === "weapon" && def.explosion > 0);
+    }
+    // Bag weapons with splash that our class can hold, highest level first.
+    function splashWeapons() {
+        return character.items.map(function (it, num) { return { it: it, num: num }; }).filter(function (x) {
+            return isSplash(x.it) && util.weaponPower(x.it.name, 0, character.ctype) > 0;
+        }).sort(function (a, b) { return (b.it.level || 0) - (a.it.level || 0); });
+    }
+    function wearingSplash() {
+        return isSplash(character.slots && character.slots.mainhand);
+    }
+    function packWanted(e) {
+        return !ag.monsters || !ag.monsters.length || ag.monsters.includes(e.mtype);
+    }
+    // Free monsters of the wanted kind around us (not fighting another player).
+    function packAround(range) {
+        return Object.values(parent.entities || {}).filter(function (e) {
+            return e && e.type === "monster" && !e.dead && e.visible && packWanted(e) &&
+                util.distanceTo(e) <= range && (!e.target || e.target === character.name);
+        });
+    }
+    function onMe() {
+        return Object.values(parent.entities || {}).filter(function (e) {
+            return e && e.type === "monster" && !e.dead && e.target === character.name;
+        });
+    }
+    // Hitbox edge to edge, like the server's splash check.
+    function edge(a, b) {
+        try { return parent.distance(a, b); } catch (e) {
+            return Math.max(0, Math.hypot(a.real_x - b.real_x, a.real_y - b.real_y) - 20);
+        }
+    }
+    function splashRadius() {
+        return (character.explosion || 0) / 3.6;
+    }
+    function splashNeighbours(t, list) {
+        const r = splashRadius();
+        return list.filter(function (m) { return m !== t && edge(m, t) < r; }).length;
+    }
+
+    async function putOnSplash() {
+        pack.busy = true;
+        try {
+            ctx.gear.holdWeapons(ag.holdMs || 10 * 60 * 1000);
+            let w = splashWeapons();
+            if (w[0]) await equip(w[0].num, "mainhand");
+            w = splashWeapons(); // the bag changed: look again
+            const off = character.slots && character.slots.offhand;
+            if (w[0] && (!off || G.items[off.name].type === "weapon")) await equip(w[0].num, "offhand");
+            util.log("warrior", "splash weapons on: " + ["mainhand", "offhand"].map(function (s) {
+                const i = character.slots[s]; return i ? i.name + " +" + (i.level || 0) : "-";
+            }).join(", ") + " (splash radius " + Math.round(splashRadius()) + " px)", "yellow");
+        } catch (e) {
+            util.log("warrior", "splash weapons: " + util.errReason(e), "orange");
+        } finally {
+            pack.busy = false;
+        }
+    }
+
+    // A step away from the pack's middle: it follows from one side and bunches up.
+    function stepAway(list) {
+        const me = util.xy(character);
+        let cx = 0, cy = 0;
+        list.forEach(function (m) { const p = util.xy(m); cx += p.x; cy += p.y; });
+        cx /= list.length; cy /= list.length;
+        let dx = me.x - cx, dy = me.y - cy;
+        const len = Math.hypot(dx, dy) || 1;
+        dx /= len; dy /= len;
+        const step = ag.kiteStep || 120;
+        for (const turn of [0, 0.6, -0.6, 1.2, -1.2]) {
+            const ux = dx * Math.cos(turn) - dy * Math.sin(turn), uy = dx * Math.sin(turn) + dy * Math.cos(turn);
+            const x = me.x + ux * step, y = me.y + uy * step;
+            if (can_move_to(x, y)) {
+                move(x, y);
+                pack.lastRegroup = pack.gatherAt = Date.now();
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function finishPull(reason) {
+        const secs = Math.round((Date.now() - pack.since) / 1000);
+        const dead = pack.pulled.filter(function (id) { const e = parent.entities[id]; return !e || e.dead; }).length;
+        const avg = pack.attacks ? (pack.neighborSum / pack.attacks).toFixed(2) : "0";
+        const hpUsed = Math.round((pack.startHp - character.hp) / character.max_hp * 100);
+        util.log("warrior", "pull done (" + reason + "): " + pack.pulled.length + " pulled, " + dead + " dead, " + secs + " s, " +
+            pack.attacks + " hits, " + avg + " splash neighbours per hit, HP used " + hpUsed + "%", "green");
+        pack.state = "idle";
+        // Keep the splash weapons a little while for the next pull, then the usual ones go back on.
+        ctx.gear.holdWeapons(ag.keepMs || 60 * 1000);
+    }
+
+    // Returns true while the pack mode runs this tick (the normal combat waits).
+    function packTick() {
+        if (!packOn()) return false;
+        if (pack.busy) return true;
+        const now = Date.now();
+        if (pack.state === "idle") {
+            const free = packAround(G.skills.agitate.range);
+            if (free.length < (ag.minPack || 3)) return false;
+            if (util.hpRatio() < (ag.minHp || 0.8) || !util.canCast("agitate") || character.mp < G.skills.agitate.mp) return false;
+            if (!wearingSplash()) {
+                if (!splashWeapons().length) {
+                    if (!pack.noWeaponsLogged) util.log("warrior", "agitate mode: no splash weapon in the bag", "orange");
+                    pack.noWeaponsLogged = true;
+                    return false;
+                }
+                putOnSplash();
+                return true;
+            }
+            if (util.canCast("warcry") && character.mp >= G.skills.agitate.mp + G.skills.warcry.mp) use_skill("warcry").catch(function () {});
+            use_skill("agitate").catch(function () {});
+            ctx.gear.holdWeapons(ag.holdMs || 10 * 60 * 1000);
+            pack.pulled = free.map(function (m) { return m.id; });
+            pack.since = now; pack.startHp = character.hp; pack.attacks = 0; pack.neighborSum = 0; pack.recent = [];
+            const kinds = {};
+            free.forEach(function (m) { kinds[m.mtype] = (kinds[m.mtype] || 0) + 1; });
+            util.log("warrior", "Agitate: " + Object.keys(kinds).map(function (k) { return kinds[k] + "x " + k; }).join(", "), "yellow");
+            pack.state = stepAway(free) ? "gather" : "fight";
+            return true;
+        }
+        const mine = onMe();
+        if (util.hpRatio() < (ag.abortHp || 0.3) && mine.length) {
+            // Too hot: walk away from the pack (most pack monsters are slower than us).
+            if (!is_moving(character)) stepAway(mine);
+            util.status("agitate: backing off", "red");
+            return true;
+        }
+        if (pack.state === "gather") {
+            if (is_moving(character) && now - pack.gatherAt < (ag.gatherMs || 2500)) {
+                util.status("agitate: gathering the pack", "orange");
+                return true;
+            }
+            if (is_moving(character)) stop();
+            pack.state = "fight";
+        }
+        // fight
+        if (!mine.length) {
+            if (now - pack.since > 3000) finishPull("no monster left on us");
+            return pack.state !== "idle";
+        }
+        let best = null, bestN = -1;
+        mine.forEach(function (m) {
+            if (!is_in_range(m)) return;
+            const n = splashNeighbours(m, mine);
+            if (n > bestN || (n === bestN && best && m.hp < best.hp)) { best = m; bestN = n; }
+        });
+        if (!best) {
+            util.status("agitate: waiting for the pack (" + mine.length + ")", "orange");
+            return true;
+        }
+        // Spread around us: step away again so they come from one side.
+        const avg = pack.recent.length >= 4 ? pack.recent.reduce(function (s, n) { return s + n; }, 0) / pack.recent.length : 99;
+        if (mine.length >= 3 && avg < (ag.regroupBelow || 0.5) && now - pack.lastRegroup > (ag.regroupEveryMs || 8000)) {
+            pack.recent = [];
+            if (stepAway(mine)) { pack.state = "gather"; return true; }
+        }
+        if (get_targeted_monster() !== best) change_target(best);
+        if (can_attack(best)) {
+            attack(best).catch(function () {});
+            pack.attacks++;
+            pack.neighborSum += bestN;
+            pack.recent.push(bestN);
+            if (pack.recent.length > 6) pack.recent.shift();
+        }
+        util.status("agitate: " + mine.length + " on us, splash " + bestN, "green");
+        return true;
+    }
+
     function tryCharge() {
         if (!c.useCharge || !util.canCast("charge") || (character.s && character.s.charging)) return;
         use_skill("charge").catch(function () {});
@@ -116,6 +303,7 @@ module.exports = function createWarrior(ctx) {
         },
 
         support: function () {
+            if (packTick()) return true; // Agitate pack mode (solo test)
             const others = onOthers();
             if (!others.length) return false;
             // Agitate: everything nearby comes to us when several monsters are on allies.

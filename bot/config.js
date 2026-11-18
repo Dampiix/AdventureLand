@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.93.0",
+    version: "1.94.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -149,7 +149,7 @@ module.exports = {
         searchEveryMs: 30 * 60 * 1000,
         // Bosses hunted nonstop: searched again after farmBossEveryMs (player option
         // 2026-11-16; Phoenix: weapons and earrings, about half the XP/h of crocs).
-        farmBosses: ["phoenix"],        // nonstop Phoenix hunt (player decision 2026-11-18: warrior level 70, now Essence of Fire while the player works)
+        farmBosses: [],                 // ["phoenix"] = nonstop Phoenix hunt; off for the Agitate test at the crocs (2026-11-18)
         // 10 s (player decision 2026-11-17): in the old 60 s the warrior seldom even reached his
         // farm spot; now he goes straight back on the round after a kill or an empty search.
         farmBossEveryMs: 10 * 1000,
@@ -201,7 +201,7 @@ module.exports = {
         // Player decision 2026-11-17 (night): the solo warrior farms CGoos overnight (gold for the
         // budget pots after the reset, XP to 68, gems); the Phoenix is still searched every 30 min.
         // Boo Boo solo test 2026-11-17 (late) failed: he walked into the pack and died. Back to CGoos.
-        farm: "cgoo",           // e.g. "squigtoad" to force a monster for everyone (null = guide)
+        farm: "croc",           // Agitate test 2026-11-18 (was "cgoo"); e.g. "squigtoad" to force a monster for everyone (null = guide)
         fallback: "goo",          // used when the progression guide has no answer
         // Farm only where every fighter's own guide calls the spot safe; routes the guide
         // only offers as a careful trial count once proven – by the guide's own fights, or
@@ -330,6 +330,23 @@ module.exports = {
             // Dash: the server accepts a point at most 50 px away (game source) – a 120 MP hop,
             // no gap closer. Off since 2026-11-16 (the old 150 px jumps always failed).
             dash: { enabled: false, from: 120, max: 45, everyMs: 2000 },
+            // Agitate pack mode (solo, lvl 68; test since 2026-11-18): with minPack free monsters
+            // within Agitate range he puts on his splash weapons (explosion, e.g. Lolipop Maces),
+            // casts War Cry + Agitate, steps kiteStep px away so the pack follows from one side,
+            // then always hits the monster with the most others in the splash radius. Spread out
+            // (fewer than regroupBelow splash neighbours per hit over the last hits): another step.
+            // Each pull is logged ("pull done: ... splash neighbours per hit").
+            agitate: {
+                enabled: true,
+                monsters: ["croc"],   // only these start a pull (empty = any) - test on weak crocs
+                minPack: 3,
+                minHp: 0.8,           // start a pull only above this HP share
+                abortHp: 0.3,         // below: walk away from the pack
+                kiteStep: 120,
+                gatherMs: 2500,
+                regroupBelow: 0.5, regroupEveryMs: 8000,
+                keepMs: 60 * 1000,    // splash weapons stay on this long after a pull
+            },
         },
         mage: {
             energizeAbove: 0.6,             // only give mana while we have more than this
