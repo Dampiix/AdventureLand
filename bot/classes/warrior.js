@@ -476,6 +476,9 @@ module.exports = function createWarrior(ctx) {
         if (coming >= streamLimit(splash)) return; // Agitate only while fewer than the limit attack us
         const fresh = packAround(G.skills.agitate.range).filter(function (m) { return m.target !== character.name; });
         if (fresh.length < (ag.streamFrom || 1) || unwantedAround(G.skills.agitate.range).length) return;
+        // Auto: every single cast checks the levels too - the decision is held during fights, and
+        // two grown bats came along with a stream pull (2026-11-18).
+        if (ag.monsters === "auto" && fresh.some(function (m) { return (m.level || 1) > (ag.maxLevel || 3); })) return;
         use_skill("agitate").catch(function () {});
         lastAgitate = { at: Date.now(), type: fresh[0].mtype };
         if (Date.now() - lastStreamLog > 5 * 60 * 1000) {
