@@ -1865,7 +1865,24 @@ module.exports = function createWorkshop(ctx) {
     }
     function isOutgrownGoalCopy(item) {
         return goalsOn() && !!item && !!sellerOf(item.name) && (item.level || 0) < finalStage() &&
-            goalNames().has(item.name) && goalDoneFor(item.name);
+            goalNames().has(item.name) && goalDoneFor(item.name) && !statCopyWanted(item);
+    }
+    // A stat copy (e.g. gloves +7 DEX) still beats what a fighter with that main stat wears in
+    // its slot - something else (Hand of Midas, Dracul's Attire) or a lower copy (2026-11-18: the
+    // old ranger's gloves and coat +7 DEX were sold while the new rogue wore other pieces there).
+    function statCopyWanted(item) {
+        const def = item && G.items[item.name];
+        if (!def || !def.stat || !item.stat_type) return false;
+        const slots = SLOTS_BY_TYPE[def.type] || [];
+        return config.team.fighters.some(function (f) {
+            const cls = fighterClass(f);
+            if (!cls || !G.classes[cls] || G.classes[cls].main_stat !== item.stat_type) return false;
+            const eq = worn[f] || {};
+            return slots.some(function (s) {
+                const w = eq[s];
+                return !(w && w.name === item.name && w.stat === item.stat_type && (w.level || 0) >= (item.level || 0));
+            });
+        });
     }
 
     // Finished copies stay in the bag until they are delivered.
@@ -2491,6 +2508,7 @@ module.exports = function createWorkshop(ctx) {
     // Copies in a stat some team fighter still wears below the final stage stay as bases.
     function isOrphanStatCopy(item) {
         if (!goalsOn() || !item || !item.stat_type || !sellerOf(item.name)) return false;
+        if (statCopyWanted(item)) return false;
         const def = G.items[item.name];
         if (!def || !def.stat || (item.level || 0) >= finalStage()) return false;
         return !config.team.fighters.some(function (f) {
