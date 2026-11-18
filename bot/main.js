@@ -79,7 +79,28 @@ function startBot() {
     }
     // Town teleport in route planning (player decision 2026-11-18): smart_move may channel
     // "Town" to the map's center when that is shorter than walking. Off by default in the game.
-    if (typeof smart !== "undefined") smart.use_town = !!(BOT_CONFIG.movement && BOT_CONFIG.movement.useTown);
+    // Only from far away (2026-11-18): the route search counts Town as a single step, so a
+    // character two steps from the center took it again and again while following a moving
+    // leader (3 s channel each time). Town is offered only beyond movement.townMinDistance px
+    // from the map's center.
+    if (typeof smart !== "undefined") {
+        const mv = BOT_CONFIG.movement || {};
+        let townWanted = !!mv.useTown;
+        try {
+            Object.defineProperty(smart, "use_town", {
+                configurable: true,
+                get: function () {
+                    if (!townWanted) return false;
+                    const m = G.maps[character.map];
+                    const s = m && m.spawns && m.spawns[0];
+                    return !!s && Math.hypot(character.x - s[0], character.y - s[1]) > (mv.townMinDistance || 600);
+                },
+                set: function (v) { townWanted = !!v; },
+            });
+        } catch (e) {
+            smart.use_town = townWanted;
+        }
+    }
     hideGoldLogs();
 
     const me = BOT_CONFIG.characters[character.name];
