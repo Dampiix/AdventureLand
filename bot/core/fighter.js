@@ -262,7 +262,7 @@ module.exports = function createFighter(ctx, cls) {
         if (!best) {
             // Cornered (no straight step back is free): run to open ground instead of standing
             // and tanking (player idea 2026-11-18) - a point 150-300 px away, far from the pack,
-            // with no free monster near, open in most directions, not on the far side of the pack.
+            // with no free monster near, open in most directions (through the pack is fine).
             const esc = escapePoint(me, { x: cx, y: cy }, free, k);
             if (!esc) return false; // nowhere to go: stand and fight
             lastKite = Date.now();
