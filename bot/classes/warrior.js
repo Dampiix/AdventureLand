@@ -256,7 +256,13 @@ module.exports = function createWarrior(ctx) {
         // as safe at safetyShare of the HP the check allows.
         const allowed = character.max_hp * (((ctx.config.targeting || {}).live || {}).soloHpUse || 0.5) * (ag.safetyShare || 0.5);
         for (let k = ag.maxOnMe || 8; k >= 1; k--) {
-            const v = ctx.targeting.packVerdict ? ctx.targeting.packVerdict(e, k) : { ok: true, lost: 0 };
+            // Mana: about one Agitate every agitateEverySec while the stream runs; splash: the
+            // learned (or guessed 1.0) extra targets per hit.
+            const st = statOf(type);
+            const v = ctx.targeting.packVerdict ? ctx.targeting.packVerdict(e, k, {
+                mpPerSec: G.skills.agitate.mp / (ag.agitateEverySec || 6),
+                splash: st.hits >= (ag.learnHits || 40) ? st.nsum / st.hits : (spawnDense(type) ? 1 : 0),
+            }) : { ok: true, lost: 0 };
             if (v.ok && (v.lost || 0) <= allowed) { n = k; break; }
         }
         safeLevel[type] = live ? (live.level || 1) : 1;

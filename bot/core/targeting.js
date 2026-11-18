@@ -203,6 +203,16 @@ module.exports = function createTargeting(ctx) {
     }
 
     // HP per second from drinking a potion on every cooldown.
+    // Share of the potion cooldowns left for HP potions when we burn mpPerSec mana (plus the
+    // attacks' own MP cost) beyond the natural regeneration.
+    function hpPotionShare(mpPerSec, me) {
+        const cd = ((G.skills.use_mp && G.skills.use_mp.cooldown) || 2000) / 1000;
+        const mpName = util.potionNames(config.potions).mp;
+        const mpGives = ((G.items[mpName] && G.items[mpName].gives) || []).find(function (x) { return x[0] === "mp"; });
+        const perSec = (mpGives ? mpGives[1] : 300) / cd;
+        const need = Math.max(0, mpPerSec + (me.mp_cost || character.mp_cost || 0) * (me.frequency || 1) - (character.mp_regen || 0));
+        return Math.max(0, 1 - need / Math.max(1, perSec));
+    }
     function potionHps() {
         const cd = ((G.skills.use_hp && G.skills.use_hp.cooldown) || 2000) / 1000;
         const potName = util.potionNames(config.potions).hp;
@@ -465,7 +475,12 @@ module.exports = function createTargeting(ctx) {
     // The burst check alone let the warrior walk into the Boo Boo pack (2026-11-17: 10k HP
     // survive three hits easily, but five 8k-HP Boo Boos hit for minutes). Shared with the
     // Agitate decision (a pull is a pack on purpose). { ok, why, lost, killSec }
-    function packVerdict(e, n) {
+    // opts.mpPerSec (2026-11-18): mana we burn during the fight (e.g. Agitate) - MP potions
+    // share the HP potions' cooldown, so that share of the cooldowns heals nothing. The bats
+    // killed the warrior three times while the check counted every cooldown as an HP potion.
+    // opts.splash: extra targets each hit also damages (kill time shrinks with the splash).
+    function packVerdict(e, n, opts) {
+        opts = opts || {};
         const def = G.monsters[e.mtype] || {};
         const me = util.combatStats();
         const d = def.damage_type === "physical" ? (me.armor || 0) - (def.apiercing || 0)
@@ -473,10 +488,10 @@ module.exports = function createTargeting(ctx) {
         const hit = (e.attack || def.attack || 0) * 1.1 * util.damageMultiplier(d);
         const hits = me.max_hp / Math.max(1, hit * n);
         if (hits < (lcfg.ownHits || 6)) return { ok: false, why: "I survive " + hits.toFixed(1) + " of their combined hits (need " + (lcfg.ownHits || 6) + ")" };
-        let sustain = potionHps();
+        let sustain = potionHps() * hpPotionShare(opts.mpPerSec || 0, me);
         if (me.ctype === "priest") sustain += (me.heal || me.attack || 0) * (me.frequency || 1) * 0.5;
         const myDef = me.damage_type === "physical" ? (def.armor || 0) - (me.apiercing || 0) : (def.resistance || 0) - (me.rpiercing || 0);
-        const myDps = Math.max(1, (me.attack || 0) * (me.frequency || 1) * util.damageMultiplier(myDef));
+        const myDps = Math.max(1, (me.attack || 0) * (me.frequency || 1) * util.damageMultiplier(myDef) * (1 + 0.7 * Math.min(opts.splash || 0, Math.max(0, n - 1))));
         sustain += myDps * ((character.lifesteal || 0) / 100);
         const incoming = hit * (e.frequency || def.frequency || 1) * (n + 1) / 2;
         const killSec = (e.max_hp || def.hp || 1) * n / myDps;

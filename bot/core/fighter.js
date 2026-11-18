@@ -37,11 +37,49 @@ module.exports = function createFighter(ctx, cls) {
     let reviveWaitUntil = 0;
     ctx.comms.on("revive_wait", function () { reviveWaitUntil = Date.now() + 30 * 1000; });
 
+    // Death analysis (2026-11-18: three deaths at level-1 bats the pack check called harmless):
+    // the hits we took in the last 10 s (attacker, level, damage) and the potions drunk then go
+    // to the log when we die. One socket listener for the page (reloads would stack them).
+    const HIT_LOG_MS = 10 * 1000;
+    if (!parent.__dmpxHitHook) {
+        parent.__dmpxHitHook = true;
+        parent.__dmpxHits = [];
+        try {
+            parent.socket.on("hit", function (d) {
+                if (!d || !d.damage || !parent.character || d.id !== parent.character.id) return;
+                const a = parent.entities && parent.entities[d.hid];
+                parent.__dmpxHits.push({ t: Date.now(), dmg: d.damage, who: a ? a.mtype + " L" + (a.level || 1) : String(d.hid || "?") });
+                while (parent.__dmpxHits.length && Date.now() - parent.__dmpxHits[0].t > HIT_LOG_MS) parent.__dmpxHits.shift();
+            });
+        } catch (e) { /* no socket */ }
+    }
+    const potSamples = []; // { t, hp, mp } potion counts, one per second
+    function samplePotions() {
+        const now = Date.now();
+        if (potSamples.length && now - potSamples[potSamples.length - 1].t < 1000) return;
+        const names = util.potionNames(config.potions);
+        potSamples.push({ t: now, hp: util.countItem(names.hp), mp: util.countItem(names.mp) });
+        while (potSamples.length && now - potSamples[0].t > HIT_LOG_MS + 2000) potSamples.shift();
+    }
+    function logDeathAnalysis() {
+        const now = Date.now();
+        const hits = (parent.__dmpxHits || []).filter(function (h) { return now - h.t <= HIT_LOG_MS; });
+        const by = {};
+        hits.forEach(function (h) { const b = by[h.who] = by[h.who] || { n: 0, dmg: 0 }; b.n++; b.dmg += h.dmg; });
+        const parts = Object.keys(by).sort(function (a, b) { return by[b].dmg - by[a].dmg; })
+            .map(function (k) { return k + ": " + by[k].n + " hits " + by[k].dmg; });
+        const first = potSamples[0], last = potSamples[potSamples.length - 1];
+        const pots = first && last ? (first.hp - last.hp) + " HP / " + (first.mp - last.mp) + " MP potions" : "potions unknown";
+        const total = hits.reduce(function (s, h) { return s + h.dmg; }, 0);
+        util.log("death", "last 10 s: " + total + " damage (" + (parts.join(", ") || "no hits seen") + "), " + pots, "red");
+    }
+
     let deathReported = false;
     function handleDeath() {
         if (!character.rip) { deathReported = false; return false; }
         if (!deathReported) {
             deathReported = true;
+            try { logDeathAnalysis(); } catch (e) { /* analysis only */ }
             if (cls.onDeath) { try { cls.onDeath(); } catch (e) { /* class hook only */ } }
             // Blame the killer, not the farm target: a death on the way (e.g. vampire rats at
             // the underground entrance on the way to the CGoos) must not close the farm spot.
@@ -421,6 +459,7 @@ module.exports = function createFighter(ctx, cls) {
 
     function tick() {
         if (handleDeath()) return;
+        samplePotions();
         if (!cls.survive()) handlePotions();
         if (cls.always) cls.always(); // every tick, also while a trip keeps the loop busy
         loot();
