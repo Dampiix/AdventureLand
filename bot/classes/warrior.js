@@ -549,31 +549,46 @@ module.exports = function createWarrior(ctx) {
     }
 
     let lastAgitate = { at: 0, type: null };
+
+    // Escape (solo, any mode; 2026-11-18 after three deaths at the bats): below escapeHp with
+    // monsters on us that are all slower than we are, run - and keep running - away from them
+    // until none is within escapeClear px or escapeMs has passed; no swings meanwhile (monsters
+    // drop a chase that gets too long). Then the normal rest heals us up. Cornered (no free step)
+    // or facing faster monsters: fight on with Hard Shell and potions.
+    const esc = { until: 0 };
+    function escapeTick() {
+        if (ctx.party.enabled) return false;
+        const now = Date.now();
+        const on = onMe();
+        speedRef = Math.max(speedRef, character.speed || 0);
+        if (!esc.until) {
+            if (util.hpRatio() >= (ag.escapeHp || 0.3) || !on.length) return false;
+            if (on.some(function (m) { return (m.speed || (G.monsters[m.mtype] || {}).speed || 0) >= speedRef * 0.8; })) return false;
+            esc.until = now + (ag.escapeMs || 10000);
+            util.log("warrior", "escaping at " + Math.round(util.hpRatio() * 100) + "% HP from " + on.length + "x " + on[0].mtype, "red");
+        }
+        const clear = !Object.values(parent.entities || {}).some(function (e) {
+            return e && e.type === "monster" && !e.dead && e.target === character.name && util.distanceTo(e) < (ag.escapeClear || 250);
+        });
+        if (now > esc.until || clear) {
+            esc.until = 0;
+            if (is_moving(character)) stop();
+            util.log("warrior", "escape done (" + (clear ? "nobody close" : "time up") + ") at " + Math.round(util.hpRatio() * 100) + "% HP", "yellow");
+            return false;
+        }
+        if (!is_moving(character) && !stepAway(on.length ? on : onMe(), ag.escapeStep || 200)) {
+            esc.until = 0; // cornered: fight
+            return false;
+        }
+        util.status("escaping " + Math.round(util.hpRatio() * 100) + "%", "red");
+        return true;
+    }
     function packTick() {
         if (!packOn()) return false;
         // Learning: a low-HP moment under attack counts against that monster kind.
         if (util.hpRatio() < (ag.streamStopHp || 0.4)) {
             const on = onMe();
             if (on.length) noteLowHp(on[0].mtype);
-        }
-        // Emergency in the stream modes too: below abortHp with monsters on us, walk away from
-        // them (we are faster than pack monsters); Hard Shell and potions do the rest.
-        // Never at the cost of fighting back (2026-11-18: in the cave he stepped off, stood and let
-        // the bats hit him): only while a step is possible, nothing is in our reach, and for at
-        // most backOffMs at a time - otherwise the normal stream fight goes on (Hard Shell, potions).
-        if (["splashstream", "swords"].includes(effectiveMode()) && util.hpRatio() < (ag.abortHp || 0.3)) {
-            const on = onMe();
-            const inReach = on.some(function (m) { return is_in_range(m); });
-            const t0 = Date.now();
-            if (on.length && !inReach && t0 - (pack.backOffSince || t0) < (ag.backOffMs || 6000)) {
-                if (!pack.backOffSince) pack.backOffSince = t0;
-                if (is_moving(character) || stepAway(on, 150)) {
-                    util.status("agitate: backing off", "red");
-                    return true;
-                }
-            }
-        } else {
-            pack.backOffSince = 0;
         }
         if (effectiveMode() === "splashstream") {
             // Stream with the splash weapons on (player test 2026-11-18).
@@ -791,6 +806,7 @@ module.exports = function createWarrior(ctx) {
         },
 
         support: function () {
+            if (escapeTick()) return true; // solo: run from a losing fight
             // In a party the protective Taunt/Agitate for allies comes first, then the stream.
             if (!ctx.party.enabled && packTick()) return true; // Agitate pack mode (solo)
             if (ctx.party.enabled && onOthers().length === 0 && packTick()) return true;

@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.103.7",
+    version: "1.104.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -364,6 +364,7 @@ module.exports = {
                 maxLevel: 3, safetyShare: 0.5, // auto: no Agitate with one above this level in sight; a pull may cost only half the HP the pack check allows
                 splashMin: 1.0, learnHits: 40, denseCount: 5, denseSpacing: 130, // auto: lolipops from 1.0 splash per hit (guess from spawn density first)
                 deathDenyMs: 2 * 60 * 60 * 1000, // auto: no Agitate on a kind for this long after dying to it
+                escapeHp: 0.3, escapeMs: 10000, escapeClear: 250, escapeStep: 200, // solo escape from a losing fight (slower monsters only)
                 weapons: "splash",    // "splash": put on the splash weapons; "keep": pull with the usual ones ("/agitate off|swords|splash" switches at runtime)
                 minPack: 3,
                 minHp: 0.8,           // start a pull only above this HP share
