@@ -281,6 +281,17 @@ module.exports = function createGear(ctx) {
             if (item && item.name) out[slot] = { name: item.name, level: item.level || 0, stat: item.stat_type || null };
         });
         if (usualWeapons) Object.keys(usualWeapons).forEach(function (s) { out[s] = usualWeapons[s]; });
+        // A splash weapon in hand without a remembered set (a restart mid-mode, or half-way
+        // through the swap back): report the bag's best normal weapon for that hand - each
+        // restart at the bats sent a Lolipop and the merchant crafted Fireblades (2026-11-18).
+        const taken = [];
+        ["mainhand", "offhand"].forEach(function (s) {
+            if (!isSplashWeapon(character.slots && character.slots[s]) || (usualWeapons && usualWeapons[s])) return;
+            const u = usualFor(s, taken);
+            if (!u || u.num < 0) return;
+            taken.push(u.num);
+            out[s] = { name: u.item.name, level: u.item.level || 0, stat: u.item.stat_type || null };
+        });
         return out;
     }
 
