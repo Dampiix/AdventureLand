@@ -575,9 +575,6 @@ module.exports = function createWarrior(ctx) {
             util.status("agitate stream: " + t.mtype + " (" + onMe().length + " on us)", "green");
             return true;
         }
-        // A party member never walks off to free monsters: the leader picks them one at a time
-        // (2026-11-18: the warrior walked into the middle of the booboos, 5 came at once).
-        if (inParty && ctx.party.isMember && !ctx.party.detached()) return false;
         // Splash: not simply the nearest one, the one with the most others around it (a clump
         // is worth a few steps more - player idea 2026-11-18): neighbours within clumpRadius
         // count clumpStep px of way each.
@@ -598,6 +595,19 @@ module.exports = function createWarrior(ctx) {
             if (!goal) return false; // nothing reachable: the normal combat decides
         }
         const p = util.xy(goal);
+        // In a party like solo (player request 2026-11-18), but only where it is safe: every free
+        // monster within Agitate reach of the goal plus the ones on us must fit the safe count,
+        // and the goal stays on the leash - the warrior walked into the middle of 5 booboos.
+        if (inParty && ctx.party.isMember && !ctx.party.detached()) {
+            const cap = autoCap();
+            const free = Object.values(parent.entities || {}).filter(function (e) {
+                return e && e.type === "monster" && !e.dead && !e.target && Math.hypot(util.xy(e).x - p.x, util.xy(e).y - p.y) <= G.skills.agitate.range;
+            }).length;
+            const lead = ctx.party.leaderInfo();
+            const leash = (ctx.config.party && ctx.config.party.leash) || 300;
+            if (cap === null || free + onMe().length > cap) return false;
+            if (lead && (lead.map !== character.map || Math.hypot(lead.x - p.x, lead.y - p.y) > leash)) return false;
+        }
         if (!is_moving(character) || !streamWalkTo || Math.hypot(streamWalkTo.x - p.x, streamWalkTo.y - p.y) > 25) {
             streamWalkTo = p;
             quiet(move(p.x, p.y));
