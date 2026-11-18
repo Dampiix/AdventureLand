@@ -79,7 +79,7 @@ const SHORT = [
     [/ for [A-Z]\w*$/, ""],                     // "... for Pri"
     [/^dead - a priest is reviving me$/, "dead: revive"],
     [/^dead - waiting to respawn$/, "dead: respawn"],
-    [/^searching /, "find "],
+    [/^searching /, "? "],                // "? booboo" (player request 2026-11-18)
     [/^waiting for monsters$/, "wait mobs"],
     [/^waiting for a lone /, "lone? "],
     [/^too strong: /, "strong: "],
