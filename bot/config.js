@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.100.3",
+    version: "1.100.4",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -324,7 +324,8 @@ module.exports = {
         rogue: {
             mpReserveRatio: 0.25,
             swiftness: true,          // Rogue Swiftness (lvl 40) on us and party members in reach
-            smokeBelow: 0.25,         // Assassin's Smoke below this HP share with monsters on us (0 = never)
+            smokeBelow: 0.25,         // Assassin's Smoke below this HP share with monsters on us (0 = never) ...
+            smokeUntil: 0.6, smokeClear: 200, // ... then hide where no monster is within smokeClear px until this HP share
             mentalBurst: true,        // only once INT reaches the skill's 64
             fanFrom: 3,               // Fan of Knives (lvl 65, Knife Belt) with this many monsters around
             poisonCoat: { enabled: true, minHits: 40 }, // A Poisonous Touch (Poison Sack) on targets needing 40+ hits

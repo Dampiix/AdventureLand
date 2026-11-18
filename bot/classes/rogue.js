@@ -52,6 +52,49 @@ module.exports = function createRogue(ctx) {
         use_skill("rspeed", who).catch(function () {});
     }
 
+    // Assassin's Smoke as an escape (player idea 2026-11-18): the monsters lose us, we stop
+    // attacking (a hit would show us again), walk to a quiet spot - no monster within
+    // smokeClear px - and drink there until smokeUntil of max HP, then fight on.
+    let hiding = false, hideSpot = null, hideSince = 0;
+    function invisible() {
+        return !!(character.s && character.s.invis);
+    }
+    function quietSpot() {
+        const me = util.xy(character);
+        const monsters = Object.values(parent.entities || {}).filter(function (e) {
+            return e && e.type === "monster" && !e.dead;
+        }).map(util.xy);
+        const clear = c.smokeClear || 200;
+        let best = null, bestD = Infinity;
+        for (const r of [150, 220, 300, 400]) {
+            for (let i = 0; i < 16; i++) {
+                const a = i * Math.PI / 8;
+                const x = me.x + Math.cos(a) * r, y = me.y + Math.sin(a) * r;
+                if (monsters.some(function (p) { return Math.hypot(p.x - x, p.y - y) < clear; })) continue;
+                if (r < bestD) { bestD = r; best = { x: x, y: y }; }
+            }
+            if (best) break; // the nearest ring with a quiet point
+        }
+        return best;
+    }
+    function hide() {
+        if (!hiding) return false;
+        const done = util.hpRatio() >= (c.smokeUntil || 0.6) || (!invisible() && Date.now() - hideSince > 3000) ||
+            Date.now() - hideSince > 60 * 1000;
+        if (done) {
+            hiding = false;
+            util.log("rogue", "back to the fight at " + Math.round(util.hpRatio() * 100) + "% HP", "green");
+            return false;
+        }
+        if (!hideSpot || (!is_moving(character) && util.distanceTo(hideSpot) > 30 &&
+            Object.values(parent.entities || {}).some(function (e) { return e && e.type === "monster" && !e.dead && util.distanceTo(e) < (c.smokeClear || 200); }))) {
+            hideSpot = quietSpot();
+            if (hideSpot) xmove(hideSpot.x, hideSpot.y);
+        }
+        util.status("smoke: hiding " + Math.round(util.hpRatio() * 100) + "%", "orange");
+        return true;
+    }
+
     return {
         name: "rogue",
 
@@ -61,15 +104,18 @@ module.exports = function createRogue(ctx) {
 
         survive: function () {
             // Assassin's Smoke: monsters lose us (its cooldown starts when we show again).
-            if (c.smokeBelow && util.hpRatio() < c.smokeBelow && onMe().length && util.canCast("invis") &&
-                !(character.s && character.s.invis)) {
+            if (!hiding && c.smokeBelow && util.hpRatio() < c.smokeBelow && onMe().length && util.canCast("invis") && !invisible()) {
                 use_skill("invis").catch(function () {});
-                util.log("rogue", "Assassin's Smoke at " + Math.round(util.hpRatio() * 100) + "% HP", "yellow");
+                hiding = true;
+                hideSpot = null;
+                hideSince = Date.now();
+                util.log("rogue", "Assassin's Smoke at " + Math.round(util.hpRatio() * 100) + "% HP - hiding", "yellow");
             }
             return false; // potions as usual
         },
 
-        support: function () { return false; },
+        // While hiding we neither fight nor pull: the combat waits until we are healed up.
+        support: function () { return hide(); },
 
         fight: function (target) {
             const res = reserve();
