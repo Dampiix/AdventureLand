@@ -179,12 +179,16 @@ module.exports = function createWarrior(ctx) {
         }
     }
 
+    function centerOf(list) {
+        let x = 0, y = 0;
+        list.forEach(function (m) { const p = util.xy(m); x += p.x; y += p.y; });
+        return { x: x / list.length, y: y / list.length };
+    }
     // A step away from the pack's middle: it follows from one side and bunches up.
     function stepAway(list) {
         const me = util.xy(character);
-        let cx = 0, cy = 0;
-        list.forEach(function (m) { const p = util.xy(m); cx += p.x; cy += p.y; });
-        cx /= list.length; cy /= list.length;
+        const mid = centerOf(list);
+        const cx = mid.x, cy = mid.y;
         let dx = me.x - cx, dy = me.y - cy;
         const len = Math.hypot(dx, dy) || 1;
         dx /= len; dy /= len;
@@ -236,15 +240,33 @@ module.exports = function createWarrior(ctx) {
                 putOnSplash();
                 return true;
             }
+            // "center" (default since 2026-11-18): first walk into the middle of the pack, so
+            // every monster has about the same way to us and they arrive together (the arctic
+            // bees came one by one from 50-300 px and died alone before the next arrived).
+            if ((ag.gather || "center") === "center") {
+                const mid = centerOf(free);
+                if (Math.hypot(character.real_x - mid.x, character.real_y - mid.y) > (ag.centerWithin || 40) && can_move_to(mid.x, mid.y)) {
+                    if (!is_moving(character) || !pack.walkTo || Math.hypot(pack.walkTo.x - mid.x, pack.walkTo.y - mid.y) > 30) {
+                        pack.walkTo = mid;
+                        move(mid.x, mid.y);
+                    }
+                    util.status("agitate: into the pack (" + free.length + ")", "orange");
+                    return true;
+                }
+                if (is_moving(character)) stop();
+                pack.walkTo = null;
+            }
             if (util.canCast("warcry") && character.mp >= G.skills.agitate.mp + G.skills.warcry.mp) use_skill("warcry").catch(function () {});
             use_skill("agitate").catch(function () {});
             ctx.gear.holdWeapons(ag.holdMs || 10 * 60 * 1000);
-            pack.pulled = free.map(function (m) { return m.id; });
+            const pulledNow = packAround(G.skills.agitate.range);
+            pack.pulled = pulledNow.map(function (m) { return m.id; });
             pack.since = now; pack.startHp = character.hp; pack.attacks = 0; pack.neighborSum = 0; pack.recent = [];
             const kinds = {};
-            free.forEach(function (m) { kinds[m.mtype] = (kinds[m.mtype] || 0) + 1; });
+            pulledNow.forEach(function (m) { kinds[m.mtype] = (kinds[m.mtype] || 0) + 1; });
             util.log("warrior", "Agitate: " + Object.keys(kinds).map(function (k) { return kinds[k] + "x " + k; }).join(", "), "yellow");
-            pack.state = stepAway(free) ? "gather" : "fight";
+            if ((ag.gather || "center") === "step") pack.state = stepAway(pulledNow) ? "gather" : "fight";
+            else pack.state = "fight";
             return true;
         }
         const mine = onMe();
@@ -277,9 +299,18 @@ module.exports = function createWarrior(ctx) {
             util.status("agitate: waiting for the pack (" + mine.length + ")", "orange");
             return true;
         }
+        // The first swing waits until most of the pack is here (waitShare of the pulled ones in
+        // range, at most waitMs): a lone first arrival would just die alone.
+        if (!pack.attacks && now - pack.since < (ag.waitMs || 3000)) {
+            const here = mine.filter(function (m) { return is_in_range(m); }).length;
+            if (here < Math.ceil(pack.pulled.length * (ag.waitShare || 0.7))) {
+                util.status("agitate: " + here + "/" + pack.pulled.length + " here", "orange");
+                return true;
+            }
+        }
         // Spread around us: step away again so they come from one side.
         const avg = pack.recent.length >= 4 ? pack.recent.reduce(function (s, n) { return s + n; }, 0) / pack.recent.length : 99;
-        if (mine.length >= 3 && avg < (ag.regroupBelow || 0.5) && now - pack.lastRegroup > (ag.regroupEveryMs || 8000)) {
+        if ((ag.gather || "center") === "step" && mine.length >= 3 && avg < (ag.regroupBelow || 0.5) && now - pack.lastRegroup > (ag.regroupEveryMs || 8000)) {
             pack.recent = [];
             if (stepAway(mine)) { pack.state = "gather"; return true; }
         }

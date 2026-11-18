@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.95.6",
+    version: "1.96.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -345,7 +345,10 @@ module.exports = {
                 minPack: 3,
                 minHp: 0.8,           // start a pull only above this HP share
                 abortHp: 0.3,         // below: walk away from the pack
-                kiteStep: 120,
+                gather: "center",     // "center": walk into the pack, Agitate there, all arrive together; "step": Agitate, then step away
+                centerWithin: 40,     // "center": close enough to the middle at this distance
+                waitShare: 0.7, waitMs: 3000, // first swing once this share of the pulled pack is in range (at most waitMs)
+                kiteStep: 120,        // "step" (and backing off): this far
                 gatherMs: 2500,
                 regroupBelow: 0.5, regroupEveryMs: 8000,
                 keepMs: 60 * 1000,    // splash weapons stay on this long after a pull
