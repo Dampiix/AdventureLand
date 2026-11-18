@@ -94,9 +94,7 @@ function startBot() {
                 configurable: true,
                 get: function () {
                     if (!townWanted) return false;
-                    // Members following the leader walk (player report 2026-11-18): the leader keeps
-                    // moving, every new route interrupted the channel, and warrior and ranger
-                    // teleported back and took long detours.
+                    // A party moving as a group walks - leader and members (player reports 2026-11-18).
                     if (followsLeader()) return false;
                     // Not while monsters attack us: every hit cancels the channel, and the server
                     // refuses it with more than 5 on us ("can't escape") - a warrior following the
@@ -131,7 +129,15 @@ function startBot() {
         botRunner = require_code("bot_merchant")(ctx);
     } else {
         ctx.party = require_code("bot_party")(ctx);
-        BOT_FOLLOWS_LEADER = function () { return !!(ctx.party.isMember && !ctx.party.detached()); };
+        // The whole group walks (2026-11-18): members following the leader re-planned on every
+        // move and teleported back and forth; a leader alone on Town then waited in the map's
+        // center for the walking members. Town stays for the merchant, solo play and members
+        // farming on their own.
+        BOT_FOLLOWS_LEADER = function () {
+            if (!ctx.party.enabled || ctx.party.detached()) return false;
+            const fighters = (BOT_CONFIG.team && BOT_CONFIG.team.fighters) || [];
+            return ctx.party.memberNames().some(function (n) { return n !== character.name && fighters.includes(n); });
+        };
         botParty = ctx.party;
         ctx.hunts = require_code("bot_hunts")(ctx);
         ctx.events = require_code("bot_events")(ctx);
