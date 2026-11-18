@@ -463,13 +463,9 @@ module.exports = function createWarrior(ctx) {
     // fewer (below lowHp: 2, below minHp of the pull mode none) - also saves potions.
     function streamLimit(splash) {
         let n = splash ? (ag.splashOnMe || 5) : (ag.streamOnMe || 3);
-        const cap = ctx.party.enabled ? null : autoCap(); // auto: what the pack check and experience allow
+        const cap = autoCap(); // auto: what the pack check and experience allow (party too, 2026-11-18)
         if (splash && character.s && character.s.sugarrush) n += (ag.sugarBonus || 2);
-        // A living priest close by heals us: the party takes more at once (agitate.partyOnMe).
-        if (ctx.party.enabled && ctx.party.memberNames().some(function (nm) {
-            const p = nm !== character.name && get_player(nm);
-            return p && !p.rip && p.ctype === "priest" && util.distanceTo(p) < 400;
-        })) n = Math.max(n, ag.partyOnMe || 7);
+        // A party uses the same limits as solo (player decision 2026-11-18, no partyOnMe boost).
         const hp = util.hpRatio();
         if (hp < (ag.streamStopHp || 0.4)) return 0;
         if (hp < (ag.streamLowHp || 0.6)) n = Math.min(n, 2);
@@ -510,7 +506,6 @@ module.exports = function createWarrior(ctx) {
         if (!around.length) return false;
         const inRange = around.filter(function (m) { return is_in_range(m); });
         // In a party we never walk off on our own: the normal combat (follow, assist) takes over.
-        if (inParty && !inRange.length) return false;
         if (inRange.length) {
             let t = inRange.find(function (m) { return m.target === character.name; }) || inRange[0];
             if (splash) {

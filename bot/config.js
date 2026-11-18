@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.106.2",
+    version: "1.107.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -285,7 +285,9 @@ module.exports = {
         potionWhenMissing: true,
         // With a priest in the party close by (or as the priest): potions only as an
         // emergency, the healing does the rest (player decision 2026-11-16).
-        withHealer: { potionHpBelow: 0.6, potionWhenMissing: false },
+        // fastLossPerSec (2026-11-18): losing this share of max HP per second (over ~3 s) - the solo
+        // potion rules apply although a healer is near (Jr. killed the warrior next to the priest).
+        withHealer: { potionHpBelow: 0.6, potionWhenMissing: false, fastLossPerSec: 0.06 },
         // MP: drink as soon as this share of an MP potion is missing – solo and in the party
         // (player decision 2026-11-17: "Mana kann ruhig immer voll sein", potions are cheap).
         mpTopUp: 0.5,
@@ -386,7 +388,7 @@ module.exports = {
                 // In a party (2026-11-18): only a stream mode, on the leash - no pull points, no walking
                 // off to clumps; the protective Taunt/Agitate for allies goes first. With a priest
                 // close by up to partyOnMe may be on us.
-                partyMode: "auto", partyOnMe: 7, // "auto": the automatic decision for the leader's farm target
+                partyMode: "auto", // "auto": the automatic decision for the leader's farm target - same stream as solo (walks to clumps, same limits; 2026-11-18)
                 kiteStep: 120,        // "step" (and backing off): this far
                 gatherMs: 2500,
                 regroupBelow: 0.5, regroupEveryMs: 8000,

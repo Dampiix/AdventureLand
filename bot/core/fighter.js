@@ -138,9 +138,24 @@ module.exports = function createFighter(ctx, cls) {
             return !!p && !p.rip && p.ctype === "priest" && util.distanceTo(p) < 600;
         });
     }
+    // HP lost per second over the last ~3 s, as a share of max HP.
+    const hpTrail = [];
+    function hpLossRate() {
+        const now = Date.now();
+        hpTrail.push({ t: now, hp: character.hp });
+        while (hpTrail.length && now - hpTrail[0].t > 3000) hpTrail.shift();
+        const first = hpTrail[0];
+        const secs = (now - first.t) / 1000;
+        return secs > 0.5 ? Math.max(0, first.hp - character.hp) / secs / character.max_hp : 0;
+    }
     function handlePotions() {
+        const loss = hpLossRate();
         if (is_on_cooldown("use_hp")) return;
-        const c = healerNear() ? Object.assign({}, config.combat, config.combat.withHealer || {}) : config.combat;
+        // With a healer potions are only an emergency - unless we lose HP fast: Jr. took the
+        // warrior from full to dead in 10 s next to the priest, 2 HP potions drunk (2026-11-18).
+        // Then the solo rules apply (a potion on every cooldown when one is missing).
+        const fast = loss >= ((config.combat.withHealer || {}).fastLossPerSec || 0.06);
+        const c = healerNear() && !fast ? Object.assign({}, config.combat, config.combat.withHealer || {}) : config.combat;
         const hpMissing = character.max_hp - character.hp;
         const mpMissing = character.max_mp - character.mp;
         const hp = util.hpRatio(), mp = util.mpRatio();
