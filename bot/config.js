@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.99.8",
+    version: "1.100.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -320,6 +320,15 @@ module.exports = {
             // of our hits, and on bosses.
             darkBlessing: { enabled: true, sturdyHits: 10 },
         },
+        // Rogue (module added 2026-11-18): Quick Stab/Punch follow the mainhand (dagger/fist).
+        rogue: {
+            mpReserveRatio: 0.25,
+            swiftness: true,          // Rogue Swiftness (lvl 40) on us and party members in reach
+            smokeBelow: 0.25,         // Assassin's Smoke below this HP share with monsters on us (0 = never)
+            mentalBurst: true,        // only once INT reaches the skill's 64
+            fanFrom: 3,               // Fan of Knives (lvl 65, Knife Belt) with this many monsters around
+            poisonCoat: { enabled: true, minHits: 40 }, // A Poisonous Touch (Poison Sack) on targets needing 40+ hits
+        },
         ranger: {
             sturdyHits: 3,                  // Hunter's Mark / Supershot only on targets needing 3+ hits
             mpReserveRatio: 0.3,
@@ -485,6 +494,14 @@ module.exports = {
                 // a second copy; the worn +0 stays until it is done.
                 { steps: [{ name: "quiver", level: 0 }, { name: "quiver", level: 7 }] },
                 { steps: [{ name: "orbg", level: 0 }, { name: "orbg", level: 1 }, { name: "orbofdex", level: 0 }] }, // Fire Spirit
+                { steps: [{ name: "dexring", level: 2 }, { name: "dexring", level: 3 }], replace: true, anytime: true },
+                { steps: [{ name: "dexearring", level: 2 }, { name: "dexearring", level: 3 }], replace: true, anytime: true },
+                { steps: [{ name: "dexbelt", level: 0 }, { name: "dexbelt", level: 1 }, { name: "dexbelt", level: 2 }], replace: true, anytime: true },
+            ],
+            // Rogue (2026-11-18): DEX jewellery like the ranger; weapons (two daggers, e.g. Dagger
+            // of the Dead from Ponty) come by hand for now.
+            rogue: [
+                { steps: [{ name: "orbg", level: 0 }, { name: "orbg", level: 1 }, { name: "orbofdex", level: 0 }] },
                 { steps: [{ name: "dexring", level: 2 }, { name: "dexring", level: 3 }], replace: true, anytime: true },
                 { steps: [{ name: "dexearring", level: 2 }, { name: "dexearring", level: 3 }], replace: true, anytime: true },
                 { steps: [{ name: "dexbelt", level: 0 }, { name: "dexbelt", level: 1 }, { name: "dexbelt", level: 2 }], replace: true, anytime: true },
