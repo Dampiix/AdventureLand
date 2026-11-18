@@ -964,7 +964,7 @@ module.exports = function createTargeting(ctx) {
     }
 
     return { currentFarm: currentFarm, pick: pick, isValid: isValid, reportSearch: reportSearch, isTeamSafe: isTeamSafe, whyUnsafe: whyUnsafe,
-        teamModelOn: teamModelOn, teamVerdict: teamVerdict, safetyReport: safetyReport, waitForLone: waitForLone, standPoint: standPoint, aggressive: aggressive, diedAt: diedAt, deathAt: deathAt, spotFor: spotFor, liveSafe: liveSafe, inOccupied: inOccupied, packVerdict: packVerdict,
+        teamModelOn: teamModelOn, teamVerdict: teamVerdict, safetyReport: safetyReport, waitForLone: waitForLone, standPoint: standPoint, aggressive: aggressive, diedAt: diedAt, deathAt: deathAt, spotFor: spotFor, liveSafe: liveSafe, inOccupied: inOccupied, packVerdict: packVerdict, isEasy: isEasy,
         // HP a solo fight against this monster costs (0 if it was never checked: harmless or low level).
         soloCost: function (e) { return (e && soloCostById[e.id]) || 0; } };
 };
