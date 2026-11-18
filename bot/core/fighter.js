@@ -601,7 +601,13 @@ module.exports = function createFighter(ctx, cls) {
             teamWaitSince = now;
             util.log("party", "waiting for " + far.join(", "), "white");
         }
-        if (now - teamWaitSince > (pc.waitMaxMs || 45000)) return false; // waited long enough: go on
+        // Waited long enough: go on for waitAgainMs, then wait again (2026-11-18: after one long
+        // wait the leader never waited again and walked alone to the next spot).
+        const waited = now - teamWaitSince, max = pc.waitMaxMs || 45000;
+        if (waited > max + (pc.waitAgainMs || 60000)) {
+            teamWaitSince = now;
+            util.log("party", "waiting for " + far.join(", ") + " again", "white");
+        } else if (waited > max) return false;
         if (is_moving(character)) { stoppedOnPurpose = true; stop(); }
         util.status("waiting for " + far.join(", "), "yellow");
         return true;
