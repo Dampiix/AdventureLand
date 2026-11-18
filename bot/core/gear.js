@@ -497,12 +497,13 @@ module.exports = function createGear(ctx) {
         let a = -1, ap = 0, b = -1, bp = 0;
         character.items.forEach(function (it, n) { if (oneHander(it, "mainhand")) { const p = util.weaponPower(it.name, it.level || 0, character.ctype); if (p > ap) { ap = p; a = n; } } });
         character.items.forEach(function (it, n) { if (n !== a && oneHander(it, "offhand")) { const p = util.weaponPower(it.name, it.level || 0, character.ctype); if (p > bp) { bp = p; b = n; } } });
-        return a !== -1 && b !== -1 && ap + bp > bar ? { main: a, off: b, power: ap + bp } : null;
+        // The offhand weapon counts 70 % of its attack (server.js).
+        return a !== -1 && b !== -1 && ap + 0.7 * bp > bar ? { main: a, off: b, power: ap + 0.7 * bp } : null;
     }
     function pairPart(item) {
         const bar = wornTwoHanderPower();
         if (!bar || !(oneHander(item, "mainhand") || oneHander(item, "offhand"))) return false;
-        return util.weaponPower(item.name, item.level || 0, character.ctype) * 2 > bar;
+        return util.weaponPower(item.name, item.level || 0, character.ctype) * 1.7 > bar; // as main + 0.7 as offhand
     }
     function strongerWeapon(item) {
         const def = G.items[item.name];

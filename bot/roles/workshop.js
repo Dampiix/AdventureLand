@@ -2105,7 +2105,8 @@ module.exports = function createWorkshop(ctx) {
                 pool.forEach(function (p, i) { if (!one(p) || !(pc.mainhand || {})[G.items[p.name].wtype]) return; const pw = util.weaponPower(p.name, p.level, classes[f]); if (pw > ap) { ap = pw; ai = i; } });
                 let bi = -1, bp = 0;
                 pool.forEach(function (p, i) { if (i === ai || !one(p) || !(pc.offhand || {})[G.items[p.name].wtype]) return; const pw = util.weaponPower(p.name, p.level, classes[f]); if (pw > bp) { bp = pw; bi = i; } });
-                if (ai !== -1 && bi !== -1 && ap + bp > pbar) {
+                // The offhand weapon counts 70 % of its attack (server.js: item_attack += prop.attack * 0.7).
+                if (ai !== -1 && bi !== -1 && ap + 0.7 * bp > pbar) {
                     const a = pool[ai], b = pool[bi];
                     earmark(f, a.name, a.level);
                     if (b.name === a.name) earmarks[f + "|" + b.name + "|2"] = { fighter: f, name: b.name, level: b.level, stat: null, at: Date.now() };
@@ -2113,7 +2114,7 @@ module.exports = function createWorkshop(ctx) {
                     saveEarmarks();
                     pool.splice(Math.max(ai, bi), 1); pool.splice(Math.min(ai, bi), 1);
                     filledAt[f + "|pair"] = Date.now();
-                    util.log("workshop", a.name + " +" + a.level + " and " + b.name + " +" + b.level + " go to " + f + " (" + Math.round(ap + bp) +
+                    util.log("workshop", a.name + " +" + a.level + " and " + b.name + " +" + b.level + " go to " + f + " (" + Math.round(ap + 0.7 * bp) +
                         " together beat its " + eq.mainhand.name + " +" + (eq.mainhand.level || 0) + ")", "yellow");
                     return;
                 }
