@@ -410,6 +410,31 @@ module.exports = function createTargeting(ctx) {
         occupiedUntil[spotKey(s)] = Date.now() + (cfg.occupiedForMs || 20 * 60 * 1000);
         util.log("target", "spot " + s.map + " " + s.x + "," + s.y + " is taken by " + others.map(function (e) { return e.name; }).join(", ") +
             " - another one for " + Math.round((cfg.occupiedForMs || 20 * 60 * 1000) / 60000) + " min", "orange");
+        // Every spot of our farm target taken (2026-11-18: squigtoads have a single spot, bots on
+        // it, the rogue stood there on "find"): skip the monster like a crowded one, pick again.
+        if (farm && farm.monster && !farm.any && allSpotsTaken(farm.monster)) {
+            crowdedUntil[farm.monster] = Date.now() + (cfg.occupiedForMs || 20 * 60 * 1000);
+            nextPickAt = 0;
+            util.log("target", "every " + farm.monster + " spot is taken - another farm target", "orange");
+        }
+    }
+    function allSpotsTaken(type) {
+        const now = Date.now();
+        let any = false, free = false;
+        Object.keys(G.maps).forEach(function (m) {
+            const map = G.maps[m];
+            if (map.ignore || map.instance) return;
+            (map.monsters || []).forEach(function (pack) {
+                if (pack.type !== type) return;
+                const boxes = pack.boundaries ? pack.boundaries : pack.boundary ? [[m].concat(pack.boundary)] : [];
+                boxes.forEach(function (b) {
+                    any = true;
+                    const spot = { map: b[0], x: Math.round((b[1] + b[3]) / 2), y: Math.round((b[2] + b[4]) / 2) };
+                    if (!(occupiedUntil[spotKey(spot)] > now)) free = true;
+                });
+            });
+        });
+        return any && !free;
     }
     function spotFor(type, mapName) {
         let best = null, bestFree = null;
