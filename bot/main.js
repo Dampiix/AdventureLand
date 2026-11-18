@@ -71,6 +71,8 @@ function hideGoldLogs() {
     }
 }
 
+var BOT_FOLLOWS_LEADER = null; // party member following its leader (set in startBot)
+
 function startBot() {
     if (typeof code_settings !== "undefined") {
         code_settings.log_cm = false;               // no "received CM" lines
@@ -85,12 +87,17 @@ function startBot() {
     // from the map's center.
     if (typeof smart !== "undefined") {
         const mv = BOT_CONFIG.movement || {};
+        const followsLeader = function () { return typeof BOT_FOLLOWS_LEADER === "function" && BOT_FOLLOWS_LEADER(); };
         let townWanted = !!mv.useTown;
         try {
             Object.defineProperty(smart, "use_town", {
                 configurable: true,
                 get: function () {
                     if (!townWanted) return false;
+                    // Members following the leader walk (player report 2026-11-18): the leader keeps
+                    // moving, every new route interrupted the channel, and warrior and ranger
+                    // teleported back and took long detours.
+                    if (followsLeader()) return false;
                     // Not while monsters attack us: every hit cancels the channel, and the server
                     // refuses it with more than 5 on us ("can't escape") - a warrior following the
                     // leader home stood in place until the last tortoise let go (2026-11-18).
@@ -124,6 +131,7 @@ function startBot() {
         botRunner = require_code("bot_merchant")(ctx);
     } else {
         ctx.party = require_code("bot_party")(ctx);
+        BOT_FOLLOWS_LEADER = function () { return !!(ctx.party.isMember && !ctx.party.detached()); };
         botParty = ctx.party;
         ctx.hunts = require_code("bot_hunts")(ctx);
         ctx.events = require_code("bot_events")(ctx);
