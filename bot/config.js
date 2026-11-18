@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.115.1",
+    version: "1.115.2",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -454,8 +454,8 @@ module.exports = {
     gear: {
         enabled: true,
         // Never equipped automatically, taken off when worn (player decision 2026-11-18):
-        // Hand of Midas (-20 speed), Heavy Underarmor.
-        noEquip: ["handofmidas", "hpants"],
+        // Hand of Midas (-20 speed), Heavy Underarmor, Dracul's Attire (mcape, a chest piece).
+        noEquip: ["handofmidas", "hpants", "mcape"],
         wishEveryMs: 5 * 60 * 1000, // re-read the guide and resend wishes this often
         maxWishes: 12,  // class chains alone are up to 9 (ring, earring, belt, orb, cape, five Rugged pieces)   // a longer list shifts less (the merchant works through it one by one)
         // Wishes per class ("all" = every class) for slots the guide leaves empty. An entry
