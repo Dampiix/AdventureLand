@@ -125,15 +125,15 @@ function handle_command(command, args) {
         botSupply.requestNow();
         return true;
     }
-    // "/agitate off|swords|splash|config": the warrior's Agitate mode, kept across restarts
+    // "/agitate off|swords|splash|chain|config": the warrior's Agitate mode, kept across restarts
     // ("config" = back to config.classes.warrior.agitate).
     if (command === "agitate") {
         const v = (Array.isArray(args) ? args[0] : args) || "";
-        if (["off", "swords", "splash", "config"].includes(v)) {
+        if (["off", "swords", "splash", "chain", "config"].includes(v)) {
             set("agitate_mode:" + character.name, v === "config" ? null : v);
             game_log("[warrior] agitate mode set to " + v, "yellow");
         } else {
-            game_log("usage: /agitate off|swords|splash|config", "orange");
+            game_log("usage: /agitate off|swords|splash|chain|config", "orange");
         }
         return true;
     }

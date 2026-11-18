@@ -119,12 +119,16 @@ module.exports = function createWarrior(ctx) {
         if (m !== lastMode) {
             if (lastMode !== null) {
                 util.log("warrior", "agitate mode: " + m, "yellow");
-                if (m !== "splash") ctx.gear.holdWeapons(0); // usual weapons back at once
+                if (m !== "splash" && m !== "chain") ctx.gear.holdWeapons(0); // usual weapons back at once
                 pack.state = "idle";
             }
             lastMode = m;
         }
         return m;
+    }
+    function splashMode() {
+        const m = agMode();
+        return m === "splash" || m === "chain"; // "chain": splash pulls that start the next pull early
     }
     function packOn() {
         return agMode() !== "off" && !ctx.party.enabled && !!G.skills.agitate && character.level >= (G.skills.agitate.level || 68);
@@ -280,7 +284,7 @@ module.exports = function createWarrior(ctx) {
             pack.attacks + " hits, " + avg + " splash neighbours per hit, HP used " + hpUsed + "%", "green");
         pack.state = "idle";
         // Keep the splash weapons a little while for the next pull, then the usual ones go back on.
-        if (agMode() === "splash") ctx.gear.holdWeapons(ag.keepMs || 60 * 1000);
+        if (splashMode()) ctx.gear.holdWeapons(ag.keepMs || 60 * 1000);
     }
 
     // Returns true while the pack mode runs this tick (the normal combat waits).
@@ -324,7 +328,7 @@ module.exports = function createWarrior(ctx) {
                 util.status("agitate: waiting - " + others.length + "x " + others[0].mtype + " in reach", "white");
                 return false; // normal combat meanwhile; the next round may stand better
             }
-            if (agMode() === "splash" && !wearingSplash()) {
+            if (splashMode() && !wearingSplash()) {
                 if (!splashWeapons().length) {
                     if (!pack.noWeaponsLogged) util.log("warrior", "agitate mode: no splash weapon in the bag", "orange");
                     pack.noWeaponsLogged = true;
@@ -348,7 +352,7 @@ module.exports = function createWarrior(ctx) {
             pack.walkTo = null;
             if (util.canCast("warcry") && character.mp >= G.skills.agitate.mp + G.skills.warcry.mp) use_skill("warcry").catch(function () {});
             use_skill("agitate").catch(function () {});
-            if (agMode() === "splash") ctx.gear.holdWeapons(ag.holdMs || 10 * 60 * 1000);
+            if (splashMode()) ctx.gear.holdWeapons(ag.holdMs || 10 * 60 * 1000);
             const pulledNow = packAround(G.skills.agitate.range);
             pack.pulled = pulledNow.map(function (m) { return m.id; });
             pack.since = now; pack.startHp = character.hp; pack.attacks = 0; pack.neighborSum = 0; pack.recent = [];
@@ -393,6 +397,18 @@ module.exports = function createWarrior(ctx) {
         if (!best && mine.length > (ag.chaseFrom || 3)) {
             util.status("agitate: waiting for the pack (" + mine.length + ")", "orange");
             return true;
+        }
+        // "chain" (player idea 2026-11-18): with only stragglers left, the next pull starts at
+        // once - new monsters have spawned meanwhile, the stragglers follow us into the new pack
+        // and there is no phase of fighting just one or two.
+        if (agMode() === "chain" && mine.length <= (ag.chaseFrom || 3) && now - pack.since > 3000 &&
+            util.canCast("agitate") && character.mp >= G.skills.agitate.mp + reserve()) {
+            const next = bestPullPoint();
+            const freshCount = next ? next.count - mine.filter(function (m) { return Math.hypot(util.xy(m).x - next.x, util.xy(m).y - next.y) <= G.skills.agitate.range - 10; }).length : 0;
+            if (next && freshCount >= (ag.minPack || 3)) {
+                finishPull("chained into the next pull");
+                return true; // idle: walks to the pull point and pulls; the stragglers come along
+            }
         }
         if (!best) {
             // Only stragglers left (chaseFrom or fewer): meet the nearest one instead of waiting (player request
