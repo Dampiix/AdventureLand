@@ -148,6 +148,12 @@ module.exports = function createWarrior(ctx) {
         const m = autoMode();
         return m === "off" ? "off" : SPLASH_MODES.includes(m) ? "splashstream" : "swords";
     }
+    // True when the automatic decision picks the mode (no /agitate override).
+    function autoDecides() {
+        if (ctx.party.enabled) return partyStream() && ag.partyMode === "auto";
+        agMode(); // refreshes the override cache
+        return !modeCache.v && !!ag.enabled && ag.monsters === "auto";
+    }
     function packOn() {
         if (ctx.party.enabled ? effectiveMode() === "off" : agMode() === "off") return false;
         return !!G.skills.agitate && character.level >= (G.skills.agitate.level || 68);
@@ -481,7 +487,11 @@ module.exports = function createWarrior(ctx) {
     // more pay off (splashOnMe), during Sugar Rush (3x attack speed) sugarBonus more; low HP
     // fewer (below lowHp: 2, below minHp of the pull mode none) - also saves potions.
     function streamLimit(splash) {
-        let n = splash ? (ag.splashOnMe || 5) : (ag.streamOnMe || 3);
+        // Auto swords use the splash count too (player decision 2026-11-18): the splash per hit is
+        // measured with the swords as well, and with only 3 on us at most 2 neighbours were possible
+        // - the learned value stayed too low to ever switch (snakes: 0.46). The pack check (autoCap)
+        // still caps it.
+        let n = (splash || autoDecides()) ? (ag.splashOnMe || 5) : (ag.streamOnMe || 3);
         const cap = autoCap(); // auto: what the pack check and experience allow (party too, 2026-11-18)
         if (splash && character.s && character.s.sugarrush) n += (ag.sugarBonus || 2);
         // A party uses the same limits as solo (player decision 2026-11-18, no partyOnMe boost).
