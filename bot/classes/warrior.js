@@ -129,6 +129,17 @@ module.exports = function createWarrior(ctx) {
                 util.distanceTo(e) <= range && (!e.target || e.target === character.name);
         });
     }
+    // Monsters Agitate would pull as well although we don't want them: other kinds (when
+    // agitate.monsters lists some) and anything that returns damage - Agitate taunts all
+    // within 320 px, at the crocs it pulled armadillos (dreturn 30) too (2026-11-18).
+    function unwantedAround(range) {
+        return Object.values(parent.entities || {}).filter(function (e) {
+            if (!e || e.type !== "monster" || e.dead || util.distanceTo(e) > range) return false;
+            if (e.target && e.target !== character.name) return false; // busy with another player
+            const def = G.monsters[e.mtype] || {};
+            return !packWanted(e) || def.dreturn > 0 || util.tooSpiky(ctx.config, e);
+        });
+    }
     function onMe() {
         return Object.values(parent.entities || {}).filter(function (e) {
             return e && e.type === "monster" && !e.dead && e.target === character.name;
@@ -210,6 +221,11 @@ module.exports = function createWarrior(ctx) {
             const free = packAround(G.skills.agitate.range);
             if (free.length < (ag.minPack || 3)) return false;
             if (util.hpRatio() < (ag.minHp || 0.8) || !util.canCast("agitate") || character.mp < G.skills.agitate.mp) return false;
+            const others = unwantedAround(G.skills.agitate.range);
+            if (others.length) {
+                util.status("agitate: waiting - " + others.length + "x " + others[0].mtype + " in reach", "white");
+                return false; // normal combat meanwhile; the next round may stand better
+            }
             if (!wearingSplash()) {
                 if (!splashWeapons().length) {
                     if (!pack.noWeaponsLogged) util.log("warrior", "agitate mode: no splash weapon in the bag", "orange");
