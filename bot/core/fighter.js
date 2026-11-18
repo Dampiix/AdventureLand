@@ -43,18 +43,23 @@ module.exports = function createFighter(ctx, cls) {
     // the hits we took in the last 10 s (attacker, level, damage) and the potions drunk then go
     // to the log when we die. One socket listener for the page (reloads would stack them).
     const HIT_LOG_MS = 10 * 1000;
-    if (!parent.__dmpxHitHook) {
-        parent.__dmpxHitHook = true;
-        parent.__dmpxHits = [];
-        try {
-            parent.socket.on("hit", function (d) {
-                if (!d || !d.damage || !parent.character || d.id !== parent.character.id) return;
-                const a = parent.entities && parent.entities[d.hid];
-                parent.__dmpxHits.push({ t: Date.now(), dmg: d.damage, who: a ? a.mtype + " L" + (a.level || 1) : String(d.hid || "?") });
-                while (parent.__dmpxHits.length && Date.now() - parent.__dmpxHits[0].t > HIT_LOG_MS) parent.__dmpxHits.shift();
-            });
-        } catch (e) { /* no socket */ }
-    }
+    // The listener lives on the game page and outlasts a bot reload: it holds the page window
+    // itself (the old CODE frame's "parent" is null after a reload - every hit threw and the
+    // log filled with "{}", 2026-11-18), and each load swaps the previous listener for its own.
+    const PAGE = parent;
+    try {
+        if (PAGE.__dmpxHitFn) PAGE.socket.off("hit", PAGE.__dmpxHitFn);
+        PAGE.__dmpxHits = PAGE.__dmpxHits || [];
+        PAGE.__dmpxHitFn = function (d) {
+            try {
+                if (!d || !d.damage || !PAGE.character || d.id !== PAGE.character.id) return;
+                const a = PAGE.entities && PAGE.entities[d.hid];
+                PAGE.__dmpxHits.push({ t: Date.now(), dmg: d.damage, who: a ? a.mtype + " L" + (a.level || 1) : String(d.hid || "?") });
+                while (PAGE.__dmpxHits.length && Date.now() - PAGE.__dmpxHits[0].t > HIT_LOG_MS) PAGE.__dmpxHits.shift();
+            } catch (e) { /* analysis only */ }
+        };
+        PAGE.socket.on("hit", PAGE.__dmpxHitFn);
+    } catch (e) { /* no socket */ }
     const potSamples = []; // { t, hp, mp } potion counts, one per second
     function samplePotions() {
         const now = Date.now();
@@ -65,7 +70,7 @@ module.exports = function createFighter(ctx, cls) {
     }
     function logDeathAnalysis() {
         const now = Date.now();
-        const hits = (parent.__dmpxHits || []).filter(function (h) { return now - h.t <= HIT_LOG_MS; });
+        const hits = (PAGE.__dmpxHits || []).filter(function (h) { return now - h.t <= HIT_LOG_MS; });
         const by = {};
         hits.forEach(function (h) { const b = by[h.who] = by[h.who] || { n: 0, dmg: 0 }; b.n++; b.dmg += h.dmg; });
         const parts = Object.keys(by).sort(function (a, b) { return by[b].dmg - by[a].dmg; })
