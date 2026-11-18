@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.112.2",
+    version: "1.113.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -106,6 +106,9 @@ module.exports = {
         // Leader waits while a fighter is farther than waitDistance px (or out of sight), at most
         // waitMaxMs per separation, and not while something attacks it (player request 2026-11-18).
         waitForTeam: true, waitDistance: 500, waitMaxMs: 45000,
+        // Ranged fighters keep out of the monsters' melee reach (+margin) while a tank class is
+        // near (player request 2026-11-18); monsters reaching farther than we shoot are ignored.
+        spacing: { enabled: true, minOwnRange: 100, margin: 50, gap: 130, step: 80, everyMs: 700 },
         // Easy farm targets: members pick their own monster near the leader instead
         // of only assisting (e.g. a 500-goo hunt).
         spread: { enabled: true, maxHits: 3, maxDamageRatio: 0.05 },

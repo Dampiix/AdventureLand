@@ -389,6 +389,48 @@ module.exports = function createFighter(ctx, cls) {
         return best;
     }
     // Walkable straight line between two points (not only from where we stand).
+    // Party spacing (player request 2026-11-18): with a tank class near, ranged fighters stay out of
+    // the melee reach of the monsters around - priest, ranger and warrior stood on one spot at the
+    // booboos and some went for the ranged ones. Monsters reaching farther than we shoot (booboos,
+    // 420) can't be outranged: from those we keep party.spacing.gap px, so the tank in melee is the
+    // one closest to them. We stay in range of our target and on the leash.
+    let lastSpace = 0;
+    function spacingStep(target) {
+        const sp = (config.party && config.party.spacing) || {};
+        if (!sp.enabled || !party.enabled || is_moving(character) || Date.now() - lastSpace < (sp.everyMs || 700)) return false;
+        const myRange = character.range || 0;
+        const tanks = ((config.targeting.teamSafety || {}).tankClasses) || [];
+        if (myRange < (sp.minOwnRange || 100) || tanks.includes(character.ctype)) return false;
+        const tank = party.memberNames().map(function (n) { return n === character.name ? null : get_player(n); })
+            .find(function (p) { return p && !p.rip && tanks.includes(p.ctype) && util.distanceTo(p) < 400; });
+        if (!tank) return false;
+        const margin = sp.margin || 50;
+        const reachOf = function (m) { return m.range || (G.monsters[m.mtype] || {}).range || 20; };
+        const keep = function (m) { const r = reachOf(m) + margin; return r < myRange ? r : Math.min(sp.gap || 130, myRange - 20); };
+        const close = Object.values(parent.entities || {}).filter(function (e) {
+            return e && e.type === "monster" && !e.dead && util.distanceTo(e) < keep(e);
+        });
+        if (!close.length) return false;
+        const me = util.xy(character);
+        const mid = close.reduce(function (a, e) { const p = util.xy(e); return { x: a.x + p.x / close.length, y: a.y + p.y / close.length }; }, { x: 0, y: 0 });
+        const team = kiteTeam();
+        const t = target ? util.xy(target) : null;
+        let best = null, bestScore = -Infinity;
+        for (let i = 0; i < 16; i++) {
+            const a = i * Math.PI / 8;
+            const x = me.x + Math.cos(a) * (sp.step || 80), y = me.y + Math.sin(a) * (sp.step || 80);
+            if (!canMoveFrom(me.x, me.y, x, y) || !team.allows(x, y)) continue;
+            if (t && Math.hypot(t.x - x, t.y - y) > myRange - 15) continue; // keep shooting
+            const clear = Math.min.apply(null, close.map(function (e) { const p = util.xy(e); return Math.hypot(p.x - x, p.y - y) - keep(e); }));
+            const score = clear + Math.hypot(x - mid.x, y - mid.y) * 0.3;
+            if (score > bestScore) { bestScore = score; best = { x: x, y: y }; }
+        }
+        if (!best) return false;
+        lastSpace = Date.now();
+        quiet(move(best.x, best.y));
+        util.status("keeping distance (" + close.length + " close)", "white");
+        return true;
+    }
     function canMoveFrom(x1, y1, x2, y2) {
         try {
             return !!parent.can_move({ map: character.map, x: x1, y: y1, going_x: x2, going_y: y2, base: character.base });
@@ -482,7 +524,7 @@ module.exports = function createFighter(ctx, cls) {
             return;
         }
 
-        const kiting = kiteStep(target);
+        const kiting = kiteStep(target) || spacingStep(target);
         if (!kiting) util.status(cls.name + ": " + target.mtype, "green");
         if (cls.fight(target)) return;
         if (can_attack(target)) attack(target).catch(function () {});
