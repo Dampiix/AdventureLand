@@ -351,12 +351,13 @@ module.exports = function createWorkshop(ctx) {
         if (character.gold - amount < floor) return false;
         if (k === GOALS) return goalBudget().allowed >= amount;
         if (k === LADDER) return ladderBudget().allowed >= amount;
+        if (k === SHOPPING) return shoppingBudget().allowed >= amount;
         return (spent[k] || 0) + amount <= budgetFor(k);
     }
 
     function pay(k, amount) {
-        if (k === LADDER) {
-            income.spends.push({ t: Date.now(), a: amount, k: LADDER });
+        if (k === LADDER || k === SHOPPING) {
+            income.spends.push({ t: Date.now(), a: amount, k: k });
             saveIncome();
             return;
         }
@@ -381,6 +382,7 @@ module.exports = function createWorkshop(ctx) {
     // not income (budget.transferAbove), so the budget stays tied to real cash flow.
     const GOALS = "goals"; // budget key of the gear goals
     const LADDER = "ladder"; // budget key of the weapon ladder (its own income share)
+    const SHOPPING = "shopping"; // budget key of buying wished items (config.market.shopping)
     const INCOME_KEY = "workshop_income:" + character.name;
     const DAY = 24 * 60 * 60 * 1000;
     const income = (function () {
@@ -465,6 +467,16 @@ module.exports = function createWorkshop(ctx) {
         const spentLadder = income.spends.reduce(function (sum, s) { return s.k === LADDER ? sum + s.a : sum; }, 0);
         const earned = goalBudget().earned;
         return { allowed: Math.max(0, earned * share - spentLadder), earned: earned, spent: spentLadder };
+    }
+
+    // Shopping pot (player decision 2026-11-18): config.market.shopping.incomeShare of the last
+    // 24 h of income, like the ladder. Only filled for now - the server tour will spend it.
+    function shoppingBudget() {
+        const s = config.market && config.market.shopping;
+        const share = (s && s.incomeShare) || 0;
+        const spentShop = income.spends.reduce(function (sum, x) { return x.k === SHOPPING ? sum + x.a : sum; }, 0);
+        const earned = goalBudget().earned;
+        return { allowed: Math.max(0, earned * share - spentShop), earned: earned, spent: spentShop };
     }
 
     // Grace budget per target level and 24 h (player decision 2026-11-16): a share of the
@@ -2440,9 +2452,11 @@ module.exports = function createWorkshop(ctx) {
             });
             const k = function (n) { return Math.round(n / 1000) + "k"; };
             return "budget: goals " + k(goalBudget().allowed) + ", ladder " + k(ladderBudget().allowed) +
+                ", shopping " + k(shoppingBudget().allowed) + " (24h income " + k(goalBudget().earned) + ")" +
                 " | working on: " + (list.slice(0, 6).join(", ") || "nothing") + (list.length > 6 ? " ..." : "");
         },
         isOwnWish: isOwnWish,
+        shoppingBudget: shoppingBudget,
         // Units of an item we hold (bag + last bank snapshot), e.g. for the stand's buy orders.
         ownedCount: ownedCount,
         bankKnown: function () { return !!bankSnapshot; },

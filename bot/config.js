@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.90.7",
+    version: "1.91.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -51,6 +51,11 @@ module.exports = {
             { item: "leather",       price:  120000, keep: 0 }, // a player buys at 100k
             { item: "snakefang",     price: 3500000, keep: 0 }, // a player buys at 3M
         ],
+        // Shopping pot (player decision 2026-11-18): a share of the merchant's net income over
+        // the last 24 h for buying wished items from Ponty / other players (server tour, not
+        // built yet). It only fills for now; nothing spends it. Other pots for comparison:
+        // gear goals 0.5, weapon ladder 0.25, grace 0.05 per target level (all in workshop).
+        shopping: { incomeShare: 0.2 },
     },
 
     // Dismantle drops (player decision 2026-11-17): instead of upgrading them, the merchant
