@@ -949,7 +949,9 @@ module.exports = function createWorkshop(ctx) {
     function autoEssenceNeeds() {
         const eg = config.essenceGoals;
         if (!eg.auto) return [];
-        const names = essenceWeapons();
+        // essenceGoals.skip: weapons never planned automatically (Firestars, 2026-11-18: each try
+        // needs Throwing Stars, which no shop sells - ~7.7M each from weapon boxes).
+        const names = essenceWeapons().filter(function (n) { return !(eg.skip || []).includes(n); });
         const needs = [];
         config.team.fighters.forEach(function (f) {
             const cls = fighterClass(f);

@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.116.3",
+    version: "1.116.4",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -89,7 +89,7 @@ module.exports = {
         auto: true,
         upTo: 7,
         reserve: 0,          // essences that always stay in the bank
-        maxPerGoal: null,    // null = no limit: a goal is a goal (player decision 2026-11-18)
+        maxPerGoal: null, skip: ["firestars"], // skip: never planned automatically (Firestars need Throwing Stars, 2026-11-18)    // null = no limit: a goal is a goal (player decision 2026-11-18)
         // When the weapon ladder's pot is empty, pay from the gear goals' pot - but only while
         // the gear goals have nothing open themselves (player decision 2026-11-18). null = never.
         borrowFrom: "goals",
