@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.91.0",
+    version: "1.91.1",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -606,7 +606,9 @@ module.exports = {
             // Hoarded, not exchanged or opened (player decision 2026-11-17: collect gems and
             // boxes from CGoo, then exchange, open and upgrade in one big batch). Empty the
             // list for the big batch.
-            hold: ["gem0", "gem1", "armorbox", "marketparcel"], // + Merrit's parcels (collected first, 2026-11-17)
+            // armorbox off the list 2026-11-18 (player decision): the boxes open on demand again
+            // for the warrior's Rugged pants1/shoes1 +7.
+            hold: ["gem0", "gem1", "marketparcel"], // + Merrit's parcels (collected first, 2026-11-17)
             batch: 10,     // exchanges per round, so deliveries are not delayed for long
             keepFree: 8,   // stop while fewer bag slots are free (rewards need room)
         },
