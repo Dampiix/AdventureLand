@@ -297,9 +297,9 @@ module.exports = function createWarrior(ctx) {
         if (!util.canCast("agitate") || character.mp < G.skills.agitate.mp + reserve()) return;
         if (util.hpRatio() < (ag.minHp || 0.8)) return;
         const coming = onMe().length;
-        if (coming > (ag.streamOnMe || 3)) return;
+        if (coming >= (ag.streamOnMe || 3)) return; // Agitate only while fewer than streamOnMe attack us
         const fresh = packAround(G.skills.agitate.range).filter(function (m) { return m.target !== character.name; });
-        if (fresh.length < (ag.streamFrom || 2) || unwantedAround(G.skills.agitate.range).length) return;
+        if (fresh.length < (ag.streamFrom || 1) || unwantedAround(G.skills.agitate.range).length) return;
         use_skill("agitate").catch(function () {});
         if (Date.now() - lastStreamLog > 5 * 60 * 1000) {
             lastStreamLog = Date.now();
@@ -307,11 +307,42 @@ module.exports = function createWarrior(ctx) {
         }
     }
 
+    // "stream" fighting (player rules 2026-11-18): hit what is in range (ones on us first,
+    // nearest first); with nobody in range, walk to the nearest monster - on its way to us
+    // or free - instead of waiting. False when nothing is around (normal search takes over).
+    let streamWalkTo = null;
+    function streamFight() {
+        const around = Object.values(parent.entities || {}).filter(function (e) {
+            if (!e || e.type !== "monster" || e.dead || !e.visible) return false;
+            if (e.target === character.name) return true;
+            return packWanted(e) && !e.target && !(ctx.targeting.inOccupied && ctx.targeting.inOccupied(e)) &&
+                !util.tooSpiky(ctx.config, e) && util.distanceTo(e) <= 600;
+        }).sort(function (a, b) { return util.distanceTo(a) - util.distanceTo(b); });
+        if (!around.length) return false;
+        const inRange = around.filter(function (m) { return is_in_range(m); });
+        if (inRange.length) {
+            const t = inRange.find(function (m) { return m.target === character.name; }) || inRange[0];
+            if (get_targeted_monster() !== t) change_target(t);
+            if (can_attack(t)) attack(t).catch(function () {});
+            streamWalkTo = null;
+            util.status("agitate stream: " + t.mtype + " (" + onMe().length + " on us)", "green");
+            return true;
+        }
+        const p = util.xy(around[0]);
+        if (!is_moving(character) || !streamWalkTo || Math.hypot(streamWalkTo.x - p.x, streamWalkTo.y - p.y) > 25) {
+            streamWalkTo = p;
+            if (can_move_to(p.x, p.y)) move(p.x, p.y);
+            else xmove(p.x, p.y);
+        }
+        util.status("agitate stream: to the nearest " + around[0].mtype, "orange");
+        return true;
+    }
+
     function packTick() {
         if (!packOn()) return false;
         if (agMode() === "swords" && (ag.swords || "stream") === "stream") {
             streamAgitate();
-            return false; // normal combat does the fighting
+            return streamFight();
         }
         if (pack.busy) return true;
         const now = Date.now();

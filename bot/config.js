@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.99.6",
+    version: "1.99.7",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -361,7 +361,7 @@ module.exports = {
                 waitShare: 0.7, waitMs: 3000, // first swing once this share of the pulled pack is in range (at most waitMs)
                 chaseFrom: 3,         // with this many or fewer left and none in range: walk to the nearest one
                 swords: "stream",     // mode "swords": "stream" = Agitate on every cooldown where we stand (normal combat), "pull" = the pull-point version
-                streamFrom: 2, streamOnMe: 3, // "stream": Agitate when this many free ones are in reach and at most streamOnMe are on us
+                streamFrom: 1, streamOnMe: 3, // "stream": Agitate when this many free ones are in reach and fewer than streamOnMe attack us
                 kiteStep: 120,        // "step" (and backing off): this far
                 gatherMs: 2500,
                 regroupBelow: 0.5, regroupEveryMs: 8000,
