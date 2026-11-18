@@ -144,10 +144,6 @@ module.exports = function createWarrior(ctx) {
     function effectiveMode() {
         if (!ctx.party.enabled) return agMode();
         if (!partyStream()) return "off";
-        // Easy monsters (config.party.spread): everyone fights its own - an Agitate would take
-        // every free one off the priest and the ranger, and they stood idle (2026-11-18).
-        const ft = farmType();
-        if (ft && ctx.targeting.isEasy && ctx.targeting.isEasy(ft)) return "off";
         if (ag.partyMode !== "auto") return ag.partyMode;
         const m = autoMode();
         return m === "off" ? "off" : SPLASH_MODES.includes(m) ? "splashstream" : "swords";

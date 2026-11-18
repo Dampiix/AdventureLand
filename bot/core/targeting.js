@@ -920,7 +920,12 @@ module.exports = function createTargeting(ctx) {
         if (isValid(current) && !(!current.target && aggressive(current) && !isolated(current))) return current;
 
         const attacker = nearestPartyAttacker();
-        if (attacker && !util.tooSpiky(config, attacker)) return attacker;
+        // Easy monsters (spread): help only with ones in our range or on us - the rest walk to
+        // whoever they chase. After the warrior's Agitate the priest and the ranger waited for
+        // the slow bees to reach him instead of taking free ones (2026-11-18).
+        const spreading = party.enabled && farmTarget && farmTarget.monster && isEasy(farmTarget.monster);
+        if (attacker && !util.tooSpiky(config, attacker) &&
+            (!spreading || attacker.target === character.name || is_in_range(attacker))) return attacker;
 
         // Join event (e.g. Goo Brawl): anything in the event map is fair game, and
         // everyone picks its own nearest monster – waiting for the leader's pick
