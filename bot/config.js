@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.90.4",
+    version: "1.90.5",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -122,7 +122,7 @@ module.exports = {
         searchEveryMs: 30 * 60 * 1000,
         // Bosses hunted nonstop: searched again after farmBossEveryMs (player option
         // 2026-11-16; Phoenix: weapons and earrings, about half the XP/h of crocs).
-        farmBosses: [],                 // e.g. ["phoenix"] for the nonstop hunt (off: CGoo night farm, 2026-11-17)
+        farmBosses: ["phoenix"],        // nonstop Phoenix hunt (player decision 2026-11-18: warrior level 70, now Essence of Fire while the player works)
         // 10 s (player decision 2026-11-17): in the old 60 s the warrior seldom even reached his
         // farm spot; now he goes straight back on the round after a kill or an empty search.
         farmBossEveryMs: 10 * 1000,
