@@ -537,6 +537,10 @@ module.exports = function createWarrior(ctx) {
         const around = Object.values(parent.entities || {}).filter(function (e) {
             if (!e || e.type !== "monster" || e.dead || !e.visible) return false;
             if (e.target === character.name) return true;
+            // Free ones only of the farm target: other kinds come along through Agitate and are
+            // fought once they are on us (2026-11-18: following the priest through the goo field
+            // the warrior kept hitting goos and fell behind).
+            if (ag.monsters === "auto" && auto.type && e.mtype !== auto.type) return false;
             return packWanted(e) && !e.target && !(ctx.targeting.inOccupied && ctx.targeting.inOccupied(e)) &&
                 !util.tooSpiky(ctx.config, e) && util.distanceTo(e) <= 600;
         }).sort(function (a, b) { return util.distanceTo(a) - util.distanceTo(b); });
@@ -633,6 +637,12 @@ module.exports = function createWarrior(ctx) {
         // Auto: the stream runs only where the farm target is (player report 2026-11-18): other
         // harmless kinds only come along. With booboo as the target the stream walked from goo
         // clump to goo clump in town instead of letting the normal combat travel to Spooky Town.
+        // A party member behind the leader catches up first (the leash), unless monsters are on us.
+        if (ctx.party.isMember && !ctx.party.detached() && !onMe().length) {
+            const lead = ctx.party.leaderInfo();
+            const leash = (ctx.config.party && ctx.config.party.leash) || 300;
+            if (lead && (lead.map !== character.map || Math.hypot(lead.x - character.x, lead.y - character.y) > leash)) return false;
+        }
         if (ag.monsters === "auto" && auto.type && !onMe().length && !Object.values(parent.entities || {}).some(function (e) {
             return e && e.type === "monster" && !e.dead && e.mtype === auto.type && util.distanceTo(e) <= 600;
         })) return false;
