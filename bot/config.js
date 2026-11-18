@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.116.4",
+    version: "1.117.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -30,8 +30,10 @@ module.exports = {
         // collects his gear. Solo: leader "DmpxWar", phase "solo".
         leader: "DmpxPriest",
         fighters: ["DmpxPriest", "DmpxWar", "DmpxRanger", "DmpxRogue"],
-        // Fighters outside the party (2026-11-18: the new rogue levels on its own first).
-        solo: ["DmpxRogue"],
+        // Fighters outside the party: not invited, not started by the leader (only three fighters
+        // may be online). 2026-11-18 (late): the rogue joins the party for booboos and belts, the
+        // ranger pauses. Before: the new rogue levelled on its own.
+        solo: ["DmpxRanger"],
         merchant: "DampiixMerch",                       // null for no merchant
         farm: {},                                       // optional per-character farm override, e.g. { DmpxRanger: "bee" }
     },
@@ -216,7 +218,7 @@ module.exports = {
         // Player decision 2026-11-17 (night): the solo warrior farms CGoos overnight (gold for the
         // budget pots after the reset, XP to 68, gems); the Phoenix is still searched every 30 min.
         // Boo Boo solo test 2026-11-17 (late) failed: he walked into the pack and died. Back to CGoos.
-        farm: null,             // null = the guide picks; e.g. "squigtoad" to force a monster for everyone (belt test 2026-11-18: booboos work for the party)
+        farm: "booboo",         // 2026-11-18 (late): booboos for belts with priest, warrior and rogue. null = the guide picks
         fallback: "goo",          // used when the progression guide has no answer
         // Farm only where every fighter's own guide calls the spot safe; routes the guide
         // only offers as a careful trial count once proven – by the guide's own fights, or
