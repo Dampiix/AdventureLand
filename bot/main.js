@@ -156,6 +156,13 @@ function startBot() {
     botRunner.start();
 
     if (character.name === BOT_CONFIG.leader) startTeam();
+    // A solo fighter (team.solo) brings the merchant along (2026-11-18: the rogue alone had no merchant
+    // after its window was closed); already running is fine.
+    else if ((BOT_CONFIG.team.solo || []).includes(character.name) && BOT_CONFIG.merchant) {
+        start_character(BOT_CONFIG.merchant, "bot_main")
+            .then(function () { BOT_UTIL.log("bot", "started " + BOT_CONFIG.merchant, "green"); })
+            .catch(function () { /* already running or not possible */ });
+    }
 }
 
 // Called by the game when a party invite arrives – bot_party only accepts the leader
