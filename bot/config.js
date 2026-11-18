@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.117.1",
+    version: "1.117.2",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -218,7 +218,7 @@ module.exports = {
         // Player decision 2026-11-17 (night): the solo warrior farms CGoos overnight (gold for the
         // budget pots after the reset, XP to 68, gems); the Phoenix is still searched every 30 min.
         // Boo Boo solo test 2026-11-17 (late) failed: he walked into the pack and died. Back to CGoos.
-        farm: "booboo",         // 2026-11-18 (late): booboos for belts with priest, warrior and rogue. null = the guide picks
+        farm: "stoneworm",      // 2026-11-18 (late): belts with priest, warrior and rogue - stoneworms while booboos wait for the Cavalry. null = the guide picks
         fallback: "goo",          // used when the progression guide has no answer
         // Farm only where every fighter's own guide calls the spot safe; routes the guide
         // only offers as a careful trial count once proven – by the guide's own fights, or
