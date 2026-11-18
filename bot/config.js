@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.110.11",
+    version: "1.111.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -103,6 +103,9 @@ module.exports = {
         leash: 300,           // members drop everything and catch up beyond this
         broadcastMs: 2000,    // leader shares position/target this often
         inviteEveryMs: 10000, // leader re-invites a missing member this often
+        // Leader waits while a fighter is farther than waitDistance px (or out of sight), at most
+        // waitMaxMs per separation, and not while something attacks it (player request 2026-11-18).
+        waitForTeam: true, waitDistance: 500, waitMaxMs: 45000,
         // Easy farm targets: members pick their own monster near the leader instead
         // of only assisting (e.g. a 500-goo hunt).
         spread: { enabled: true, maxHits: 3, maxDamageRatio: 0.05 },

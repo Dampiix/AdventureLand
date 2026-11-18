@@ -488,6 +488,36 @@ module.exports = function createFighter(ctx, cls) {
         if (can_attack(target)) attack(target).catch(function () {});
     }
 
+    // Leader: wait for fighters far behind (player request 2026-11-18: the priest walked into the
+    // farm spot while warrior and ranger were still on the way). Only while nothing attacks us;
+    // members farming on their own (damage return) and dead ones are not waited for; after
+    // party.waitMaxMs we go on anyway (a stuck member must not stop the team).
+    let teamWaitSince = 0;
+    function waitForTeam() {
+        const pc = config.party || {};
+        if (!party.enabled || !party.isLeader || !pc.waitForTeam) return false;
+        if (get_nearest_monster({ target: character.name })) return false;
+        const fighters = (config.team && config.team.fighters) || [];
+        const far = party.memberNames().filter(function (n) {
+            if (n === character.name || !fighters.includes(n)) return false;
+            const info = (get_party() || {})[n] || {};
+            if (lastFarm && lastFarm.monster && util.tooSpiky(config, lastFarm.monster, info.type)) return false; // farms on its own
+            const p = get_player(n);
+            if (p && p.rip) return false;
+            return !p || util.distanceTo(p) > (pc.waitDistance || 500);
+        });
+        if (!far.length) { teamWaitSince = 0; return false; }
+        const now = Date.now();
+        if (!teamWaitSince) {
+            teamWaitSince = now;
+            util.log("party", "waiting for " + far.join(", "), "white");
+        }
+        if (now - teamWaitSince > (pc.waitMaxMs || 45000)) return false; // waited long enough: go on
+        if (is_moving(character)) { stoppedOnPurpose = true; stop(); }
+        util.status("waiting for " + far.join(", "), "yellow");
+        return true;
+    }
+
     function tick() {
         if (handleDeath()) return;
         samplePotions();
@@ -499,6 +529,7 @@ module.exports = function createFighter(ctx, cls) {
         // so members never lose track (party.broadcast throttles itself).
         party.broadcast(lastFarm, lastTarget, ctx.events.current());
         ctx.gear.tick();
+        if (waitForTeam()) return;
         if (supply.tick() === "busy") return;
         if (ctx.events.tick() === "busy") return;
         if (!ctx.events.current() && ctx.hunts.tick() === "busy") return; // no Daisy trips during events
