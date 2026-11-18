@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.97.0",
+    version: "1.97.1",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -169,7 +169,7 @@ module.exports = {
 
     // Monster Hunts (Daisy). Unsafe hunts are left to expire.
     hunts: {
-        enabled: true,
+        enabled: false,                  // off for the Agitate test (2026-11-18) - also ignores a hunt already taken
         minLevel: 20,                    // only once every fighter has this level (Daisy ignores our level)
         allow: [],                       // always hunt these, even if the guide calls them unsafe
         deny: [],                        // never hunt these
