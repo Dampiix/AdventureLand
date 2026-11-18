@@ -14,6 +14,8 @@
 // =====================================================================
 
 module.exports = function createRogue(ctx) {
+    // A move promise rejects when the next move interrupts it: swallow it (the log filled with "{}", 2026-11-18).
+    function quiet(p) { if (p && p.catch) p.catch(function () {}); return p; }
     const util = ctx.util;
     const c = ctx.config.classes.rogue || {};
 
@@ -89,7 +91,7 @@ module.exports = function createRogue(ctx) {
         if (!hideSpot || (!is_moving(character) && util.distanceTo(hideSpot) > 30 &&
             Object.values(parent.entities || {}).some(function (e) { return e && e.type === "monster" && !e.dead && util.distanceTo(e) < (c.smokeClear || 200); }))) {
             hideSpot = quietSpot();
-            if (hideSpot) xmove(hideSpot.x, hideSpot.y);
+            if (hideSpot) quiet(xmove(hideSpot.x, hideSpot.y));
         }
         util.status("smoke: hiding " + Math.round(util.hpRatio() * 100) + "%", "orange");
         return true;

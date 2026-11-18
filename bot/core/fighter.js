@@ -22,6 +22,8 @@
 // =====================================================================
 
 module.exports = function createFighter(ctx, cls) {
+    // A move promise rejects when the next move interrupts it: swallow it (the log filled with "{}", 2026-11-18).
+    function quiet(p) { if (p && p.catch) p.catch(function () {}); return p; }
     const config = ctx.config;
     const util = ctx.util;
     const targeting = ctx.targeting;
@@ -242,7 +244,7 @@ module.exports = function createFighter(ctx, cls) {
     function moveTo(p) {
         if (is_moving(character) && moveDest && Math.hypot(moveDest.x - p.x, moveDest.y - p.y) < 40) return;
         moveDest = { x: p.x, y: p.y };
-        xmove(p.x, p.y);
+        quiet(xmove(p.x, p.y));
     }
 
     // Kiting (config.combat.kite, solo; player decision 2026-11-18): a fighter that outranges
@@ -310,12 +312,12 @@ module.exports = function createFighter(ctx, cls) {
             const esc = escapePoint(me, { x: cx, y: cy }, free, k, team);
             if (!esc) return false; // nowhere to go: stand and fight
             lastKite = Date.now();
-            xmove(esc.x, esc.y);
+            quiet(xmove(esc.x, esc.y));
             util.status("kiting " + threat.mtype + " - out of the corner", "orange");
             return true;
         }
         lastKite = Date.now();
-        move(best.x, best.y);
+        quiet(move(best.x, best.y));
         util.status("kiting " + threat.mtype, "orange");
         return true;
     }

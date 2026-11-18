@@ -15,6 +15,8 @@
 // =====================================================================
 
 module.exports = function createWarrior(ctx) {
+    // A move promise rejects when the next move interrupts it: swallow it (the log filled with "{}", 2026-11-18).
+    function quiet(p) { if (p && p.catch) p.catch(function () {}); return p; }
     const util = ctx.util;
     const c = ctx.config.classes.warrior;
 
@@ -430,7 +432,7 @@ module.exports = function createWarrior(ctx) {
             const ux = dx * Math.cos(turn) - dy * Math.sin(turn), uy = dx * Math.sin(turn) + dy * Math.cos(turn);
             const x = me.x + ux * step, y = me.y + uy * step;
             if (can_move_to(x, y)) {
-                move(x, y);
+                quiet(move(x, y));
                 pack.lastRegroup = pack.gatherAt = Date.now();
                 return true;
             }
@@ -548,7 +550,7 @@ module.exports = function createWarrior(ctx) {
         const p = util.xy(goal);
         if (!is_moving(character) || !streamWalkTo || Math.hypot(streamWalkTo.x - p.x, streamWalkTo.y - p.y) > 25) {
             streamWalkTo = p;
-            move(p.x, p.y);
+            quiet(move(p.x, p.y));
         }
         util.status("agitate stream: to " + (goal === around[0] ? "the nearest " : "a clump of ") + goal.mtype, "orange");
         return true;
@@ -645,7 +647,7 @@ module.exports = function createWarrior(ctx) {
             if (spot && !spot.here) {
                 if (!is_moving(character) || !pack.walkTo || Math.hypot(pack.walkTo.x - spot.x, pack.walkTo.y - spot.y) > 40) {
                     pack.walkTo = { x: spot.x, y: spot.y };
-                    move(spot.x, spot.y);
+                    quiet(move(spot.x, spot.y));
                 }
                 util.status("agitate: to the pull point (" + spot.count + ")", "orange");
                 return true;
@@ -721,8 +723,8 @@ module.exports = function createWarrior(ctx) {
             const p = util.xy(near);
             if (!is_moving(character) || !pack.chase || Math.hypot(pack.chase.x - p.x, pack.chase.y - p.y) > 30) {
                 pack.chase = p;
-                if (can_move_to(p.x, p.y)) move(p.x, p.y);
-                else xmove(p.x, p.y);
+                if (can_move_to(p.x, p.y)) quiet(move(p.x, p.y));
+                else quiet(xmove(p.x, p.y));
             }
             util.status("agitate: to the next one (" + mine.length + " left)", "orange");
             return true;
