@@ -648,17 +648,19 @@ module.exports = function createWarrior(ctx) {
         // Auto: the stream runs only where the farm target is (player report 2026-11-18): other
         // harmless kinds only come along. With booboo as the target the stream walked from goo
         // clump to goo clump in town instead of letting the normal combat travel to Spooky Town.
-        // A party member behind the leader catches up first (the leash), unless monsters are on us.
-        if (ctx.party.isMember && !ctx.party.detached() && !onMe().length) {
-            const lead = ctx.party.leaderInfo();
-            const leash = (ctx.config.party && ctx.config.party.leash) || 300;
-            if (lead && (lead.map !== character.map || Math.hypot(lead.x - character.x, lead.y - character.y) > leash)) return false;
-        }
         // Without the farm target around the normal combat fights whatever is on us, with the
         // usual weapons.
         if (ag.monsters === "auto" && auto.type && !Object.values(parent.entities || {}).some(function (e) {
             return e && e.type === "monster" && !e.dead && e.mtype === auto.type && util.distanceTo(e) <= 600;
         })) { releaseSplash(); return false; }
+        // A party member behind the leader catches up first (the leash), unless monsters are on us.
+        // (After the farm-target check: following the priest out of the bat cave the Lolipops
+        // stayed on until their hold ran out, 2026-11-18.)
+        if (ctx.party.isMember && !ctx.party.detached() && !onMe().length) {
+            const lead = ctx.party.leaderInfo();
+            const leash = (ctx.config.party && ctx.config.party.leash) || 300;
+            if (lead && (lead.map !== character.map || Math.hypot(lead.x - character.x, lead.y - character.y) > leash)) return false;
+        }
         if (effectiveMode() === "splashstream") {
             // Stream with the splash weapons on (player test 2026-11-18).
             if (!wearingSplash()) {
