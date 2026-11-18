@@ -2035,7 +2035,9 @@ module.exports = function createWorkshop(ctx) {
         });
     }
 
+    const NO_EQUIP = new Set(((config.gear && config.gear.noEquip) || []).map(function (n) { return G.items[n]; }).filter(Boolean));
     function usableBy(def, ctype) {
+        if (NO_EQUIP.has(def)) return false; // config.gear.noEquip: never handed out to wear
         const cls = G.classes[ctype] || {};
         if (def.class && !def.class.includes(ctype)) return false;
         if (def.type === "weapon") return !!((cls.mainhand || {})[def.wtype] || (cls.doublehand || {})[def.wtype]);
@@ -2144,6 +2146,7 @@ module.exports = function createWorkshop(ctx) {
                 // stat up to one level lower (the rogue got helmet +8 STR over helmet +7 DEX).
                 const own = G.classes[classes[f]] && G.classes[classes[f]].main_stat;
                 const wrong = function (x) { return !!(def.stat && x && x.stat && MAIN_STATS.includes(x.stat) && x.stat !== own); };
+                if (NO_EQUIP.has(def)) return;
                 let best = -1;
                 pool.forEach(function (p, i) {
                     if (p.name !== w.name || wrong(p)) return;

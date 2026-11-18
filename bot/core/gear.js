@@ -332,6 +332,7 @@ module.exports = function createGear(ctx) {
                 const item = character.items[a.num];
                 if (!item || item.name !== a.name || (item.level || 0) !== (a.level || 0)) continue; // bag changed meanwhile
                 if (isCarry(item.name)) continue; // carried for a later mode, not worn
+                if (NO_EQUIP.has(G.items[item.name])) continue;
                 if (chainDowngrade(item, a.slot)) continue;
                 const there = character.slots && character.slots[a.slot];
                 if (wrongStat(item) && ownStat(there) && (there.level || 0) >= (item.level || 0) - 1) continue; // our stat wins
@@ -396,16 +397,17 @@ module.exports = function createGear(ctx) {
                 util.log("gear", "equipped " + item.name + " +" + (item.level || 0) + " -> " + slot + " (slot was empty)", "green");
                 return;
             }
-            // Off-stat jewelry we put on earlier: take it off, the merchant passes it on.
+            // Off-stat jewelry we put on earlier, or a piece on the noEquip list: take it off,
+            // the merchant passes it on (and fills the slot with something else).
             if (character.esize > 1) {
                 const slot = Object.keys(character.slots || {}).find(function (sl) {
                     const w = character.slots[sl];
-                    return w && G.items[w.name] && offStat(G.items[w.name]);
+                    return w && G.items[w.name] && (offStat(G.items[w.name]) || NO_EQUIP.has(G.items[w.name]));
                 });
                 if (slot) {
                     const w = character.slots[slot];
                     await unequip(slot);
-                    util.log("gear", "took off " + w.name + " +" + (w.level || 0) + " (" + slot + ") - not our main stat", "yellow");
+                    util.log("gear", "took off " + w.name + " +" + (w.level || 0) + " (" + slot + ") - " + (NO_EQUIP.has(G.items[w.name]) ? "on the noEquip list" : "not our main stat"), "yellow");
                     return;
                 }
             }
@@ -451,7 +453,11 @@ module.exports = function createGear(ctx) {
         if (def[own] > 0) return false;
         return MAIN_STATS.some(function (s) { return s !== own && def[s] > 0; });
     }
+    // config.gear.noEquip (player decision 2026-11-18): never put on automatically, and taken off
+    // when worn - e.g. Hand of Midas (-20 speed), Heavy Underarmor.
+    const NO_EQUIP = new Set(((cfg.noEquip) || []).map(function (n) { return G.items[n]; }).filter(Boolean));
     function usable(def) {
+        if (NO_EQUIP.has(def)) return false;
         const cls = G.classes[character.ctype] || {};
         if (def.class && !def.class.includes(character.ctype)) return false;
         if (offStat(def)) return false;
