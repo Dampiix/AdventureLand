@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.96.0",
+    version: "1.97.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -346,7 +346,10 @@ module.exports = {
                 minHp: 0.8,           // start a pull only above this HP share
                 abortHp: 0.3,         // below: walk away from the pack
                 gather: "center",     // "center": walk into the pack, Agitate there, all arrive together; "step": Agitate, then step away
-                centerWithin: 40,     // "center": close enough to the middle at this distance
+                centerWithin: 20,     // "center": at the pull point within this distance
+                searchRadius: 200, gridStep: 40, // "center": pull points tried around us
+                sideStep: 50,         // "center": step out of the pack after Agitate (0 = stay)
+                adjustStep: 40, adjustEveryMs: 4000, // "center": step when monsters come from behind
                 waitShare: 0.7, waitMs: 3000, // first swing once this share of the pulled pack is in range (at most waitMs)
                 kiteStep: 120,        // "step" (and backing off): this far
                 gatherMs: 2500,

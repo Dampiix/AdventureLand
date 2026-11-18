@@ -184,15 +184,44 @@ module.exports = function createWarrior(ctx) {
         list.forEach(function (m) { const p = util.xy(m); x += p.x; y += p.y; });
         return { x: x / list.length, y: y / list.length };
     }
+    // The point to Agitate from (player idea 2026-11-18): as many free pack monsters within
+    // reach as possible, no unwanted one in reach, then the shortest walk - so we only go as
+    // far into the pack as needed. Candidates on a grid around us (agitate.searchRadius,
+    // gridStep), reachable in a straight line. { x, y, count, here } or null below minPack.
+    function bestPullPoint() {
+        const reach = G.skills.agitate.range - 10; // centre distance, a little inside the edge-to-edge 320
+        const search = ag.searchRadius || 200, grid = ag.gridStep || 40;
+        const me = util.xy(character);
+        const pool = packAround(reach + search).map(util.xy);
+        if (pool.length < (ag.minPack || 3)) return null;
+        const bad = unwantedAround(reach + search + 40).map(util.xy);
+        let best = null;
+        for (let gx = -search; gx <= search; gx += grid) {
+            for (let gy = -search; gy <= search; gy += grid) {
+                const d = Math.hypot(gx, gy);
+                if (d > search) continue;
+                const x = me.x + gx, y = me.y + gy;
+                const count = pool.filter(function (p) { return Math.hypot(p.x - x, p.y - y) <= reach; }).length;
+                if (count < (ag.minPack || 3)) continue;
+                if (best && (count < best.count || (count === best.count && d >= best.d))) continue;
+                if (bad.some(function (p) { return Math.hypot(p.x - x, p.y - y) <= reach + 20; })) continue;
+                if (d > 0 && !can_move_to(x, y)) continue; // checked last: the costly one
+                best = { x: x, y: y, count: count, d: d };
+            }
+        }
+        if (best) best.here = best.d <= (ag.centerWithin || 20);
+        return best;
+    }
+
     // A step away from the pack's middle: it follows from one side and bunches up.
-    function stepAway(list) {
+    function stepAway(list, stepPx) {
         const me = util.xy(character);
         const mid = centerOf(list);
         const cx = mid.x, cy = mid.y;
         let dx = me.x - cx, dy = me.y - cy;
         const len = Math.hypot(dx, dy) || 1;
         dx /= len; dy /= len;
-        const step = ag.kiteStep || 120;
+        const step = stepPx || ag.kiteStep || 120;
         for (const turn of [0, 0.6, -0.6, 1.2, -1.2]) {
             const ux = dx * Math.cos(turn) - dy * Math.sin(turn), uy = dx * Math.sin(turn) + dy * Math.cos(turn);
             const x = me.x + ux * step, y = me.y + uy * step;
@@ -224,9 +253,13 @@ module.exports = function createWarrior(ctx) {
         const now = Date.now();
         if (pack.state === "idle") {
             const free = packAround(G.skills.agitate.range);
-            if (free.length < (ag.minPack || 3)) return false;
+            if ((ag.gather || "center") !== "center" && free.length < (ag.minPack || 3)) return false; // "center": bestPullPoint looks wider
             if (util.hpRatio() < (ag.minHp || 0.8) || !util.canCast("agitate") || character.mp < G.skills.agitate.mp) return false;
-            const others = unwantedAround(G.skills.agitate.range);
+            // "center": the best place to Agitate from (most pack monsters in reach, nothing
+            // unwanted, shortest walk) - see bestPullPoint.
+            const spot = (ag.gather || "center") === "center" ? bestPullPoint() : null;
+            if ((ag.gather || "center") === "center" && !spot) return false; // no place with a pack and nothing unwanted
+            const others = spot ? [] : unwantedAround(G.skills.agitate.range);
             if (others.length) {
                 util.status("agitate: waiting - " + others.length + "x " + others[0].mtype + " in reach", "white");
                 return false; // normal combat meanwhile; the next round may stand better
@@ -240,22 +273,19 @@ module.exports = function createWarrior(ctx) {
                 putOnSplash();
                 return true;
             }
-            // "center" (default since 2026-11-18): first walk into the middle of the pack, so
-            // every monster has about the same way to us and they arrive together (the arctic
-            // bees came one by one from 50-300 px and died alone before the next arrived).
-            if ((ag.gather || "center") === "center") {
-                const mid = centerOf(free);
-                if (Math.hypot(character.real_x - mid.x, character.real_y - mid.y) > (ag.centerWithin || 40) && can_move_to(mid.x, mid.y)) {
-                    if (!is_moving(character) || !pack.walkTo || Math.hypot(pack.walkTo.x - mid.x, pack.walkTo.y - mid.y) > 30) {
-                        pack.walkTo = mid;
-                        move(mid.x, mid.y);
-                    }
-                    util.status("agitate: into the pack (" + free.length + ")", "orange");
-                    return true;
+            // "center" (default since 2026-11-18): walk to the best pull point first - only as
+            // far as needed, so aggressive monsters don't start towards us before the Agitate
+            // and arrive one by one (the arctic bees came from 50-300 px and died alone).
+            if (spot && !spot.here) {
+                if (!is_moving(character) || !pack.walkTo || Math.hypot(pack.walkTo.x - spot.x, pack.walkTo.y - spot.y) > 40) {
+                    pack.walkTo = { x: spot.x, y: spot.y };
+                    move(spot.x, spot.y);
                 }
-                if (is_moving(character)) stop();
-                pack.walkTo = null;
+                util.status("agitate: to the pull point (" + spot.count + ")", "orange");
+                return true;
             }
+            if (spot && is_moving(character)) stop();
+            pack.walkTo = null;
             if (util.canCast("warcry") && character.mp >= G.skills.agitate.mp + G.skills.warcry.mp) use_skill("warcry").catch(function () {});
             use_skill("agitate").catch(function () {});
             ctx.gear.holdWeapons(ag.holdMs || 10 * 60 * 1000);
@@ -266,7 +296,12 @@ module.exports = function createWarrior(ctx) {
             pulledNow.forEach(function (m) { kinds[m.mtype] = (kinds[m.mtype] || 0) + 1; });
             util.log("warrior", "Agitate: " + Object.keys(kinds).map(function (k) { return kinds[k] + "x " + k; }).join(", "), "yellow");
             if ((ag.gather || "center") === "step") pack.state = stepAway(pulledNow) ? "gather" : "fight";
-            else pack.state = "fight";
+            else {
+                // A short step out of the pack: the splash works forward (around the target, the
+                // warrior's own body blocks the far side), so they should come from one side.
+                pack.state = ag.sideStep && stepAway(pulledNow, ag.sideStep) ? "gather" : "fight";
+            }
+            pack.lastAdjust = now;
             return true;
         }
         const mine = onMe();
@@ -313,6 +348,17 @@ module.exports = function createWarrior(ctx) {
         if ((ag.gather || "center") === "step" && mine.length >= 3 && avg < (ag.regroupBelow || 0.5) && now - pack.lastRegroup > (ag.regroupEveryMs || 8000)) {
             pack.recent = [];
             if (stepAway(mine)) { pack.state = "gather"; return true; }
+        }
+        // Monsters behind us (opposite the pack's main side) take no splash: a small step away
+        // from all of them puts them on one side again (at most every adjustEveryMs).
+        if ((ag.gather || "center") === "center" && ag.adjustStep && mine.length >= 3 && now - (pack.lastAdjust || 0) > (ag.adjustEveryMs || 4000)) {
+            const me = util.xy(character), mid = centerOf(mine);
+            const dx = mid.x - me.x, dy = mid.y - me.y;
+            const behind = mine.filter(function (m) { const p = util.xy(m); return (p.x - me.x) * dx + (p.y - me.y) * dy < 0; });
+            if (behind.length && behind.length < mine.length) {
+                pack.lastAdjust = now;
+                stepAway(mine, ag.adjustStep);
+            }
         }
         if (get_targeted_monster() !== best) change_target(best);
         if (can_attack(best)) {
