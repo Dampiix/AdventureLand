@@ -2375,8 +2375,17 @@ module.exports = function createWorkshop(ctx) {
             if (!copies.length || copies.some(function (l) { return l >= b.upTo; })) continue; // none, or one done
             if (character.esize < 3) return false;
             util.status("upgrading spare " + name + " +" + Math.max.apply(null, copies) + " towards +" + b.upTo, "orange");
+            // The wished stat goes on before the step into the next grade, like on the wish
+            // path: Rugged +6 takes 10 scrolls, +7 takes 100 (2026-11-18: Rugged Shoes +7 got
+            // their STR at +7 for ~800k instead of ~80k).
+            let stat = null;
+            fighters().some(function (f) {
+                const w = wishList(f).find(function (x) { return x.name === name && x.stat; });
+                if (w) stat = w.stat;
+                return !!w;
+            });
             try {
-                await develop("_box", { name: name, level: b.upTo }, { budgetKey: GOALS, minChance: 0, spare: true });
+                await develop("_box", { name: name, level: b.upTo }, { budgetKey: GOALS, minChance: 0, spare: true, stat: stat });
             } catch (e) {
                 const why = util.errReason(e);
                 util.log("workshop", name + " +" + b.upTo + ": " + why, "orange");
