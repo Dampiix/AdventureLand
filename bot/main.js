@@ -77,6 +77,9 @@ function startBot() {
         code_settings.log_smart_move = false;       // no "Searching for a path... / Path found!"
         code_settings.show_smart_move_text = false; // no floating pathfinding text
     }
+    // Town teleport in route planning (player decision 2026-11-18): smart_move may channel
+    // "Town" to the map's center when that is shorter than walking. Off by default in the game.
+    if (typeof smart !== "undefined") smart.use_town = !!(BOT_CONFIG.movement && BOT_CONFIG.movement.useTown);
     hideGoldLogs();
 
     const me = BOT_CONFIG.characters[character.name];

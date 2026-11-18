@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.109.0",
+    version: "1.110.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -109,6 +109,11 @@ module.exports = {
     },
 
     tickMs: 250,
+
+    // Routes (smart_move).
+    movement: {
+        useTown: true, // the Town skill (teleport to the map's center) where it shortens a route (2026-11-18)
+    },
 
     // Client display only (no effect headless).
     ui: {
