@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.119.2",
+    version: "1.120.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -261,7 +261,8 @@ module.exports = {
         // (2026-11-17); one at a time they are fine. Without rage a monster only lands a hit
         // in passing (bees 0.1, crabs, scorpions), and harmless ones never count.
         // strongHold: too-strong ones of the farm type stop the search walk only this close.
-        isolation: { enabled: true, minAggro: 0.3, minRage: 0.3, radius: 120, strongHold: 300 },
+        // watchMargin (2026-11-19): waiting for a lone one, the leader stands this far outside the spawn box edge
+        isolation: { enabled: true, minAggro: 0.3, minRage: 0.3, radius: 120, strongHold: 300, watchMargin: 150 },
         // Monster levels (player request 2026-11-16): from this level a monster is checked
         // again with its real stats before we pull it (team model, else its damage per
         // second must stay within tolerance x the level-1 monster's).

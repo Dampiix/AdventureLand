@@ -457,7 +457,11 @@ module.exports = function createFighter(ctx, cls) {
             // A Cavalry plan walks right into the spot (the call needs the monsters within 320 px).
             const hold = String(farm.source || "").startsWith("cavalry") ? null : targeting.waitForLone(farm.monster);
             if (hold) {
-                endSearchWalk();
+                // Waiting for a lone one: from the edge of the spawn, where the whole box is in
+                // sight (player request 2026-11-19) - not wherever the first one came into view.
+                const wp = hold === "lone" && targeting.watchPoint ? targeting.watchPoint(farm.monster) : null;
+                if (wp && util.distanceTo(wp) > 40) moveTo(wp);
+                else endSearchWalk();
                 util.status((hold === "strong" ? "too strong: " : "waiting for a lone ") + farm.monster, "white");
                 return;
             }

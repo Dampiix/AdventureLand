@@ -606,6 +606,30 @@ module.exports = function createTargeting(ctx) {
     // Returns "lone" (only packs in sight), "strong" (only ones above our level check in
     // sight – skipped, but walking on towards the spawn's middle ran the team into the
     // level-12 White Wolves, 2026-11-17) or null (walk on).
+    // Where to wait for a lone one (player request 2026-11-19): just outside the edge of the
+    // nearest spawn box of the kind on our map, isolation.watchMargin px out - close enough to see
+    // the whole box, far enough not to draw aggro. Null when no box of it is on this map.
+    function watchPoint(type) {
+        const me = util.xy(character);
+        const margin = icfg.watchMargin || 150;
+        let best = null, bestD = Infinity;
+        ((G.maps[character.map] || {}).monsters || []).forEach(function (pack) {
+            if (pack.type !== type) return;
+            const boxes = pack.boundaries ? pack.boundaries.filter(function (b) { return b[0] === character.map; }).map(function (b) { return b.slice(1); })
+                : pack.boundary ? [pack.boundary] : [];
+            boxes.forEach(function (b) {
+                const cx = (b[0] + b[2]) / 2, cy = (b[1] + b[3]) / 2;
+                // Nearest point of the box, then margin px further out along the way from its center.
+                const nx = Math.max(b[0], Math.min(b[2], me.x)), ny = Math.max(b[1], Math.min(b[3], me.y));
+                let dx = nx - cx, dy = ny - cy;
+                const len = Math.hypot(dx, dy) || 1;
+                const p = { map: character.map, x: Math.round(nx + dx / len * margin), y: Math.round(ny + dy / len * margin) };
+                const d = Math.hypot(p.x - me.x, p.y - me.y);
+                if (d < bestD && can_move_to(p.x, p.y)) { bestD = d; best = p; }
+            });
+        });
+        return best;
+    }
     function waitForLone(type) {
         if (!icfg.enabled) return null;
         let why = null;
@@ -1091,7 +1115,7 @@ module.exports = function createTargeting(ctx) {
     }
 
     return { currentFarm: currentFarm, pick: pick, isValid: isValid, reportSearch: reportSearch, isTeamSafe: isTeamSafe, whyUnsafe: whyUnsafe,
-        teamModelOn: teamModelOn, teamVerdict: teamVerdict, safetyReport: safetyReport, waitForLone: waitForLone, standPoint: standPoint, aggressive: aggressive, diedAt: diedAt, deathAt: deathAt, spotFor: spotFor, liveSafe: liveSafe, inOccupied: inOccupied, packVerdict: packVerdict, isEasy: isEasy,
+        teamModelOn: teamModelOn, teamVerdict: teamVerdict, safetyReport: safetyReport, waitForLone: waitForLone, watchPoint: watchPoint, standPoint: standPoint, aggressive: aggressive, diedAt: diedAt, deathAt: deathAt, spotFor: spotFor, liveSafe: liveSafe, inOccupied: inOccupied, packVerdict: packVerdict, isEasy: isEasy,
         // HP a solo fight against this monster costs (0 if it was never checked: harmless or low level).
         soloCost: function (e) { return (e && soloCostById[e.id]) || 0; } };
 };
