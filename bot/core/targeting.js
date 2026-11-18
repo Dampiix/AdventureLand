@@ -675,6 +675,14 @@ module.exports = function createTargeting(ctx) {
 
     // The guide's farm choices (up to three safe routes, best first) that are safe
     // for the whole team, skipping monsters whose spot was recently found crowded.
+    // The guide's computed XP per second for a route: the monster's XP over the route's cycle
+    // (player decision 2026-11-18, "nur Rechnung"). A route the guide has observed carries the
+    // measured XP instead - with Agitate and the Welcome Back bonus in it goo showed 1426 XP/s
+    // against ~800 computed for the others, and the warrior farmed goos.
+    function calcXp(r) {
+        const d = r && G.monsters[r.monster];
+        return d && r.cycle > 0 ? (d.xp || 0) / r.cycle : ((r && r.xp) || 0);
+    }
     function fromProgression() {
         let list = [];
         let spare = []; // other safe routes, for when every choice is crowded
@@ -688,7 +696,7 @@ module.exports = function createTargeting(ctx) {
                 const seen = {};
                 const teamList = advice.routes
                     .filter(function (r) { return r && G.monsters[r.monster] && !lastingObjector(r.monster, own); })
-                    .sort(function (a, b) { return (b.xp || 0) - (a.xp || 0); })
+                    .sort(function (a, b) { return calcXp(b) - calcXp(a); })
                     .filter(function (r) { if (seen[r.monster]) return false; seen[r.monster] = true; return true; })
                     .slice(0, 3)
                     .map(function (r) { return { monster: r.monster, map: r.map, source: "guide, team model" }; });
@@ -703,7 +711,7 @@ module.exports = function createTargeting(ctx) {
             const seenRaw = {};
             const ranked = Array.isArray(advice.routes) ? advice.routes
                 .filter(function (r) { return r && r.safe && G.monsters[r.monster]; })
-                .sort(function (a, b) { return (b.xp || 0) - (a.xp || 0); })
+                .sort(function (a, b) { return calcXp(b) - calcXp(a); })
                 .filter(function (r) { if (seenRaw[r.monster]) return false; seenRaw[r.monster] = true; return true; })
                 .slice(0, 3)
                 .map(function (r) { return { kind: "farm", monster: r.monster, map: r.map }; }) : [];
@@ -724,7 +732,7 @@ module.exports = function createTargeting(ctx) {
                 const seen = {};
                 list = advice.routes
                     .filter(function (r) { return r && r.safe && G.monsters[r.monster] && !objector(r.monster, own); })
-                    .sort(function (a, b) { return (b.xp || 0) - (a.xp || 0); })
+                    .sort(function (a, b) { return calcXp(b) - calcXp(a); })
                     .filter(function (r) { if (seen[r.monster]) return false; seen[r.monster] = true; return true; })
                     .slice(0, 3)
                     .map(function (r) { return { monster: r.monster, map: r.map, source: "guide, team-safe" }; });
@@ -733,7 +741,7 @@ module.exports = function createTargeting(ctx) {
                 const seen = {};
                 spare = advice.routes
                     .filter(function (r) { return r && r.safe && G.monsters[r.monster] && !objector(r.monster, own); })
-                    .sort(function (a, b) { return (b.xp || 0) - (a.xp || 0); })
+                    .sort(function (a, b) { return calcXp(b) - calcXp(a); })
                     .filter(function (r) { if (seen[r.monster]) return false; seen[r.monster] = true; return true; })
                     .map(function (r) { return { monster: r.monster, map: r.map, source: "guide, next free spot" }; });
             }
