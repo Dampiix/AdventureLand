@@ -228,11 +228,15 @@ function deriveTeam(cfg) {
         cfg.characters[name] = { role: "fighter", farm: (t.farm || {})[name] || null };
     });
     if (cfg.merchant) cfg.characters[cfg.merchant] = { role: "merchant" };
-    const others = t.fighters.filter(function (n) { return n !== t.leader; });
+    // team.solo: fighters that farm on their own outside the party (served by the merchant
+    // like the others, never invited or started by the leader) - e.g. a new character levelling.
+    const solo = t.solo || [];
+    const grouped = t.fighters.filter(function (n) { return !solo.includes(n); });
+    const others = grouped.filter(function (n) { return n !== t.leader; });
     const merchant = cfg.merchant ? [cfg.merchant] : [];
     cfg.phases = {
         solo: { startWithLeader: merchant, party: [] },
-        party: { startWithLeader: others.concat(merchant), party: t.fighters.slice() },
+        party: { startWithLeader: others.concat(merchant), party: grouped },
     };
     return cfg;
 }

@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.113.1",
+    version: "1.114.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -29,7 +29,9 @@ module.exports = {
         // Party again 2026-11-18 (evening): Agitate with the team at the bats, the ranger
         // collects his gear. Solo: leader "DmpxWar", phase "solo".
         leader: "DmpxPriest",
-        fighters: ["DmpxPriest", "DmpxWar", "DmpxRanger"],
+        fighters: ["DmpxPriest", "DmpxWar", "DmpxRanger", "DmpxRogue"],
+        // Fighters outside the party (2026-11-18: the new rogue levels on its own first).
+        solo: ["DmpxRogue"],
         merchant: "DampiixMerch",                       // null for no merchant
         farm: {},                                       // optional per-character farm override, e.g. { DmpxRanger: "bee" }
     },
@@ -154,7 +156,7 @@ module.exports = {
         },
         // "always" only applies once every fighter has reached this level
         minLevel: { phoenix: 40, goobrawl: 20, snowman: 10, graveyard: 40, mvampire: 50, jr: 40, greenjr: 40 },
-        search: [], // OFF 2026-11-18 evening (belt farming test); usual: ["phoenix", "mvampire", "jr", "greenjr"]
+        search: ["phoenix", "mvampire", "jr", "greenjr"], // roaming bosses the leader looks for (back on 2026-11-18 after the belt test)
         // Search again this long after a miss or a kill (player decision 2026-11-15: 30 min,
         // the walk costs farm time). Respawn times (game source): the Phoenix (respawn 32)
         // comes back ~32 s after its death at a random one of its 5 spots; Dracul (1080)
@@ -182,7 +184,7 @@ module.exports = {
 
     // Monster Hunts (Daisy). Unsafe hunts are left to expire.
     hunts: {
-        enabled: false, // OFF 2026-11-18 evening (belt farming test, booboo hunts only want 2)
+        enabled: true,
         minLevel: 20,                    // only once every fighter has this level (Daisy ignores our level)
         allow: [],                       // always hunt these, even if the guide calls them unsafe
         deny: [],                        // never hunt these
@@ -214,7 +216,7 @@ module.exports = {
         // Player decision 2026-11-17 (night): the solo warrior farms CGoos overnight (gold for the
         // budget pots after the reset, XP to 68, gems); the Phoenix is still searched every 30 min.
         // Boo Boo solo test 2026-11-17 (late) failed: he walked into the pack and died. Back to CGoos.
-        farm: "booboo",         // TEST 2026-11-18 evening (was stoneworm): can the party farm Spooky Town (belt map drop)? Back to null afterwards. null = the guide picks; e.g. "squigtoad" to force a monster for everyone
+        farm: null,             // null = the guide picks (back 2026-11-18 after the belt test: booboos work for the party): can the party farm Spooky Town (belt map drop)? Back to null afterwards. null = the guide picks; e.g. "squigtoad" to force a monster for everyone
         fallback: "goo",          // used when the progression guide has no answer
         // Farm only where every fighter's own guide calls the spot safe; routes the guide
         // only offers as a careful trial count once proven – by the guide's own fights, or
