@@ -276,14 +276,14 @@ module.exports = function createFighter(ctx, cls) {
         return true;
     }
     function escapePoint(me, pack, free, k) {
-        const awayX = me.x - pack.x, awayY = me.y - pack.y;
+
         let best = null, bestScore = -Infinity;
         for (const r of [150, 220, 300]) {
             for (let i = 0; i < 16; i++) {
                 const a = i * Math.PI / 8;
                 const x = me.x + Math.cos(a) * r, y = me.y + Math.sin(a) * r;
-                // Not through the pack: the point lies on our side of it.
-                if ((x - me.x) * awayX + (y - me.y) * awayY < -0.3 * r * Math.hypot(awayX, awayY)) continue;
+                // Through the pack is fine: monsters don't block the way, and they hit us anyway
+                // while we stand in reach (player note 2026-11-18). Only free ones are avoided.
                 if (free.some(function (p) { return Math.hypot(p.x - x, p.y - y) < (k.avoidRadius || 120); })) continue;
                 let open = 0;
                 for (let j = 0; j < 8; j++) {
