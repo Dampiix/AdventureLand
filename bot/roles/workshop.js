@@ -1027,7 +1027,10 @@ module.exports = function createWorkshop(ctx) {
             } catch (e) {
                 const reason = util.errReason(e);
                 util.log("workshop", "essence goal " + g.name + " +" + g.level + ": " + reason, "orange");
-                blockedUntil[k] = Date.now() + pauseAfter(k, reason);
+                // A full bag (a handover just filled it) or an empty ladder pot clears soon:
+                // try again in a few minutes, not after an hour (2026-11-18: buy_cant_space).
+                const soon = /space|bag full|budget|gold/.test(reason);
+                blockedUntil[k] = Date.now() + (soon ? (cfg.retryAfterBudgetMs || 10 * 60 * 1000) : pauseAfter(k, reason));
             }
             const spentHere = before - ownedCount(eg.material);
             if (spentHere > 0) essenceUsed[k] = used + spentHere;
