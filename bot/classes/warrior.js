@@ -487,6 +487,13 @@ module.exports = function createWarrior(ctx) {
             return false; // potions as usual
         },
 
+        // Agitate "stream": while Agitate can't be cast, walk to the incoming monsters instead
+        // of waiting for them (player request 2026-11-18).
+        meetIncoming: function () {
+            return packOn() && agMode() === "swords" && (ag.swords || "stream") === "stream" &&
+                (!util.canCast("agitate") || character.mp < G.skills.agitate.mp + reserve());
+        },
+
         support: function () {
             if (packTick()) return true; // Agitate pack mode (solo test)
             const others = onOthers();

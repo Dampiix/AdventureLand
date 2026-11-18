@@ -396,7 +396,10 @@ module.exports = function createFighter(ctx, cls) {
             const onMember = !melee && victimName === null && target.target && target.target !== character.name &&
                 party.memberNames().includes(target.target) && get_player(target.target) &&
                 util.distanceTo(get_player(target.target)) < (character.range || 0) * 0.9;
-            if ((onMember || target.target === character.name) && (def.range || 0) <= (character.range || 0) + 10) {
+            // A class mode may want us to meet them instead (warrior Agitate "stream": while
+            // Agitate is on cooldown we walk to them, player request 2026-11-18).
+            const meet = cls.meetIncoming && cls.meetIncoming();
+            if (!meet && (onMember || target.target === character.name) && (def.range || 0) <= (character.range || 0) + 10) {
                 if (is_moving(character) && !(typeof smart !== "undefined" && smart.moving)) stop();
                 util.status("waiting for " + target.mtype, "orange");
                 return;
