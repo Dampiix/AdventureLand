@@ -470,12 +470,33 @@ module.exports = function createGear(ctx) {
     // (2026-11-18: right after a pull the merchant saw a Lolipop in the offhand and brought
     // a spare Fireblade +7). Dropped once we wear them again.
     let usualWeapons = null;
+    function isSplashWeapon(i) {
+        const def = i && G.items[i.name];
+        return !!(def && def.type === "weapon" && def.explosion > 0);
+    }
+    // Our usual weapon for a slot: what we wear there, unless that is a splash weapon (a mode's
+    // weapon, e.g. after a restart mid-mode) - then the strongest other bag weapon for it.
+    function usualFor(slot, taken) {
+        const i = character.slots && character.slots[slot];
+        if (i && !isSplashWeapon(i)) return { item: i, num: -1 };
+        let best = null, bestPower = 0;
+        character.items.forEach(function (it, num) {
+            if (!it || taken.includes(num) || isSplashWeapon(it) || !G.items[it.name] || G.items[it.name].type !== "weapon") return;
+            if (slot === "offhand" && !((G.classes[character.ctype].offhand || {})[G.items[it.name].wtype])) return;
+            const p = util.weaponPower(it.name, it.level || 0, character.ctype);
+            if (p > bestPower) { best = { item: it, num: num }; bestPower = p; }
+        });
+        return best || (i ? { item: i, num: -1 } : null);
+    }
     function holdWeapons(ms) {
         if (ms && !usualWeapons && !weaponsHeld()) {
             usualWeapons = {};
+            const taken = [];
             ["mainhand", "offhand"].forEach(function (s) {
-                const i = character.slots && character.slots[s];
-                if (i) usualWeapons[s] = { name: i.name, level: i.level || 0, stat: i.stat_type || null };
+                const u = usualFor(s, taken);
+                if (!u) return;
+                if (u.num >= 0) taken.push(u.num);
+                usualWeapons[s] = { name: u.item.name, level: u.item.level || 0, stat: u.item.stat_type || null };
             });
         }
         heldUntil = ms ? Date.now() + ms : 0;
@@ -487,7 +508,7 @@ module.exports = function createGear(ctx) {
 
     function tick() {
         if (!cfg.enabled) return;
-        if (weaponsHeld()) return;
+        if (weaponsHeld()) { sendWishes(); return; } // reports our usual weapons; no equip pass
         if (heldUntil) { heldUntil = 0; lastBag = ""; } // the hold ran out on its own
         if (usualWeapons && Object.keys(usualWeapons).every(function (s) {
             const i = character.slots && character.slots[s];
