@@ -318,6 +318,7 @@ module.exports = function createMerchant(ctx) {
     function isSellable(item) {
         if (item.p || item.l) return false;            // shiny / locked never
         if (workshop.isReserved(item)) return false;    // a fighter wishes for it
+        if (workshop.fillsEmptySlot(item)) return false; // a team fighter has that slot empty (e.g. a new rogue)
         if (workshop.isOrphanStatCopy(item)) return true;   // shop armor in a stat no fighter still builds
         if (workshop.isSpareJoyRing(item)) return true;     // every fighter wears two rings at +2 or better
         if (workshop.isDoneBoxArmor(item)) return true;     // Rugged piece already worn/held at +7 (before the goal-stock rule: a worn Rugged helmet makes its name a goal name)
