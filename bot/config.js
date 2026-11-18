@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.119.1",
+    version: "1.119.2",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -651,7 +651,8 @@ module.exports = {
             // Next weapon step (player decision 2026-11-16): once a fighter's weapon (shop or
             // fire) is at gearGoals.upTo, its "of the Dead" weapon is crafted (Bones from
             // Zombies + a shop weapon + fee) and upgraded until it is stronger.
-            craft: ["maceofthedead", "staffofthedead", "bowofthedead"],
+            // Paused 2026-11-19 (player decision): the first Bones are kept, nothing crafts with them.
+            craft: [], // was ["maceofthedead", "staffofthedead", "bowofthedead"]
             // Bought with tokens when we hold none (player decision 2026-11-16: the Concord
             // Mace first – a paladin's mace beats the fireblade +7 already at +4).
             buy: [], // concordmace paused 2026-11-16 (no paladin; shop +9 first)
