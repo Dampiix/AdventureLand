@@ -201,12 +201,17 @@ module.exports = function createWarrior(ctx) {
                 const d = Math.hypot(gx, gy);
                 if (d > search) continue;
                 const x = me.x + gx, y = me.y + gy;
-                const count = pool.filter(function (p) { return Math.hypot(p.x - x, p.y - y) <= reach; }).length;
+                const dists = pool.map(function (p) { return Math.hypot(p.x - x, p.y - y); }).filter(function (v) { return v <= reach; });
+                const count = dists.length;
                 if (count < (ag.minPack || 3)) continue;
-                if (best && (count < best.count || (count === best.count && d >= best.d))) continue;
+                // Same count: the smallest average way for the pulled monsters (player decision
+                // 2026-11-18) - short and even ways, so they arrive together; our walk breaks ties.
+                const avg = dists.reduce(function (s, v) { return s + v; }, 0) / count;
+                if (best && (count < best.count || (count === best.count &&
+                    (avg > best.avg + 1 || (Math.abs(avg - best.avg) <= 1 && d >= best.d))))) continue;
                 if (bad.some(function (p) { return Math.hypot(p.x - x, p.y - y) <= reach + 20; })) continue;
                 if (d > 0 && !can_move_to(x, y)) continue; // checked last: the costly one
-                best = { x: x, y: y, count: count, d: d };
+                best = { x: x, y: y, count: count, d: d, avg: avg };
             }
         }
         if (best) best.here = best.d <= (ag.centerWithin || 20);
