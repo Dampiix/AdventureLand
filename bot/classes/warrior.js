@@ -119,16 +119,17 @@ module.exports = function createWarrior(ctx) {
         if (m !== lastMode) {
             if (lastMode !== null) {
                 util.log("warrior", "agitate mode: " + m, "yellow");
-                if (m !== "splash" && m !== "chain") ctx.gear.holdWeapons(0); // usual weapons back at once
+                if (!SPLASH_MODES.includes(m)) ctx.gear.holdWeapons(0); // usual weapons back at once
                 pack.state = "idle";
             }
             lastMode = m;
         }
         return m;
     }
+    const SPLASH_MODES = ["splash", "chain", "splashstream"];
     function splashMode() {
         const m = agMode();
-        return m === "splash" || m === "chain"; // "chain": splash pulls that start the next pull early
+        return SPLASH_MODES.includes(m); // "chain": splash pulls that start the next pull early; "splashstream": stream with splash
     }
     function packOn() {
         return agMode() !== "off" && !ctx.party.enabled && !!G.skills.agitate && character.level >= (G.skills.agitate.level || 68);
@@ -311,7 +312,7 @@ module.exports = function createWarrior(ctx) {
     // nearest first); with nobody in range, walk to the nearest monster - on its way to us
     // or free - instead of waiting. False when nothing is around (normal search takes over).
     let streamWalkTo = null;
-    function streamFight() {
+    function streamFight(splash) {
         const around = Object.values(parent.entities || {}).filter(function (e) {
             if (!e || e.type !== "monster" || e.dead || !e.visible) return false;
             if (e.target === character.name) return true;
@@ -321,7 +322,13 @@ module.exports = function createWarrior(ctx) {
         if (!around.length) return false;
         const inRange = around.filter(function (m) { return is_in_range(m); });
         if (inRange.length) {
-            const t = inRange.find(function (m) { return m.target === character.name; }) || inRange[0];
+            let t = inRange.find(function (m) { return m.target === character.name; }) || inRange[0];
+            if (splash) {
+                // Splash stream: the one in range with the most others in the splash radius.
+                const mine = onMe();
+                let bestN = -1;
+                inRange.forEach(function (m) { const n = splashNeighbours(m, mine); if (n > bestN) { bestN = n; t = m; } });
+            }
             if (get_targeted_monster() !== t) change_target(t);
             if (can_attack(t)) attack(t).catch(function () {});
             streamWalkTo = null;
@@ -340,6 +347,17 @@ module.exports = function createWarrior(ctx) {
 
     function packTick() {
         if (!packOn()) return false;
+        if (agMode() === "splashstream") {
+            // Stream with the splash weapons on (player test 2026-11-18).
+            if (!wearingSplash()) {
+                if (!splashWeapons().length) return false;
+                if (!pack.busy) putOnSplash();
+                return true;
+            }
+            ctx.gear.holdWeapons(ag.keepMs || 60 * 1000);
+            streamAgitate();
+            return streamFight(true);
+        }
         if (agMode() === "swords" && (ag.swords || "stream") === "stream") {
             streamAgitate();
             return streamFight();

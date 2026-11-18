@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.99.7",
+    version: "1.99.8",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
