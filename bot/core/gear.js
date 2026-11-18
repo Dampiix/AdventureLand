@@ -280,6 +280,7 @@ module.exports = function createGear(ctx) {
             const item = character.slots[slot];
             if (item && item.name) out[slot] = { name: item.name, level: item.level || 0, stat: item.stat_type || null };
         });
+        if (usualWeapons) Object.keys(usualWeapons).forEach(function (s) { out[s] = usualWeapons[s]; });
         return out;
     }
 
@@ -465,7 +466,18 @@ module.exports = function createGear(ctx) {
     // the mode's weapons (it would start building our usual ones again from essence).
     // When the hold ends, the next equip pass puts the stronger weapons back on.
     let heldUntil = 0;
+    // The weapons we usually wear, while a mode wears others: the wish report shows these
+    // (2026-11-18: right after a pull the merchant saw a Lolipop in the offhand and brought
+    // a spare Fireblade +7). Dropped once we wear them again.
+    let usualWeapons = null;
     function holdWeapons(ms) {
+        if (ms && !usualWeapons && !weaponsHeld()) {
+            usualWeapons = {};
+            ["mainhand", "offhand"].forEach(function (s) {
+                const i = character.slots && character.slots[s];
+                if (i) usualWeapons[s] = { name: i.name, level: i.level || 0, stat: i.stat_type || null };
+            });
+        }
         heldUntil = ms ? Date.now() + ms : 0;
         if (!ms) lastBag = ""; // released: re-check the bag at once
     }
@@ -477,6 +489,10 @@ module.exports = function createGear(ctx) {
         if (!cfg.enabled) return;
         if (weaponsHeld()) return;
         if (heldUntil) { heldUntil = 0; lastBag = ""; } // the hold ran out on its own
+        if (usualWeapons && Object.keys(usualWeapons).every(function (s) {
+            const i = character.slots && character.slots[s];
+            return i && i.name === usualWeapons[s].name && (i.level || 0) >= usualWeapons[s].level;
+        })) usualWeapons = null; // back in our usual weapons
         sendWishes();
         const key = bagKey();
         if (key !== lastBag) trackBag();
