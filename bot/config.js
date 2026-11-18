@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.118.1",
+    version: "1.118.2",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -158,7 +158,7 @@ module.exports = {
         },
         // "always" only applies once every fighter has reached this level
         minLevel: { phoenix: 40, goobrawl: 20, snowman: 10, graveyard: 40, mvampire: 50, jr: 40, greenjr: 40 },
-        search: ["phoenix", "mvampire", "jr", "greenjr"], // roaming bosses the leader looks for (back on 2026-11-18 after the belt test)
+        search: [], // OFF 2026-11-19 (dino test); usual: ["phoenix", "mvampire", "jr", "greenjr"]
         // Search again this long after a miss or a kill (player decision 2026-11-15: 30 min,
         // the walk costs farm time). Respawn times (game source): the Phoenix (respawn 32)
         // comes back ~32 s after its death at a random one of its 5 spots; Dracul (1080)
@@ -186,7 +186,7 @@ module.exports = {
 
     // Monster Hunts (Daisy). Unsafe hunts are left to expire.
     hunts: {
-        enabled: true,
+        enabled: false, // OFF 2026-11-19 (dino test)
         minLevel: 20,                    // only once every fighter has this level (Daisy ignores our level)
         allow: [],                       // always hunt these, even if the guide calls them unsafe
         deny: [],                        // never hunt these
@@ -218,7 +218,7 @@ module.exports = {
         // Player decision 2026-11-17 (night): the solo warrior farms CGoos overnight (gold for the
         // budget pots after the reset, XP to 68, gems); the Phoenix is still searched every 30 min.
         // Boo Boo solo test 2026-11-17 (late) failed: he walked into the pack and died. Back to CGoos.
-        farm: "stoneworm",      // 2026-11-18 (late): belts with priest, warrior and rogue - stoneworms while booboos wait for the Cavalry. null = the guide picks
+        farm: "odino",          // TEST 2026-11-19: dinos in the Mansion Forest (bones 1/400). Before: stoneworm. null = the guide picks
         fallback: "goo",          // used when the progression guide has no answer
         // Farm only where every fighter's own guide calls the spot safe; routes the guide
         // only offers as a careful trial count once proven – by the guide's own fights, or
