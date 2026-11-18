@@ -338,9 +338,20 @@ module.exports = function createWarrior(ctx) {
             if (n > bestN || (n === bestN && best && m.hp < best.hp)) { best = m; bestN = n; }
         });
         if (!best) {
-            util.status("agitate: waiting for the pack (" + mine.length + ")", "orange");
+            // Nobody in range: meet the nearest one instead of waiting (player request
+            // 2026-11-18: the last 2-3 from the far side took long to arrive). Monsters first
+            // walk to where we cast Agitate, then to us - so going to them is the shortest.
+            const near = mine.slice().sort(function (a, b) { return util.distanceTo(a) - util.distanceTo(b); })[0];
+            const p = util.xy(near);
+            if (!is_moving(character) || !pack.chase || Math.hypot(pack.chase.x - p.x, pack.chase.y - p.y) > 30) {
+                pack.chase = p;
+                if (can_move_to(p.x, p.y)) move(p.x, p.y);
+                else xmove(p.x, p.y);
+            }
+            util.status("agitate: to the next one (" + mine.length + " left)", "orange");
             return true;
         }
+        pack.chase = null;
         // The first swing waits until most of the pack is here (waitShare of the pulled ones in
         // range, at most waitMs): a lone first arrival would just die alone.
         if (!pack.attacks && now - pack.since < (ag.waitMs || 3000)) {
