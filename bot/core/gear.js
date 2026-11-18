@@ -309,6 +309,19 @@ module.exports = function createGear(ctx) {
     // owned items that add attack or 10+ armor, so a +0 piece for an EMPTY slot
     // (gloves, amulet, ...) is never equipped by it – we do that ourselves: anything
     // usable beats an empty slot.
+    // A wrong scroll stat (player rule 2026-11-18): a piece with a stat slot (shop armor,
+    // Rugged ...) carrying another main stat than ours counts as weaker than the same kind of
+    // piece with our stat up to one level lower - helmet +7 DEX beats helmet +8 STR for a rogue.
+    // Built-in stats (Dagger of the Dead +20 STR) and pieces without a stat slot are not affected.
+    function wrongStat(it) {
+        const def = it && G.items[it.name];
+        const own = G.classes[character.ctype] && G.classes[character.ctype].main_stat;
+        return !!(def && def.stat && it.stat_type && ["str", "int", "dex"].includes(it.stat_type) && it.stat_type !== own);
+    }
+    function ownStat(it) {
+        const own = G.classes[character.ctype] && G.classes[character.ctype].main_stat;
+        return !!(it && it.stat_type && it.stat_type === own);
+    }
     async function equipPass() {
         equipping = true;
         const wornBefore = JSON.stringify(worn());
@@ -320,6 +333,8 @@ module.exports = function createGear(ctx) {
                 if (!item || item.name !== a.name || (item.level || 0) !== (a.level || 0)) continue; // bag changed meanwhile
                 if (isCarry(item.name)) continue; // carried for a later mode, not worn
                 if (chainDowngrade(item, a.slot)) continue;
+                const there = character.slots && character.slots[a.slot];
+                if (wrongStat(item) && ownStat(there) && (there.level || 0) >= (item.level || 0) - 1) continue; // our stat wins
                 await equip(a.num, a.slot);
                 util.log("gear", "equipped " + a.name + " +" + (a.level || 0) + " -> " + a.slot, "green");
                 return; // the bag changed – re-read the guide next time
@@ -334,6 +349,8 @@ module.exports = function createGear(ctx) {
                     const w = character.slots && character.slots[s];
                     if (!w || w.name !== item.name) return false;
                     const lvl = item.level || 0, wl = w.level || 0;
+                    if (wrongStat(w) && ownStat(item)) return lvl >= wl - 1; // our stat over a wrong one
+                    if (wrongStat(item)) return false;
                     if (w.stat_type && item.stat_type !== w.stat_type) return false;
                     return lvl > wl || (lvl === wl && !!item.stat_type && !w.stat_type);
                 });

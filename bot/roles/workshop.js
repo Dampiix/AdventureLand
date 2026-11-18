@@ -2067,13 +2067,18 @@ module.exports = function createWorkshop(ctx) {
                 const empty = SLOTS_BY_TYPE[type].filter(function (s) { return !eq[s]; }).length;
                 const pending = activeEarmarks().filter(function (e) { return e.fighter === f && G.items[e.name] && G.items[e.name].type === type; }).length;
                 for (let n = pending; n < empty; n++) {
-                    const i = pool.findIndex(function (p) {
+                    // A piece with a stat scroll only goes to a fighter with that main stat
+                    // (three Horse Leather Capes with STR/INT/DEX, 2026-11-17); among the fitting
+                    // ones our stat first, then the highest level (2026-11-18: the rogue got Hand
+                    // of Midas while gloves +7 DEX lay in the bank).
+                    const own = G.classes[classes[f]] && G.classes[classes[f]].main_stat;
+                    let i = -1, iScore = -Infinity;
+                    pool.forEach(function (p, k) {
                         const def = G.items[p.name];
-                        // A piece with a stat scroll only goes to a fighter with that main stat
-                        // (three Horse Leather Capes with STR/INT/DEX, 2026-11-17).
-                        const own = G.classes[classes[f]] && G.classes[classes[f]].main_stat;
-                        return def && def.type === type && usableBy(def, classes[f]) && !isGoalStock(p) &&
-                            (!p.stat || !MAIN_STATS.includes(p.stat) || p.stat === own);
+                        if (!(def && def.type === type && usableBy(def, classes[f]) && !isGoalStock(p) &&
+                            (!p.stat || !MAIN_STATS.includes(p.stat) || p.stat === own))) return;
+                        const score = (p.stat === own ? 1000 : 0) + (p.level || 0);
+                        if (score > iScore) { iScore = score; i = k; }
                     });
                     if (i === -1) return;
                     const p = pool.splice(i, 1)[0];
@@ -2134,10 +2139,19 @@ module.exports = function createWorkshop(ctx) {
                 if (Date.now() - (filledAt[f + "|" + def.type] || 0) < 10 * 60 * 1000) return;
                 const others = fighters().some(function (o) { return o !== f && wishList(o).some(function (x) { return x.name === w.name; }); });
                 if (others) return;
+                // Scroll stats (player rule 2026-11-18): never a copy with another main stat than
+                // the fighter's; a worn piece with a wrong stat is replaced by one with the right
+                // stat up to one level lower (the rogue got helmet +8 STR over helmet +7 DEX).
+                const own = G.classes[classes[f]] && G.classes[classes[f]].main_stat;
+                const wrong = function (x) { return !!(def.stat && x && x.stat && MAIN_STATS.includes(x.stat) && x.stat !== own); };
                 let best = -1;
                 pool.forEach(function (p, i) {
-                    if (p.name !== w.name || p.level <= (w.level || 0)) return;
-                    if (w.stat && p.stat !== w.stat) return;
+                    if (p.name !== w.name || wrong(p)) return;
+                    if (wrong(w)) { if (p.stat !== own || p.level < (w.level || 0) - 1) return; }
+                    else {
+                        if (p.level <= (w.level || 0)) return;
+                        if (w.stat && p.stat !== w.stat) return;
+                    }
                     if (best === -1 || p.level > pool[best].level) best = i;
                 });
                 if (best === -1) return;
