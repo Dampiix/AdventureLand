@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.94.0",
+    version: "1.94.1",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -201,7 +201,7 @@ module.exports = {
         // Player decision 2026-11-17 (night): the solo warrior farms CGoos overnight (gold for the
         // budget pots after the reset, XP to 68, gems); the Phoenix is still searched every 30 min.
         // Boo Boo solo test 2026-11-17 (late) failed: he walked into the pack and died. Back to CGoos.
-        farm: "croc",           // Agitate test 2026-11-18 (was "cgoo"); e.g. "squigtoad" to force a monster for everyone (null = guide)
+        farm: "bat",            // Agitate test 2026-11-18 (crocs taken; was "cgoo"); e.g. "squigtoad" to force a monster for everyone (null = guide)
         fallback: "goo",          // used when the progression guide has no answer
         // Farm only where every fighter's own guide calls the spot safe; routes the guide
         // only offers as a careful trial count once proven – by the guide's own fights, or
@@ -338,7 +338,7 @@ module.exports = {
             // Each pull is logged ("pull done: ... splash neighbours per hit").
             agitate: {
                 enabled: true,
-                monsters: ["croc"],   // only these start a pull (empty = any) - test on weak crocs
+                monsters: ["bat"],    // only these start a pull (empty = any) - test (crocs worked but were taken)
                 minPack: 3,
                 minHp: 0.8,           // start a pull only above this HP share
                 abortHp: 0.3,         // below: walk away from the pack
