@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.123.4",
+    version: "1.124.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -72,7 +72,10 @@ module.exports = {
     // (betterWeapons), locked or titled copies, and copies up to a market.buy "want".
     dismantle: {
         enabled: true,
-        names: ["fireblade", "firestaff", "firebow"],
+        // of-the-Dead weapons into Bones (player decision 2026-11-19) - except the Sword of the Dead:
+        // its base (Short Sword) only comes from weapon boxes, so it can't be rebuilt.
+        names: ["fireblade", "firestaff", "firebow",
+            "maceofthedead", "staffofthedead", "bowofthedead", "daggerofthedead", "pmaceofthedead", "spearofthedead"],
         maxLevel: 0, // +1 and higher copies stay (they would only give one essence as well)
     },
 
@@ -820,7 +823,7 @@ module.exports = {
             // "dagger" kept since 2026-11-19 (player decision: no investment, but not sold either)
             "snowball",
             // V1 upgraded short swords to +4 – no longer needed (approved 2026-11-15)
-            { name: "sword", maxLevel: 4 },
+            // Short Swords are no longer sold (2026-11-19): the base of the Sword of the Dead.
             // the Paladin's old starter gear (approved 2026-11-15).
             // Accessories (rings, belts, amulets, earrings) and books are NOT sold:
             // they are compound/upgrade material the progression guide asks for –
