@@ -308,6 +308,10 @@ module.exports = function createDrops(ctx) {
     function target(isCrowded) {
         if (!cfg.enabled || !leads) return null;
         if (Date.now() >= nextCheckAt) check();
+        // By value without values (right after a restart): the XP spot, not the old "any drop
+        // faster than maxHoursPerCopy" rule (2026-11-19: it sent the team to the arctic bees for
+        // STR rings at 3.3 h per copy).
+        if (cfg.byValue && !(values && Date.now() - valuesAt < 60 * 60 * 1000)) { lastPick = ""; return null; }
         if (cfg.byValue && values && Date.now() - valuesAt < 60 * 60 * 1000) {
             const vp = valuePick(isCrowded);
             if (!vp) {

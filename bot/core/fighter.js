@@ -769,13 +769,42 @@ module.exports = function createFighter(ctx, cls) {
         const ev = ctx.events.current();
         if (party.keepUp(!!(ev && ev.join))) return;
         if (party.leaderTravels && party.leaderTravels()) { party.idleFollow(); return; } // no fights on the way
+        const covering = coverMembers();
         if (cls.support()) {
             // Healing while passing through: keep walking (a priest healing the warrior every tick
             // never got to travel on - 2026-11-19).
-            if (passing && Date.now() < passing.until && !is_moving(character)) travel(passing.dest, "passing");
+            if (!covering && passing && Date.now() < passing.until && !is_moving(character)) travel(passing.dest, "passing");
             return;
         }
+        if (covering) return;
         handleCombat();
+    }
+
+    // A healer leader stays with a member under attack instead of walking on to the next spot
+    // (2026-11-19: the priest left for the arctic bees, the warrior left the mummies alone and
+    // died). Moves into heal range; heals go on as usual (cls.support).
+    let coverMoveAt = 0;
+    function coverMembers() {
+        if (!party.enabled || !party.isLeader) return false;
+        const heal = G.skills.heal;
+        if (!heal || !(heal.class || []).includes(character.ctype)) return false;
+        let worst = null;
+        party.memberNames().forEach(function (n) {
+            if (n === character.name) return;
+            const p = get_player(n);
+            if (!p || p.rip || p.map !== character.map) return;
+            const hit = Object.values(parent.entities || {}).some(function (e) { return e && e.type === "monster" && !e.dead && e.target === n; });
+            if (!hit) return;
+            const d = util.distanceTo(p);
+            if (d > (character.range || 200) * 0.8 && (!worst || d > worst.d)) worst = { p: p, d: d };
+        });
+        if (!worst) return false;
+        util.status("covering " + worst.p.name, "yellow");
+        if (Date.now() - coverMoveAt > 700) {
+            coverMoveAt = Date.now();
+            try { xmove(worst.p.x, worst.p.y); } catch (e) { move(worst.p.x, worst.p.y); }
+        }
+        return true;
     }
 
     async function loop() {
