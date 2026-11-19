@@ -86,10 +86,12 @@ module.exports = function createWorkshop(ctx) {
     });
     // Value report (stage 1): the fighters' XP value and the leader's per-copy farm times.
     const fighterValues = {};
-    const dropTimes = {};
+    // Kept across restarts: without them every wish needing drops sorts as "unknown" for 15 min.
+    const dropTimes = (function () { try { return get("dmpx_drop_times") || {}; } catch (e) { return {}; } })();
     comms.on("droptimes", function (data, from) {
         if (from !== config.leader) return;
         Object.assign(dropTimes, data.times || {});
+        try { set("dmpx_drop_times", dropTimes); } catch (e) { /* storage unavailable */ }
     });
     comms.on("wishes", function (data, from) {
         if (data.value) fighterValues[from] = Object.assign({ at: Date.now() }, data.value);
@@ -2496,7 +2498,7 @@ module.exports = function createWorkshop(ctx) {
         const k = function (x) { return x >= 1e6 ? (x / 1e6).toFixed(1) + "M" : Math.round(x / 1000) + "k"; };
         util.log("value", "XP " + (xp || "?") + " | gold " + (goldPerHour ? k(goldPerHour) + "/h" : "?") + " = " + (goldPower === null ? "?" : goldPower + "%/h"), "white");
         rows.slice(0, vr.top || 6).forEach(function (r) {
-            util.log("value", r.item + " " + r.fighter + ": +" + r.gain + "% for " + (r.unknown.length ? "? (no farm time: " + r.unknown.join(", ") + ")" : r.hours + " h") +
+            util.log("value", r.item + " " + r.fighter + ": " + (r.gain >= 0 ? "+" : "") + r.gain + "% for " + (r.unknown.length ? "? (no farm time: " + r.unknown.join(", ") + ")" : r.hours + " h") +
                 " (" + k(r.gold) + (r.copies ? ", " + r.copies + " copies" : "") + ")" + (r.value === null ? "" : " -> " + r.value + "%/h"), "white");
         });
         try { set("dmpx_value_report", { at: Date.now(), goldPerHour: goldPerHour, goldPower: goldPower, xp: fighterValues, rows: rows.slice(0, 25) }); } catch (e) { /* storage unavailable */ }
@@ -2571,6 +2573,11 @@ module.exports = function createWorkshop(ctx) {
                 const ta = tier(a), tb = tier(b);
                 if (ta !== tb) return ta - tb;
                 if (ta === 0 && perGold(a) !== perGold(b)) return perGold(b) > perGold(a) ? 1 : -1;
+                // Needs farming: most gain per hour first (gold + farm time); unknown times after.
+                if (ta === 1 && a.v && b.v) {
+                    const va = a.v.value === null ? -1 : a.v.value, vb = b.v.value === null ? -1 : b.v.value;
+                    if (va !== vb) return vb - va;
+                }
                 return a.rank - b.rank || (lastServed[a.fighter] || 0) - (lastServed[b.fighter] || 0);
             });
         }
