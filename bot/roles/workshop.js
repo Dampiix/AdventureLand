@@ -390,12 +390,23 @@ module.exports = function createWorkshop(ctx) {
         return G.items[name] && !sellerOf(name) ? b.rare : b.shop;
     }
 
+    // workshop.keepGold: a number, or { share, max } (player decision 2026-11-19): share of the
+    // highest merchant gold of the last 24 h, at most max - a fresh account starts at once and
+    // the floor grows with the capital (a share of the current gold alone would shrink with
+    // every purchase).
+    function keepGold() {
+        const kg = cfg.keepGold;
+        if (typeof kg === "number") return kg;
+        if (!kg) return 0;
+        const peak = (income.samples || []).reduce(function (m, s) { return Math.max(m, s.gold || 0); }, character.gold);
+        return Math.min(kg.max || Infinity, peak * (kg.share || 0));
+    }
     function canSpend(k, amount) {
         // Never below the floor: the larger of the potion reserve and workshop.keepGold. The
         // merchant's own wishes (stand, tools) only keep the potion reserve - a fresh account
         // must not wait for millions to buy a 40k stand.
         const reserve = util.goldAmount(config.merchantRole.goldReserve);
-        const floor = k.indexOf("_own:") === 0 ? reserve : Math.max(reserve, cfg.keepGold || 0);
+        const floor = k.indexOf("_own:") === 0 ? reserve : Math.max(reserve, keepGold());
         if (character.gold - amount < floor) return false;
         if (k === GOALS) return goalBudget().allowed >= amount;
         if (k === LADDER) return ladderBudget().allowed >= amount;

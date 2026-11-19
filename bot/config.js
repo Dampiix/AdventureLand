@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.133.1",
+    version: "1.133.2",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -814,7 +814,9 @@ module.exports = {
         // and only once grace has raised its chance to `minChance`.
         // The workshop (wishes, gear goals, grace) never spends below this (player
         // decision 2026-11-16, together with the income-based gear-goal budget).
-        keepGold: 5000000,
+        // Since 2026-11-19 (player decision, fresh account): 20 % of the highest merchant gold of the
+        // last 24 h, at most 5M (was a fixed 5M - nothing was ever spent on a new account).
+        keepGold: { share: 0.2, max: 5000000 },
         gearGoals: {
             enabled: true,
             // Since 2026-11-15 (player request): don't let armor and weapons wait while the guide
