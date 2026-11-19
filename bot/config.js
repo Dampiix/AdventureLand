@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.134.0",
+    version: "1.134.1",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -71,7 +71,8 @@ module.exports = {
         // Ponty (player request 2026-11-19, fresh account): every everyMs the merchant checks his
         // listings and buys what a fighter wishes or a gear goal needs - better than our best copy
         // and at most maxShareOfOwn of what making it ourselves would cost. From the shopping pot.
-        ponty: { enabled: true, everyMs: 20 * 60 * 1000, maxShareOfOwn: 1 },
+        // Off until the buying rules are agreed (player, 2026-11-19).
+        ponty: { enabled: false, everyMs: 20 * 60 * 1000, maxShareOfOwn: 1 },
     },
 
     // Dismantle drops (player decision 2026-11-17): instead of upgrading them, the merchant
