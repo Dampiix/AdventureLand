@@ -103,8 +103,13 @@ module.exports = function createGear(ctx) {
     function classChains() {
         // Paused for every class while the shop gear goes to +9 (player decision 2026-11-16).
         if (cfg.classWishesEnabled === false) return [];
+        // From the gear plan (config.gearPlan, 2026-11-19); the old per-class table as a fallback.
+        const plan = config.gearPlan;
         const table = cfg.classWishes || {};
-        return (table.all || []).concat(table[character.ctype] || []).map(function (e) {
+        const entries = plan && plan.chainsFor
+            ? plan.chainsFor(character.ctype, G.classes[character.ctype] && G.classes[character.ctype].main_stat)
+            : (table.all || []).concat(table[character.ctype] || []);
+        return entries.map(function (e) {
             const steps = (e && e.steps ? e.steps : [e]).filter(function (s) {
                 return s && G.items[s.name] && usable(G.items[s.name]);
             });
@@ -624,10 +629,10 @@ module.exports = function createGear(ctx) {
     }
 
     // Items the supply module must not hand to the merchant.
-    // An equivalent piece (gear.equivalent, e.g. Wanderer's Cap for the Helmet) that replaces
+    // An equivalent piece (gearPlan.equivalent, e.g. Wanderer's Cap for the Helmet) that replaces
     // the worn one: at least its level, and the worn stat scroll is not lost.
     function equivalentOf(item, worn) {
-        const eq = (cfg.equivalent || {})[item.name];
+        const eq = ((config.gearPlan && config.gearPlan.equivalent) || cfg.equivalent || {})[item.name];
         if (!eq || !worn || worn.name !== eq) return false;
         if ((item.level || 0) < (worn.level || 0)) return false;
         return !worn.stat_type || item.stat_type === worn.stat_type;

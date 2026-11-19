@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.127.1",
+    version: "1.128.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -476,10 +476,6 @@ module.exports = {
         // Never equipped automatically, taken off when worn (player decision 2026-11-18):
         // Hand of Midas (-20 speed), Heavy Underarmor, Dracul's Attire (mcape, a chest piece).
         noEquip: ["handofmidas", "hpants", "mcape"],
-        // Equivalent pieces (gear plan phase 2, player decision 2026-11-19): the Wanderer's set
-        // has the stats of the shop piece of its slot plus a little and the set bonus (4: +10%
-        // gold, 5: +16 luck) - it replaces the worn shop piece at the same level or higher.
-        equivalent: { wcap: "helmet", wattire: "coat", wbreeches: "pants", wshoes: "shoes", wgloves: "gloves" },
         wishEveryMs: 5 * 60 * 1000, // re-read the guide and resend wishes this often
         maxWishes: 12,  // class chains alone are up to 9 (ring, earring, belt, orb, cape, five Rugged pieces)   // a longer list shifts less (the merchant works through it one by one)
         // Wishes per class ("all" = every class) for slots the guide leaves empty. An entry
@@ -510,94 +506,168 @@ module.exports = {
         // (+6) replace the Rings of Small Joys +2 (+3 STR/INT/DEX, +15 resistance) – at +0/+1
         // they are no better. Delivered only complete (+2), worn over a Ring of Joy right away
         // (anytime: no wait for the shop gear). Copies: Winterland map drop (statring table).
-        classWishes: {
-            all: [
-                { name: "cape", level: 0 },      // 40 Leather -> exchange (wolves, boars)
-                // Winged Boots (gear plan phase 2, 2026-11-19): Shoes + 20 Magical Feathers, built to
-                // +7 (from +8 on they need rare scrolls) - +7.5% attack speed beats shop shoes +8.
-                { steps: [{ name: "wingedboots", level: 7 }], replace: true },
+        // The wish chains themselves live in gearPlan.wishes (below) since 2026-11-19.
+    },
+
+    // =================================================================
+    // Gear plan (player decisions 2026-11-19): the ONE place for our gear progression.
+    // The fighters' class wishes are built from `wishes` (core/gear.js planChains) and
+    // `equivalent`; scripts/gear-plan-guide.mjs renders the whole block as the PDF guide
+    // (docs/gear-guide/gear-plan.pdf). Derived from the community chart
+    // (docs/gear-guide/source-chart.webp) and our own decisions.
+    // Items: "{stat}" = the class's main stat (str/int/dex). `for`: a class or a group.
+    // =================================================================
+    gearPlan: {
+        version: "1.0",
+        updated: "2026-11-19",
+        about: "General gear progression rules the bot follows. Derived from the community chart and our own decisions.",
+        principles: [
+            "Every slot has a ladder: base -> better pieces -> end goal. Each step has a target upgrade level.",
+            "Keep upgrading instead of waiting: the worn piece goes up to its cap until the next step is in hand.",
+            "The game's progression valuation decides what is better (the bot's equip pass already uses it). The plan only says what to wish for and what stands in.",
+            "A missing item is replaced by its stand-in (e.g. green Lolipop Mace for the orange one).",
+            "Wish: shop, craft and farmable drops are pursued actively. Found: event and boss items are worn when we have them, never chased.",
+            "Item stages: an item goes up level by level across the team - e.g. STR rings +4 are wished only once every STR-ring wish at +3 is fulfilled. Different items never block each other.",
+            "A worn alternative pauses the ladder of its slot: while e.g. a Loaded Die is worn, no class orb is built.",
+            "Shop weapons stop at +8 and only while no better copy is there (a worn Fiery Blade +7 already beats a Blade +8: 54 + burn vs 50). Above that the fire weapon ladder is the way up.",
+            "Wanderer's set: each piece has the stats of the shop piece of its slot plus a little (cap +120 HP, attire +80 MP, breeches +1 speed) and the set bonus (2: +200 HP, 3: +100 MP, 4: +10% gold, 5: +16 luck). It replaces the shop piece at the same level. Not for tanks on the Rugged set.",
+        ],
+        decisions: {
+            "2026-11-19": [
+                "Elixirs: not for now.",
+                "Dagger of the Dead may be crafted from Bones for the rogue; it joins the weapon ladder.",
+                "Jewelry (rings, earrings, amulets, belts) to +4 with item stages.",
+                "Wanderer's set replaces shop armor (not sold any more).",
+                "Winged Boots built to +7 (rare scrolls from +8).",
+                "The warrior stays on Fiery Blades (no Swords of the Dead).",
             ],
-            // Orbs: Orb of Beginnings (Cole: ascale + pleather + cscale + Bee Fur) to +1 first
-            // (+3 to every main stat, 3 copies), then the class orb (+4 main stat already at +0).
-            paladin: [
-                { steps: [{ name: "orbg", level: 0 }, { name: "orbg", level: 1 }, { name: "orbofstr", level: 0 }], alts: ["cave_loaded_die"] }, // Fire Spirit
-                { steps: [{ name: "strring", level: 2 }, { name: "strring", level: 3 }, { name: "strring", level: 4 }], replace: true, anytime: true, alts: ["suckerpunch"] },
-                { steps: [{ name: "strearring", level: 2 }, { name: "strearring", level: 3 }, { name: "strearring", level: 4 }], replace: true, anytime: true },
-                { steps: [{ name: "stramulet", level: 2 }, { name: "stramulet", level: 3 }, { name: "stramulet", level: 4 }], replace: true, anytime: true },
-                { steps: [{ name: "strbelt", level: 0 }, { name: "strbelt", level: 1 }, { name: "strbelt", level: 2 }, { name: "strbelt", level: 3 }, { name: "strbelt", level: 4 }], replace: true, anytime: true },
-                { steps: [{ name: "helmet1", level: 7 }], replace: true },
-                { steps: [{ name: "gloves1", level: 7 }], replace: true },
-                { steps: [{ name: "pants1", level: 7 }], replace: true },
-                { steps: [{ name: "coat1", level: 7 }], replace: true },
-                { steps: [{ name: "shoes1", level: 7 }], replace: true },
-            ],
-            priest: [
-                { steps: [{ name: "orbg", level: 0 }, { name: "orbg", level: 1 }, { name: "orbofint", level: 0 }], alts: ["cave_loaded_die"] }, // big Pom Pom (level2n)
-                { steps: [{ name: "intring", level: 2 }, { name: "intring", level: 3 }, { name: "intring", level: 4 }], replace: true, anytime: true },
-                { steps: [{ name: "intearring", level: 2 }, { name: "intearring", level: 3 }, { name: "intearring", level: 4 }], replace: true, anytime: true },
-                { steps: [{ name: "intamulet", level: 2 }, { name: "intamulet", level: 3 }, { name: "intamulet", level: 4 }], replace: true, anytime: true },
-                { steps: [{ name: "intbelt", level: 0 }, { name: "intbelt", level: 1 }, { name: "intbelt", level: 2 }, { name: "intbelt", level: 3 }, { name: "intbelt", level: 4 }], replace: true, anytime: true },
-                // Wanderer's set (gear plan phase 2, 2026-11-19): crafted and built to the last armor
-                // stage, it replaces the shop piece (gear.equivalent); shoes: Winged Boots instead.
-                { steps: [{ name: "wcap", level: 8 }], replace: true },
-                { steps: [{ name: "wattire", level: 8 }], replace: true },
-                { steps: [{ name: "wbreeches", level: 8 }], replace: true },
-                { steps: [{ name: "wgloves", level: 8 }], replace: true },
-            ],
-            // The offhand is a second weapon (dual wield, handled by gear/workshop).
-            // Monster Hunter Warrior set: long-term, paused (entries: mwhelmet 7, mwgloves 8,
-            // mwpants 11, mwarmor 12, mwboots 15 tokens; replace at +7).
-            warrior: [
-                { steps: [{ name: "orbg", level: 0 }, { name: "orbg", level: 1 }, { name: "orbofstr", level: 0 }], alts: ["cave_loaded_die"] }, // Fire Spirit
-                { steps: [{ name: "strring", level: 2 }, { name: "strring", level: 3 }, { name: "strring", level: 4 }], replace: true, anytime: true, alts: ["suckerpunch"] },
-                { steps: [{ name: "strearring", level: 2 }, { name: "strearring", level: 3 }, { name: "strearring", level: 4 }], replace: true, anytime: true },
-                { steps: [{ name: "stramulet", level: 2 }, { name: "stramulet", level: 3 }, { name: "stramulet", level: 4 }], replace: true, anytime: true },
-                { steps: [{ name: "strbelt", level: 0 }, { name: "strbelt", level: 1 }, { name: "strbelt", level: 2 }, { name: "strbelt", level: 3 }, { name: "strbelt", level: 4 }], replace: true, anytime: true },
-                { steps: [{ name: "helmet1", level: 7 }], replace: true },
-                { steps: [{ name: "gloves1", level: 7 }], replace: true },
-                { steps: [{ name: "pants1", level: 7 }], replace: true },
-                { steps: [{ name: "coat1", level: 7 }], replace: true },
-                { steps: [{ name: "shoes1", level: 7 }], replace: true },
-                // Two orange Lolipop Maces +7 (player decision 2026-11-17, instead of the Wooden Axe
-                // and Cleave – its 720 MP made it useless solo): +24 STR each and explosion splash
-                // on every hit, one-handed, so dual wield stays. Carried in the bag until an
-                // Agitate mode swaps them in. Only Jr. drops them; +8 (~15-19%) is decided later.
-                { steps: [{ name: "ololipop", level: 7 }], carry: true, count: 2 },
-                // Green ones (+24 DEX, Green Jr.) stand in while orange ones are missing (player
-                // decision 2026-11-17): no loss against a stat-less weapon, just no bonus.
-                { steps: [{ name: "glolipop", level: 7 }], carry: true, count: 2, insteadOf: "ololipop" },
-            ],
-            ranger: [
-                // Cole: 1 Armadillo Scale + 200 Beewings (scorpions drop it too). The +7 is built on
-                // a second copy; the worn +0 stays until it is done.
-                { steps: [{ name: "quiver", level: 0 }, { name: "quiver", level: 7 }] },
-                { steps: [{ name: "orbg", level: 0 }, { name: "orbg", level: 1 }, { name: "orbofdex", level: 0 }], alts: ["cave_loaded_die"] }, // Fire Spirit
-                { steps: [{ name: "dexring", level: 2 }, { name: "dexring", level: 3 }, { name: "dexring", level: 4 }], replace: true, anytime: true, alts: ["suckerpunch"] },
-                { steps: [{ name: "dexearring", level: 2 }, { name: "dexearring", level: 3 }, { name: "dexearring", level: 4 }], replace: true, anytime: true },
-                { steps: [{ name: "dexamulet", level: 2 }, { name: "dexamulet", level: 3 }, { name: "dexamulet", level: 4 }], replace: true, anytime: true },
-                { steps: [{ name: "dexbelt", level: 0 }, { name: "dexbelt", level: 1 }, { name: "dexbelt", level: 2 }, { name: "dexbelt", level: 3 }, { name: "dexbelt", level: 4 }], replace: true, anytime: true, alts: ["windbelt"] },
-                // Wanderer's set (gear plan phase 2, 2026-11-19): crafted and built to the last armor
-                // stage, it replaces the shop piece (gear.equivalent); shoes: Winged Boots instead.
-                { steps: [{ name: "wcap", level: 8 }], replace: true },
-                { steps: [{ name: "wattire", level: 8 }], replace: true },
-                { steps: [{ name: "wbreeches", level: 8 }], replace: true },
-                { steps: [{ name: "wgloves", level: 8 }], replace: true },
-            ],
-            // Rogue (2026-11-18): DEX jewellery like the ranger; weapons (two daggers, e.g. Dagger
-            // of the Dead from Ponty) come by hand for now.
-            rogue: [
-                { steps: [{ name: "orbg", level: 0 }, { name: "orbg", level: 1 }, { name: "orbofdex", level: 0 }], alts: ["cave_loaded_die"] },
-                { steps: [{ name: "dexring", level: 2 }, { name: "dexring", level: 3 }, { name: "dexring", level: 4 }], replace: true, anytime: true, alts: ["suckerpunch"] },
-                { steps: [{ name: "dexearring", level: 2 }, { name: "dexearring", level: 3 }, { name: "dexearring", level: 4 }], replace: true, anytime: true },
-                { steps: [{ name: "dexamulet", level: 2 }, { name: "dexamulet", level: 3 }, { name: "dexamulet", level: 4 }], replace: true, anytime: true },
-                { steps: [{ name: "dexbelt", level: 0 }, { name: "dexbelt", level: 1 }, { name: "dexbelt", level: 2 }, { name: "dexbelt", level: 3 }, { name: "dexbelt", level: 4 }], replace: true, anytime: true, alts: ["knifebelt"] },
-                // Wanderer's set (gear plan phase 2, 2026-11-19): crafted and built to the last armor
-                // stage, it replaces the shop piece (gear.equivalent); shoes: Winged Boots instead.
-                { steps: [{ name: "wcap", level: 8 }], replace: true },
-                { steps: [{ name: "wattire", level: 8 }], replace: true },
-                { steps: [{ name: "wbreeches", level: 8 }], replace: true },
-                { steps: [{ name: "wgloves", level: 8 }], replace: true },
-            ],
+        },
+        groups: {
+            physical: ["warrior", "ranger", "rogue", "paladin"],
+            caster: ["mage", "priest"],
+            tank: ["warrior", "paladin"],
+            nontank: ["ranger", "priest", "rogue", "mage"],
+        },
+        // Class wish chains (config.gear.classWishes format) for one class; used by core/gear.js.
+        chainsFor: function (ctype, mainStat) {
+            const groups = this.groups;
+            const inGroup = function (f) {
+                if (!f) return true;
+                return (Array.isArray(f) ? f : [f]).some(function (x) { return x === ctype || (groups[x] || []).includes(ctype); });
+            };
+            const res = function (n) { return n.replace('{stat}', mainStat || ''); };
+            return this.wishes.filter(function (w) { return inGroup(w.for); }).map(function (w) {
+                if (w.single) return { name: res(w.item), level: w.to };
+                let steps;
+                if (w.steps) steps = w.steps.map(function (s) { return { name: res(s[0]), level: s[1] }; });
+                else {
+                    steps = [];
+                    for (let l = (w.from != null ? w.from : w.to); l <= w.to; l++) steps.push({ name: res(w.item), level: l });
+                }
+                const e = { steps: steps };
+                if (w.replace) e.replace = true;
+                if (w.anytime) e.anytime = true;
+                const alts = (w.alts || []).filter(function (a) { return inGroup(a.for); }).map(function (a) { return a.item; });
+                if (alts.length) e.alts = alts;
+                if (w.carry) e.carry = true;
+                if (w.count) e.count = w.count;
+                if (w.insteadOf) e.insteadOf = w.insteadOf;
+                return e;
+            });
+        },
+        caps: { armor: 8, weapon: 9, shopWeapon: 8, lateHint: 10 },
+        // Shop armor per slot: gear goals (workshop.gearGoals) push the worn piece to caps.armor
+        // with the main-stat scroll - no wish needed.
+        shop: { helmet: "helmet", chest: "coat", pants: "pants", shoes: "shoes", gloves: "gloves" },
+        // A piece that replaces the worn shop piece of its slot at the same level or higher.
+        equivalent: { wcap: "helmet", wattire: "coat", wbreeches: "pants", wshoes: "shoes", wgloves: "gloves" },
+        // Wish chains, in wish order. `item` + `to` (and `from`: one step per level from..to) or
+        // `steps`: [[item, level], ...]. replace: worn over pieces outside the chain; anytime: not
+        // only after the shop gear is done; alts: worn alternatives pause the chain; carry: kept
+        // in the bag for a mode (count copies, insteadOf: stand-in for another carried item).
+        wishes: [
+            { slot: "cape", item: "cape", to: 0, single: true, how: "exchange: 40 Leather" },
+            { slot: "shoes", item: "wingedboots", to: 7, replace: true, how: "craft: Shoes + 20 Magical Feathers" },
+            { slot: "offhand", steps: [["quiver", 0], ["quiver", 7]], for: "ranger", how: "craft: Armadillo Scale + 200 Bee Wings" },
+            { slot: "orb", steps: [["orbg", 0], ["orbg", 1], ["orbof{stat}", 0]], alts: [{ item: "cave_loaded_die", how: "craft: 10 Cave Amber + 8 Seashells + 2 Reef Glass" }], how: "craft (Cole)" },
+            { slot: "ring", item: "{stat}ring", from: 2, to: 4, replace: true, anytime: true, alts: [{ item: "suckerpunch", for: "physical", how: "drop: crabs" }] },
+            { slot: "earring", item: "{stat}earring", from: 2, to: 4, replace: true, anytime: true },
+            { slot: "amulet", item: "{stat}amulet", from: 2, to: 4, replace: true, anytime: true },
+            { slot: "belt", item: "{stat}belt", from: 0, to: 4, replace: true, anytime: true, how: "map drop: Spooky Town",
+                alts: [{ item: "windbelt", for: "ranger", how: "craft" }, { item: "knifebelt", for: "rogue", how: "craft - gives Fan of Knives" }] },
+            // Tanks: Rugged set from armor boxes, +7, worn over the shop piece once the shop gear is done.
+            { slot: "helmet", item: "helmet1", to: 7, replace: true, for: "tank", how: "armor box" },
+            { slot: "gloves", item: "gloves1", to: 7, replace: true, for: "tank", how: "armor box" },
+            { slot: "pants", item: "pants1", to: 7, replace: true, for: "tank", how: "armor box" },
+            { slot: "chest", item: "coat1", to: 7, replace: true, for: "tank", how: "armor box" },
+            { slot: "shoes", item: "shoes1", to: 7, replace: true, for: "tank", how: "armor box" },
+            // Everyone else: the Wanderer's set at the last armor stage (shoes: Winged Boots instead).
+            { slot: "helmet", item: "wcap", to: 8, replace: true, for: "nontank", how: "craft / drop" },
+            { slot: "chest", item: "wattire", to: 8, replace: true, for: "nontank", how: "craft / drop" },
+            { slot: "pants", item: "wbreeches", to: 8, replace: true, for: "nontank", how: "craft / map drop" },
+            { slot: "gloves", item: "wgloves", to: 8, replace: true, for: "nontank", how: "craft / drop" },
+            // Warrior Agitate mode: two orange Lolipop Maces carried in the bag; green ones stand in.
+            { slot: "mainhand", item: "ololipop", to: 7, carry: true, count: 2, for: "warrior", how: "drop: Jr." },
+            { slot: "mainhand", item: "glolipop", to: 7, carry: true, count: 2, insteadOf: "ololipop", for: "warrior", how: "drop: Green Jr." },
+        ],
+        // Not wished: worn when we have them and the valuation rates them higher.
+        found: {
+            helmet: [{ item: "fury", for: "physical" }, { item: "xhelmet" }],
+            chest: [{ item: "tshirt9" }, { item: "vattire", for: "caster" }, { item: "cdragon", for: "tank" }],
+            pants: [{ item: "fallen", for: ["warrior", "rogue"] }, { item: "starkillers", for: "caster" }],
+            shoes: [{ item: "wshoes", for: "nontank" }],
+            gloves: [{ item: "supermittens" }, { item: "mpxgloves", for: ["paladin", "priest", "rogue"] }],
+            cape: [{ item: "horsecape" }, { item: "ecape" }, { item: "vcape" }, { item: "gcape", for: "priest" }],
+            earring: [{ item: "cearring" }, { item: "moonshardearring", for: "mage" }, { item: "frostfang" }, { item: "molesteeth" }],
+            ring: [{ item: "cring", for: "caster" }, { item: "zapper", for: "priest" }, { item: "emberseal", for: "paladin" }],
+            amulet: [{ item: "mpxamulet", for: ["paladin", "priest", "rogue"] }, { item: "keepsakependant", for: "paladin" }, { item: "gloampendant", for: "rogue" }],
+            belt: [{ item: "sbelt", for: "priest" }],
+            orb: [{ item: "rabbitsfoot", for: "priest" }],
+        },
+        elixirs: { off: true, note: "Not used for now (player decision 2026-11-19).", options: [{ item: "pumpkinspice", for: "physical" }, { item: "elixirluck", for: "priest" }] },
+        // Weapons per class (documentation; the bot follows workshop.betterWeapons and the
+        // weapon ladder workshop.bruteForce). Left to right = better.
+        classes: {
+            warrior: {
+                modes: {
+                    single: { mainhand: [["blade", 8], ["fireblade", 9]], offhand: [["blade", 8], ["fireblade", 9]] },
+                    aoe: { mainhand: [["glolipop", 7], ["ololipop", 7], ["vhammer", null, "found"]], offhand: [["glolipop", 7], ["ololipop", 7]],
+                        note: "Missing Vampiric Hammer: a second Lolipop. Missing orange Lolipop: the green one." },
+                },
+                rules: ["Tank armor: Rugged set +7 replaces the shop pieces (2026-11-16).", "HP belt only while no STR belt is there.", "Stays on Fiery Blades - no Swords of the Dead (2026-11-19)."],
+            },
+            ranger: {
+                modes: {
+                    single: { mainhand: [["bow", 8], ["firebow", 9]], offhand: [["quiver", 8], ["t2quiver", null, "found"]] },
+                    aoe: { mainhand: [["firebow", 9], ["pouchbow", 9, "craft"]], offhand: [["quiver", 8], ["alloyquiver", null, "found"]] },
+                },
+            },
+            priest: {
+                modes: {
+                    single: { mainhand: [["staff", 8], ["firestaff", 9], ["lmace", null, "found"]], offhand: [["wbook0", 2], ["wshield", 6], ["mshield", null, "found"]],
+                        note: "Offhand: Book or Wooden Shield - the valuation decides." },
+                },
+            },
+            rogue: {
+                modes: {
+                    single: { mainhand: [["stinger", 7], ["daggerofthedead", 7, "craft"], ["vdagger", null, "found"]], offhand: [["stinger", 7], ["daggerofthedead", 7, "craft"], ["vdagger", null, "found"]],
+                        note: "First the main hand, then the offhand; spares climb the weapon ladder." },
+                },
+                rules: ["Knife Belt as soon as it can be crafted: it unlocks Fan of Knives."],
+            },
+            mage: {
+                modes: {
+                    single: { mainhand: [["staff", 8], ["firestaff", 9]], offhand: [["wbook0", 4]] },
+                    aoe: { mainhand: [["firestaff", 9], ["sparkstaff", null, "found"]], offhand: [["wbook0", 4]] },
+                },
+            },
+            paladin: {
+                modes: {
+                    single: { mainhand: [["mace", 8], ["maceofthedead", 9, "craft"], ["concordmace", 9]], offhand: [["wshield", 6], ["cave_counterweight", 7, "craft"]] },
+                    aoe: { mainhand: [["glolipop", 7], ["ololipop", 7], ["vhammer", null, "found"]], offhand: [["wshield", 6], ["exoarm", null, "found"]] },
+                },
+                rules: ["Tank armor: Rugged set +7 like the warrior."],
+            },
         },
     },
 
