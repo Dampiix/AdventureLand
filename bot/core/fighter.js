@@ -489,6 +489,7 @@ module.exports = function createFighter(ctx, cls) {
         } catch (e) { return true; }
     }
 
+    let passing = null; // { until, dest } while we pass through attackers on the way
     function passThrough(farm, target) {
         const pt = config.combat.passThrough || {};
         if (!pt.enabled || !farm || farm.any || !farm.monster || target.mtype === farm.monster) return false;
@@ -518,6 +519,7 @@ module.exports = function createFighter(ctx, cls) {
         if (target && passThrough(farm, target)) {
             lastFarm = farm;
             lastTarget = null; // members see the leader travelling with no target: they follow, no fights
+            passing = { until: Date.now() + 3000, dest: farm.dest || targeting.spotFor(farm.monster, farm.map) || farm.monster };
             util.status("passing " + target.mtype, "yellow");
             travel(farm.dest || targeting.spotFor(farm.monster, farm.map) || farm.monster, "searching " + farm.monster);
             return;
@@ -745,7 +747,12 @@ module.exports = function createFighter(ctx, cls) {
         const ev = ctx.events.current();
         if (party.keepUp(!!(ev && ev.join))) return;
         if (party.leaderTravels && party.leaderTravels()) { party.idleFollow(); return; } // no fights on the way
-        if (cls.support()) return;
+        if (cls.support()) {
+            // Healing while passing through: keep walking (a priest healing the warrior every tick
+            // never got to travel on - 2026-11-19).
+            if (passing && Date.now() < passing.until && !is_moving(character)) travel(passing.dest, "passing");
+            return;
+        }
         handleCombat();
     }
 

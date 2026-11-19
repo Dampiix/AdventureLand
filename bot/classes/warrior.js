@@ -314,7 +314,9 @@ module.exports = function createWarrior(ctx) {
         if (Date.now() - auto.at < 15 * 1000) return auto.mode;
         // While monsters are on us the decision stands (no weapon swap mid-fight) - only a
         // denied kind (death) ends it at once.
-        if (auto.type && onMe().length && !((statOf(auto.type).denyUntil || 0) > Date.now())) return auto.mode;
+        // ...but not once the farm target changed (2026-11-19: the leader left for the mummies, the
+        // warrior kept its booboo decision while booboos hit it and agitated more of them).
+        if (auto.type && onMe().length && !((statOf(auto.type).denyUntil || 0) > Date.now()) && auto.type === farmType()) return auto.mode;
         auto.at = Date.now();
         const type = farmType();
         const a = type ? autoAllowed(type) : { ok: false, why: "no farm target" };
