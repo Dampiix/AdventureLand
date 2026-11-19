@@ -1838,15 +1838,19 @@ module.exports = function createWorkshop(ctx) {
         return util.weaponPower(name, cfg.gearGoals.upTo, ctype) > bar ? name : null;
     }
 
-    // Staged armor goals (player decision 2026-11-16): ALL of a fighter's shop armor
-    // reaches one stage before any piece goes on to the next (gearGoals.stages, e.g.
-    // 7 -> 8 -> 9). Returns the stage this fighter's armor is working on, or null.
+    // Staged goals (player decisions 2026-11-16/19): ALL of a fighter's shop armor AND shop
+    // weapons reach one stage before any piece goes on to the next (gearGoals.stages, e.g.
+    // 7 -> 8). Returns the stage this fighter's gear is working on, or null. Weapons were
+    // aimed straight at upTo (+8) before 2026-11-19 - a bought staff +7 waited for +8.
     function armorStage(f) {
         const g = cfg.gearGoals;
         const stages = (g.stages && g.stages.length ? g.stages : [g.upTo]).slice().sort(function (a, b) { return a - b; });
-        const levels = g.slots.filter(function (s) { return s !== "mainhand" && s !== "offhand"; }).map(function (s) {
+        const levels = g.slots.map(function (s) {
             const w = worn[f] && worn[f][s];
-            return w && (sellerOf(w.name) || (parallelFor(f) && equivMap()[w.name])) && G.items[w.name] && G.items[w.name].upgrade ? (w.level || 0) : null;
+            const def = w && G.items[w.name];
+            if (!def || !def.upgrade) return null;
+            if (s === "mainhand" || s === "offhand") return def.type === "weapon" && sellerOf(w.name) ? (w.level || 0) : null;
+            return sellerOf(w.name) || (parallelFor(f) && equivMap()[w.name]) ? (w.level || 0) : null;
         }).filter(function (l) { return l !== null; });
         if (!levels.length) return null;
         const low = Math.min.apply(null, levels);
@@ -1878,7 +1882,8 @@ module.exports = function createWorkshop(ctx) {
                 // Offhand: only a second shop weapon (dual wield) – shields, books and
                 // quivers stay out (player decision 2026-11-17); it goes to the weapon level.
                 if (slot === "offhand" && (!def || def.type !== "weapon")) return;
-                const target = slot === "mainhand" || slot === "offhand" ? g.upTo : stage;
+                // Weapons follow the stages too, never above upTo (the shop weapon cap).
+                const target = slot === "mainhand" || slot === "offhand" ? (stage === null ? null : Math.min(stage, g.upTo)) : stage;
                 const cls0 = classes[f] && G.classes[classes[f]];
                 const statOf = function (d) { return d && d.stat ? (w.stat || (cfg.mainStatOnArmor && cls0 ? cls0.main_stat : null)) : null; };
                 if (w && def && def.upgrade && parallelFor(f) && slot !== "mainhand" && slot !== "offhand") {

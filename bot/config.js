@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.143.0",
+    version: "1.144.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -587,6 +587,7 @@ module.exports = {
                 "The merchant works on wishes by value (gain per gold / per hour).",
                 "Winged Boots built to +7 (rare scrolls from +8).",
                 "The warrior stays on Fiery Blades (no Swords of the Dead).",
+                "Shop weapons run through the stages with the armor: everything to +7 first, then +8.",
             ],
         },
         groups: {
@@ -863,7 +864,7 @@ module.exports = {
             // +3 main stat. Guide estimate per piece from scratch: +8 ~170 copies / 1.1M,
             // +9 ~2400 copies / 17M, +10 ~100,000 copies / 770M. Capped at +8 (player
             // decision 2026-11-16: 170 -> 2400 copies is too steep; armor boxes / Rugged next).
-            stages: [7, 8],
+            stages: [7, 8], // shop weapons run through the stages too (player decision 2026-11-19)
             everyMs: 3 * 60 * 1000,   // one gear-goal step this often even while wishes are open
             // offhand: a second shop weapon (dual wield) goes to upTo too, so a fresh warrior
             // reaches the Wooden Axe wish (both hands +7); shields, books, quivers stay out.
