@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.137.0",
+    version: "1.138.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -53,6 +53,13 @@ module.exports = {
     // Prices per unit in gold. The stand has 16 slots for both (24 from merchant level 70).
     market: {
         buy: [
+            // Standing orders for the Wanderer's set materials (player decision 2026-11-19): about 3x
+            // the NPC value; they keep the stand open for Merrit's parcels as well.
+            { item: "beewings",      price:     75, want: 600 },
+            { item: "crabclaw",      price:    360, want: 300 },
+            { item: "spores",        price:    360, want: 200 },
+            { item: "gslime",        price:     60, want: 100 },
+            { item: "frogt",         price:     10, want: 10  },
             { item: "essenceoffire", price: 140000, want: 10 }, // = a fire weapon (+ shop weapon, 20k at Leo)
             { item: "ololipop",      price: 150000, want: 4  }, // orange Lolipop Mace (a player pays 300k)
             { item: "glolipop",      price:  80000, want: 4  }, // green one as a stand-in
@@ -621,9 +628,12 @@ module.exports = {
         equivalent: { wcap: "helmet", wattire: "coat", wbreeches: "pants", wshoes: "shoes", wgloves: "gloves" },
         // Equivalents run with the armor goals for this group (2026-11-19): a dropped piece is built
         // to the worn shop piece's level and replaces it, then goes up instead of it; without a spare
-        // copy the shop piece goes higher and takes the slot back. Never crafted; copies nobody can
-        // use any more (all at the last stage) are sold.
+        // copy the shop piece goes higher and takes the slot back. Copies nobody can use any more
+        // (all at the last stage) are sold.
         parallel: "nontank",
+        // ...and crafted, but only when every ingredient is in stock (player decision 2026-11-19 -
+        // never a reason to farm; standing buy orders in market.buy keep the materials coming).
+        craftFromStock: ["wcap", "wattire", "wbreeches", "wgloves", "wshoes"],
         // Wish chains, in wish order. `item` + `to` (and `from`: one step per level from..to) or
         // `steps`: [[item, level], ...]. replace: worn over pieces outside the chain; anytime: not
         // only after the shop gear is done; alts: worn alternatives pause the chain; carry: kept

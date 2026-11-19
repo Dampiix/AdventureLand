@@ -246,6 +246,13 @@ module.exports = function createWorkshop(ctx) {
     // the same level and is then upgraded instead of it; without a spare copy the shop piece
     // is built higher and takes the slot back. Tanks (Rugged) are not part of it.
     function equivMap() { return (config.gearPlan && config.gearPlan.equivalent) || {}; }
+    // Every ingredient of a recipe in stock (bag + bank) - crafting from what we hold, never a
+    // reason to send the team farming (gearPlan.craftFromStock, player decision 2026-11-19).
+    function craftableFromStock(name) {
+        const r = G.craft[name];
+        if (!r || !((config.gearPlan || {}).craftFromStock || []).includes(name)) return false;
+        return r.items.every(function (it) { return ingredientCount(it[1], 0) >= it[0]; });
+    }
     function parallelFor(f) {
         const plan = config.gearPlan || {};
         const g = plan.parallel && plan.groups && plan.groups[plan.parallel];
@@ -1848,9 +1855,9 @@ module.exports = function createWorkshop(ctx) {
                     const equiv = Object.keys(map).find(function (n) { return map[n] === w.name; });
                     // Worn shop piece + a copy of its equivalent in hand: build that to the same
                     // level (or the stage being worked on) - it takes the slot.
-                    if (equiv && sellerOf(w.name) && unlockedCopies(equiv).length) {
+                    if (equiv && sellerOf(w.name) && (unlockedCopies(equiv).length || craftableFromStock(equiv))) {
                         const lvl = target && target > (w.level || 0) ? target : (w.level || 0);
-                        list.push({ fighter: f, slot: slot, name: equiv, stat: statOf(G.items[equiv]), weapon: null, level: lvl, noCraft: true });
+                        list.push({ fighter: f, slot: slot, name: equiv, stat: statOf(G.items[equiv]), weapon: null, level: lvl, noCraft: !craftableFromStock(equiv) });
                         return;
                     }
                     // Worn equivalent: upgraded like shop armor from a spare copy; without one the
@@ -1858,7 +1865,8 @@ module.exports = function createWorkshop(ctx) {
                     if (map[w.name]) {
                         if (!target || (w.level || 0) >= target) return;
                         const spare = unlockedCopies(w.name).some(function (l) { return l < target; });
-                        list.push({ fighter: f, slot: slot, name: spare ? w.name : map[w.name], stat: statOf(def), weapon: null, level: target, noCraft: true });
+                        const craft = !spare && craftableFromStock(w.name);
+                        list.push({ fighter: f, slot: slot, name: spare || craft ? w.name : map[w.name], stat: statOf(def), weapon: null, level: target, noCraft: !craft });
                         return;
                     }
                 }
