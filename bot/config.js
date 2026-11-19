@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.125.0",
+    version: "1.126.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -496,6 +496,10 @@ module.exports = {
         // every class takes its main-stat belt (+4 at +0, +10 at +2) over an HP belt and
         // compounds it to +2. An HP belt is only worn while no stat belt is there (the guide
         // fills the empty slot). Stat belts drop in Spooky Town (map drop).
+        // Gear plan phase 1 (player decision 2026-11-19, docs/gear-guide/gear-plan.json):
+        // earrings, amulets and belts go on to +4, rings stay at +3. Item stages: a wish for
+        // the next level waits while a lower wish for the same item is still missing
+        // (workshop openWishes) - other items never block it.
         // Rings and earrings to +3 (player decision 2026-11-17): +2 first, then +3 for both
         // slots of each (+3 needs ~91 copies at +0 per piece - Phoenix earrings, Winterland rings).
         // Rings (player decision 2026-11-16): two stat rings +2 in the class's main stat
@@ -511,8 +515,9 @@ module.exports = {
             paladin: [
                 { steps: [{ name: "orbg", level: 0 }, { name: "orbg", level: 1 }, { name: "orbofstr", level: 0 }] }, // Fire Spirit
                 { steps: [{ name: "strring", level: 2 }, { name: "strring", level: 3 }], replace: true, anytime: true },
-                { steps: [{ name: "strearring", level: 2 }, { name: "strearring", level: 3 }], replace: true, anytime: true },
-                { steps: [{ name: "strbelt", level: 0 }, { name: "strbelt", level: 1 }, { name: "strbelt", level: 2 }], replace: true, anytime: true },
+                { steps: [{ name: "strearring", level: 2 }, { name: "strearring", level: 3 }, { name: "strearring", level: 4 }], replace: true, anytime: true },
+                { steps: [{ name: "stramulet", level: 2 }, { name: "stramulet", level: 3 }, { name: "stramulet", level: 4 }], replace: true, anytime: true },
+                { steps: [{ name: "strbelt", level: 0 }, { name: "strbelt", level: 1 }, { name: "strbelt", level: 2 }, { name: "strbelt", level: 3 }, { name: "strbelt", level: 4 }], replace: true, anytime: true },
                 { steps: [{ name: "helmet1", level: 7 }], replace: true },
                 { steps: [{ name: "gloves1", level: 7 }], replace: true },
                 { steps: [{ name: "pants1", level: 7 }], replace: true },
@@ -522,8 +527,9 @@ module.exports = {
             priest: [
                 { steps: [{ name: "orbg", level: 0 }, { name: "orbg", level: 1 }, { name: "orbofint", level: 0 }] }, // big Pom Pom (level2n)
                 { steps: [{ name: "intring", level: 2 }, { name: "intring", level: 3 }], replace: true, anytime: true },
-                { steps: [{ name: "intearring", level: 2 }, { name: "intearring", level: 3 }], replace: true, anytime: true },
-                { steps: [{ name: "intbelt", level: 0 }, { name: "intbelt", level: 1 }, { name: "intbelt", level: 2 }], replace: true, anytime: true },
+                { steps: [{ name: "intearring", level: 2 }, { name: "intearring", level: 3 }, { name: "intearring", level: 4 }], replace: true, anytime: true },
+                { steps: [{ name: "intamulet", level: 2 }, { name: "intamulet", level: 3 }, { name: "intamulet", level: 4 }], replace: true, anytime: true },
+                { steps: [{ name: "intbelt", level: 0 }, { name: "intbelt", level: 1 }, { name: "intbelt", level: 2 }, { name: "intbelt", level: 3 }, { name: "intbelt", level: 4 }], replace: true, anytime: true },
             ],
             // The offhand is a second weapon (dual wield, handled by gear/workshop).
             // Monster Hunter Warrior set: long-term, paused (entries: mwhelmet 7, mwgloves 8,
@@ -531,8 +537,9 @@ module.exports = {
             warrior: [
                 { steps: [{ name: "orbg", level: 0 }, { name: "orbg", level: 1 }, { name: "orbofstr", level: 0 }] }, // Fire Spirit
                 { steps: [{ name: "strring", level: 2 }, { name: "strring", level: 3 }], replace: true, anytime: true },
-                { steps: [{ name: "strearring", level: 2 }, { name: "strearring", level: 3 }], replace: true, anytime: true },
-                { steps: [{ name: "strbelt", level: 0 }, { name: "strbelt", level: 1 }, { name: "strbelt", level: 2 }], replace: true, anytime: true },
+                { steps: [{ name: "strearring", level: 2 }, { name: "strearring", level: 3 }, { name: "strearring", level: 4 }], replace: true, anytime: true },
+                { steps: [{ name: "stramulet", level: 2 }, { name: "stramulet", level: 3 }, { name: "stramulet", level: 4 }], replace: true, anytime: true },
+                { steps: [{ name: "strbelt", level: 0 }, { name: "strbelt", level: 1 }, { name: "strbelt", level: 2 }, { name: "strbelt", level: 3 }, { name: "strbelt", level: 4 }], replace: true, anytime: true },
                 { steps: [{ name: "helmet1", level: 7 }], replace: true },
                 { steps: [{ name: "gloves1", level: 7 }], replace: true },
                 { steps: [{ name: "pants1", level: 7 }], replace: true },
@@ -553,16 +560,18 @@ module.exports = {
                 { steps: [{ name: "quiver", level: 0 }, { name: "quiver", level: 7 }] },
                 { steps: [{ name: "orbg", level: 0 }, { name: "orbg", level: 1 }, { name: "orbofdex", level: 0 }] }, // Fire Spirit
                 { steps: [{ name: "dexring", level: 2 }, { name: "dexring", level: 3 }], replace: true, anytime: true },
-                { steps: [{ name: "dexearring", level: 2 }, { name: "dexearring", level: 3 }], replace: true, anytime: true },
-                { steps: [{ name: "dexbelt", level: 0 }, { name: "dexbelt", level: 1 }, { name: "dexbelt", level: 2 }], replace: true, anytime: true },
+                { steps: [{ name: "dexearring", level: 2 }, { name: "dexearring", level: 3 }, { name: "dexearring", level: 4 }], replace: true, anytime: true },
+                { steps: [{ name: "dexamulet", level: 2 }, { name: "dexamulet", level: 3 }, { name: "dexamulet", level: 4 }], replace: true, anytime: true },
+                { steps: [{ name: "dexbelt", level: 0 }, { name: "dexbelt", level: 1 }, { name: "dexbelt", level: 2 }, { name: "dexbelt", level: 3 }, { name: "dexbelt", level: 4 }], replace: true, anytime: true },
             ],
             // Rogue (2026-11-18): DEX jewellery like the ranger; weapons (two daggers, e.g. Dagger
             // of the Dead from Ponty) come by hand for now.
             rogue: [
                 { steps: [{ name: "orbg", level: 0 }, { name: "orbg", level: 1 }, { name: "orbofdex", level: 0 }] },
                 { steps: [{ name: "dexring", level: 2 }, { name: "dexring", level: 3 }], replace: true, anytime: true },
-                { steps: [{ name: "dexearring", level: 2 }, { name: "dexearring", level: 3 }], replace: true, anytime: true },
-                { steps: [{ name: "dexbelt", level: 0 }, { name: "dexbelt", level: 1 }, { name: "dexbelt", level: 2 }], replace: true, anytime: true },
+                { steps: [{ name: "dexearring", level: 2 }, { name: "dexearring", level: 3 }, { name: "dexearring", level: 4 }], replace: true, anytime: true },
+                { steps: [{ name: "dexamulet", level: 2 }, { name: "dexamulet", level: 3 }, { name: "dexamulet", level: 4 }], replace: true, anytime: true },
+                { steps: [{ name: "dexbelt", level: 0 }, { name: "dexbelt", level: 1 }, { name: "dexbelt", level: 2 }, { name: "dexbelt", level: 3 }, { name: "dexbelt", level: 4 }], replace: true, anytime: true },
             ],
         },
     },
@@ -663,7 +672,8 @@ module.exports = {
             // fire) is at gearGoals.upTo, its "of the Dead" weapon is crafted (Bones from
             // Zombies + a shop weapon + fee) and upgraded until it is stronger.
             // Paused 2026-11-19 (player decision): the first Bones are kept, nothing crafts with them.
-            craft: [], // was ["maceofthedead", "staffofthedead", "bowofthedead"]
+            // Gear plan (player decision 2026-11-19): Bones go to Daggers of the Dead for the rogue.
+            craft: ["daggerofthedead"], // was ["maceofthedead", "staffofthedead", "bowofthedead"]
             // Bought with tokens when we hold none (player decision 2026-11-16: the Concord
             // Mace first – a paladin's mace beats the fireblade +7 already at +4).
             buy: [], // concordmace paused 2026-11-16 (no paladin; shop +9 first)
@@ -688,7 +698,9 @@ module.exports = {
             // guide's lessons) in parallel, with the class's main stat. Weapons come first,
             // armor follows once no weapon step is open (player request 2026-11-15).
             fromLevel: 0,
-            upTo: 7,                  // weapons and the "shop gear done" mark for class wishes
+            // Shop weapons to +8 (gear plan, player decision 2026-11-19) - only while no better
+            // weapon is worn: a Fiery Blade +7 already beats a Blade +8, so it counts as done.
+            upTo: 8,                  // weapons and the "shop gear done" mark for class wishes
             // Armor in stages (player decision 2026-11-16): ALL of a fighter's shop armor
             // reaches a stage before any piece goes on to the next. From +7 each level adds
             // +3 main stat. Guide estimate per piece from scratch: +8 ~170 copies / 1.1M,
@@ -815,7 +827,7 @@ module.exports = {
             // fresh start (2026-11-15): Cole and Leo craft gear from them.
             "slimestaff", "mushroomstaff",
             { name: "stinger", maxLevel: 2 }, // +3 and up are rogue daggers now (2026-11-18)
-            "wcap", "wshoes", "wattire", "wbreeches", "wgloves",
+            // Wanderer's set no longer sold (gear plan 2026-11-19): it replaces shop armor (phase 2).
             // +0 weapons (approved 2026-11-15). Phoenix weapons (fireblade, firestaff,
             // firebow) are never sold – player decision 2026-11-15.
             // "dagger" kept since 2026-11-19 (player decision: no investment, but not sold either)

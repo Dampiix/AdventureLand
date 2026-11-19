@@ -1,5 +1,5 @@
 {
-  "version": "draft-3",
+  "version": "draft-4",
   "updated": "2026-11-19",
   "about": "General gear progression rules the bot follows. Derived from the community chart (source-chart.webp) and our own decisions. Draft: not read by the bot yet.",
   "principles": [
@@ -8,7 +8,7 @@
     "The game's progression valuation decides what is better (the bot's equip pass already uses it). The plan only says what to wish for and what stands in.",
     "A missing item is replaced by its stand-in (e.g. green Lolipop Mace for the orange one).",
     "Wish: shop, craft and farmable drops are pursued actively. Found: event and boss items are worn when we have them, never chased.",
-    "Team stages: jewelry goes up level by level for the whole team - the next level is wished only once every fighter wears the current one in all its slots; spare copies make the next step.",
+    "Item stages: an item goes up level by level across the team - e.g. STR rings +4 are wished only once every STR-ring wish at +3 is fulfilled. Different items never block each other (the priest waiting for INT belts does not hold back the warrior).",
     "A worn alternative pauses the ladder of its slot: while e.g. a Loaded Die is worn because it rates higher, no class orb is built.",
     "Shop weapons stop at +8 and only while no better copy is there (a worn Fiery Blade +7 already beats a Blade +8: 54 + burn vs 50). Above that the fire weapon ladder is the way up (Blade +9: 58, Fiery Blade +8: 60).",
     "Wanderer's set: each piece has the stats of the shop piece of its slot plus a little (cap +120 HP, attire +80 MP, breeches +1 speed) and the set bonus (2: +200 HP, 3: +100 MP, 4: +10% gold, 5: +16 luck). It replaces the shop piece at the same level and is upgraded instead of it. Not for tanks on the Rugged set."
@@ -379,7 +379,7 @@
     "elixir": {
       "optional": true,
       "choice": true,
-      "note": "Open decision: elixirs cost gold or candy all the time.",
+      "note": "Not used for now (player decision 2026-11-19).",
       "ladder": [
         {
           "item": "pumpkinspice",
@@ -389,7 +389,8 @@
           "item": "elixirluck",
           "for": "priest"
         }
-      ]
+      ],
+      "off": true
     }
   },
   "classes": {
@@ -701,5 +702,13 @@
         }
       ]
     }
+  },
+  "decisions": {
+    "2026-11-19": [
+      "Elixirs: not for now.",
+      "Dagger of the Dead may be crafted from Bones for the rogue.",
+      "Jewelry targets +4 with item stages.",
+      "Wanderer pieces leave the sell list when the plan goes live."
+    ]
   }
 }

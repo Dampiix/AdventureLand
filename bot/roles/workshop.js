@@ -240,6 +240,12 @@ module.exports = function createWorkshop(ctx) {
 
     // ---- delivery -------------------------------------------------------
 
+    // A copy of name at level or higher in the bag or the bank.
+    function copyAtLeast(name, level) {
+        if (character.items.some(function (it) { return it && it.name === name && (it.level || 0) >= level; })) return true;
+        return !!(bankSnapshot && bankSnapshot.items.some(function (b) { return b.name === name && b.level >= level; }));
+    }
+
     // Wishes we can fulfil from the bag now, plus earmarked items waiting in the bag.
     function readyFor(fighter) {
         const list = wishList(fighter).filter(function (w) { return wishIndex(w, targetLevel(fighter, w)) !== -1; });
@@ -2253,7 +2259,10 @@ module.exports = function createWorkshop(ctx) {
                 // the first stage (player decision 2026-11-16).
                 if ((bw.craft || []).includes(name)) {
                     const stage = armorStage(f);
-                    if (!weaponAtGoal(f) || (stage !== null && stage <= cfg.gearGoals.upTo)) return;
+                    // First armor stage, not upTo: with shop weapons at +8 (2026-11-19) a rogue
+                    // whose gloves are still +7 would never get its Dagger of the Dead.
+                    const first = Math.min.apply(null, (cfg.gearGoals.stages && cfg.gearGoals.stages.length) ? cfg.gearGoals.stages : [cfg.gearGoals.upTo]);
+                    if (!weaponAtGoal(f) || (stage !== null && stage <= first)) return;
                 }
                 const bar = wornPower(f) * (1 + (bw.margin || 0));
                 for (let level = 0; level <= bw.maxLevel; level++) {
@@ -2386,7 +2395,17 @@ module.exports = function createWorkshop(ctx) {
                 list.push({ fighter: fighter, wish: w, rank: rank });
             });
         });
-        return list.sort(function (a, b) {
+        // Item stages (gear plan, player decision 2026-11-19): a compound item goes up level by
+        // level across the team - a wish for STR rings +4 waits while another fighter's STR-ring
+        // wish at +3 still has no copy. Other items never block it.
+        const staged = list.filter(function (o) {
+            const def = G.items[o.wish.name];
+            if (!def || !def.compound) return true;
+            return !list.some(function (x) {
+                return x !== o && x.wish.name === o.wish.name && x.wish.level < o.wish.level && !copyAtLeast(x.wish.name, x.wish.level);
+            });
+        });
+        return staged.sort(function (a, b) {
             return a.rank - b.rank || (lastServed[a.fighter] || 0) - (lastServed[b.fighter] || 0);
         });
     }
