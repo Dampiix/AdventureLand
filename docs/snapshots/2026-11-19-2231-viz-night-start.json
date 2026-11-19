@@ -1,0 +1,13 @@
+{
+  "account": "viz",
+  "taken": "2026-11-19T21:31:18Z",
+  "note": "Start of the first night on the fresh account (bot v1.144.0). Monster tokens were sold by hand just before (~42M). Compare in the morning: tokens, gear, gold.",
+  "merchant": { "gold": 40644079, "monstertokenBag": 0 },
+  "bank": { "gold": 1000, "monstertoken": 6, "beewings": 613, "spores": 200, "gslime": 7, "seashell": 3, "marketparcel": 2 },
+  "merchantBagGearReady": ["helmet+7", "helmet+3", "bow+7", "shoes+7"],
+  "worn": {
+    "VizPri": { "ring1": "ringsj+0", "ring2": "ringsj+0", "belt": "hpbelt+0", "mainhand": "staff+7", "helmet": "helmet+2:int", "chest": "coat+3:int", "pants": "pants+3:int", "shoes": "shoes+0:int", "gloves": "gloves+3:int" },
+    "VizRng": { "belt": "hpbelt+0", "mainhand": "bow+3", "helmet": "helmet+1:dex", "chest": "coat+0:dex", "shoes": "wshoes+0", "gloves": "gloves+0:dex" },
+    "VizWar": { "ring1": "ringsj+0", "belt": "hpbelt+0", "mainhand": "blade+3", "offhand": "blade+1", "helmet": "helmet+1", "chest": "coat+1:str", "pants": "pants+0:str", "shoes": "shoes+0", "gloves": "gloves+1:str", "amulet": "hpamulet+0" }
+  }
+}
