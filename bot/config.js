@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.138.0",
+    version: "1.139.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -90,6 +90,8 @@ module.exports = {
         // (50 %: one purchase never takes the whole pot; it grows with the income; was a fixed 1M). reportFinds: pieces outside the wish
         // list are reported (gain per gold vs our best own upgrade); buyFinds (player decision
         // 2026-11-19): the best one worth it is bought as well (pot share, main-stat scroll, delivered).
+        // Wished drops no NPC sells (lollipops, drop rings): lower levels are bought as bases to
+        // upgrade - up to the wish count, or the copies a compound still lacks (2026-11-19).
         ponty: { enabled: true, everyMs: 20 * 60 * 1000, maxShareOfOwn: 1.2, maxShareOfPot: 0.5, reportFinds: true, buyFinds: true, findMinGain: 0.5 },
     },
 

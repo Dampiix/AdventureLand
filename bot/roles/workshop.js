@@ -2656,6 +2656,39 @@ module.exports = function createWorkshop(ctx) {
         if (goalsOn()) goalNeedsAll().forEach(function (n) { add(n.name, n.level); });
         return wants;
     }
+    // Copies the wishes ask for, per item (wish count summed over the fighters; goals count one).
+    function pontyCounts() {
+        const counts = {};
+        fighters().forEach(function (f) { wishList(f).forEach(function (w) { counts[w.name] = (counts[w.name] || 0) + (w.count || 1); }); });
+        if (goalsOn()) goalNeedsAll().forEach(function (n) { counts[n.name] = Math.max(counts[n.name] || 0, 1); });
+        return counts;
+    }
+    // Levels of every copy we hold: worn by any fighter, in the bag or in the bank.
+    function allCopyLevels(name) {
+        const levels = unlockedCopies(name);
+        Object.keys(worn).forEach(function (f) {
+            Object.keys(worn[f] || {}).forEach(function (s) { const w = worn[f][s]; if (w && w.name === name) levels.push(w.level || 0); });
+        });
+        return levels;
+    }
+    // A wished item no NPC sells (a drop): a copy below the target is the base we upgrade or
+    // compound, so Ponty's lower levels are worth buying too (player decision 2026-11-19).
+    //  - upgradeable: while we hold fewer copies than wished (any level), any level below the
+    //    target; with enough copies only one above our weakest copy below the target;
+    //  - compound: while the target level still lacks copies (three of a level make the next),
+    //    a copy that doesn't overshoot what is missing.
+    function wantsAsBase(name, lvl, target, count, levels) {
+        if (lvl >= target) return lvl > levels.reduce(function (m, l) { return Math.max(m, l); }, -1);
+        if (G.items[name].compound) {
+            const owned = levels.reduce(function (sum, l) { return sum + Math.pow(3, Math.min(l, target)); }, 0);
+            return Math.pow(3, lvl) <= count * Math.pow(3, target) - owned;
+        }
+        const done = levels.filter(function (l) { return l >= target; }).length;
+        if (done >= count) return false;
+        if (levels.length < count) return true;
+        const below = levels.filter(function (l) { return l < target; });
+        return below.length > 0 && lvl > Math.min.apply(null, below);
+    }
     // Gold our own way to name +level would cost (Infinity: needs drops we can't time).
     function ownCost(name, level) {
         const def = G.items[name];
@@ -2759,11 +2792,18 @@ module.exports = function createWorkshop(ctx) {
                 }
             }
         }
-        for (const it of list) {
+        const counts = pontyCounts();
+        const boughtLevels = {}; // copies bought on this visit, before the bank snapshot knows them
+        // Highest level first: of several bases on offer the best one is bought.
+        const offers = list.slice().sort(function (a, b) { return ((b && b.level) || 0) - ((a && a.level) || 0); });
+        for (const it of offers) {
             if (!it || !wants.hasOwnProperty(it.name) || it.p === "glitched") continue;
             const lvl = it.level || 0;
-            const have = Math.max(wornLevel(it.name), unlockedCopies(it.name).reduce(function (m, l) { return Math.max(m, l); }, -1));
-            if (lvl <= have) continue; // nothing better than what we hold or wear
+            const levels = allCopyLevels(it.name).concat(boughtLevels[it.name] || []);
+            if (sellerOf(it.name)) {
+                // Shop items: only a copy better than everything we hold (the +0 comes from the NPC).
+                if (lvl <= levels.reduce(function (m, l) { return Math.max(m, l); }, -1)) continue;
+            } else if (!wantsAsBase(it.name, lvl, wants[it.name], counts[it.name] || 1, levels)) continue;
             let price = 0;
             try { price = calculate_item_value(it) * (G.items[it.name].cash ? 3 : 2) * (it.q || 1); } catch (e) { continue; }
             if (pc.maxPrice && price > pc.maxPrice) continue;
@@ -2779,6 +2819,7 @@ module.exports = function createWorkshop(ctx) {
                 await buy_secondhand(it);
                 pay(GOALS, price);
                 bought++;
+                (boughtLevels[it.name] = boughtLevels[it.name] || []).push(lvl);
                 util.log("workshop", "bought " + it.name + " +" + lvl + " at Ponty for " + Math.round(price / 1000) + "k (" + (isFinite(own) ? "making it: ~" + Math.round(own / 1000) + "k" : "can't make it") + ")", "green");
                 noteBought({ kind: "wish", item: it.name + " +" + lvl, price: price, own: isFinite(own) ? Math.round(own) : null });
             } catch (e) {
