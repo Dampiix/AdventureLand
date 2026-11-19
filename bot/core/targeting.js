@@ -1003,6 +1003,8 @@ module.exports = function createTargeting(ctx) {
                     delete crowdedUntil[cavPlan.monster];
                     delete crowdHistory[cavPlan.monster];
                     try { set(CROWD_KEY, crowdHistory); } catch (e) { /* storage unavailable */ }
+                    // A death block goes too (player decision 2026-11-19): the reset spot is fresh.
+                    if (experience[cavPlan.monster] && experience[cavPlan.monster].bad) { delete experience[cavPlan.monster].bad; saveExperience(); }
                 }
                 cavPlan = null;
                 nextPickAt = 0;
@@ -1010,8 +1012,10 @@ module.exports = function createTargeting(ctx) {
             }
             return { monster: cavPlan.monster, source: "cavalry " + cavPlan.mode };
         }
-        if (!cavalryReady() || recentDeath(list[0])) return null;
-        if (crowdedUntil[list[0]] > now && !allSpotsTaken(list[0])) cavPlan = { monster: list[0], mode: "reset", since: now };
+        if (!cavalryReady()) return null;
+        // The first target skipped as too strong OR closed by a death (player decision 2026-11-19):
+        // the Cavalry resets it, then it is farmed again.
+        if ((crowdedUntil[list[0]] > now || recentDeath(list[0])) && !allSpotsTaken(list[0])) cavPlan = { monster: list[0], mode: "reset", since: now };
         // Nuke only while we actually farm the first target (fighting there within the last
         // minute) - arriving at grown booboos must lead to their reset, not to the dinos.
         else if (!farmBlocked(list[0]) && farm && farm.monster === list[0] && now - lastFoundAt < 60 * 1000) {

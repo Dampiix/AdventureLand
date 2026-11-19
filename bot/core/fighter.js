@@ -642,7 +642,7 @@ module.exports = function createFighter(ctx, cls) {
         // Cavalry plan (targeting): nuke = any level-3+ one of the kind in reach; reset = grown ones.
         const src = String(lastFarm.source || "");
         if (src === "cavalry nuke" || src === "cavalry reset") {
-            const lvl = src === "cavalry reset" ? (cv.resetFromLevel || 5) : 3;
+            const lvl = 3; // the plan wants this spot cleared - any level the Cavalry takes
             const these = all.filter(function (e) { return grown(e) && e.mtype === lastFarm.monster && (e.level || 1) >= lvl; });
             if (these.length) callCavalry(src.slice(8) + " " + these.length + "x " + lastFarm.monster + " (levels " + these.map(function (e) { return e.level || 1; }).join(",") + ")");
             return;
