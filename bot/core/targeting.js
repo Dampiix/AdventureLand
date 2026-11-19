@@ -54,6 +54,7 @@ module.exports = function createTargeting(ctx) {
         try { return get(EXP_KEY) || {}; } catch (e) { return {}; }
     })();
     let lastClock = 0;
+    let clockMonster = null, clockSince = 0; // farm target the clock watches, and since when
     let lastSave = 0;
 
     function saveExperience() {
@@ -77,7 +78,11 @@ module.exports = function createTargeting(ctx) {
         const e = experience[farm.monster] || (experience[farm.monster] = { ms: 0, at: now });
         // Only a death at the farm spot counts: on the farm map with such a monster nearby
         // (a death on the way or at a hunt somewhere else must not mark this monster).
-        const dead = [character.name].concat(party.memberNames()).find(function (n) {
+        // Only fresh deaths (2026-11-19): a member still lying dead after the farm target changed
+        // closed the NEW spot too (booboos after a mummy death). Every fighter reports its own
+        // death with the monster that killed it (fighter.js), so this is only a fallback.
+        if (farm.monster !== clockMonster) { clockMonster = farm.monster; clockSince = now; }
+        const dead = (now - clockSince < 15 * 1000) ? null : [character.name].concat(party.memberNames()).find(function (n) {
             const p = n === character.name ? character : get_player(n);
             if (!p || !p.rip) return false;
             if (farm.map && p.map !== farm.map) return false;

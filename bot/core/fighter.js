@@ -662,7 +662,13 @@ module.exports = function createFighter(ctx, cls) {
     function waitForTeam() {
         const pc = config.party || {};
         if (!party.enabled || !party.isLeader || !pc.waitForTeam) return false;
-        if (get_nearest_monster({ target: character.name })) return false;
+        // Never while a fight is on - a monster on us or on any member: the waiting skipped the
+        // priest's heals while the warrior died to mummies and the ranger was off buying potions
+        // (2026-11-19).
+        const members = party.memberNames();
+        if (Object.values(parent.entities || {}).some(function (e) {
+            return e && e.type === "monster" && !e.dead && e.target && (e.target === character.name || members.includes(e.target));
+        })) return false;
         const fighters = (config.team && config.team.fighters) || [];
         const far = party.memberNames().filter(function (n) {
             if (n === character.name || !fighters.includes(n)) return false;
