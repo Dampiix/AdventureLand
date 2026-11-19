@@ -2658,13 +2658,15 @@ module.exports = function createWorkshop(ctx) {
         if (c.copies > 0.01) gold += dropTimes[name] && gph ? c.copies * dropTimes[name] / 3600 * gph : Infinity;
         return gold;
     }
+    // Paid from the gear pot (gearGoals budget) since 2026-11-19 (player decision): buying replaces
+    // building, so both come out of one pot; at most ponty.maxShareOfPot of it per purchase.
     async function shopPonty() {
         const pc = (config.market && config.market.ponty) || {};
         if (!pc.enabled || Date.now() < nextPontyAt || character.esize < 3 || !bankSnapshot) return false;
         nextPontyAt = Date.now() + (pc.everyMs || 20 * 60 * 1000);
         const wants = pontyWants();
         // Finds are reported even with an empty pot (player wants to see what would be worth it).
-        if ((!Object.keys(wants).length || !canSpend(SHOPPING, 1)) && !pc.reportFinds) return false;
+        if ((!Object.keys(wants).length || !canSpend(GOALS, 1)) && !pc.reportFinds) return false;
         util.status("checking Ponty", "yellow");
         await goTo("secondhands");
         let list = [];
@@ -2703,18 +2705,18 @@ module.exports = function createWorkshop(ctx) {
             // buyFinds (player decision 2026-11-19): the best find worth it is bought too - within the
             // pot share per purchase - gets the fighter's main-stat scroll and goes to that fighter.
             const pick = pc.buyFinds && finds.find(function (x) {
-                return x.better && x.price <= shoppingBudget().allowed * (pc.maxShareOfPot || 1) && canSpend(SHOPPING, x.price) && x.price <= character.gold;
+                return x.better && x.price <= goalBudget().allowed * (pc.maxShareOfPot || 1) && canSpend(GOALS, x.price) && x.price <= character.gold;
             });
             if (pick && character.esize >= 2) {
                 try {
                     await buy_secondhand(pick.it);
-                    pay(SHOPPING, pick.listPrice);
+                    pay(GOALS, pick.listPrice);
                     const lvl = pick.it.level || 0;
                     util.log("workshop", "bought " + pick.item + " at Ponty for " + Math.round(pick.listPrice / 1000) + "k for " + pick.fighter + " (+" + pick.gain + "%)", "green");
                     noteBought({ kind: "find", item: pick.item, price: pick.listPrice, fighter: pick.fighter, gain: pick.gain, perM: pick.perM, oursPerM: pick.oursPerM });
                     if (pick.stat) {
                         const idx = util.findItemIndex(function (x) { return x.name === pick.it.name && (x.level || 0) === lvl && x.stat_type !== pick.stat && !x.l; });
-                        if (idx !== -1) await applyStat(idx, pick.stat, SHOPPING);
+                        if (idx !== -1) await applyStat(idx, pick.stat, GOALS);
                     }
                     earmark(pick.fighter, pick.it.name, lvl, pick.stat);
                     bought++;
@@ -2731,17 +2733,17 @@ module.exports = function createWorkshop(ctx) {
             let price = 0;
             try { price = calculate_item_value(it) * (G.items[it.name].cash ? 3 : 2) * (it.q || 1); } catch (e) { continue; }
             if (pc.maxPrice && price > pc.maxPrice) continue;
-            if (pc.maxShareOfPot && price > shoppingBudget().allowed * pc.maxShareOfPot) { tooDear[it.name + " +" + lvl] = Math.round(price / 1000); continue; }
+            if (pc.maxShareOfPot && price > goalBudget().allowed * pc.maxShareOfPot) { tooDear[it.name + " +" + lvl] = Math.round(price / 1000); continue; }
             const own = ownCost(it.name, lvl);
             if (price > own * (pc.maxShareOfOwn || 1)) continue;
-            if (price > character.gold || !canSpend(SHOPPING, price)) {
+            if (price > character.gold || !canSpend(GOALS, price)) {
                 tooDear[it.name + " +" + lvl] = Math.round(price / 1000);
                 continue;
             }
             if (character.esize < 2) break;
             try {
                 await buy_secondhand(it);
-                pay(SHOPPING, price);
+                pay(GOALS, price);
                 bought++;
                 util.log("workshop", "bought " + it.name + " +" + lvl + " at Ponty for " + Math.round(price / 1000) + "k (" + (isFinite(own) ? "making it: ~" + Math.round(own / 1000) + "k" : "can't make it") + ")", "green");
                 noteBought({ kind: "wish", item: it.name + " +" + lvl, price: price, own: isFinite(own) ? Math.round(own) : null });
@@ -2750,7 +2752,7 @@ module.exports = function createWorkshop(ctx) {
             }
         }
         const dear = Object.keys(tooDear);
-        if (dear.length) util.log("workshop", "Ponty, not in the shopping pot (" + Math.round(shoppingBudget().allowed / 1000) + "k): " + dear.map(function (n) { return n + " " + tooDear[n] + "k"; }).join(", "), "white");
+        if (dear.length) util.log("workshop", "Ponty, not in the gear pot (" + Math.round(goalBudget().allowed / 1000) + "k): " + dear.map(function (n) { return n + " " + tooDear[n] + "k"; }).join(", "), "white");
         return bought > 0;
     }
 

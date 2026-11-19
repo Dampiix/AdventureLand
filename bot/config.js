@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.135.4",
+    version: "1.136.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -67,16 +67,18 @@ module.exports = {
         // the last 24 h for buying wished items from Ponty / other players (server tour, not
         // built yet). It only fills for now; nothing spends it. Other pots for comparison:
         // gear goals 0.5, weapon ladder 0.25, grace 0.05 per target level (all in workshop).
-        shopping: { incomeShare: 0.2 },
+        // Merged into the gear pot (gearGoals.budget.incomeShare 0.5 -> 0.7) on 2026-11-19 (player
+        // decision): Ponty purchases replace building and are paid from it.
+        shopping: { incomeShare: 0 },
         // Ponty (player request 2026-11-19, fresh account): every everyMs the merchant checks his
         // listings and buys what a fighter wishes or a gear goal needs - better than our best copy
         // and at most maxShareOfOwn of what making it ourselves would cost. From the shopping pot.
         // Rules (player decisions 2026-11-19): at most maxShareOfOwn of our own expected cost (up to
-        // 20 % more - the time saved is worth it) and at most maxShareOfPot of the shopping pot per
-        // purchase (it grows with the income; was a fixed 1M). reportFinds: pieces outside the wish
+        // 20 % more - the time saved is worth it) and at most maxShareOfPot of the gear pot per purchase
+        // (50 %: one purchase never takes the whole pot; it grows with the income; was a fixed 1M). reportFinds: pieces outside the wish
         // list are reported (gain per gold vs our best own upgrade); buyFinds (player decision
         // 2026-11-19): the best one worth it is bought as well (pot share, main-stat scroll, delivered).
-        ponty: { enabled: true, everyMs: 20 * 60 * 1000, maxShareOfOwn: 1.2, maxShareOfPot: 0.2, reportFinds: true, buyFinds: true, findMinGain: 0.5 },
+        ponty: { enabled: true, everyMs: 20 * 60 * 1000, maxShareOfOwn: 1.2, maxShareOfPot: 0.5, reportFinds: true, buyFinds: true, findMinGain: 0.5 },
     },
 
     // Dismantle drops (player decision 2026-11-17): instead of upgrading them, the merchant
@@ -856,7 +858,7 @@ module.exports = {
             // positive cash flow, with workshop.keepGold as the floor. `total` (optional)
             // would cap everything ever spent on gear goals.
             budget: {
-                incomeShare: 0.5, transferAbove: 3000000,
+                incomeShare: 0.7, transferAbove: 3000000,
                 // Player decisions 2026-11-17: 10M more for 12 h at 08:45, another 10M at 12:23 (the
                 // budget ran out on the Rugged pants/shoes). The extra counts against the last 24 h of
                 // spending, so the total grows: 30M until 2026-11-18 00:23 UTC.
