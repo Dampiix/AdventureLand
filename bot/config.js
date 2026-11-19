@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.141.0",
+    version: "1.142.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -1023,9 +1023,12 @@ module.exports = {
         // Items the merchant hands to a fighter on its next delivery (one-off gifts).
         give: {
         },
-        // Every fighter gets one of these if it carries none; the merchant keeps one too.
-        // Tracktrix: monster achievement bonuses only apply while it is carried.
+        // Every online fighter gets one of these if it carries none - from the bank, else bought
+        // with tokens (Tracktrix: 4 Monster Tokens at Daisy). Tracktrix: monster achievement
+        // bonuses only apply while it is carried, and it calls the Cavalry.
         onePerCharacter: ["tracker"],
+        // The merchant keeps no copy for itself (player decision 2026-11-19: 3 for 12 tokens).
+        onePerCharacterKeepOwn: false,
         // Skill ingredients go to the class that uses them on every delivery.
         classItems: { priest: ["essenceoflife"], ranger: ["poison"] },
         // Bank: when the bag runs low on space, everything that is neither sold

@@ -2869,22 +2869,30 @@ module.exports = function createWorkshop(ctx) {
         return (config.merchantRole && config.merchantRole.onePerCharacter) || [];
     }
 
-    // Items we can hand to this fighter now (we keep our own copy).
+    // The merchant's own copy (merchantRole.onePerCharacterKeepOwn, default true).
+    function oneEachOwn() { return config.merchantRole.onePerCharacterKeepOwn === false ? 0 : 1; }
+
+    // Items we can hand to this fighter now (keeping our own copy when configured).
     function oneEachFor(fighter) {
         return oneEachList().filter(function (item) {
-            return carries[fighter] && carries[fighter][item] === false && util.countItem(item) > 1;
+            return carries[fighter] && carries[fighter][item] === false && util.countItem(item) > oneEachOwn();
         });
     }
 
-    // Fetch copies from the bank until we hold one per lacking fighter plus our own.
+    // Copies for every fighter that reports lacking one (only online fighters report): from
+    // the bank first, else bought with tokens when the token NPC sells it (Tracktrix: 4
+    // Monster Tokens at Daisy - player decision 2026-11-19).
     async function stockOneEach() {
         for (const item of oneEachList()) {
             const lacking = config.team.fighters.filter(function (f) { return carries[f] && carries[f][item] === false; }).length;
-            if (util.countItem(item) >= lacking + 1) continue;
+            if (!lacking || util.countItem(item) >= lacking + oneEachOwn()) continue;
+            if (character.esize < 2) continue;
             const banked = bankSnapshot && bankSnapshot.items.find(function (b) { return b.name === item; });
-            if (!banked || character.esize < 2) continue;
-            await retrieve(banked);
-            return true;
+            if (banked) {
+                await retrieve(banked);
+                return true;
+            }
+            if (tokenOffer(item) && (await buyWithTokens(item))) return true;
         }
         return false;
     }
