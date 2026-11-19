@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.134.3",
+    version: "1.135.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -71,9 +71,11 @@ module.exports = {
         // Ponty (player request 2026-11-19, fresh account): every everyMs the merchant checks his
         // listings and buys what a fighter wishes or a gear goal needs - better than our best copy
         // and at most maxShareOfOwn of what making it ourselves would cost. From the shopping pot.
-        // Rules (player decision 2026-11-19): at most maxPrice per purchase and at most maxShareOfOwn
-        // of our own expected cost - up to 20 % more, because the time saved is worth it.
-        ponty: { enabled: true, everyMs: 20 * 60 * 1000, maxShareOfOwn: 1.2, maxPrice: 1000000 },
+        // Rules (player decisions 2026-11-19): at most maxShareOfOwn of our own expected cost (up to
+        // 20 % more - the time saved is worth it) and at most maxShareOfPot of the shopping pot per
+        // purchase (it grows with the income; was a fixed 1M). reportFinds: pieces outside the wish
+        // list are only reported (gain per gold vs our best own upgrade), never bought (yet).
+        ponty: { enabled: true, everyMs: 20 * 60 * 1000, maxShareOfOwn: 1.2, maxShareOfPot: 0.2, reportFinds: true, findMinGain: 0.5 },
     },
 
     // Dismantle drops (player decision 2026-11-17): instead of upgrading them, the merchant

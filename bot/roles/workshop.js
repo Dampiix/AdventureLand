@@ -2571,6 +2571,7 @@ module.exports = function createWorkshop(ctx) {
         if (ask.length && config.leader) comms.send(config.leader, "timesfor", { list: ask });
         const goldOnly = rows.filter(function (r) { return r.farmH === 0 && !r.unknown.length && r.gold > 0 && r.gain > 0; });
         const perGold = goldOnly.reduce(function (m, r) { return Math.max(m, r.gain / r.gold); }, 0);
+        bestPerGold = perGold || bestPerGold;
         const goldPower = goldPerHour && perGold ? Math.round(perGold * goldPerHour * 100) / 100 : null;
         const xp = Object.keys(fighterValues).map(function (f) { const v = fighterValues[f]; return f + " " + (v.xpPower === null || v.xpPower === undefined ? "?" : v.xpPower) + "%/h"; }).join(", ");
         const k = function (x) { return x >= 1e6 ? (x / 1e6).toFixed(1) + "M" : Math.round(x / 1000) + "k"; };
@@ -2590,6 +2591,44 @@ module.exports = function createWorkshop(ctx) {
     // (our gold cost, plus farm hours counted at our gold per hour). Paid from the shopping
     // pot (market.shopping.incomeShare); the copy then goes out through the usual deliveries.
     let nextPontyAt = Date.now() + 60 * 1000;
+    let bestPerGold = 0; // % power per gold of our best gold-only upgrade (value report)
+    // % more power for fighter f if item (assumed with f's main-stat scroll when it takes one)
+    // replaces the weakest worn piece of its slot type; null when f can't use it.
+    function gainFor(f, item) {
+        const v = fighterValues[f], b = v && v.base, def = G.items[item.name];
+        if (!b || !def || Date.now() - v.at > 60 * 60 * 1000) return null;
+        const cls = fighterClass(f);
+        if (def.class && !def.class.includes(cls)) return null;
+        if (def.type === "weapon" && !util.weaponPower(item.name, item.level || 0, cls)) return null;
+        const slots = SLOTS_BY_TYPE[def.type] || [];
+        if (!slots.length) return null;
+        const props = function (it) {
+            if (!it) return {};
+            const x = { name: it.name, level: it.level || 0 };
+            const st = it.stat || it.stat_type || (G.items[it.name] && G.items[it.name].stat ? b.stat : null);
+            if (st) x.stat_type = st;
+            try { return calculate_item_properties(x) || {}; } catch (e) { return {}; }
+        };
+        const parts = function (p) { return { stat: p[b.stat] || 0, atk: p.attack || 0, freq: (p.frequency || 0) / 100 + (p.dex || 0) / 640 + (p.int || 0) / 1575 }; };
+        const pn = parts(props(item));
+        let best = null;
+        slots.forEach(function (s) {
+            const pw = parts(props((worn[f] || {})[s]));
+            const g = (pn.stat - pw.stat) / b.mainVal + (pn.atk - pw.atk) * (s === "offhand" ? 0.7 : 1) / Math.max(5, b.atk) + (pn.freq - pw.freq) / b.freq;
+            if (best === null || g > best) best = g;
+        });
+        return best === null ? null : best * 100;
+    }
+    // Stat scrolls a piece needs: 1, 10 or 100 by its grade (the merchant adds the main stat).
+    function statScrollCost(item, stat) {
+        const def = G.items[item.name];
+        if (!def || !def.stat || !stat) return 0;
+        const s = G.items[stat + "scroll"];
+        let grade = 0;
+        try { grade = item_grade(item); } catch (e) { /* unknown */ }
+        return s ? (s.g || 0) * Math.pow(10, grade) : 0;
+    }
+    const FINDS_KEY = "dmpx_ponty_finds";
     function wornLevel(name) {
         let best = -1;
         Object.keys(worn).forEach(function (f) {
@@ -2619,7 +2658,8 @@ module.exports = function createWorkshop(ctx) {
         if (!pc.enabled || Date.now() < nextPontyAt || character.esize < 3 || !bankSnapshot) return false;
         nextPontyAt = Date.now() + (pc.everyMs || 20 * 60 * 1000);
         const wants = pontyWants();
-        if (!Object.keys(wants).length || !canSpend(SHOPPING, 1)) return false;
+        // Finds are reported even with an empty pot (player wants to see what would be worth it).
+        if ((!Object.keys(wants).length || !canSpend(SHOPPING, 1)) && !pc.reportFinds) return false;
         util.status("checking Ponty", "yellow");
         await goTo("secondhands");
         let list = [];
@@ -2629,6 +2669,33 @@ module.exports = function createWorkshop(ctx) {
         }
         let bought = 0;
         const tooDear = {}; // one log line per visit: "name +level" -> price
+        // Finds outside the wish list (player decision 2026-11-19: reported only for now): a piece
+        // that makes an active fighter stronger, rated by % power per gold against our best own
+        // upgrade per gold. Main-stat scrolls are counted in.
+        if (pc.reportFinds) {
+            const finds = [];
+            list.forEach(function (it) {
+                if (!it || wants.hasOwnProperty(it.name) || it.p === "glitched" || !G.items[it.name]) return;
+                let price = 0;
+                try { price = calculate_item_value(it) * (G.items[it.name].cash ? 3 : 2) * (it.q || 1); } catch (e) { return; }
+                Object.keys(fighterValues).forEach(function (f) {
+                    const g = gainFor(f, it);
+                    if (!(g > (pc.findMinGain || 0.5))) return;
+                    const b = fighterValues[f].base || {};
+                    const cost = price + (it.stat_type === b.stat ? 0 : statScrollCost(it, b.stat));
+                    const perM = g / Math.max(1, cost) * 1e6;
+                    finds.push({ t: Date.now(), fighter: f, item: it.name + " +" + (it.level || 0), price: Math.round(cost), gain: Math.round(g * 100) / 100,
+                        perM: Math.round(perM * 100) / 100, oursPerM: Math.round(bestPerGold * 1e6 * 100) / 100, better: bestPerGold > 0 && g / cost >= bestPerGold });
+                });
+            });
+            finds.sort(function (a, b) { return b.perM - a.perM; });
+            finds.slice(0, 3).forEach(function (x) {
+                util.log("workshop", "Ponty find: " + x.item + " for " + Math.round(x.price / 1000) + "k -> " + x.fighter + " +" + x.gain + "% (" + x.perM + "%/M, our best upgrade " + (x.oursPerM || "?") + "%/M)" + (x.better ? " - worth it" : ""), x.better ? "yellow" : "white");
+            });
+            if (finds.length) {
+                try { const old = get(FINDS_KEY) || []; set(FINDS_KEY, old.concat(finds.slice(0, 5)).slice(-60)); } catch (e) { /* storage unavailable */ }
+            }
+        }
         for (const it of list) {
             if (!it || !wants.hasOwnProperty(it.name) || it.p === "glitched") continue;
             const lvl = it.level || 0;
@@ -2637,6 +2704,7 @@ module.exports = function createWorkshop(ctx) {
             let price = 0;
             try { price = calculate_item_value(it) * (G.items[it.name].cash ? 3 : 2) * (it.q || 1); } catch (e) { continue; }
             if (pc.maxPrice && price > pc.maxPrice) continue;
+            if (pc.maxShareOfPot && price > shoppingBudget().allowed * pc.maxShareOfPot) { tooDear[it.name + " +" + lvl] = Math.round(price / 1000); continue; }
             const own = ownCost(it.name, lvl);
             if (price > own * (pc.maxShareOfOwn || 1)) continue;
             if (price > character.gold || !canSpend(SHOPPING, price)) {

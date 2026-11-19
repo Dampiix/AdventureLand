@@ -645,7 +645,9 @@ module.exports = function createGear(ctx) {
         const xph = xpPerHour();
         const lp = levelPower();
         return { xpPerHour: xph === null ? null : Math.round(xph), levelPower: Math.round(lp * 10000) / 100,
-            xpPower: xph === null ? null : Math.round(xph / Math.max(1, character.max_xp) * lp * 10000) / 100 };
+            xpPower: xph === null ? null : Math.round(xph / Math.max(1, character.max_xp) * lp * 10000) / 100,
+            // for the merchant's gain estimates of items we don't wish for (Ponty finds)
+            base: { stat: mainStat(), mainVal: character[mainStat()] || 1, atk: weaponAttack(), freq: character.frequency || 1 } };
     }
     function propsOf(it) {
         try { return calculate_item_properties(it) || {}; } catch (e) { return {}; }
