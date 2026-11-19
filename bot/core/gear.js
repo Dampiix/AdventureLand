@@ -120,13 +120,18 @@ module.exports = function createGear(ctx) {
         }).filter(function (steps) { return steps.length; });
     }
     // How many steps of the chain this piece covers (0 = none or not part of it).
+    // The first step of its name the piece does not reach ends the count: with three steps
+    // of one item (belts +2/+3/+4) a +2 counted as "at the +4 step" and the next wish
+    // jumped straight to +4 (2026-11-19).
     function chainProgress(steps, item) {
         if (!item) return 0;
         let best = -1;
-        steps.forEach(function (s, i) {
-            if (s.name !== item.name) return;
-            best = Math.max(best, (item.level || 0) >= (s.level || 0) ? i + 1 : i);
-        });
+        for (let i = 0; i < steps.length; i++) {
+            const s = steps[i];
+            if (s.name !== item.name) continue;
+            if ((item.level || 0) >= (s.level || 0)) { best = i + 1; continue; }
+            return Math.max(best, i);
+        }
         return best;
     }
     // Items any NPC sells (shop gear).
