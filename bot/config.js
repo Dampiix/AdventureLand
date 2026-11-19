@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.123.0",
+    version: "1.123.1",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -317,6 +317,10 @@ module.exports = {
         // emergency, the healing does the rest (player decision 2026-11-16).
         // fastLossPerSec (2026-11-18): losing this share of max HP per second (over ~3 s) - the solo
         // potion rules apply although a healer is near (Jr. killed the warrior next to the priest).
+        // Pass through (2026-11-19): the leader/solo on its way to the farm spot leaves slower
+        // attackers of other kinds behind instead of fighting them (above minHp, not within
+        // spotRadius of the spot).
+        passThrough: { enabled: true, minHp: 0.5, speedShare: 0.8, spotRadius: 400 },
         withHealer: { potionHpBelow: 0.6, potionWhenMissing: false, fastLossPerSec: 0.06 },
         // MP: drink as soon as this share of an MP potion is missing – solo and in the party
         // (player decision 2026-11-17: "Mana kann ruhig immer voll sein", potions are cheap).

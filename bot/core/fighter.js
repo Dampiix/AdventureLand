@@ -489,10 +489,37 @@ module.exports = function createFighter(ctx, cls) {
         } catch (e) { return true; }
     }
 
+    function passThrough(farm, target) {
+        const pt = config.combat.passThrough || {};
+        if (!pt.enabled || !farm || farm.any || !farm.monster || target.mtype === farm.monster) return false;
+        if (party.enabled && party.isMember && !party.detached()) return false; // members follow the leader
+        if (util.hpRatio() < (pt.minHp || 0.5)) return false;
+        const spot = targeting.spotFor(farm.monster, farm.map);
+        if (spot && spot.map === character.map && util.distanceTo(spot) < (pt.spotRadius || 400)) return false; // arrived
+        const mine = character.speed || 0;
+        const ours = [character.name].concat(party.enabled ? party.memberNames() : []);
+        const attackers = Object.values(parent.entities || {}).filter(function (e) {
+            return e && e.type === "monster" && !e.dead && e.target && ours.includes(e.target);
+        });
+        if (!attackers.length && !target.target) return false; // a free one: just don't pull it (pick decides)
+        return attackers.every(function (e) {
+            return e.mtype !== farm.monster && (e.speed || (G.monsters[e.mtype] || {}).speed || 0) < mine * (pt.speedShare || 0.8);
+        });
+    }
+
     function handleCombat() {
         if (resting()) return;
         const farm = targeting.currentFarm();
-        const target = targeting.pick(farm);
+        let target = targeting.pick(farm);
+        // Pass through (player request 2026-11-19): on the way to the farm spot, monsters of
+        // another kind that attack us but are clearly slower are left behind instead of fought -
+        // the party stuck in booboo fights on its way to the mummies. Not near the spot, not
+        // below combat.passThrough.minHp, and only when every attacker is that slow.
+        if (target && passThrough(farm, target)) {
+            util.status("passing " + target.mtype, "yellow");
+            travel(farm.dest || targeting.spotFor(farm.monster, farm.map) || farm.monster, "searching " + farm.monster);
+            return;
+        }
         // Only time actually fighting counts for the crowded-spot check: running after a
         // monster that another player kills on the way is time without a target too.
         // A monster attacking one of us counts as work too, in our range or not: after the
