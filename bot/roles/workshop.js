@@ -2444,6 +2444,16 @@ module.exports = function createWorkshop(ctx) {
                     if (!miss) return;
                     if (dropTimes[n]) farmH += miss * dropTimes[n] / 3600; else unknown.push(n);
                 });
+                // Crafted bases (Wanderer's pieces, Winged Boots): every expected craft needs the recipe.
+                if (c.crafts > 0 && G.craft[w.name]) {
+                    G.craft[w.name].items.forEach(function (it) {
+                        const q = it[0], n = it[1];
+                        if (sellerOf(n)) return; // bought (e.g. Shoes): already gold
+                        const miss = Math.max(0, c.crafts * q - ingredientCount(n, 0));
+                        if (!miss) return;
+                        if (dropTimes[n]) farmH += miss * dropTimes[n] / 3600; else if (!unknown.includes(n)) unknown.push(n);
+                    });
+                }
                 const goldH = goldPerHour ? c.gold / goldPerHour : 0;
                 const hours = goldH + farmH;
                 rows.push({ fighter: f, item: w.name + " +" + w.level, gain: w.gain, gold: Math.round(c.gold), copies: Math.round(c.copies * 10) / 10,
@@ -2451,6 +2461,10 @@ module.exports = function createWorkshop(ctx) {
             });
         });
         rows.sort(function (a, b) { return (b.value === null ? -1 : b.value) - (a.value === null ? -1 : a.value); });
+        // Ask the leader for the farm times we still lack (answered with "droptimes").
+        const ask = [];
+        rows.forEach(function (r) { r.unknown.forEach(function (n) { if (!ask.includes(n)) ask.push(n); }); });
+        if (ask.length && config.leader) comms.send(config.leader, "timesfor", { list: ask });
         const goldOnly = rows.filter(function (r) { return r.copies === 0 && !r.unknown.length && r.gold > 0 && r.gain > 0; });
         const perGold = goldOnly.reduce(function (m, r) { return Math.max(m, r.gain / r.gold); }, 0);
         const goldPower = goldPerHour && perGold ? Math.round(perGold * goldPerHour * 100) / 100 : null;

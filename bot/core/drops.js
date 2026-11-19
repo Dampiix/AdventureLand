@@ -182,6 +182,24 @@ module.exports = function createDrops(ctx) {
         return out.sort(function (a, b) { return a.perCopy - b.perCopy; });
     }
 
+    // Value report (stage 1): the merchant asks for per-copy farm times of the items its wishes
+    // need, whether or not we farm for drops. One guide query per item, cached for 30 min.
+    const timeCache = {}; // name -> { at, perCopy }
+    comms.on("timesfor", function (data, from) {
+        if (from !== config.merchant || !leads) return;
+        const times = {};
+        (data.list || []).slice(0, 15).forEach(function (name) {
+            if (!G.items[name]) return;
+            const c = timeCache[name];
+            if (c && Date.now() - c.at < 30 * 60 * 1000) { if (c.perCopy) times[name] = c.perCopy; return; }
+            const cands = routeFor({ name: name, copies: 1 }) || [];
+            const best = cands[0] && isFinite(cands[0].perCopy) ? Math.round(cands[0].perCopy) : null;
+            timeCache[name] = { at: Date.now(), perCopy: best };
+            if (best) times[name] = best;
+        });
+        comms.send(config.merchant, "droptimes", { times: times });
+    });
+
     function check() {
         nextCheckAt = Date.now() + cfg.refreshMs;
         // Merchant reports older than an hour are stale (merchant gone); it reports every
