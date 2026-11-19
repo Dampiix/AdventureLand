@@ -1,0 +1,38 @@
+{
+  "taken": "2026-11-19T01:12:33Z",
+  "localTime": "2026-11-19 02:12 (CET)",
+  "note": "Before the overnight mummy farm (priest, warrior, ranger in party; farm list mummy > booboo > stoneworm; no hunts, bosses or nukes). Bank data is the last account snapshot (freshness unverified).",
+  "characters": {
+    "DmpxPriest":  { "level": 59, "xp": 37747122,  "gold": 32415 },
+    "DmpxWar":     { "level": 71, "xp": 332041577, "gold": 74337 },
+    "DmpxRanger":  { "level": 60, "xp": 35687241,  "gold": 57509 },
+    "DmpxRogue":   { "level": 49, "xp": 3253289,   "gold": 15260, "online": false },
+    "DampiixMerch":{ "level": 50, "xp": 4072541,   "gold": 36277024 }
+  },
+  "gold": {
+    "merchant": 36277024,
+    "fighters": 179521,
+    "bank": 554832,
+    "total": 37011377
+  },
+  "bankKeyItems": {
+    "essenceoffire": 94,
+    "mbones": 3,
+    "swordofthedead": { "+6": 2, "+0": 2 },
+    "strbelt": { "+2": 1, "+1": 2, "+0": 1 },
+    "drapes": 125,
+    "bandages": 7,
+    "essenceofether": 25,
+    "dstones": 12,
+    "essenceoffrost": 15,
+    "monstertoken": 42,
+    "gem0": 59,
+    "gem1": 585,
+    "armorbox": 17,
+    "marketparcel": 31,
+    "stinger": { "+6": 1 },
+    "fireblade": { "+7": 1 },
+    "firestaff": { "+7": 3 },
+    "firebow": { "+6": 1 }
+  }
+}

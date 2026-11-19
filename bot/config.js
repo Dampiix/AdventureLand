@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.124.3",
+    version: "1.125.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -492,12 +492,10 @@ module.exports = {
         // 2 STR per piece for ~3x the armor and resistance.
         // The Monster Hunter sets are long-term and stay out for now.
         classWishesEnabled: true,
-        // Belts (player decision 2026-11-17): tanks keep an HP belt and take it to +2 (+640 HP:
-        // what booboos/stoneworms need) – while that wish is open the merchant keeps every HP
-        // belt for compounding instead of selling it; afterwards the rest is sold again.
-        // Priest and ranger: a main-stat belt (+4 at +0, +10 at +2) replaces the HP belt right
-        // away. Stat belts only drop in Spooky Town (map drop) – the wish waits until a spot
-        // there is safe.
+        // Belts (player decision 2026-11-19, replaces the tank HP-belt chain of 2026-11-17):
+        // every class takes its main-stat belt (+4 at +0, +10 at +2) over an HP belt and
+        // compounds it to +2. An HP belt is only worn while no stat belt is there (the guide
+        // fills the empty slot). Stat belts drop in Spooky Town (map drop).
         // Rings and earrings to +3 (player decision 2026-11-17): +2 first, then +3 for both
         // slots of each (+3 needs ~91 copies at +0 per piece - Phoenix earrings, Winterland rings).
         // Rings (player decision 2026-11-16): two stat rings +2 in the class's main stat
@@ -514,7 +512,7 @@ module.exports = {
                 { steps: [{ name: "orbg", level: 0 }, { name: "orbg", level: 1 }, { name: "orbofstr", level: 0 }] }, // Fire Spirit
                 { steps: [{ name: "strring", level: 2 }, { name: "strring", level: 3 }], replace: true, anytime: true },
                 { steps: [{ name: "strearring", level: 2 }, { name: "strearring", level: 3 }], replace: true, anytime: true },
-                { steps: [{ name: "hpbelt", level: 1 }, { name: "hpbelt", level: 2 }] },
+                { steps: [{ name: "strbelt", level: 0 }, { name: "strbelt", level: 1 }, { name: "strbelt", level: 2 }], replace: true, anytime: true },
                 { steps: [{ name: "helmet1", level: 7 }], replace: true },
                 { steps: [{ name: "gloves1", level: 7 }], replace: true },
                 { steps: [{ name: "pants1", level: 7 }], replace: true },
@@ -534,7 +532,7 @@ module.exports = {
                 { steps: [{ name: "orbg", level: 0 }, { name: "orbg", level: 1 }, { name: "orbofstr", level: 0 }] }, // Fire Spirit
                 { steps: [{ name: "strring", level: 2 }, { name: "strring", level: 3 }], replace: true, anytime: true },
                 { steps: [{ name: "strearring", level: 2 }, { name: "strearring", level: 3 }], replace: true, anytime: true },
-                { steps: [{ name: "hpbelt", level: 1 }, { name: "hpbelt", level: 2 }] },
+                { steps: [{ name: "strbelt", level: 0 }, { name: "strbelt", level: 1 }, { name: "strbelt", level: 2 }], replace: true, anytime: true },
                 { steps: [{ name: "helmet1", level: 7 }], replace: true },
                 { steps: [{ name: "gloves1", level: 7 }], replace: true },
                 { steps: [{ name: "pants1", level: 7 }], replace: true },
@@ -832,7 +830,7 @@ module.exports = {
             { name: "hpamulet", maxLevel: 10 },
             { name: "vitearring", maxLevel: 10 },
             { name: "vitring", maxLevel: 10 },  // STR beats VIT for the warrior too (player decision 2026-11-16)
-            { name: "hpbelt", maxLevel: 10 },   // kept while a tank's HP-belt wish is open (isReserved)
+            { name: "hpbelt", maxLevel: 10 },   // stat belts replace them (2026-11-19); a worn copy stays
             { name: "helmet", maxLevel: 3 },
             // Shop weapons and the old quiver that did their job (player decision 2026-11-16):
             // fire weapons replaced them, the ranger wears a quiver +8. A copy a fighter or

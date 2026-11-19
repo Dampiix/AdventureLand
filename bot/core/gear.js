@@ -236,13 +236,14 @@ module.exports = function createGear(ctx) {
         return list;
     }
     // A bag piece that is further along a class chain than the worn one: { num, slot }.
-    function chainUpgrade() {
+    function chainUpgrade(slotOk) {
         for (let num = 0; num < character.items.length; num++) {
             const item = character.items[num];
             const steps = item && chainOf(item.name);
             if (!steps || steps.carry || (steps.replace && !reachedStep(steps, item))) continue;
             const mine = chainProgress(steps, item);
             const slot = (SLOTS_BY_TYPE[G.items[item.name].type] || []).find(function (s) {
+                if (slotOk && !slotOk(s)) return false;
                 const worn = character.slots && character.slots[s];
                 if (!worn) return false;
                 const p = chainProgress(steps, worn);
@@ -322,7 +323,8 @@ module.exports = function createGear(ctx) {
         const own = G.classes[character.ctype] && G.classes[character.ctype].main_stat;
         return !!(it && it.stat_type && it.stat_type === own);
     }
-    async function equipPass() {
+    async function equipPass(weaponsLocked) {
+        const slotOk = function (s) { return !(weaponsLocked && (s === "mainhand" || s === "offhand")); };
         equipping = true;
         const wornBefore = JSON.stringify(worn());
         try {
@@ -331,6 +333,7 @@ module.exports = function createGear(ctx) {
                 const a = row.action;
                 const item = character.items[a.num];
                 if (!item || item.name !== a.name || (item.level || 0) !== (a.level || 0)) continue; // bag changed meanwhile
+                if (!slotOk(a.slot)) continue;
                 if (isCarry(item.name)) continue; // carried for a later mode, not worn
                 if (NO_EQUIP.has(G.items[item.name])) continue;
                 if (chainDowngrade(item, a.slot)) continue;
@@ -347,6 +350,7 @@ module.exports = function createGear(ctx) {
                 const def = item && G.items[item.name];
                 if (!def || !WEARABLE.includes(def.type) || !usable(def)) continue;
                 const slot = slotsFor(def).find(function (s) {
+                    if (!slotOk(s)) return false;
                     const w = character.slots && character.slots[s];
                     if (!w || w.name !== item.name) return false;
                     const lvl = item.level || 0, wl = w.level || 0;
@@ -362,7 +366,7 @@ module.exports = function createGear(ctx) {
             }
             // A piece further along a class wish chain (e.g. Orb of Strength +1 over
             // Orb of Beginnings +2): the guide doesn't know our chains.
-            const up = chainUpgrade();
+            const up = chainUpgrade(slotOk);
             if (up) {
                 const item = character.items[up.num];
                 await equip(up.num, up.slot);
@@ -371,7 +375,7 @@ module.exports = function createGear(ctx) {
             }
             // Two one-handers that together beat the worn two-hander: mainhand first (the
             // two-hander goes to the bag), the empty offhand is filled on the next pass.
-            const pair = pairInBag();
+            const pair = weaponsLocked ? null : pairInBag();
             if (pair) {
                 const item = character.items[pair.main];
                 await equip(pair.main, "mainhand");
@@ -382,7 +386,7 @@ module.exports = function createGear(ctx) {
             // guide only suggests weapons it planned itself.
             for (let num = 0; num < character.items.length; num++) {
                 const item = character.items[num];
-                if (!item || !strongerWeapon(item)) continue;
+                if (weaponsLocked || !item || !strongerWeapon(item)) continue;
                 await equip(num, "mainhand");
                 util.log("gear", "equipped " + item.name + " +" + (item.level || 0) + " -> mainhand (stronger weapon)", "green");
                 return;
@@ -390,7 +394,7 @@ module.exports = function createGear(ctx) {
             // Dual wield (warrior): a bag weapon clearly stronger than the one in the offhand.
             for (let num = 0; num < character.items.length; num++) {
                 const item = character.items[num];
-                if (!item || !strongerOffhand(item)) continue;
+                if (weaponsLocked || !item || !strongerOffhand(item)) continue;
                 await equip(num, "offhand");
                 util.log("gear", "equipped " + item.name + " +" + (item.level || 0) + " -> offhand (stronger weapon)", "green");
                 return;
@@ -400,7 +404,7 @@ module.exports = function createGear(ctx) {
                 const def = item && G.items[item.name];
                 if (!def || !WEARABLE.includes(def.type) || !usable(def)) continue;
                 if (isCarry(item.name)) continue;
-                const slot = slotsFor(def).find(function (s) { return !(character.slots && character.slots[s]); });
+                const slot = slotsFor(def).find(function (s) { return slotOk(s) && !(character.slots && character.slots[s]); });
                 if (!slot) continue;
                 await equip(num, slot);
                 util.log("gear", "equipped " + item.name + " +" + (item.level || 0) + " -> " + slot + " (slot was empty)", "green");
@@ -410,6 +414,7 @@ module.exports = function createGear(ctx) {
             // the merchant passes it on (and fills the slot with something else).
             if (character.esize > 1) {
                 const slot = Object.keys(character.slots || {}).find(function (sl) {
+                    if (!slotOk(sl)) return false;
                     const w = character.slots[sl];
                     return w && G.items[w.name] && (offStat(G.items[w.name]) || NO_EQUIP.has(G.items[w.name]));
                 });
@@ -586,19 +591,24 @@ module.exports = function createGear(ctx) {
 
     function tick() {
         if (!cfg.enabled) return;
-        if (weaponsHeld()) { sendWishes(); return; } // reports our usual weapons; no equip pass
-        if (heldUntil) { heldUntil = 0; lastBag = ""; } // the hold ran out on its own
-        if (usualWeapons && Object.keys(usualWeapons).every(function (s) {
-            const i = character.slots && character.slots[s];
-            return i && i.name === usualWeapons[s].name && (i.level || 0) >= usualWeapons[s].level;
-        })) usualWeapons = null; // back in our usual weapons
-        sendWishes();
+        // A weapon hold (warrior Agitate maces) only locks the weapon slots: it used to stop
+        // the whole equip pass, the warrior never put on a STR belt the guide wanted and kept
+        // 27 copies in the bag over night (2026-11-19).
+        const held = weaponsHeld();
+        if (!held) {
+            if (heldUntil) { heldUntil = 0; lastBag = ""; } // the hold ran out on its own
+            if (usualWeapons && Object.keys(usualWeapons).every(function (s) {
+                const i = character.slots && character.slots[s];
+                return i && i.name === usualWeapons[s].name && (i.level || 0) >= usualWeapons[s].level;
+            })) usualWeapons = null; // back in our usual weapons
+        }
+        sendWishes(); // reports our usual weapons during a hold
         const key = bagKey();
         if (key !== lastBag) trackBag();
         if (!equipping && key !== lastBag && Date.now() >= nextEquipAt && !util.townChannel()) { // an equip cancels Town
             lastBag = key;
             nextEquipAt = Date.now() + 3000;
-            equipPass();
+            equipPass(held);
         }
     }
 
@@ -641,6 +651,8 @@ module.exports = function createGear(ctx) {
         // each restart – kept Rings of Joy, HP belts and the old helmet from the merchant.
         const seen = firstSeen[item.name + ":" + (item.level || 0)];
         if (!seen || Date.now() - seen < 20 * 1000) return true;
+        // Only one copy: every STR belt the guide wanted on was held, 27 in the bag (2026-11-19).
+        if (character.items.find(function (i) { return i && i.name === item.name && (i.level || 0) === (item.level || 0); }) !== item) return false;
         return guideWantsOn(item);
     }
     let equipRows = { at: 0, rows: [] };

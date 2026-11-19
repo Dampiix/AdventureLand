@@ -1,0 +1,49 @@
+{
+  "taken": "2026-11-19T07:39:11Z",
+  "localTime": "2026-11-19 08:39 (CET)",
+  "compareTo": "2026-11-19-0112-overnight-start.json",
+  "hours": 6.44,
+  "note": "End of the overnight mummy farm (priest, warrior, ranger in party). Bank data is the last account snapshot (freshness unverified).",
+  "characters": {
+    "DmpxPriest":  { "level": 62, "xp": 44513984,  "gold": 162243, "xpm": 2.16, "xpGained": 148766862, "xpPerHour": 23100000 },
+    "DmpxWar":     { "level": 72, "xp": 317958860, "gold": 420932, "xpm": 1.66, "xpGained": 335917283, "xpPerHour": 52200000 },
+    "DmpxRanger":  { "level": 65, "xp": 48729235,  "gold": 382157, "xpm": 2.16, "xpGained": 370041994, "xpPerHour": 57500000 },
+    "DmpxRogue":   { "level": 49, "xp": 3253289,   "gold": 15260, "online": false },
+    "DampiixMerch":{ "level": 50, "xp": 2250750,   "gold": 86401373 }
+  },
+  "xpSplitNormalizedByXpm": { "DmpxPriest": 0.15, "DmpxWar": 0.46, "DmpxRanger": 0.39 },
+  "gold": {
+    "merchant": 86401373,
+    "fighters": 965332,
+    "bank": 554832,
+    "total": 87936797,
+    "handedByFightersSinceStart": 56724518,
+    "handedPerHourUTC": { "01": 8470317, "02": 7526738, "03": 7361452, "04": 9463414, "05": 7442485, "06": 12034592, "07(partial)": 4425520 }
+  },
+  "dpsMeter": "team ~5,050/s, ~123 mummy kills per 5 min (War ~2,500, Ranger ~2,450, Priest ~100)",
+  "deaths": [ { "at": "2026-11-19T05:07Z", "who": ["DmpxWar", "DmpxRanger"], "where": "mummy", "followUp": "Cavalry reset at 05:11Z" } ],
+  "bankKeyItems": {
+    "essenceoffire": 94,
+    "mbones": 4,
+    "swordofthedead": { "+6": 2, "+0": 3 },
+    "strbelt": { "+2": 1, "+0": 1 },
+    "drapes": 1751,
+    "bandages": 79,
+    "essenceofether": 26,
+    "dstones": 12,
+    "essenceoffrost": 15,
+    "monstertoken": 42,
+    "gem0": 59,
+    "gem1": 585,
+    "armorbox": 17,
+    "marketparcel": 37,
+    "stinger": { "+6": 1 },
+    "fireblade": { "+7": 1 },
+    "firestaff": { "+7": 3 },
+    "firebow": { "+6": 1 }
+  },
+  "carried": {
+    "DmpxWar": "27x strbelt +0 (held by the guide equip wish), 2x bowofthedead +0",
+    "DampiixMerch": "dexbelt +3 x2, +2 x3, +1 x2; strbelt +2; gloves +8"
+  }
+}
