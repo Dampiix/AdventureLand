@@ -329,6 +329,7 @@ module.exports = function createFighter(ctx, cls) {
     // for ones that die in time (1-2 hits). The step leads away from everything on us and from
     // other free monsters. Attacks go on while walking.
     let lastKite = 0;
+    let escape = null; // { x, y, until }: a way out of a corner we are walking
     function kiteStep(target) {
         const k = config.combat.kite;
         if (!k || !k.enabled) return false;
@@ -386,14 +387,23 @@ module.exports = function createFighter(ctx, cls) {
             // Cornered (no straight step back is free): run to open ground instead of standing
             // and tanking (player idea 2026-11-18) - a point 150-300 px away, far from the pack,
             // with no free monster near, open in most directions (through the pack is fine).
+            // Keep walking a chosen way out for a few seconds: a new path every 0.6 s with the back
+            // to a wall gave "Lost the path..." again and again (Viz priest, 2026-11-19).
+            if (escape && Date.now() < escape.until && is_moving(character)) {
+                util.status("kiting " + threat.mtype + " - out of the corner", "orange");
+                return true;
+            }
             const esc = escapePoint(me, { x: cx, y: cy }, free, k, team);
             if (!esc) return false; // nowhere to go: stand and fight
             lastKite = Date.now();
-            quiet(xmove(esc.x, esc.y));
+            escape = { x: esc.x, y: esc.y, until: Date.now() + 4000 };
+            // A straight line needs no path search (the search is what loses the path).
+            if (can_move_to(esc.x, esc.y)) quiet(move(esc.x, esc.y)); else quiet(xmove(esc.x, esc.y));
             util.status("kiting " + threat.mtype + " - out of the corner", "orange");
             return true;
         }
         lastKite = Date.now();
+        escape = null;
         quiet(move(best.x, best.y));
         util.status("kiting " + threat.mtype, "orange");
         return true;
