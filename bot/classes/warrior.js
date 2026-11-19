@@ -655,13 +655,38 @@ module.exports = function createWarrior(ctx) {
     // target - travelling, an event, a fight with something else - the usual weapons go back on.
     // On the way to the Phoenix a Big Bird taunted off the priest got the Lolipops, and their
     // splash pulled every Big Bird spawning next to the party.
+    // Splash without Agitate (player request 2026-11-19): with splashOnlyFrom or more monsters on
+    // us of a kind whose splash pays (measured, or guessed from the spawn density) the Lolipops go
+    // on even where Agitate is not allowed - 6-7 mummies stood on the warrior and he hit them with
+    // swords. Held a few seconds after the crowd thins out (no swapping back and forth).
+    let splashOnlyUntil = 0;
+    function splashOnly() {
+        if (ag.monsters !== "auto" || agOverride() || !(ag.splashOnlyFrom > 0)) return false;
+        const on = onMe();
+        if (on.length >= ag.splashOnlyFrom) {
+            const count = {};
+            on.forEach(function (m) { count[m.mtype] = (count[m.mtype] || 0) + 1; });
+            const type = Object.keys(count).sort(function (a, b) { return count[b] - count[a]; })[0];
+            if (splashWorth(type)) splashOnlyUntil = Date.now() + (ag.splashOnlyHoldMs || 8000);
+        }
+        return Date.now() < splashOnlyUntil;
+    }
     function releaseSplash() {
+        if (splashOnly()) {
+            if (!wearingSplash() && splashWeapons().length && !pack.busy) {
+                util.log("warrior", "splash weapons on: " + onMe().length + " on us (without Agitate)", "white");
+                putOnSplash();
+            }
+            if (wearingSplash()) ctx.gear.holdWeapons(ag.keepMs || 60 * 1000);
+            return;
+        }
         if (ag.monsters === "auto" && !agOverride() && wearingSplash() && ctx.gear.weaponsHeld()) {
             ctx.gear.holdWeapons(0);
             util.log("warrior", "splash weapons off (no farm target around)", "white");
         }
     }
     function packTick() {
+        if (splashOnly()) releaseSplash(); // puts the Lolipops on (also in a swords stream)
         if (!packOn()) { releaseSplash(); return false; }
         // Learning: a low-HP moment under attack counts against that monster kind.
         if (util.hpRatio() < (ag.streamStopHp || 0.4)) {

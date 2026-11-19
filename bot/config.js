@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.121.3",
+    version: "1.122.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -394,6 +394,7 @@ module.exports = {
                 // see the warrior module); a list forces these kinds; deny excludes kinds.
                 monsters: "auto", deny: [],
                 maxOnMe: 8, maxHp: 50000, abilities: [], // auto: at most this many at once; no bosses / unknown abilities
+                splashOnlyFrom: 3, splashOnlyHoldMs: 8000, // Lolipops without Agitate with this many on us (splash must pay) - 2026-11-19
                 fearMax: 0, // attackers of one damage type beyond our courage for it (each one more costs 20-40 % attack)
                 maxLevel: null, safetyShare: 0.5, // auto: no fixed level cap (the pack check uses real stats; a number caps by hand); a pull may cost only half the HP the pack check allows
                 splashMin: 1.0, learnHits: 40, denseCount: 5, denseSpacing: 130, // auto: lolipops from 1.0 splash per hit (guess from spawn density first)
