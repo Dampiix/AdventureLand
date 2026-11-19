@@ -935,7 +935,14 @@ module.exports = function createWarrior(ctx) {
             const others = onOthers();
             if (!others.length) return false;
             // Agitate: everything nearby comes to us when several monsters are on allies.
-            if (others.length >= (c.agitateFrom || 3) && util.canCast("agitate") && mpLeftAfter("agitate") >= reserve() &&
+            // ...but not with other kinds in reach that are not on us or allies (2026-11-19: it pulled
+            // a booboo - pure damage, fear - into a mummy fight): Taunt then takes them one by one.
+            const onAllies = others.map(function (m) { return m.id; });
+            const bystanders = Object.values(parent.entities || {}).some(function (e) {
+                return e && e.type === "monster" && !e.dead && util.distanceTo(e) <= G.skills.agitate.range &&
+                    e.target !== character.name && !onAllies.includes(e.id) && !others.some(function (o) { return o.mtype === e.mtype; });
+            });
+            if (!bystanders && others.length >= (c.agitateFrom || 3) && util.canCast("agitate") && mpLeftAfter("agitate") >= reserve() &&
                 others.filter(function (m) { return util.distanceTo(m) <= G.skills.agitate.range; }).length >= (c.agitateFrom || 3)) {
                 use_skill("agitate").catch(function () {});
                 util.log("warrior", "Agitate (" + others.length + " monsters on allies)", "yellow");

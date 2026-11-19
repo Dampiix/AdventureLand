@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.123.3",
+    version: "1.123.4",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -299,7 +299,7 @@ module.exports = {
     // Cavalry resets that one instead. Then back to the farm list.
     cavalry: { enabled: true, emergencyHpBelow: 0.35, emergencyOnMe: 1, reset: true, resetFromLevel: 5, resetMinCount: 2,
         targets: ["odino"], planStayMs: 100 * 1000, planMaxMs: 10 * 60 * 1000,
-        foreignClear: 420 }, // no reset/nuke call with another kind of level-3+ monster this close (the fairy, 2026-11-19)
+        foreignClear: 420, planMinCount: 5 }, // planMinCount: a plan call waits for this many of the kind in reach (or all in sight) // no reset/nuke call with another kind of level-3+ monster this close (the fairy, 2026-11-19)
 
     combat: {
         // Kiting (solo and in a party - there within the leash, towards a tank class; player

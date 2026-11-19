@@ -675,7 +675,10 @@ module.exports = function createFighter(ctx, cls) {
         if (src === "cavalry nuke" || src === "cavalry reset") {
             const lvl = 3; // the plan wants this spot cleared - any level the Cavalry takes
             const these = all.filter(function (e) { return grown(e) && e.mtype === lastFarm.monster && (e.level || 1) >= lvl; });
-            if (these.length) callCavalry(src.slice(8) + " " + these.length + "x " + lastFarm.monster + " (levels " + these.map(function (e) { return e.level || 1; }).join(",") + ")");
+            // Most of the pack in reach first (2026-11-19: the call came with 1 mummy in reach and the
+            // Cavalry left after killing it): planMinCount of them, or all we see if fewer.
+            const seen = all.filter(function (e) { return e && e.type === "monster" && !e.dead && e.mtype === lastFarm.monster && (e.level || 1) >= lvl; }).length;
+            if (these.length && these.length >= Math.min(cv.planMinCount || 5, seen)) callCavalry(src.slice(8) + " " + these.length + "x " + lastFarm.monster + " (levels " + these.map(function (e) { return e.level || 1; }).join(",") + ")");
             return;
         }
         if (!cv.reset) return;
