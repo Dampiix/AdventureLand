@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.129.1",
+    version: "1.129.2",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -677,10 +677,14 @@ module.exports = {
         // Minimum success chance per step, by how the item is replaced (player decision
         // 2026-11-16, replaces the 40/60/70 % value tiers of 2026-11-15: losses are part
         // of the game, progression must not stall at +4..+6):
+        // No floors at all since 2026-11-19 (player decision): a higher level is only worked on
+        // once the level below is in hand, nothing in the gear plan is bad to lose, and grace
+        // or primals rarely pay off - a failed step only costs the attempt. (Was: compound
+        // 0.35, rare 0.5.) The value report (stage 2) will decide what is worth trying.
         risk: {
-            shop: 0,               // re-buyable from an NPC: no floor (the budgets cap the gold)
-            compound: 0.35,        // compound items (three copies from drops)
-            rare: 0.5,             // token / drop items (Hunter set, Phoenix weapons, ...)
+            shop: 0,               // re-buyable from an NPC
+            compound: 0,           // compound items (three copies from drops)
+            rare: 0,               // token / drop items (Hunter set, Phoenix weapons, ...)
             // Grace farming starts only when the chance is at most this far below the floor
             // (a sanity limit). How many grace stacks are built is decided by the fodder's own
             // success chance (grace.maxFodderChance, player decision 2026-11-16).
@@ -714,7 +718,7 @@ module.exports = {
         // level whose chance is too low, cheap shop items are failed at that level to raise
         // the player's grace for it. The real preview decides when it is enough.
         grace: {
-            enabled: true,
+            enabled: false,          // off since 2026-11-19 (player decision: no floors, no grace preparation)
             minLevel: 4,             // only for steps to +4 and higher
             fodder: "wbasher",       // cheap upgradeable shop item no gear goal uses (Wooden Basher, 4,900 gold)
             // Gold per target level per 24 h (fodder + scrolls): incomeShare of the merchant's
@@ -778,7 +782,7 @@ module.exports = {
             // Mace first – a paladin's mace beats the fireblade +7 already at +4).
             buy: [], // concordmace paused 2026-11-16 (no paladin; shop +9 first)
             // Token weapons are not cheap to lose: each step needs this chance.
-            minChance: { concordmace: 0.5 },   // = risk.rare
+            minChance: {},   // no floors since 2026-11-19 (was concordmace 0.5)
         },
         // Gear goals (approved 2026-11-15): when idle, the merchant pushes the fighters' worn
         // shop armor and selected weapons to `upTo`. Shop armor is re-buyable, so every
