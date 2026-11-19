@@ -762,9 +762,11 @@ module.exports = function createTargeting(ctx) {
                     .filter(function (r) { return r && G.monsters[r.monster] && !lastingObjector(r.monster, own); })
                     .sort(function (a, b) { return calcXp(b) - calcXp(a); })
                     .filter(function (r) { if (seen[r.monster]) return false; seen[r.monster] = true; return true; })
-                    .slice(0, 3)
                     .map(function (r) { return { monster: r.monster, map: r.map, source: "guide, team model" }; });
                 if (teamList.length) {
+                    // The best one not crowded/occupied, however far down the list (2026-11-19: with the
+                    // top three only, squigtoads and giant scorpions both taken sent the team straight
+                    // back to the taken squigtoads); every one blocked: the best one.
                     const now = Date.now();
                     return teamList.find(function (c) { return !(crowdedUntil[c.monster] > now); }) || teamList[0];
                 }

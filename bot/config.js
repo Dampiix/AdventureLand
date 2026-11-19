@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.136.1",
+    version: "1.136.2",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -185,7 +185,7 @@ module.exports = {
         },
         // "always" only applies once every fighter has reached this level
         minLevel: { phoenix: 40, goobrawl: 20, snowman: 10, graveyard: 40, mvampire: 50, jr: 40, greenjr: 40 },
-        search: [], // OFF 2026-11-19 (dino test); usual: ["phoenix", "mvampire", "jr", "greenjr"]
+        search: ["phoenix", "mvampire", "jr", "greenjr"], // on again 2026-11-19 (player, Viz start)
         // Search again this long after a miss or a kill (player decision 2026-11-15: 30 min,
         // the walk costs farm time). Respawn times (game source): the Phoenix (respawn 32)
         // comes back ~32 s after its death at a random one of its 5 spots; Dracul (1080)
@@ -213,7 +213,7 @@ module.exports = {
 
     // Monster Hunts (Daisy). Unsafe hunts are left to expire.
     hunts: {
-        enabled: false, // OFF 2026-11-19 (dino test)
+        enabled: true, // on again 2026-11-19 (player, Viz start; was off for the dino test / mummy night)
         minLevel: 20,                    // only once every fighter has this level (Daisy ignores our level)
         allow: [],                       // always hunt these, even if the guide calls them unsafe
         deny: [],                        // never hunt these
