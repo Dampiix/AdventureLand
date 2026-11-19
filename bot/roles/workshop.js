@@ -487,8 +487,9 @@ module.exports = function createWorkshop(ctx) {
         return x;
     })();
     // Gold changes, checked four times a second (a purchase and a handover in the same moment
-    // would cancel out; at 250 ms that is rare and small).
-    let lastGold = character.gold;
+    // would cancel out; at 250 ms that is rare and small). The last booked gold is stored, so a
+    // change while the bot was stopped (e.g. a sale by hand) is booked on the next start.
+    let lastGold = typeof income.lastGold === "number" ? income.lastGold : character.gold;
     let flowSavedAt = 0;
     function noteGold() {
         const d = character.gold - lastGold;
@@ -502,6 +503,7 @@ module.exports = function createWorkshop(ctx) {
     }
     setInterval(noteGold, 250);
     function saveIncome() {
+        income.lastGold = lastGold;
         try { set(INCOME_KEY, income); } catch (e) { /* storage unavailable */ }
     }
 
