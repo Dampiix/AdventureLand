@@ -220,6 +220,14 @@ function isProtected(item) {
 // Fill in the derived fields (leader, merchant, characters, phases) from
 // config.team, so the rest of the bot can keep reading them directly.
 function deriveTeam(cfg) {
+    // Several accounts share this config (2026-11-19: the fresh account "Viz" next to "Dmpx"):
+    // the team that lists the running character is used; cfg.team stays the default.
+    const me = typeof character !== "undefined" && character ? character.name : null;
+    const inTeam = function (t) { return t && me && ((t.fighters || []).includes(me) || t.merchant === me); };
+    if (me && !inTeam(cfg.team)) {
+        const other = (cfg.otherTeams || []).find(inTeam);
+        if (other) cfg.team = other;
+    }
     const t = cfg.team;
     cfg.leader = t.leader;
     cfg.merchant = t.merchant || null;

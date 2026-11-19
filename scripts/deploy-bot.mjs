@@ -8,12 +8,14 @@
 //   node scripts/deploy-bot.mjs --dry-run    # only show what would change
 //   node scripts/deploy-bot.mjs --pull       # copy slots that were edited in game into the repo
 //   node scripts/deploy-bot.mjs --force      # upload even over in-game edits
+//   node scripts/deploy-bot.mjs --account viz  # another account: token from ADVENTURELAND_TOKEN_VIZ
 //
 // Safety: scripts/.deploy-state.json remembers what was last deployed per
 // slot. If a slot changed in game since then, it is NOT overwritten –
 // run --pull first (or --force to discard the in-game edit).
 //
-// The account token is read from ADVENTURELAND_TOKEN and never printed.
+// The account token is read from ADVENTURELAND_TOKEN (or ADVENTURELAND_TOKEN_<ACCOUNT> with
+// --account <name>) and never printed. Each account keeps its own deploy state file.
 // =====================================================================
 
 import { readFile, writeFile } from "node:fs/promises";
@@ -24,15 +26,19 @@ import { fileURLToPath } from "node:url";
 const API = "https://adventure.land/mcp_api/";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const botDir = path.join(root, "bot");
-const statePath = path.join(root, "scripts", ".deploy-state.json");
-const args = new Set(process.argv.slice(2));
+const argv = process.argv.slice(2);
+const args = new Set(argv);
+const accountAt = argv.indexOf("--account");
+const account = accountAt >= 0 ? String(argv[accountAt + 1] || "").toLowerCase() : "";
+const statePath = path.join(root, "scripts", account ? ".deploy-state." + account + ".json" : ".deploy-state.json");
 const dryRun = args.has("--dry-run");
 const pull = args.has("--pull");
 const force = args.has("--force");
 
-const token = process.env.ADVENTURELAND_TOKEN;
+const tokenVar = account ? "ADVENTURELAND_TOKEN_" + account.toUpperCase() : "ADVENTURELAND_TOKEN";
+const token = process.env[tokenVar];
 if (!token) {
-    console.error("ADVENTURELAND_TOKEN is not set.");
+    console.error(tokenVar + " is not set.");
     process.exit(1);
 }
 

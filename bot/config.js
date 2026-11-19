@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.132.2",
+    version: "1.133.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -37,6 +37,13 @@ module.exports = {
         merchant: "DampiixMerch",                       // null for no merchant
         farm: {},                                       // optional per-character farm override, e.g. { DmpxRanger: "bee" }
     },
+    // Other accounts running this same code (util.deriveTeam picks the team that lists the
+    // running character). Fresh account "Viz" (2026-11-19, Europas III): a real start from
+    // zero - no bank, no gold - to see how the bot progresses on its own. Only one account is
+    // played at a time.
+    otherTeams: [
+        { name: "viz", leader: "VizPri", fighters: ["VizPri", "VizWar", "VizRng"], solo: [], merchant: "VizMerch", farm: {} },
+    ],
 
     // Market stand (player decision 2026-11-17): what the merchant buys and sells at his stand.
     //   buy:  { item, price, want, level? }  - a buy order for what is missing up to "want"
