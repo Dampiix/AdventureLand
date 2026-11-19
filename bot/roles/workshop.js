@@ -2481,7 +2481,9 @@ module.exports = function createWorkshop(ctx) {
         const c = def.compound ? compoundCost(w.name, w.level) : upgradeCost(w.name, w.level);
         let farmH = 0;
         const unknown = [];
+        const needs = []; // { name, copies } to farm for this wish (stage 3: where the team goes)
         if (c.copies > 0.01) {
+            needs.push({ name: w.name, copies: c.copies });
             if (dropTimes[w.name]) farmH += c.copies * dropTimes[w.name] / 3600; else unknown.push(w.name);
         }
         const recipe = c.crafts > 0 && G.craft[w.name] ? G.craft[w.name].items : [];
@@ -2491,6 +2493,7 @@ module.exports = function createWorkshop(ctx) {
             if (sellerOf(n)) return; // bought (e.g. Shoes): already gold
             const miss = Math.max(0, c.crafts * q - ingredientCount(n, 0));
             if (!miss) return;
+            needs.push({ name: n, copies: miss });
             if (dropTimes[n]) farmH += miss * dropTimes[n] / 3600; else if (!unknown.includes(n)) unknown.push(n);
         });
         // Other craft ingredients reported missing for this wish (not counted above).
@@ -2499,12 +2502,13 @@ module.exports = function createWorkshop(ctx) {
             if (s.forItem !== w.name || !s.need || recipe.some(function (it) { return it[1] === n; })) return;
             const miss = Math.max(0, s.need - ingredientCount(n, s.level));
             if (!miss) return;
+            needs.push({ name: n, copies: miss });
             if (dropTimes[n]) farmH += miss * dropTimes[n] / 3600; else if (!unknown.includes(n)) unknown.push(n);
         });
         const goldH = goldPerHour ? c.gold / goldPerHour : 0;
         const hours = goldH + farmH;
         return { fighter: f, item: w.name + " +" + w.level, gain: w.gain, gold: Math.round(c.gold), copies: Math.round(c.copies * 10) / 10,
-            farmH: Math.round(farmH * 100) / 100, hours: Math.round(hours * 100) / 100, unknown: unknown,
+            farmH: Math.round(farmH * 100) / 100, hours: Math.round(hours * 100) / 100, unknown: unknown, needs: needs, goldH: goldH,
             value: unknown.length ? null : hours > 0 ? Math.round(w.gain / hours * 100) / 100 : null };
     }
     // Cached for a minute (openWishes runs several times per round).
@@ -2539,6 +2543,17 @@ module.exports = function createWorkshop(ctx) {
             });
         });
         rows.sort(function (a, b) { return (b.value === null ? -1 : b.value) - (a.value === null ? -1 : a.value); });
+        // Stage 3: the leader weighs farm spots by these - XP value of the team and, per item to
+        // farm, what each wish needing it gains and costs.
+        const items = {};
+        rows.forEach(function (r) {
+            if (!(r.gain > 0)) return;
+            (r.needs || []).forEach(function (n) {
+                (items[n.name] = items[n.name] || []).push({ gain: r.gain, goldH: Math.round(r.goldH * 100) / 100, copies: Math.round(n.copies * 10) / 10, wish: r.item + " " + r.fighter });
+            });
+        });
+        const xpTeam = Object.keys(fighterValues).reduce(function (s, f) { const v = fighterValues[f].xpPower; return s + (typeof v === "number" ? v : 0); }, 0);
+        if (config.leader) comms.send(config.leader, "values", { xpTeam: Math.round(xpTeam * 100) / 100, items: items });
         // Ask the leader for the farm times we still lack (answered with "droptimes").
         const ask = [];
         rows.forEach(function (r) { r.unknown.forEach(function (n) { if (!ask.includes(n)) ask.push(n); }); });

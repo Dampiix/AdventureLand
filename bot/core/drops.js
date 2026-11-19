@@ -182,6 +182,16 @@ module.exports = function createDrops(ctx) {
         return out.sort(function (a, b) { return a.perCopy - b.perCopy; });
     }
 
+    // Stage 3 (player decision 2026-11-19): the merchant's wish values - { xpTeam, items: { name: [
+    // { gain, goldH, copies, wish }] } } - decide between the XP spot and drop spots.
+    let values = null, valuesAt = 0;
+    comms.on("values", function (data, from) {
+        if (from !== config.merchant) return;
+        values = data;
+        valuesAt = Date.now();
+        nextCheckAt = 0;
+    });
+
     // Value report (stage 1): the merchant asks for per-copy farm times of the items its wishes
     // need, whether or not we farm for drops. One guide query per item, cached for 30 min.
     const timeCache = {}; // name -> { at, perCopy }
@@ -208,7 +218,13 @@ module.exports = function createDrops(ctx) {
         const limit = cfg.maxHoursPerCopy * 3600;
         const found = [];
         const times = {}; // item -> seconds per copy on its best safe route (value report)
-        needs.forEach(function (need) {
+        const list = needs.slice();
+        if (cfg.byValue && values && values.items) Object.keys(values.items).forEach(function (n) {
+            if (!G.items[n] || list.some(function (x) { return x.name === n; })) return;
+            const copies = values.items[n].reduce(function (m, w) { return Math.max(m, w.copies || 0); }, 0);
+            if (copies > 0) list.push({ name: n, copies: Math.ceil(copies) });
+        });
+        list.forEach(function (need) {
             const cands = routeFor(need);
             const r = cands[0];
             if (r && isFinite(r.perCopy)) times[need.name] = Math.round(r.perCopy);
@@ -243,9 +259,69 @@ module.exports = function createDrops(ctx) {
     }
 
     // Leader: the drop route to farm now, or null. isCrowded(monster) skips busy spots.
+    // Stage 3: power per hour of each drop spot (the team's XP value scaled by the spot's XP rate,
+    // plus the best wish per needed item that drops there) against the best XP spot.
+    let lastValueLog = 0, lastValueKey = "";
+    function valuePick(isCrowded) {
+        const items = values.items || {};
+        let ref = 0;
+        try {
+            ((get_progression() || {}).routes || []).forEach(function (r) {
+                if (!r || !(r.cycle > 0) || !G.monsters[r.monster] || isBoss(r.monster)) return;
+                if (ctx.targeting && !ctx.targeting.isTeamSafe(r.monster)) return;
+                ref = Math.max(ref, xpRate(r));
+            });
+        } catch (e) { /* guide not ready */ }
+        const kXp = ref > 0 ? (values.xpTeam || 0) / ref : 0;
+        const spots = {};
+        routes.forEach(function (r) {
+            if (isCrowded(r.monster)) return;
+            const o = spots[r.monster] = spots[r.monster] || { monster: r.monster, map: r.map, xp: r.xp || 0, gear: {}, name: r.name, copies: r.copies, perCopy: r.perCopy };
+            const best = (items[r.name] || []).reduce(function (m, w) {
+                return Math.max(m, w.gain / Math.max(0.01, (w.goldH || 0) + (w.copies || 0) * r.perCopy / 3600));
+            }, 0);
+            if (best > (o.gear[r.name] || 0)) o.gear[r.name] = best;
+        });
+        let best = null;
+        Object.keys(spots).forEach(function (k) {
+            const o = spots[k];
+            o.gearValue = Object.keys(o.gear).reduce(function (s, n) { return s + o.gear[n]; }, 0);
+            o.total = kXp * o.xp + o.gearValue;
+            if (!best || o.total > best.total) best = o;
+        });
+        const xpTotal = kXp * ref;
+        const current = lastPick ? spots[lastPick.split("@")[1]] : null;
+        const need = current && best && current.monster === best.monster ? 1 : (cfg.valueSwitch || 1.2);
+        const go = best && best.gearValue > 0 && best.total > xpTotal * need;
+        const r2 = function (x) { return Math.round(x * 100) / 100; };
+        const key = go ? best.monster : "xp";
+        if (key !== lastValueKey || Date.now() - lastValueLog > 30 * 60 * 1000) {
+            lastValueKey = key;
+            lastValueLog = Date.now();
+            util.log("drops", "value: XP spot " + r2(xpTotal) + "%/h" + (best ? " vs " + best.monster + " " + r2(best.total) + "%/h (XP " + r2(kXp * best.xp) + " + gear " + r2(best.gearValue) + ": " + Object.keys(best.gear).join(", ") + ")" : " - no drop spot") + " -> " + (go ? best.monster : "XP"), "white");
+        }
+        if (!go) return null;
+        const names = Object.keys(best.gear).sort(function (a, b) { return best.gear[b] - best.gear[a]; });
+        return routes.find(function (r) { return r.monster === best.monster && r.name === names[0]; }) || null;
+    }
+
     function target(isCrowded) {
         if (!cfg.enabled || !leads) return null;
         if (Date.now() >= nextCheckAt) check();
+        if (cfg.byValue && values && Date.now() - valuesAt < 60 * 60 * 1000) {
+            const vp = valuePick(isCrowded);
+            if (!vp) {
+                if (lastPick) util.log("drops", "back to the XP spot (worth more now)", "white");
+                lastPick = "";
+                return null;
+            }
+            const vid = vp.name + "@" + vp.monster;
+            if (vid !== lastPick) {
+                lastPick = vid;
+                util.log("drops", "farming " + vp.monster + " for " + G.items[vp.name].name + " (worth more than XP now, ~" + hours(vp.perCopy) + " per copy)", "yellow");
+            }
+            return { monster: vp.monster, map: vp.map, source: "drop " + vp.name };
+        }
         let pick = routes.find(function (r) { return !isCrowded(r.monster); });
         // Stay on the current drop spot while it is nearly as good (within 15 % XP): the
         // guide flips spots like poisios between trial and safe, and every flip walked the

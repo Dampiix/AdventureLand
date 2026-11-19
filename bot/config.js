@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.131.0",
+    version: "1.132.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -219,13 +219,21 @@ module.exports = {
         // Armor Boxes for the Rugged step (2026-11-16): below 50 in stock the team farms
         // their best source – Irradiated Goo (gems -> 21 % box) – if it is safe and fast enough.
         want: [{ name: "armorbox", copies: 50 }],
+        // Stage 3 (player decision 2026-11-19): with no fixed farm target the leader weighs drop
+        // spots against the XP spot by power per hour (merchant's wish values); switching to
+        // another spot needs valueSwitch times the value of the current choice.
+        byValue: true,
+        valueSwitch: 1.2,
     },
 
     targeting: {
         // Player decision 2026-11-17 (night): the solo warrior farms CGoos overnight (gold for the
         // budget pots after the reset, XP to 68, gems); the Phoenix is still searched every 30 min.
         // Boo Boo solo test 2026-11-17 (late) failed: he walked into the pack and died. Back to CGoos.
-        farm: ["mummy", "booboo", "stoneworm"], // overnight 2026-11-19: mummies, booboos/stoneworms only as a backup // a list (2026-11-19): the first one not too strong/crowded; null = the guide picks
+        // No fixed target since 2026-11-19 (player decision): the bot decides (guide XP spot or a
+        // drop spot worth more). Set a monster or a list here only to test or for a drop outside
+        // the wish list. (Overnight 2026-11-19 it was ["mummy", "booboo", "stoneworm"].)
+        farm: null, // a list (2026-11-19): the first one not too strong/crowded; null = the guide picks
         fallback: "goo",          // used when the progression guide has no answer
         // Farm only where every fighter's own guide calls the spot safe; routes the guide
         // only offers as a careful trial count once proven – by the guide's own fights, or
