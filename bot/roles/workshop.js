@@ -241,7 +241,38 @@ module.exports = function createWorkshop(ctx) {
     }
 
     // Items reserved for a fighter must not be sold or banked.
+    // Equivalent pieces running with the armor goals (gearPlan.equivalent / gearPlan.parallel,
+    // player decision 2026-11-19): a Wanderer's piece replaces the shop piece of its slot at
+    // the same level and is then upgraded instead of it; without a spare copy the shop piece
+    // is built higher and takes the slot back. Tanks (Rugged) are not part of it.
+    function equivMap() { return (config.gearPlan && config.gearPlan.equivalent) || {}; }
+    function parallelFor(f) {
+        const plan = config.gearPlan || {};
+        const g = plan.parallel && plan.groups && plan.groups[plan.parallel];
+        const cls = fighterClass(f);
+        return !!(g && cls && g.includes(cls));
+    }
+    // A copy of an equivalent piece is kept while some such fighter can still use it: it wears
+    // the shop piece of that slot, or the same piece below the last armor stage (or lower than
+    // this copy). Otherwise it is sold like any drop (2026-11-19: no spare copies kept).
+    function equivalentWanted(item) {
+        const shop = equivMap()[item.name];
+        if (!shop || !G.items[item.name]) return false;
+        const slots = SLOTS_BY_TYPE[G.items[item.name].type] || [];
+        return config.team.fighters.some(function (f) {
+            if (!parallelFor(f)) return false;
+            const eq = worn[f];
+            if (!eq) return true; // unknown yet
+            return slots.some(function (s) {
+                const w = eq[s];
+                if (!w || w.name === shop) return true;
+                if (w.name === item.name) return (w.level || 0) < finalStage() || (item.level || 0) > (w.level || 0);
+                return false;
+            });
+        });
+    }
     function isReserved(item) {
+        if (equivalentWanted(item)) return true;
         if (activeEarmarks().some(function (e) { return e.name === item.name && (item.level || 0) >= e.level; })) return true;
         return fighters().some(function (f) {
             return wishList(f).some(function (w) { return w.name === item.name; });
@@ -1613,7 +1644,7 @@ module.exports = function createWorkshop(ctx) {
                 await goTo(seller);
                 await buy(w.name, 1);
                 pay(k, def.g);
-            } else if (crafterOf(w.name)) {
+            } else if (crafterOf(w.name) && !(opts && opts.noCraft)) {
                 const r = await craftItem(k, w.name);
                 if (!r.ok) {
                     util.log("workshop", "can't craft " + w.name + " yet - missing " +
@@ -1766,7 +1797,7 @@ module.exports = function createWorkshop(ctx) {
         const stages = (g.stages && g.stages.length ? g.stages : [g.upTo]).slice().sort(function (a, b) { return a - b; });
         const levels = g.slots.filter(function (s) { return s !== "mainhand" && s !== "offhand"; }).map(function (s) {
             const w = worn[f] && worn[f][s];
-            return w && sellerOf(w.name) && G.items[w.name] && G.items[w.name].upgrade ? (w.level || 0) : null;
+            return w && (sellerOf(w.name) || (parallelFor(f) && equivMap()[w.name])) && G.items[w.name] && G.items[w.name].upgrade ? (w.level || 0) : null;
         }).filter(function (l) { return l !== null; });
         if (!levels.length) return null;
         const low = Math.min.apply(null, levels);
@@ -1799,6 +1830,27 @@ module.exports = function createWorkshop(ctx) {
                 // quivers stay out (player decision 2026-11-17); it goes to the weapon level.
                 if (slot === "offhand" && (!def || def.type !== "weapon")) return;
                 const target = slot === "mainhand" || slot === "offhand" ? g.upTo : stage;
+                const cls0 = classes[f] && G.classes[classes[f]];
+                const statOf = function (d) { return d && d.stat ? (w.stat || (cfg.mainStatOnArmor && cls0 ? cls0.main_stat : null)) : null; };
+                if (w && def && def.upgrade && parallelFor(f) && slot !== "mainhand" && slot !== "offhand") {
+                    const map = equivMap();
+                    const equiv = Object.keys(map).find(function (n) { return map[n] === w.name; });
+                    // Worn shop piece + a copy of its equivalent in hand: build that to the same
+                    // level (or the stage being worked on) - it takes the slot.
+                    if (equiv && sellerOf(w.name) && unlockedCopies(equiv).length) {
+                        const lvl = target && target > (w.level || 0) ? target : (w.level || 0);
+                        list.push({ fighter: f, slot: slot, name: equiv, stat: statOf(G.items[equiv]), weapon: null, level: lvl, noCraft: true });
+                        return;
+                    }
+                    // Worn equivalent: upgraded like shop armor from a spare copy; without one the
+                    // shop piece is built to the stage and takes the slot back.
+                    if (map[w.name]) {
+                        if (!target || (w.level || 0) >= target) return;
+                        const spare = unlockedCopies(w.name).some(function (l) { return l < target; });
+                        list.push({ fighter: f, slot: slot, name: spare ? w.name : map[w.name], stat: statOf(def), weapon: null, level: target, noCraft: true });
+                        return;
+                    }
+                }
                 if (!target || !def || !def.upgrade || !sellerOf(w.name) || (w.level || 0) < g.fromLevel || (w.level || 0) >= target) return;
                 // A drop weapon is being readied for this fighter: its shop weapon stays as it is.
                 if (slot === "mainhand" && weaponPlans().some(function (p) { return p.fighter === f; })) return;
@@ -2022,7 +2074,7 @@ module.exports = function createWorkshop(ctx) {
                 const banked = bankFind(need.name, function (l) { return l < need.level; });
                 if (banked && banked.level > bestBagLevel(need.name, need.level)) await retrieve(banked);
                 util.status("gear goal: " + need.name + " +" + need.level + " for " + need.fighter, "orange");
-                await develop("_goal", w, { budgetKey: GOALS, minChance: 0, spare: true, stat: need.stat });
+                await develop("_goal", w, { budgetKey: GOALS, minChance: 0, spare: true, stat: need.stat, noCraft: !!need.noCraft });
                 return true;
             }
         } catch (e) {

@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.130.1",
+    version: "1.131.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -530,14 +530,16 @@ module.exports = {
             "Item stages: an item goes up level by level across the team - e.g. STR rings +4 are wished only once every STR-ring wish at +3 is fulfilled. Different items never block each other.",
             "A worn alternative pauses the ladder of its slot: while e.g. a Loaded Die is worn, no class orb is built.",
             "Shop weapons stop at +8 and only while no better copy is there (a worn Fiery Blade +7 already beats a Blade +8: 54 + burn vs 50). Above that the fire weapon ladder is the way up.",
-            "Wanderer's set: each piece has the stats of the shop piece of its slot plus a little (cap +120 HP, attire +80 MP, breeches +1 speed) and the set bonus (2: +200 HP, 3: +100 MP, 4: +10% gold, 5: +16 luck). It replaces the shop piece at the same level. Not for tanks on the Rugged set.",
+            "Wanderer's set: each piece has the stats of the shop piece of its slot plus a little (cap +120 HP, attire +80 MP, breeches +1 speed) and the set bonus (2: +200 HP, 3: +100 MP, 4: +10% gold, 5: +16 luck). A dropped piece is built to the worn shop piece's level and replaces it, then runs with the armor goals in parallel - a horizontal upgrade, never crafted, never ahead of real upgrades. Not for tanks on the Rugged set.",
         ],
         decisions: {
             "2026-11-19": [
                 "Elixirs: not for now.",
                 "Dagger of the Dead may be crafted from Bones for the rogue; it joins the weapon ladder.",
                 "Jewelry (rings, earrings, amulets, belts) to +4 with item stages.",
-                "Wanderer's set replaces shop armor (not sold any more).",
+                "Wanderer's set runs in parallel with the shop armor (drops only, no spare copies kept).",
+                "No risk floors and no grace preparation.",
+                "The merchant works on wishes by value (gain per gold / per hour).",
                 "Winged Boots built to +7 (rare scrolls from +8).",
                 "The warrior stays on Fiery Blades (no Swords of the Dead).",
             ],
@@ -581,6 +583,11 @@ module.exports = {
         shop: { helmet: "helmet", chest: "coat", pants: "pants", shoes: "shoes", gloves: "gloves" },
         // A piece that replaces the worn shop piece of its slot at the same level or higher.
         equivalent: { wcap: "helmet", wattire: "coat", wbreeches: "pants", wshoes: "shoes", wgloves: "gloves" },
+        // Equivalents run with the armor goals for this group (2026-11-19): a dropped piece is built
+        // to the worn shop piece's level and replaces it, then goes up instead of it; without a spare
+        // copy the shop piece goes higher and takes the slot back. Never crafted; copies nobody can
+        // use any more (all at the last stage) are sold.
+        parallel: "nontank",
         // Wish chains, in wish order. `item` + `to` (and `from`: one step per level from..to) or
         // `steps`: [[item, level], ...]. replace: worn over pieces outside the chain; anytime: not
         // only after the shop gear is done; alts: worn alternatives pause the chain; carry: kept
@@ -601,11 +608,6 @@ module.exports = {
             { slot: "pants", item: "pants1", to: 7, replace: true, for: "tank", how: "armor box" },
             { slot: "chest", item: "coat1", to: 7, replace: true, for: "tank", how: "armor box" },
             { slot: "shoes", item: "shoes1", to: 7, replace: true, for: "tank", how: "armor box" },
-            // Everyone else: the Wanderer's set at the last armor stage (shoes: Winged Boots instead).
-            { slot: "helmet", item: "wcap", to: 8, replace: true, for: "nontank", how: "craft / drop" },
-            { slot: "chest", item: "wattire", to: 8, replace: true, for: "nontank", how: "craft / drop" },
-            { slot: "pants", item: "wbreeches", to: 8, replace: true, for: "nontank", how: "craft / map drop" },
-            { slot: "gloves", item: "wgloves", to: 8, replace: true, for: "nontank", how: "craft / drop" },
             // Warrior Agitate mode: two orange Lolipop Maces carried in the bag; green ones stand in.
             { slot: "mainhand", item: "ololipop", to: 7, carry: true, count: 2, for: "warrior", how: "drop: Jr." },
             { slot: "mainhand", item: "glolipop", to: 7, carry: true, count: 2, insteadOf: "ololipop", for: "warrior", how: "drop: Green Jr." },
@@ -932,7 +934,8 @@ module.exports = {
             // fresh start (2026-11-15): Cole and Leo craft gear from them.
             "slimestaff", "mushroomstaff",
             { name: "stinger", maxLevel: 2 }, // +3 and up are rogue daggers now (2026-11-18)
-            // Wanderer's set no longer sold (gear plan 2026-11-19): it replaces shop armor (phase 2).
+            // Wanderer's set: sold only when no fighter can use the copy (workshop.equivalentWanted).
+            "wcap", "wshoes", "wattire", "wbreeches", "wgloves",
             // +0 weapons (approved 2026-11-15). Phoenix weapons (fireblade, firestaff,
             // firebow) are never sold – player decision 2026-11-15.
             // "dagger" kept since 2026-11-19 (player decision: no investment, but not sold either)

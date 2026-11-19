@@ -707,10 +707,14 @@ module.exports = function createGear(ctx) {
     // An equivalent piece (gearPlan.equivalent, e.g. Wanderer's Cap for the Helmet) that replaces
     // the worn one: at least its level, and the worn stat scroll is not lost.
     function equivalentOf(item, worn) {
-        const eq = ((config.gearPlan && config.gearPlan.equivalent) || cfg.equivalent || {})[item.name];
-        if (!eq || !worn || worn.name !== eq) return false;
-        if ((item.level || 0) < (worn.level || 0)) return false;
-        return !worn.stat_type || item.stat_type === worn.stat_type;
+        const map = (config.gearPlan && config.gearPlan.equivalent) || cfg.equivalent || {};
+        if (!worn) return false;
+        if (!worn.stat_type || item.stat_type === worn.stat_type) {
+            if (map[item.name] && worn.name === map[item.name] && (item.level || 0) >= (worn.level || 0)) return true;
+            // ...and back: the shop piece built higher than the worn equivalent (no spare copy).
+            if (map[worn.name] === item.name && (item.level || 0) > (worn.level || 0)) return true;
+        }
+        return false;
     }
     function isReserved(item) {
         if (pairPart(item)) return true; // half of a weapon pair that beats our two-hander
