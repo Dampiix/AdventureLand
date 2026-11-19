@@ -2629,6 +2629,11 @@ module.exports = function createWorkshop(ctx) {
         return s ? (s.g || 0) * Math.pow(10, grade) : 0;
     }
     const FINDS_KEY = "dmpx_ponty_finds";
+    // Every Ponty purchase, kept across restarts for the player's review (last 200).
+    const BOUGHT_KEY = "dmpx_ponty_bought";
+    function noteBought(entry) {
+        try { const old = get(BOUGHT_KEY) || []; set(BOUGHT_KEY, old.concat([Object.assign({ t: Date.now(), at: new Date().toISOString() }, entry)]).slice(-200)); } catch (e) { /* storage unavailable */ }
+    }
     function wornLevel(name) {
         let best = -1;
         Object.keys(worn).forEach(function (f) {
@@ -2706,6 +2711,7 @@ module.exports = function createWorkshop(ctx) {
                     pay(SHOPPING, pick.listPrice);
                     const lvl = pick.it.level || 0;
                     util.log("workshop", "bought " + pick.item + " at Ponty for " + Math.round(pick.listPrice / 1000) + "k for " + pick.fighter + " (+" + pick.gain + "%)", "green");
+                    noteBought({ kind: "find", item: pick.item, price: pick.listPrice, fighter: pick.fighter, gain: pick.gain, perM: pick.perM, oursPerM: pick.oursPerM });
                     if (pick.stat) {
                         const idx = util.findItemIndex(function (x) { return x.name === pick.it.name && (x.level || 0) === lvl && x.stat_type !== pick.stat && !x.l; });
                         if (idx !== -1) await applyStat(idx, pick.stat, SHOPPING);
@@ -2738,6 +2744,7 @@ module.exports = function createWorkshop(ctx) {
                 pay(SHOPPING, price);
                 bought++;
                 util.log("workshop", "bought " + it.name + " +" + lvl + " at Ponty for " + Math.round(price / 1000) + "k (" + (isFinite(own) ? "making it: ~" + Math.round(own / 1000) + "k" : "can't make it") + ")", "green");
+                noteBought({ kind: "wish", item: it.name + " +" + lvl, price: price, own: isFinite(own) ? Math.round(own) : null });
             } catch (e) {
                 util.log("workshop", "Ponty " + it.name + " +" + lvl + ": " + util.errReason(e), "orange");
             }
