@@ -116,6 +116,7 @@ module.exports = function createGear(ctx) {
             steps.whenWorn = (e && e.whenWorn) || null;
             steps.count = (e && e.count) || 1; // carried copies wanted (e.g. two maces for dual wield)
             steps.insteadOf = (e && e.insteadOf) || null; // stand-in for this carried item's missing copies
+            steps.alts = (e && e.alts) || []; // alternatives: while one is worn, this chain pauses (gear plan)
             return steps;
         }).filter(function (steps) { return steps.length; });
     }
@@ -217,6 +218,8 @@ module.exports = function createGear(ctx) {
                 return;
             }
             const slots = SLOTS_BY_TYPE[G.items[steps[0].name].type] || [];
+            // A worn alternative (e.g. a Loaded Die over the class orb) pauses the chain (gear plan).
+            if (steps.alts.length && slots.some(function (s) { const w = character.slots && character.slots[s]; return w && steps.alts.includes(w.name); })) return;
             // The least advanced slot of this type (an empty one first); a slot holding
             // something outside the chain is left alone.
             let progress = null;
@@ -250,7 +253,9 @@ module.exports = function createGear(ctx) {
             const slot = (SLOTS_BY_TYPE[G.items[item.name].type] || []).find(function (s) {
                 if (slotOk && !slotOk(s)) return false;
                 const worn = character.slots && character.slots[s];
-                if (!worn) return false;
+                if (!worn || steps.alts.includes(worn.name)) return false; // a worn alternative stays
+                // Never trade a worn stat scroll away (a stat-less Wanderer's Cap over a DEX helmet).
+                if (worn.stat_type && G.items[item.name].stat && item.stat_type !== worn.stat_type) return false;
                 const p = chainProgress(steps, worn);
                 return (p >= 0 || steps.replace) && worn.name !== item.name && mine > p;
             });
@@ -357,6 +362,7 @@ module.exports = function createGear(ctx) {
                 const slot = slotsFor(def).find(function (s) {
                     if (!slotOk(s)) return false;
                     const w = character.slots && character.slots[s];
+                    if (w && equivalentOf(item, w)) return true;
                     if (!w || w.name !== item.name) return false;
                     const lvl = item.level || 0, wl = w.level || 0;
                     if (wrongStat(w) && ownStat(item)) return lvl >= wl - 1; // our stat over a wrong one
@@ -618,6 +624,14 @@ module.exports = function createGear(ctx) {
     }
 
     // Items the supply module must not hand to the merchant.
+    // An equivalent piece (gear.equivalent, e.g. Wanderer's Cap for the Helmet) that replaces
+    // the worn one: at least its level, and the worn stat scroll is not lost.
+    function equivalentOf(item, worn) {
+        const eq = (cfg.equivalent || {})[item.name];
+        if (!eq || !worn || worn.name !== eq) return false;
+        if ((item.level || 0) < (worn.level || 0)) return false;
+        return !worn.stat_type || item.stat_type === worn.stat_type;
+    }
     function isReserved(item) {
         if (pairPart(item)) return true; // half of a weapon pair that beats our two-hander
         if (wishes.some(function (w) { return w.name === item.name && (item.level || 0) >= w.level; })) return true;
@@ -627,6 +641,7 @@ module.exports = function createGear(ctx) {
         // A stronger copy of something we wear (e.g. a finished gear goal) stays
         // with us until the equip pass puts it on.
         const slots = character.slots || {};
+        if (Object.keys(slots).some(function (s) { return slots[s] && equivalentOf(item, slots[s]); })) return true;
         if (Object.keys(slots).some(function (s) {
             const w = slots[s];
             if (!w || w.name !== item.name) return false;

@@ -1,7 +1,7 @@
 {
-  "version": "draft-5",
+  "version": "live-phase-2",
   "updated": "2026-11-19",
-  "about": "General gear progression rules the bot follows. Derived from the community chart (source-chart.webp) and our own decisions. Draft: not read by the bot yet.",
+  "about": "General gear progression rules the bot follows. Derived from the community chart (source-chart.webp) and our own decisions. Phases 1 and 2 are live in the bot (v1.127.0); the bot config still holds its own copy (bot/config.js classWishes, gear.equivalent).",
   "principles": [
     "Every slot has a ladder: base -> better pieces -> end goal. Each step has a target upgrade level.",
     "Keep upgrading instead of waiting: the worn piece goes up to its cap until the next step is in hand.",
@@ -146,25 +146,13 @@
           "scroll": true
         },
         {
-          "item": "wshoes",
-          "to": 8,
-          "scroll": true,
-          "how": "craft / drop",
-          "for": [
-            "ranger",
-            "priest",
-            "rogue",
-            "mage"
-          ],
-          "note": "same level as the shop piece"
-        },
-        {
           "item": "wingedboots",
-          "to": 8,
-          "how": "craft"
+          "to": 7,
+          "how": "craft",
+          "note": "from +8 on rare scrolls"
         }
       ],
-      "note": "Winged Boots replace the shoes as soon as the valuation says so; the shoes keep going up meanwhile."
+      "note": "Wanderer's Shoes are taken when found (same stats); the wish goes straight to Winged Boots."
     },
     "gloves": {
       "ladder": [
@@ -709,7 +697,8 @@
       "Dagger of the Dead may be crafted from Bones for the rogue.",
       "Jewelry targets +4 with item stages.",
       "Wanderer pieces leave the sell list when the plan goes live.",
-      "Rings to +4 like the other jewelry."
+      "Rings to +4 like the other jewelry.",
+      "Winged Boots built to +7 (rare scrolls from +8)."
     ]
   }
 }

@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.126.2",
+    version: "1.127.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -476,6 +476,10 @@ module.exports = {
         // Never equipped automatically, taken off when worn (player decision 2026-11-18):
         // Hand of Midas (-20 speed), Heavy Underarmor, Dracul's Attire (mcape, a chest piece).
         noEquip: ["handofmidas", "hpants", "mcape"],
+        // Equivalent pieces (gear plan phase 2, player decision 2026-11-19): the Wanderer's set
+        // has the stats of the shop piece of its slot plus a little and the set bonus (4: +10%
+        // gold, 5: +16 luck) - it replaces the worn shop piece at the same level or higher.
+        equivalent: { wcap: "helmet", wattire: "coat", wbreeches: "pants", wshoes: "shoes", wgloves: "gloves" },
         wishEveryMs: 5 * 60 * 1000, // re-read the guide and resend wishes this often
         maxWishes: 12,  // class chains alone are up to 9 (ring, earring, belt, orb, cape, five Rugged pieces)   // a longer list shifts less (the merchant works through it one by one)
         // Wishes per class ("all" = every class) for slots the guide leaves empty. An entry
@@ -509,12 +513,15 @@ module.exports = {
         classWishes: {
             all: [
                 { name: "cape", level: 0 },      // 40 Leather -> exchange (wolves, boars)
+                // Winged Boots (gear plan phase 2, 2026-11-19): Shoes + 20 Magical Feathers, built to
+                // +7 (from +8 on they need rare scrolls) - +7.5% attack speed beats shop shoes +8.
+                { steps: [{ name: "wingedboots", level: 7 }], replace: true },
             ],
             // Orbs: Orb of Beginnings (Cole: ascale + pleather + cscale + Bee Fur) to +1 first
             // (+3 to every main stat, 3 copies), then the class orb (+4 main stat already at +0).
             paladin: [
-                { steps: [{ name: "orbg", level: 0 }, { name: "orbg", level: 1 }, { name: "orbofstr", level: 0 }] }, // Fire Spirit
-                { steps: [{ name: "strring", level: 2 }, { name: "strring", level: 3 }, { name: "strring", level: 4 }], replace: true, anytime: true },
+                { steps: [{ name: "orbg", level: 0 }, { name: "orbg", level: 1 }, { name: "orbofstr", level: 0 }], alts: ["cave_loaded_die"] }, // Fire Spirit
+                { steps: [{ name: "strring", level: 2 }, { name: "strring", level: 3 }, { name: "strring", level: 4 }], replace: true, anytime: true, alts: ["suckerpunch"] },
                 { steps: [{ name: "strearring", level: 2 }, { name: "strearring", level: 3 }, { name: "strearring", level: 4 }], replace: true, anytime: true },
                 { steps: [{ name: "stramulet", level: 2 }, { name: "stramulet", level: 3 }, { name: "stramulet", level: 4 }], replace: true, anytime: true },
                 { steps: [{ name: "strbelt", level: 0 }, { name: "strbelt", level: 1 }, { name: "strbelt", level: 2 }, { name: "strbelt", level: 3 }, { name: "strbelt", level: 4 }], replace: true, anytime: true },
@@ -525,18 +532,24 @@ module.exports = {
                 { steps: [{ name: "shoes1", level: 7 }], replace: true },
             ],
             priest: [
-                { steps: [{ name: "orbg", level: 0 }, { name: "orbg", level: 1 }, { name: "orbofint", level: 0 }] }, // big Pom Pom (level2n)
+                { steps: [{ name: "orbg", level: 0 }, { name: "orbg", level: 1 }, { name: "orbofint", level: 0 }], alts: ["cave_loaded_die"] }, // big Pom Pom (level2n)
                 { steps: [{ name: "intring", level: 2 }, { name: "intring", level: 3 }, { name: "intring", level: 4 }], replace: true, anytime: true },
                 { steps: [{ name: "intearring", level: 2 }, { name: "intearring", level: 3 }, { name: "intearring", level: 4 }], replace: true, anytime: true },
                 { steps: [{ name: "intamulet", level: 2 }, { name: "intamulet", level: 3 }, { name: "intamulet", level: 4 }], replace: true, anytime: true },
                 { steps: [{ name: "intbelt", level: 0 }, { name: "intbelt", level: 1 }, { name: "intbelt", level: 2 }, { name: "intbelt", level: 3 }, { name: "intbelt", level: 4 }], replace: true, anytime: true },
+                // Wanderer's set (gear plan phase 2, 2026-11-19): crafted and built to the last armor
+                // stage, it replaces the shop piece (gear.equivalent); shoes: Winged Boots instead.
+                { steps: [{ name: "wcap", level: 8 }], replace: true },
+                { steps: [{ name: "wattire", level: 8 }], replace: true },
+                { steps: [{ name: "wbreeches", level: 8 }], replace: true },
+                { steps: [{ name: "wgloves", level: 8 }], replace: true },
             ],
             // The offhand is a second weapon (dual wield, handled by gear/workshop).
             // Monster Hunter Warrior set: long-term, paused (entries: mwhelmet 7, mwgloves 8,
             // mwpants 11, mwarmor 12, mwboots 15 tokens; replace at +7).
             warrior: [
-                { steps: [{ name: "orbg", level: 0 }, { name: "orbg", level: 1 }, { name: "orbofstr", level: 0 }] }, // Fire Spirit
-                { steps: [{ name: "strring", level: 2 }, { name: "strring", level: 3 }, { name: "strring", level: 4 }], replace: true, anytime: true },
+                { steps: [{ name: "orbg", level: 0 }, { name: "orbg", level: 1 }, { name: "orbofstr", level: 0 }], alts: ["cave_loaded_die"] }, // Fire Spirit
+                { steps: [{ name: "strring", level: 2 }, { name: "strring", level: 3 }, { name: "strring", level: 4 }], replace: true, anytime: true, alts: ["suckerpunch"] },
                 { steps: [{ name: "strearring", level: 2 }, { name: "strearring", level: 3 }, { name: "strearring", level: 4 }], replace: true, anytime: true },
                 { steps: [{ name: "stramulet", level: 2 }, { name: "stramulet", level: 3 }, { name: "stramulet", level: 4 }], replace: true, anytime: true },
                 { steps: [{ name: "strbelt", level: 0 }, { name: "strbelt", level: 1 }, { name: "strbelt", level: 2 }, { name: "strbelt", level: 3 }, { name: "strbelt", level: 4 }], replace: true, anytime: true },
@@ -558,20 +571,32 @@ module.exports = {
                 // Cole: 1 Armadillo Scale + 200 Beewings (scorpions drop it too). The +7 is built on
                 // a second copy; the worn +0 stays until it is done.
                 { steps: [{ name: "quiver", level: 0 }, { name: "quiver", level: 7 }] },
-                { steps: [{ name: "orbg", level: 0 }, { name: "orbg", level: 1 }, { name: "orbofdex", level: 0 }] }, // Fire Spirit
-                { steps: [{ name: "dexring", level: 2 }, { name: "dexring", level: 3 }, { name: "dexring", level: 4 }], replace: true, anytime: true },
+                { steps: [{ name: "orbg", level: 0 }, { name: "orbg", level: 1 }, { name: "orbofdex", level: 0 }], alts: ["cave_loaded_die"] }, // Fire Spirit
+                { steps: [{ name: "dexring", level: 2 }, { name: "dexring", level: 3 }, { name: "dexring", level: 4 }], replace: true, anytime: true, alts: ["suckerpunch"] },
                 { steps: [{ name: "dexearring", level: 2 }, { name: "dexearring", level: 3 }, { name: "dexearring", level: 4 }], replace: true, anytime: true },
                 { steps: [{ name: "dexamulet", level: 2 }, { name: "dexamulet", level: 3 }, { name: "dexamulet", level: 4 }], replace: true, anytime: true },
-                { steps: [{ name: "dexbelt", level: 0 }, { name: "dexbelt", level: 1 }, { name: "dexbelt", level: 2 }, { name: "dexbelt", level: 3 }, { name: "dexbelt", level: 4 }], replace: true, anytime: true },
+                { steps: [{ name: "dexbelt", level: 0 }, { name: "dexbelt", level: 1 }, { name: "dexbelt", level: 2 }, { name: "dexbelt", level: 3 }, { name: "dexbelt", level: 4 }], replace: true, anytime: true, alts: ["windbelt"] },
+                // Wanderer's set (gear plan phase 2, 2026-11-19): crafted and built to the last armor
+                // stage, it replaces the shop piece (gear.equivalent); shoes: Winged Boots instead.
+                { steps: [{ name: "wcap", level: 8 }], replace: true },
+                { steps: [{ name: "wattire", level: 8 }], replace: true },
+                { steps: [{ name: "wbreeches", level: 8 }], replace: true },
+                { steps: [{ name: "wgloves", level: 8 }], replace: true },
             ],
             // Rogue (2026-11-18): DEX jewellery like the ranger; weapons (two daggers, e.g. Dagger
             // of the Dead from Ponty) come by hand for now.
             rogue: [
-                { steps: [{ name: "orbg", level: 0 }, { name: "orbg", level: 1 }, { name: "orbofdex", level: 0 }] },
-                { steps: [{ name: "dexring", level: 2 }, { name: "dexring", level: 3 }, { name: "dexring", level: 4 }], replace: true, anytime: true },
+                { steps: [{ name: "orbg", level: 0 }, { name: "orbg", level: 1 }, { name: "orbofdex", level: 0 }], alts: ["cave_loaded_die"] },
+                { steps: [{ name: "dexring", level: 2 }, { name: "dexring", level: 3 }, { name: "dexring", level: 4 }], replace: true, anytime: true, alts: ["suckerpunch"] },
                 { steps: [{ name: "dexearring", level: 2 }, { name: "dexearring", level: 3 }, { name: "dexearring", level: 4 }], replace: true, anytime: true },
                 { steps: [{ name: "dexamulet", level: 2 }, { name: "dexamulet", level: 3 }, { name: "dexamulet", level: 4 }], replace: true, anytime: true },
-                { steps: [{ name: "dexbelt", level: 0 }, { name: "dexbelt", level: 1 }, { name: "dexbelt", level: 2 }, { name: "dexbelt", level: 3 }, { name: "dexbelt", level: 4 }], replace: true, anytime: true },
+                { steps: [{ name: "dexbelt", level: 0 }, { name: "dexbelt", level: 1 }, { name: "dexbelt", level: 2 }, { name: "dexbelt", level: 3 }, { name: "dexbelt", level: 4 }], replace: true, anytime: true, alts: ["knifebelt"] },
+                // Wanderer's set (gear plan phase 2, 2026-11-19): crafted and built to the last armor
+                // stage, it replaces the shop piece (gear.equivalent); shoes: Winged Boots instead.
+                { steps: [{ name: "wcap", level: 8 }], replace: true },
+                { steps: [{ name: "wattire", level: 8 }], replace: true },
+                { steps: [{ name: "wbreeches", level: 8 }], replace: true },
+                { steps: [{ name: "wgloves", level: 8 }], replace: true },
             ],
         },
     },
