@@ -516,6 +516,8 @@ module.exports = function createFighter(ctx, cls) {
         // the party stuck in booboo fights on its way to the mummies. Not near the spot, not
         // below combat.passThrough.minHp, and only when every attacker is that slow.
         if (target && passThrough(farm, target)) {
+            lastFarm = farm;
+            lastTarget = null; // members see the leader travelling with no target: they follow, no fights
             util.status("passing " + target.mtype, "yellow");
             travel(farm.dest || targeting.spotFor(farm.monster, farm.map) || farm.monster, "searching " + farm.monster);
             return;
