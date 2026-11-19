@@ -189,9 +189,11 @@ module.exports = function createDrops(ctx) {
         if (Date.now() - needsAt > 60 * 60 * 1000) needs = [];
         const limit = cfg.maxHoursPerCopy * 3600;
         const found = [];
+        const times = {}; // item -> seconds per copy on its best safe route (value report)
         needs.forEach(function (need) {
             const cands = routeFor(need);
             const r = cands[0];
+            if (r && isFinite(r.perCopy)) times[need.name] = Math.round(r.perCopy);
             if (!r) {
                 if (Date.now() - (slowLogged[need.name] || 0) < 60 * 60 * 1000) return;
                 slowLogged[need.name] = Date.now();
@@ -215,6 +217,7 @@ module.exports = function createDrops(ctx) {
         // to the crabs (quickest kills, a third of the XP) instead of the crocs (2026-11-17).
         // Crowded spots are skipped by target(), so the next one follows.
         routes = found.sort(function (a, b) { return (b.xp || 0) - (a.xp || 0) || a.perCopy - b.perCopy; });
+        if (config.merchant && Object.keys(times).length) comms.send(config.merchant, "droptimes", { times: times });
     }
 
     function hours(seconds) {

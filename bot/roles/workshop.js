@@ -84,7 +84,15 @@ module.exports = function createWorkshop(ctx) {
         income.credits.push({ t: Date.now(), a: a });
         saveIncome();
     });
+    // Value report (stage 1): the fighters' XP value and the leader's per-copy farm times.
+    const fighterValues = {};
+    const dropTimes = {};
+    comms.on("droptimes", function (data, from) {
+        if (from !== config.leader) return;
+        Object.assign(dropTimes, data.times || {});
+    });
     comms.on("wishes", function (data, from) {
+        if (data.value) fighterValues[from] = Object.assign({ at: Date.now() }, data.value);
         wishes[from] = (data.list || []).filter(function (w) { return w && G.items[w.name]; });
         try { set(WISHES_KEY, { at: Date.now(), list: wishes }); } catch (e) { /* storage unavailable */ }
         if (data.ctype && G.classes[data.ctype]) classes[from] = data.ctype;
@@ -2362,6 +2370,100 @@ module.exports = function createWorkshop(ctx) {
         return false;
     }
 
+    // ---- value report (stage 1, player request 2026-11-19) ------------------------
+    //
+    // Logs, without acting on it: for every open wish the gain (% more power, from the
+    // fighter), its expected cost (gold from the game's success tables, +0 copies to farm
+    // with the leader's per-copy times) and gain per hour (gold counted as hours of income).
+    // Plus each fighter's XP value (% power per hour from levels). Later stages will order
+    // the wishes and pick the team's farm target by these numbers.
+    let nextValueAt = Date.now() + 2 * 60 * 1000;
+    function scrollPrice(prefix, grade) {
+        const s = G.items[prefix + grade];
+        return s ? s.g || 0 : 0;
+    }
+    function gradeAt(name, level) {
+        try { return item_grade({ name: name, level: level }); } catch (e) { return 0; }
+    }
+    // Expected cost of one copy at name +level from the copies we hold (bag and bank).
+    function compoundCost(name, level) {
+        const stock = unlockedCopies(name);
+        const count = function (l) { return stock.filter(function (x) { return x === l; }).length; };
+        if (stock.some(function (x) { return x >= level; })) return { gold: 0, copies: 0 };
+        let need = 1, gold = 0;
+        for (let l = level; l >= 1; l--) {
+            const deficit = Math.max(0, need - count(l));
+            if (!deficit) return { gold: gold, copies: 0 };
+            const g = gradeAt(name, l - 1);
+            const p = (G.compounds[g] || {})[l] || 0.05;
+            const attempts = deficit / p;
+            gold += attempts * scrollPrice("cscroll", g);
+            need = 3 * attempts;
+        }
+        return { gold: gold, copies: Math.max(0, need - count(0)) };
+    }
+    function upgradeCost(name, level) {
+        const all = unlockedCopies(name);
+        if (all.some(function (x) { return x >= level; })) return { gold: 0, copies: 0, crafts: 0 };
+        const stock = all.filter(function (x) { return x < level; });
+        const start = stock.length ? Math.max.apply(null, stock) : 0;
+        const q = function (l) { return ((G.upgrades[gradeAt(name, l - 1)] || {})[l]) || 0.05; };
+        const chain = function (a) {
+            let gold = 0, reach = 1;
+            for (let l = a + 1; l <= level; l++) { gold += reach * scrollPrice("scroll", gradeAt(name, l - 1)); reach *= q(l); }
+            return { gold: gold, p: reach };
+        };
+        const first = chain(start), fresh = chain(0);
+        const restarts = (1 - first.p) / Math.max(fresh.p, 1e-6);
+        const bases = restarts + (stock.length ? 0 : 1);
+        const shop = !!sellerOf(name), craft = !shop && !!G.craft[name];
+        const baseGold = shop ? (G.items[name].g || 0) : craft ? (G.craft[name].cost || 0) : 0;
+        return { gold: first.gold + restarts * fresh.gold + (shop || craft ? bases * baseGold : 0), copies: shop || craft ? 0 : bases, crafts: craft ? bases : 0 };
+    }
+    function valueReport() {
+        const vr = cfg.valueReport;
+        if (!vr || !vr.enabled || Date.now() < nextValueAt || !bankSnapshot) return;
+        nextValueAt = Date.now() + (vr.everyMs || 15 * 60 * 1000);
+        const gb = goalBudget();
+        const goldPerHour = gb.hours >= 1 && gb.earned > 0 ? gb.earned / gb.hours : null;
+        const rows = [];
+        fighters().forEach(function (f) {
+            wishList(f).forEach(function (w) {
+                if (typeof w.gain !== "number") return;
+                const def = G.items[w.name];
+                const c = def.compound ? compoundCost(w.name, w.level) : upgradeCost(w.name, w.level);
+                let farmH = 0, unknown = [];
+                if (c.copies > 0.01) {
+                    if (dropTimes[w.name]) farmH += c.copies * dropTimes[w.name] / 3600; else unknown.push(w.name);
+                }
+                // Craft ingredients we lack (e.g. Magical Feathers for Winged Boots).
+                Object.keys(shortages).forEach(function (n) {
+                    const s = shortages[n];
+                    if (s.forItem !== w.name || !s.need) return;
+                    const miss = Math.max(0, s.need - ingredientCount(n, s.level)) * Math.max(1, c.crafts || 1);
+                    if (!miss) return;
+                    if (dropTimes[n]) farmH += miss * dropTimes[n] / 3600; else unknown.push(n);
+                });
+                const goldH = goldPerHour ? c.gold / goldPerHour : 0;
+                const hours = goldH + farmH;
+                rows.push({ fighter: f, item: w.name + " +" + w.level, gain: w.gain, gold: Math.round(c.gold), copies: Math.round(c.copies * 10) / 10,
+                    hours: Math.round(hours * 100) / 100, unknown: unknown, value: unknown.length ? null : hours > 0 ? Math.round(w.gain / hours * 100) / 100 : null });
+            });
+        });
+        rows.sort(function (a, b) { return (b.value === null ? -1 : b.value) - (a.value === null ? -1 : a.value); });
+        const goldOnly = rows.filter(function (r) { return r.copies === 0 && !r.unknown.length && r.gold > 0 && r.gain > 0; });
+        const perGold = goldOnly.reduce(function (m, r) { return Math.max(m, r.gain / r.gold); }, 0);
+        const goldPower = goldPerHour && perGold ? Math.round(perGold * goldPerHour * 100) / 100 : null;
+        const xp = Object.keys(fighterValues).map(function (f) { const v = fighterValues[f]; return f + " " + (v.xpPower === null || v.xpPower === undefined ? "?" : v.xpPower) + "%/h"; }).join(", ");
+        const k = function (x) { return x >= 1e6 ? (x / 1e6).toFixed(1) + "M" : Math.round(x / 1000) + "k"; };
+        util.log("value", "XP " + (xp || "?") + " | gold " + (goldPerHour ? k(goldPerHour) + "/h" : "?") + " = " + (goldPower === null ? "?" : goldPower + "%/h"), "white");
+        rows.slice(0, vr.top || 6).forEach(function (r) {
+            util.log("value", r.item + " " + r.fighter + ": +" + r.gain + "% for " + (r.unknown.length ? "? (no farm time: " + r.unknown.join(", ") + ")" : r.hours + " h") +
+                " (" + k(r.gold) + (r.copies ? ", " + r.copies + " copies" : "") + ")" + (r.value === null ? "" : " -> " + r.value + "%/h"), "white");
+        });
+        try { set("dmpx_value_report", { at: Date.now(), goldPerHour: goldPerHour, goldPower: goldPower, xp: fighterValues, rows: rows.slice(0, 25) }); } catch (e) { /* storage unavailable */ }
+    }
+
     // ---- one per character ----------------------------------------------------
     //
     // config.merchantRole.onePerCharacter (e.g. Tracktrix): every fighter that reports
@@ -2603,6 +2705,7 @@ module.exports = function createWorkshop(ctx) {
         // Ping fighters that have finished items waiting.
         sampleIncome();
         reportDrops();
+        valueReport();
         // Earmark what is ready now (it stays reserved even if the wish changes).
         fighters().forEach(function (fighter) {
             wishList(fighter).forEach(function (w) {
