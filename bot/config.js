@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.136.2",
+    version: "1.137.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -70,6 +70,11 @@ module.exports = {
         // Merged into the gear pot (gearGoals.budget.incomeShare 0.5 -> 0.7) on 2026-11-19 (player
         // decision): Ponty purchases replace building and are paid from it.
         shopping: { incomeShare: 0 },
+        // Buy orders for what we wish (player idea 2026-11-19): one copy of every wished item / gear
+        // goal at its level, priced at priceShare of our own expected cost (two digits), only when
+        // funded and at most maxShareOfPot of the gear pot; not for +0 NPC stock; taken down once we
+        // hold such a copy. Keeps the stand open for Merrit's parcels with orders worth filling.
+        wishOrders: { enabled: true, priceShare: 1, maxShareOfPot: 0.5, minPrice: 1000, max: 8 },
         // Ponty (player request 2026-11-19, fresh account): every everyMs the merchant checks his
         // listings and buys what a fighter wishes or a gear goal needs - better than our best copy
         // and at most maxShareOfOwn of what making it ourselves would cost. From the shopping pot.

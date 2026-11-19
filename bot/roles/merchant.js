@@ -102,6 +102,14 @@ module.exports = function createMerchant(ctx) {
         for (let i = 1; i <= count; i++) slots.push("trade" + i);
         const market = config.market || {};
         const lvlText = function (name, level) { return G.items[name].upgrade || G.items[name].compound ? " +" + level : ""; };
+        // Configured orders plus orders for what the fighters wish (market.wishOrders, 2026-11-19).
+        const buys = (market.buy || []).concat(workshop.wishBuyOrders ? workshop.wishBuyOrders() : []);
+        const stillNeeded = function (o) {
+            return o.dynamic ? workshop.needsCopy(o.item, o.level || 0) : (o.want || 1) - workshop.ownedCount(o.item) > 0;
+        };
+        const samePrice = function (o, listed) {
+            return o.dynamic ? Math.abs(listed - o.price) <= o.price * 0.2 : listed === o.price;
+        };
         // Listed buy orders no longer needed - the item left config.market.buy, or we hold
         // "want" by now - are taken down (unequip removes the listing). So is one whose price
         // differs from the config (an orange Lolipop order from an old config sat at 50k for
@@ -109,9 +117,9 @@ module.exports = function createMerchant(ctx) {
         slots.forEach(function (s) {
             const it = character.slots[s];
             if (!it || !it.b) return;
-            const o = (market.buy || []).find(function (b) { return b.item === it.name && (b.level || 0) === (it.level || 0); });
-            const needed = o && (o.want || 1) - workshop.ownedCount(o.item) > 0;
-            if (needed && it.price === o.price) return;
+            const o = buys.find(function (b) { return b.item === it.name && (b.level || 0) === (it.level || 0); });
+            const needed = o && stillNeeded(o);
+            if (needed && samePrice(o, it.price)) return;
             parent.socket.emit("unequip", { slot: s });
             const why = !o ? "not on the list"
                 : !needed ? "we hold " + workshop.ownedCount(o.item) + " of " + (o.want || 1)
@@ -119,7 +127,7 @@ module.exports = function createMerchant(ctx) {
             util.log("merchant", "buy order for " + it.name + " taken down (" + why + ")", "white");
         });
         // Buy orders: what is missing up to "want" (bag + bank).
-        (market.buy || []).forEach(function (o) {
+        buys.forEach(function (o) {
             if (!G.items[o.item]) return;
             const level = o.level || 0;
             const listed = slots.some(function (s) {
@@ -127,7 +135,7 @@ module.exports = function createMerchant(ctx) {
                 return it && it.b && it.name === o.item && (it.level || 0) === level;
             });
             if (listed || character.gold < o.price) return; // a buy order must be funded
-            const missing = (o.want || 1) - workshop.ownedCount(o.item);
+            const missing = o.dynamic ? (stillNeeded(o) ? 1 : 0) : (o.want || 1) - workshop.ownedCount(o.item);
             if (missing <= 0) { delete missingSince[o.item]; return; }
             // Only a shortage that lasts: while the workshop moves a stack between bag and bank
             // (crafting from 85 essences) the count read 0 for a moment and a buy order for 10

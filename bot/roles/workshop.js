@@ -2660,6 +2660,32 @@ module.exports = function createWorkshop(ctx) {
     }
     // Paid from the gear pot (gearGoals budget) since 2026-11-19 (player decision): buying replaces
     // building, so both come out of one pot; at most ponty.maxShareOfPot of it per purchase.
+    // Buy orders for what we wish (player idea 2026-11-19, market.wishOrders): one copy of every
+    // wished item / gear goal at its level, priced at our own expected cost - not for plain NPC
+    // stock (+0 shop items). Funded and within the pot share; gone once we have such a copy.
+    function needsCopy(name, level) {
+        return !copyAtLeast(name, level) && wornLevel(name) < level;
+    }
+    function wishBuyOrders() {
+        const wo = (config.market && config.market.wishOrders) || {};
+        if (!wo.enabled || !bankSnapshot) return [];
+        const wants = pontyWants();
+        const cap = goalBudget().allowed * (wo.maxShareOfPot || 0.5);
+        const out = [];
+        Object.keys(wants).forEach(function (name) {
+            const level = wants[name];
+            const def = G.items[name];
+            if (!def || (sellerOf(name) && level === 0) || !needsCopy(name, level)) return;
+            const own = ownCost(name, level) * (wo.priceShare || 1);
+            if (!isFinite(own) || own < (wo.minPrice || 1000)) return;
+            // Two significant digits: the estimate moves with every compound and drop.
+            const p = Math.pow(10, Math.max(0, Math.floor(Math.log10(own)) - 1));
+            const price = Math.round(own / p) * p;
+            if (price > cap || price > character.gold) return;
+            out.push({ item: name, level: level, price: price, want: 1, dynamic: true });
+        });
+        return out.slice(0, wo.max || 8);
+    }
     async function shopPonty() {
         const pc = (config.market && config.market.ponty) || {};
         if (!pc.enabled || Date.now() < nextPontyAt || character.esize < 3 || !bankSnapshot) return false;
@@ -3195,6 +3221,8 @@ module.exports = function createWorkshop(ctx) {
         },
         isOwnWish: isOwnWish,
         shoppingBudget: shoppingBudget,
+        wishBuyOrders: wishBuyOrders,
+        needsCopy: needsCopy,
         // Units of an item we hold (bag + last bank snapshot), e.g. for the stand's buy orders.
         ownedCount: ownedCount,
         bankKnown: function () { return !!bankSnapshot; },
