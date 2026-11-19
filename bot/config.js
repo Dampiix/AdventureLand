@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.133.3",
+    version: "1.134.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -68,6 +68,10 @@ module.exports = {
         // built yet). It only fills for now; nothing spends it. Other pots for comparison:
         // gear goals 0.5, weapon ladder 0.25, grace 0.05 per target level (all in workshop).
         shopping: { incomeShare: 0.2 },
+        // Ponty (player request 2026-11-19, fresh account): every everyMs the merchant checks his
+        // listings and buys what a fighter wishes or a gear goal needs - better than our best copy
+        // and at most maxShareOfOwn of what making it ourselves would cost. From the shopping pot.
+        ponty: { enabled: true, everyMs: 20 * 60 * 1000, maxShareOfOwn: 1 },
     },
 
     // Dismantle drops (player decision 2026-11-17): instead of upgrading them, the merchant

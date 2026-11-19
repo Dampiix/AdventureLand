@@ -2582,6 +2582,78 @@ module.exports = function createWorkshop(ctx) {
         try { set("dmpx_value_report", { at: Date.now(), goldPerHour: goldPerHour, goldPower: goldPower, xp: fighterValues, rows: rows.slice(0, 25) }); } catch (e) { /* storage unavailable */ }
     }
 
+    // ---- Ponty (player request 2026-11-19, fresh account) --------------------------
+    //
+    // Every market.ponty.everyMs the merchant looks at Ponty's listings (players' items sold
+    // to NPCs, price = item value x 2, x 3 for shell items) and buys what a fighter wishes or
+    // a gear goal needs, when it beats our best copy and costs less than making it ourselves
+    // (our gold cost, plus farm hours counted at our gold per hour). Paid from the shopping
+    // pot (market.shopping.incomeShare); the copy then goes out through the usual deliveries.
+    let nextPontyAt = Date.now() + 60 * 1000;
+    function wornLevel(name) {
+        let best = -1;
+        Object.keys(worn).forEach(function (f) {
+            Object.keys(worn[f] || {}).forEach(function (s) { const w = worn[f][s]; if (w && w.name === name) best = Math.max(best, w.level || 0); });
+        });
+        return best;
+    }
+    function pontyWants() {
+        const wants = {};
+        const add = function (name, level) { if (G.items[name]) wants[name] = Math.max(wants[name] || 0, level || 0); };
+        fighters().forEach(function (f) { wishList(f).forEach(function (w) { add(w.name, w.level); }); });
+        if (goalsOn()) goalNeedsAll().forEach(function (n) { add(n.name, n.level); });
+        return wants;
+    }
+    // Gold our own way to name +level would cost (Infinity: needs drops we can't time).
+    function ownCost(name, level) {
+        const def = G.items[name];
+        const c = def.compound ? compoundCost(name, level) : upgradeCost(name, level);
+        let gold = c.gold;
+        const gb = goalBudget();
+        const gph = gb.hours >= 1 && gb.earned > 0 ? gb.earned / gb.hours : 0;
+        if (c.copies > 0.01) gold += dropTimes[name] && gph ? c.copies * dropTimes[name] / 3600 * gph : Infinity;
+        return gold;
+    }
+    async function shopPonty() {
+        const pc = (config.market && config.market.ponty) || {};
+        if (!pc.enabled || Date.now() < nextPontyAt || character.esize < 3 || !bankSnapshot) return false;
+        nextPontyAt = Date.now() + (pc.everyMs || 20 * 60 * 1000);
+        const wants = pontyWants();
+        if (!Object.keys(wants).length || !canSpend(SHOPPING, 1)) return false;
+        util.status("checking Ponty", "yellow");
+        await goTo("secondhands");
+        let list = [];
+        try { list = ((await get_secondhands()) || {}).items || []; } catch (e) {
+            util.log("workshop", "Ponty: " + util.errReason(e), "orange");
+            return true;
+        }
+        let bought = 0;
+        for (const it of list) {
+            if (!it || !wants.hasOwnProperty(it.name) || it.p === "glitched") continue;
+            const lvl = it.level || 0;
+            const have = Math.max(wornLevel(it.name), unlockedCopies(it.name).reduce(function (m, l) { return Math.max(m, l); }, -1));
+            if (lvl <= have) continue; // nothing better than what we hold or wear
+            let price = 0;
+            try { price = calculate_item_value(it) * (G.items[it.name].cash ? 3 : 2) * (it.q || 1); } catch (e) { continue; }
+            const own = ownCost(it.name, lvl);
+            if (price > own * (pc.maxShareOfOwn || 1)) continue;
+            if (price > character.gold || !canSpend(SHOPPING, price)) {
+                util.log("workshop", "Ponty has " + it.name + " +" + lvl + " for " + Math.round(price / 1000) + "k - not in the shopping pot (" + Math.round(shoppingBudget().allowed / 1000) + "k)", "white");
+                continue;
+            }
+            if (character.esize < 2) break;
+            try {
+                await buy_secondhand(it);
+                pay(SHOPPING, price);
+                bought++;
+                util.log("workshop", "bought " + it.name + " +" + lvl + " at Ponty for " + Math.round(price / 1000) + "k (" + (isFinite(own) ? "making it: ~" + Math.round(own / 1000) + "k" : "can't make it") + ")", "green");
+            } catch (e) {
+                util.log("workshop", "Ponty " + it.name + " +" + lvl + ": " + util.errReason(e), "orange");
+            }
+        }
+        return bought > 0;
+    }
+
     // ---- one per character ----------------------------------------------------
     //
     // config.merchantRole.onePerCharacter (e.g. Tracktrix): every fighter that reports
@@ -2875,6 +2947,7 @@ module.exports = function createWorkshop(ctx) {
         if (await workOwnWishes()) return; // the merchant's own stand and tools come first
         if (await dismantleDrops()) return; // spare drop weapons into material (config.dismantle)
         if (await stockOneEach()) return;
+        if (await shopPonty()) return; // Ponty: wished items cheaper than making them (market.ponty)
         fillEmptySlots();
         deliverBetterWeapons();
         deliverEssenceGoals();
