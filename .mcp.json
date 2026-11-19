@@ -6,6 +6,13 @@
       "headers": {
         "Authorization": "Bearer ${ADVENTURELAND_TOKEN}"
       }
+    },
+    "adventureland-viz": {
+      "type": "http",
+      "url": "https://adventure.land/mcp",
+      "headers": {
+        "Authorization": "Bearer ${ADVENTURELAND_TOKEN_VIZ}"
+      }
     }
   }
 }
