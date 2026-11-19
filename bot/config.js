@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.124.2",
+    version: "1.124.3",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -225,7 +225,7 @@ module.exports = {
         // Player decision 2026-11-17 (night): the solo warrior farms CGoos overnight (gold for the
         // budget pots after the reset, XP to 68, gems); the Phoenix is still searched every 30 min.
         // Boo Boo solo test 2026-11-17 (late) failed: he walked into the pack and died. Back to CGoos.
-        farm: "mummy", // OVERNIGHT 2026-11-19: hold the mummy spot, no fallbacks. Usual list: ["mummy", "booboo", "stoneworm"] // a list (2026-11-19): the first one not too strong/crowded; null = the guide picks
+        farm: ["mummy", "booboo", "stoneworm"], // overnight 2026-11-19: mummies, booboos/stoneworms only as a backup // a list (2026-11-19): the first one not too strong/crowded; null = the guide picks
         fallback: "goo",          // used when the progression guide has no answer
         // Farm only where every fighter's own guide calls the spot safe; routes the guide
         // only offers as a careful trial count once proven – by the guide's own fights, or
