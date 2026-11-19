@@ -75,8 +75,8 @@ module.exports = function createWorkshop(ctx) {
 
     const classes = {}; // fighter -> ctype (sent with its wishes)
     const carries = {}; // fighter -> { item: true/false } for one-per-character items
-    // Gold a fighter handed over is income (loot, sales), not a transfer by hand: the
-    // transfer check below would otherwise drop a big handover (gearGoals budget).
+    // Gold a fighter handed over (shown apart from sales in the budget line; every gold rise
+    // is income since 2026-11-19).
     comms.on("gold", function (data) {
         const a = Math.round((data && data.a) || 0);
         if (a <= 0) return;
@@ -463,25 +463,44 @@ module.exports = function createWorkshop(ctx) {
 
     // ---- income-based budget for gear goals ---------------------------------
     //
-    // The merchant's gold is sampled every 10 minutes; one sample older than 24 h
-    // stays as the baseline. Net income = gold now - baseline gold + what the gear
-    // goals spent since then (their own spending is not a loss of income). Gear
-    // goals may spend incomeShare of that, minus what they already spent – so the
-    // daily budget follows what the team currently earns. Gold moved by hand (e.g.
-    // from the bank) shows up as one big jump between two samples: it is a transfer,
-    // not income (budget.transferAbove), so the budget stays tied to real cash flow.
+    // Direct booking (player decision 2026-11-19): every rise of the merchant's gold is income
+    // (fighter handovers, stand and NPC sales, parcels - no gold comes from anywhere else, the
+    // bot never takes gold from the bank), every drop is spending; both go into 10-minute
+    // buckets for the last 24 h. Income for the pots = gross income - consumables, where
+    // consumables are the spending the workshop did not book (potions, buy-order materials).
+    // Gear may spend incomeShare of that, minus what it already spent. No transfer rule any
+    // more: a 3M+ jump (mummy handovers, a pricey stand sale) is income like any other.
     const GOALS = "goals"; // budget key of the gear goals
     const LADDER = "ladder"; // budget key of the weapon ladder (its own income share)
     const SHOPPING = "shopping"; // budget key of buying wished items (config.market.shopping)
     const INCOME_KEY = "workshop_income:" + character.name;
     const DAY = 24 * 60 * 60 * 1000;
     const income = (function () {
+        let x = null;
         try {
             const saved = get(INCOME_KEY);
-            if (saved && Array.isArray(saved.samples) && Array.isArray(saved.spends)) return saved;
+            if (saved && Array.isArray(saved.samples) && Array.isArray(saved.spends)) x = saved;
         } catch (e) { /* storage unavailable */ }
-        return { samples: [], spends: [], total: 0 };
+        x = x || { samples: [], spends: [], total: 0 };
+        // First run with direct booking: the fighters' handovers already logged are income.
+        if (!Array.isArray(x.flow)) x.flow = (x.credits || []).map(function (c) { return { t: c.t, in: c.a, out: 0 }; });
+        return x;
     })();
+    // Gold changes, checked four times a second (a purchase and a handover in the same moment
+    // would cancel out; at 250 ms that is rare and small).
+    let lastGold = character.gold;
+    let flowSavedAt = 0;
+    function noteGold() {
+        const d = character.gold - lastGold;
+        lastGold = character.gold;
+        if (!d) return;
+        const now = Date.now();
+        let b = income.flow[income.flow.length - 1];
+        if (!b || now - b.t >= 10 * 60 * 1000) { b = { t: now, in: 0, out: 0 }; income.flow.push(b); }
+        if (d > 0) b.in += d; else b.out -= d;
+        if (now - flowSavedAt > 60 * 1000) { flowSavedAt = now; saveIncome(); }
+    }
+    setInterval(noteGold, 250);
     function saveIncome() {
         try { set(INCOME_KEY, income); } catch (e) { /* storage unavailable */ }
     }
@@ -490,29 +509,13 @@ module.exports = function createWorkshop(ctx) {
         const now = Date.now();
         const last = income.samples[income.samples.length - 1];
         if (last && now - last.t < 10 * 60 * 1000) return;
-        income.samples.push({ t: now, gold: character.gold });
-        while (income.samples.length > 2 && now - income.samples[1].t >= DAY) income.samples.shift();
-        const since = income.samples[0].t;
+        income.samples.push({ t: now, gold: character.gold }); // for workshop.keepGold's 24 h peak
+        const since = now - DAY;
+        income.samples = income.samples.filter(function (s) { return s.t >= since; });
+        income.flow = income.flow.filter(function (b) { return b.t >= since; });
         income.spends = income.spends.filter(function (s) { return s.t >= since; });
         income.credits = (income.credits || []).filter(function (c) { return c.t >= since; });
         saveIncome();
-    }
-
-    // Gold moved in or out by hand since the baseline: jumps of at least transferAbove
-    // between two samples (gear-goal spending in between taken out).
-    function transfers() {
-        const limit = cfg.gearGoals.budget.transferAbove || Infinity;
-        const points = income.samples.concat([{ t: Date.now(), gold: character.gold }]);
-        let sum = 0;
-        for (let i = 1; i < points.length; i++) {
-            const a = points[i - 1], b = points[i];
-            const between = income.spends.reduce(function (x, s) { return s.t > a.t && s.t <= b.t ? x + s.a : x; }, 0);
-            // Gold the fighters handed over in this step is income, not a transfer.
-            const handed = (income.credits || []).reduce(function (x, c) { return c.t > a.t && c.t <= b.t ? x + c.a : x; }, 0);
-            const step = b.gold - a.gold + between - handed;
-            if (Math.abs(step) >= limit) sum += step;
-        }
-        return sum;
     }
 
     // budget.resetAt once it has passed: everything before it is ignored (0 = no mark).
@@ -523,30 +526,32 @@ module.exports = function createWorkshop(ctx) {
     }
     function goalBudget() {
         const b = cfg.gearGoals.budget;
-        if (!income.samples.length) return { allowed: 0, earned: 0, spent: 0, hours: 0, moved: 0 };
-        // A reset mark: the first gold sample after it is the baseline, older spending is gone.
+        // A reset mark: everything booked before it is gone.
         const mark = resetMark();
-        if (mark && income.samples[0].t < mark) {
-            income.samples = income.samples.filter(function (s) { return s.t >= mark; });
-            if (!income.samples.length) income.samples.push({ t: Date.now(), gold: character.gold });
-            income.spends = income.spends.filter(function (s) { return s.t >= mark; });
+        if (mark && income.flow.some(function (x) { return x.t < mark; })) {
+            ["flow", "spends", "credits", "samples"].forEach(function (n) { income[n] = (income[n] || []).filter(function (x) { return x.t >= mark; }); });
             saveIncome();
             util.log("workshop", "budget reset: every pot starts from 0 now", "yellow");
         }
-        const base = income.samples[0];
-        // All workshop spending is put back into the income; the gear goals' share only
-        // counts their own spending (the weapon ladder has its own pot).
-        const spentAll = income.spends.reduce(function (sum, s) { return sum + s.a; }, 0);
-        const spentInWindow = income.spends.reduce(function (sum, s) { return s.k ? sum : sum + s.a; }, 0); // gear pot only
-        const moved = transfers();
-        const earned = character.gold - base.gold + spentAll - moved;
+        if (!income.flow.length) return { allowed: 0, earned: 0, spent: 0, hours: 0, gross: 0, fighters: 0, consumables: 0 };
+        const since = Date.now() - DAY;
+        const flow = income.flow.filter(function (x) { return x.t >= since; });
+        const gross = flow.reduce(function (sum, x) { return sum + x.in; }, 0);
+        const out = flow.reduce(function (sum, x) { return sum + x.out; }, 0);
+        const fighters = (income.credits || []).reduce(function (sum, c) { return c.t >= since ? sum + c.a : sum; }, 0);
+        // Workshop spending is booked (pay); the rest of the spending is consumables.
+        const spentAll = income.spends.reduce(function (sum, s) { return s.t >= since ? sum + s.a : sum; }, 0);
+        const spentInWindow = income.spends.reduce(function (sum, s) { return s.k || s.t < since ? sum : sum + s.a; }, 0); // gear pot only
+        const consumables = Math.max(0, out - spentAll);
+        const earned = gross - consumables;
         // A player-granted extra (budget.extra: { amount, until }) on top of the income share,
         // e.g. to gear up a new character faster. What it pays for still counts as spent in
         // the 24 h window, so after it expires the income share has to catch up first.
         const extra = b.extra && b.extra.amount && Date.now() < Date.parse(b.extra.until) ? b.extra.amount : 0;
         let allowed = Math.max(0, earned * b.incomeShare + extra - spentInWindow);
         if (b.total) allowed = Math.min(allowed, Math.max(0, b.total - income.total));
-        return { allowed: allowed, earned: earned, spent: spentInWindow, hours: (Date.now() - base.t) / 3600000, moved: moved };
+        return { allowed: allowed, earned: earned, spent: spentInWindow, hours: Math.min(24, (Date.now() - flow[0].t) / 3600000),
+            gross: gross, fighters: fighters, consumables: consumables };
     }
 
     // Weapon ladder budget (player decision 2026-11-17): its own share of the last 24 h of
@@ -2013,7 +2018,7 @@ module.exports = function createWorkshop(ctx) {
         lastBudgetLog = Date.now();
         const b = goalBudget();
         util.log("workshop", "gear goals wait for income: " + kGold(b.allowed) + " left (earned " + kGold(b.earned) + " in " +
-            b.hours.toFixed(1) + " h, spent " + kGold(b.spent) + (b.moved ? ", " + kGold(b.moved) + " moved by hand not counted" : "") + ")", "orange");
+            b.hours.toFixed(1) + " h, spent " + kGold(b.spent) + ")", "orange");
     }
 
     // Apply the fighter's stat scroll (str/int/dex) to a finished copy.
@@ -3292,7 +3297,9 @@ module.exports = function createWorkshop(ctx) {
             });
             const k = function (n) { return Math.round(n / 1000) + "k"; };
             return "budget: goals " + k(goalBudget().allowed) + ", ladder " + k(ladderBudget().allowed) +
-                ", shopping " + k(shoppingBudget().allowed) + " (24h income " + k(goalBudget().earned) + ")" +
+                ", shopping " + k(shoppingBudget().allowed) + " (24h: in " + k(goalBudget().gross) + " - fighters " + k(goalBudget().fighters) +
+                ", sales/other " + k(goalBudget().gross - goalBudget().fighters) + "; consumables " + k(goalBudget().consumables) +
+                "; gear spent " + k(goalBudget().spent) + ")" +
                 " | working on: " + (list.slice(0, 6).join(", ") || "nothing") + (list.length > 6 ? " ..." : "") +
                 essenceReport();
         },

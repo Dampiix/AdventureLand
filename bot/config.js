@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.140.1",
+    version: "1.141.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -869,16 +869,15 @@ module.exports = {
             // reaches the Wooden Axe wish (both hands +7); shields, books, quivers stay out.
             slots: ["helmet", "chest", "pants", "shoes", "gloves", "mainhand", "offhand"],
             weapons: [], // fire weapons: workshop.bruteForce (weapon ladder) since 2026-11-16
-            // Daily budget from income (player decision 2026-11-15): a share of the merchant's
-            // net gold gain over the last 24 h; workshop spending is not counted as a loss, so
-            // only consumables (potions, buy-order materials) come off first. One gear pot
-            // (player decision 2026-11-19): wishes, weapon plans, stock rules and stat scrolls
-            // pay from it as well as the gear goals and Ponty; budgetPerWish is only a safety cap. Gold moved by hand (a jump of transferAbove or more within 10 min)
-            // is not income. No fixed total since 2026-11-16 (player decision): long-term
+            // Daily budget from income (player decisions 2026-11-15/19): every gold rise of the
+            // merchant over the last 24 h is income (booked directly: fighter handovers, sales),
+            // minus consumables (potions, buy-order materials). One gear pot: wishes, weapon
+            // plans, stock rules and stat scrolls pay from it as well as the gear goals and
+            // Ponty; budgetPerWish is only a safety cap. No fixed total since 2026-11-16 (player decision): long-term
             // positive cash flow, with workshop.keepGold as the floor. `total` (optional)
             // would cap everything ever spent on gear goals.
             budget: {
-                incomeShare: 0.7, transferAbove: 3000000,
+                incomeShare: 0.7, // transferAbove removed 2026-11-19 (direct booking, player decision)
                 // Player decisions 2026-11-17: 10M more for 12 h at 08:45, another 10M at 12:23 (the
                 // budget ran out on the Rugged pants/shoes). The extra counts against the last 24 h of
                 // spending, so the total grows: 30M until 2026-11-18 00:23 UTC.
