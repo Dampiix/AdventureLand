@@ -599,10 +599,11 @@ module.exports = function createFighter(ctx, cls) {
             const melee = ((config.targeting.melee || {}).classes || []).includes(character.ctype);
             const victimName = melee && target.target && target.target !== character.name && party.memberNames().includes(target.target) ? target.target : null;
             const victim = victimName ? get_player(victimName) : null;
-            if (victim && !victim.rip) {
+            // Only until we stand by that member: a kiting priest keeps the monster at range, so
+            // the warrior waited next to him forever (2026-11-19) - from there we go for it.
+            if (victim && !victim.rip && util.distanceTo(victim) > 80) {
                 util.status("moving to " + victimName, "orange");
-                const v = util.xy(victim);
-                if (util.distanceTo(victim) > 40) moveTo(v);
+                moveTo(util.xy(victim));
                 return;
             }
             // A monster already coming for us (e.g. after our Taunt) is waited for, not met
