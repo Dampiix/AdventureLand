@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.127.0",
+    version: "1.127.1",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -672,7 +672,9 @@ module.exports = {
         // hoardAt (2026-11-16): spares are not risked beyond this level; +7 copies are kept.
         // incomeShare (player decision 2026-11-17): the ladder's own pot, a share of the last
         // 24 h of income – it scales with the account and is not stopped by the gear goals.
-        bruteForce: { names: ["fireblade", "firebow", "firestaff"], maxLevel: 9, hoardAt: 7, incomeShare: 0.25 },
+        // Dagger of the Dead joins the ladder (gear plan 2026-11-19); craft: a +0 spare is crafted
+        // from Bones when none is left. Note: it is rare grade from +6 (scroll2, 1.6M per try).
+        bruteForce: { names: ["fireblade", "firebow", "firestaff", "daggerofthedead"], craft: ["daggerofthedead"], maxLevel: 9, hoardAt: 7, incomeShare: 0.25 },
         // Box armor (player decision 2026-11-17): while a fighter wishes any Rugged piece,
         // every spare copy from the armor boxes is upgraded towards upTo at once – failures
         // free bank slots and the next chain pieces are ready early (the bank has ~19 free

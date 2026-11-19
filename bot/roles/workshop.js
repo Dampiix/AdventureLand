@@ -2254,7 +2254,17 @@ module.exports = function createWorkshop(ctx) {
             config.team.fighters.forEach(function (f) {
                 if (!worn[f] || !canWield(f, name)) return;
                 const m = worn[f].mainhand;
-                if (m && m.name === name) return; // already wears one: gear goals take over
+                // Already in the main hand: dual wield classes get a second copy for the offhand
+                // (gear plan 2026-11-19: two Daggers of the Dead for the rogue, swords/maces for
+                // the warrior) - first the main hand, then the offhand.
+                let slot = "mainhand";
+                if (m && m.name === name) {
+                    const off = worn[f].offhand;
+                    const offTypes = (G.classes[classes[f]] || {}).offhand || {};
+                    if (!offTypes[G.items[name].wtype] || util.isDoublehand(name, classes[f])) return;
+                    if (off && (off.name === name || !G.items[off.name] || G.items[off.name].type !== "weapon")) return; // a shield etc. stays
+                    slot = "offhand";
+                }
                 // Not before the fighter is "full +7": weapon at upTo AND all shop armor past
                 // the first stage (player decision 2026-11-16).
                 if ((bw.craft || []).includes(name)) {
@@ -2264,10 +2274,11 @@ module.exports = function createWorkshop(ctx) {
                     const first = Math.min.apply(null, (cfg.gearGoals.stages && cfg.gearGoals.stages.length) ? cfg.gearGoals.stages : [cfg.gearGoals.upTo]);
                     if (!weaponAtGoal(f) || (stage !== null && stage <= first)) return;
                 }
-                const bar = wornPower(f) * (1 + (bw.margin || 0));
+                const held = worn[f][slot];
+                const bar = (held ? util.weaponPower(held.name, held.level || 0, classes[f]) : 0) * (1 + (bw.margin || 0));
                 for (let level = 0; level <= bw.maxLevel; level++) {
                     if (util.weaponPower(name, level, classes[f]) <= bar) continue;
-                    if (!plan || level < plan.need) plan = { fighter: f, name: name, need: level };
+                    if (!plan || level < plan.need) plan = { fighter: f, name: name, need: level, slot: slot };
                     break;
                 }
             });
@@ -2286,9 +2297,9 @@ module.exports = function createWorkshop(ctx) {
             const levels = unlockedCopies(plan.name).filter(function (l) { return l >= plan.need; });
             if (!levels.length) return;
             const level = Math.max.apply(null, levels);
-            const m = worn[f].mainhand;
+            const m = worn[f][plan.slot || "mainhand"];
             earmark(f, plan.name, level);
-            util.log("workshop", plan.name + " +" + level + " goes to " + f + " (stronger than its " +
+            util.log("workshop", plan.name + " +" + level + " goes to " + f + " (" + (plan.slot || "mainhand") + ", stronger than its " +
                 (m ? m.name + " +" + (m.level || 0) : "empty hand") + ")", "yellow");
         });
     }
@@ -2449,7 +2460,26 @@ module.exports = function createWorkshop(ctx) {
             if (blockedUntil[k] > now) continue;
             if (activeEarmarks().some(function (e) { return e.name === name; })) continue; // a better copy is on its way
             const spares = unlockedCopies(name);
-            if (!spares.some(function (l) { return l < target; })) continue; // nothing left to climb
+            if (!spares.some(function (l) { return l < target; })) {
+                // Craftable ladder weapons (bf.craft, e.g. Dagger of the Dead from Bones): a fresh
+                // +0 spare when none is left below the target (gear plan 2026-11-19).
+                if (!(bf.craft || []).includes(name) || !crafterOf(name) || character.esize < 3) continue;
+                if (spares.some(function (l) { return l >= target; })) continue; // one is ready to deliver
+                util.status("crafting a spare " + name, "orange");
+                try {
+                    const r = await craftItem(LADDER, name);
+                    if (!r.ok) {
+                        util.log("workshop", "can't craft a spare " + name + " yet - missing " + r.missing.map(function (m) { return (m.need - m.have) + "x " + m.name; }).join(", "), "orange");
+                        r.missing.forEach(function (m) { noteIngredientShortage(m.name, m.level, m.need, name); });
+                        blockedUntil[k] = Date.now() + cfg.giveUpForMs;
+                    }
+                } catch (e) {
+                    const why = util.errReason(e);
+                    util.log("workshop", "crafting a spare " + name + ": " + why, "orange");
+                    blockedUntil[k] = Date.now() + pauseAfter(k, why);
+                }
+                return true;
+            }
             if (!capped && spares.some(function (l) { return l >= target; })) continue; // one is ready to deliver
             if (character.esize < 3) return false;
             const best = Math.max.apply(null, spares.filter(function (l) { return l < target; }));
