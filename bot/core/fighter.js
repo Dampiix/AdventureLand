@@ -140,7 +140,18 @@ module.exports = function createFighter(ctx, cls) {
             const close = near.find(function (e) { return util.distanceTo(e) < 250; });
             const farmType = lastFarm && !lastFarm.any ? lastFarm.monster : null;
             const farmNear = farmType && near.find(function (e) { return e.mtype === farmType && util.distanceTo(e) < 500; });
-            const monster = onMe ? onMe.mtype : close ? close.mtype : farmNear ? farmType : null;
+            // First choice: the kind that did the most damage in the last seconds (the hit log) -
+            // 2026-11-19 the warrior died to mummies, but by the time it was reported the leader had
+            // switched to booboos and the death closed the booboo spot.
+            const dealt = {};
+            const now = Date.now();
+            (PAGE.__dmpxHits || []).forEach(function (h) {
+                if (now - h.t > HIT_LOG_MS) return;
+                const type = String(h.who || "").split(" ")[0];
+                if (G.monsters[type]) dealt[type] = (dealt[type] || 0) + h.dmg;
+            });
+            const killer = Object.keys(dealt).sort(function (a, b) { return dealt[b] - dealt[a]; })[0] || null;
+            const monster = killer || (onMe ? onMe.mtype : close ? close.mtype : farmNear ? farmType : null);
             if (monster) {
                 // A member reports to the leader and notes it itself as well: farming on its own
                 // (detached) it picks with its own records (2026-11-18: the warrior died three
