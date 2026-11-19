@@ -2684,7 +2684,7 @@ module.exports = function createWorkshop(ctx) {
                     const b = fighterValues[f].base || {};
                     const cost = price + (it.stat_type === b.stat ? 0 : statScrollCost(it, b.stat));
                     const perM = g / Math.max(1, cost) * 1e6;
-                    finds.push({ t: Date.now(), fighter: f, item: it.name + " +" + (it.level || 0), price: Math.round(cost), gain: Math.round(g * 100) / 100,
+                    finds.push({ it: it, stat: G.items[it.name].stat && it.stat_type !== b.stat ? b.stat : null, listPrice: price, t: Date.now(), fighter: f, item: it.name + " +" + (it.level || 0), price: Math.round(cost), gain: Math.round(g * 100) / 100,
                         perM: Math.round(perM * 100) / 100, oursPerM: Math.round(bestPerGold * 1e6 * 100) / 100, better: bestPerGold > 0 && g / cost >= bestPerGold });
                 });
             });
@@ -2693,7 +2693,28 @@ module.exports = function createWorkshop(ctx) {
                 util.log("workshop", "Ponty find: " + x.item + " for " + Math.round(x.price / 1000) + "k -> " + x.fighter + " +" + x.gain + "% (" + x.perM + "%/M, our best upgrade " + (x.oursPerM || "?") + "%/M)" + (x.better ? " - worth it" : ""), x.better ? "yellow" : "white");
             });
             if (finds.length) {
-                try { const old = get(FINDS_KEY) || []; set(FINDS_KEY, old.concat(finds.slice(0, 5)).slice(-60)); } catch (e) { /* storage unavailable */ }
+                try { const old = get(FINDS_KEY) || []; set(FINDS_KEY, old.concat(finds.slice(0, 5).map(function (x) { return Object.assign({}, x, { it: undefined }); })).slice(-60)); } catch (e) { /* storage unavailable */ }
+            }
+            // buyFinds (player decision 2026-11-19): the best find worth it is bought too - within the
+            // pot share per purchase - gets the fighter's main-stat scroll and goes to that fighter.
+            const pick = pc.buyFinds && finds.find(function (x) {
+                return x.better && x.price <= shoppingBudget().allowed * (pc.maxShareOfPot || 1) && canSpend(SHOPPING, x.price) && x.price <= character.gold;
+            });
+            if (pick && character.esize >= 2) {
+                try {
+                    await buy_secondhand(pick.it);
+                    pay(SHOPPING, pick.listPrice);
+                    const lvl = pick.it.level || 0;
+                    util.log("workshop", "bought " + pick.item + " at Ponty for " + Math.round(pick.listPrice / 1000) + "k for " + pick.fighter + " (+" + pick.gain + "%)", "green");
+                    if (pick.stat) {
+                        const idx = util.findItemIndex(function (x) { return x.name === pick.it.name && (x.level || 0) === lvl && x.stat_type !== pick.stat && !x.l; });
+                        if (idx !== -1) await applyStat(idx, pick.stat, SHOPPING);
+                    }
+                    earmark(pick.fighter, pick.it.name, lvl, pick.stat);
+                    bought++;
+                } catch (e) {
+                    util.log("workshop", "Ponty find " + pick.item + ": " + util.errReason(e), "orange");
+                }
             }
         }
         for (const it of list) {

@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.135.0",
+    version: "1.135.1",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -74,8 +74,9 @@ module.exports = {
         // Rules (player decisions 2026-11-19): at most maxShareOfOwn of our own expected cost (up to
         // 20 % more - the time saved is worth it) and at most maxShareOfPot of the shopping pot per
         // purchase (it grows with the income; was a fixed 1M). reportFinds: pieces outside the wish
-        // list are only reported (gain per gold vs our best own upgrade), never bought (yet).
-        ponty: { enabled: true, everyMs: 20 * 60 * 1000, maxShareOfOwn: 1.2, maxShareOfPot: 0.2, reportFinds: true, findMinGain: 0.5 },
+        // list are reported (gain per gold vs our best own upgrade); buyFinds (player decision
+        // 2026-11-19): the best one worth it is bought as well (pot share, main-stat scroll, delivered).
+        ponty: { enabled: true, everyMs: 20 * 60 * 1000, maxShareOfOwn: 1.2, maxShareOfPot: 0.2, reportFinds: true, buyFinds: true, findMinGain: 0.5 },
     },
 
     // Dismantle drops (player decision 2026-11-17): instead of upgrading them, the merchant
