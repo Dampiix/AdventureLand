@@ -2635,6 +2635,7 @@ module.exports = function createWorkshop(ctx) {
             if (lvl <= have) continue; // nothing better than what we hold or wear
             let price = 0;
             try { price = calculate_item_value(it) * (G.items[it.name].cash ? 3 : 2) * (it.q || 1); } catch (e) { continue; }
+            if (pc.maxPrice && price > pc.maxPrice) continue;
             const own = ownCost(it.name, lvl);
             if (price > own * (pc.maxShareOfOwn || 1)) continue;
             if (price > character.gold || !canSpend(SHOPPING, price)) {
