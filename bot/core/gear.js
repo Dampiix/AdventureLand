@@ -234,7 +234,9 @@ module.exports = function createGear(ctx) {
                 if (p < 0 && !steps.replace) return;
                 // Replace chains come after the shop progression (player decision
                 // 2026-11-16): only once ALL shop gear is at the gear goals' level.
-                if (p < 0 && !steps.anytime && !shopGearDone()) return;
+                // An empty slot too (2026-11-19: the fresh Viz warrior wished Rugged +7 pieces at level 21,
+                // and the merchant looked for them at Ponty) - an empty slot gets shop gear first.
+                if ((p < 0 || (!worn && steps.replace)) && !steps.anytime && !shopGearDone()) return;
                 if (progress === null || p < progress) progress = p;
             });
             if (progress === null || progress >= steps.length) return;

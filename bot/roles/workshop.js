@@ -2628,6 +2628,7 @@ module.exports = function createWorkshop(ctx) {
             return true;
         }
         let bought = 0;
+        const tooDear = {}; // one log line per visit: "name +level" -> price
         for (const it of list) {
             if (!it || !wants.hasOwnProperty(it.name) || it.p === "glitched") continue;
             const lvl = it.level || 0;
@@ -2639,7 +2640,7 @@ module.exports = function createWorkshop(ctx) {
             const own = ownCost(it.name, lvl);
             if (price > own * (pc.maxShareOfOwn || 1)) continue;
             if (price > character.gold || !canSpend(SHOPPING, price)) {
-                util.log("workshop", "Ponty has " + it.name + " +" + lvl + " for " + Math.round(price / 1000) + "k - not in the shopping pot (" + Math.round(shoppingBudget().allowed / 1000) + "k)", "white");
+                tooDear[it.name + " +" + lvl] = Math.round(price / 1000);
                 continue;
             }
             if (character.esize < 2) break;
@@ -2652,6 +2653,8 @@ module.exports = function createWorkshop(ctx) {
                 util.log("workshop", "Ponty " + it.name + " +" + lvl + ": " + util.errReason(e), "orange");
             }
         }
+        const dear = Object.keys(tooDear);
+        if (dear.length) util.log("workshop", "Ponty, not in the shopping pot (" + Math.round(shoppingBudget().allowed / 1000) + "k): " + dear.map(function (n) { return n + " " + tooDear[n] + "k"; }).join(", "), "white");
         return bought > 0;
     }
 
