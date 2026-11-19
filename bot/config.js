@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.122.0",
+    version: "1.122.1",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -813,7 +813,7 @@ module.exports = {
             "wcap", "wshoes", "wattire", "wbreeches", "wgloves",
             // +0 weapons (approved 2026-11-15). Phoenix weapons (fireblade, firestaff,
             // firebow) are never sold – player decision 2026-11-15.
-            "dagger",
+            // "dagger" kept since 2026-11-19 (player decision: no investment, but not sold either)
             "snowball",
             // V1 upgraded short swords to +4 – no longer needed (approved 2026-11-15)
             { name: "sword", maxLevel: 4 },
