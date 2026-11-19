@@ -490,9 +490,28 @@ module.exports = function createFighter(ctx, cls) {
     }
 
     let passing = null; // { until, dest } while we pass through attackers on the way
+    // Leave a fight with another kind than the farm target (player request 2026-11-19): after
+    // combat.passThrough.leaveAfterMs of such fighting we walk out towards the target - the
+    // warrior stood in the mummies' rage zone, they kept pulling him and the team never left
+    // for the new spot. Every fighter (members too), any speed, any HP; a 5 s pause starts over.
+    let offSince = 0, offSeen = 0, leaveLogged = 0;
+    function stuckOffTarget(farm, target) {
+        const pt = config.combat.passThrough || {};
+        if (!pt.leaveAfterMs || !farm || farm.any || !farm.monster || !target || target.mtype === farm.monster) { offSince = 0; return false; }
+        const now = Date.now();
+        if (!offSince || now - offSeen > 5000) offSince = now;
+        offSeen = now;
+        if (now - offSince < pt.leaveAfterMs) return false;
+        if (now - leaveLogged > 60 * 1000) { leaveLogged = now; util.log("combat", "still fighting " + target.mtype + " after " + Math.round((now - offSince) / 1000) + " s - leaving for " + farm.monster, "yellow"); }
+        return true;
+    }
     function passThrough(farm, target) {
         const pt = config.combat.passThrough || {};
-        if (!pt.enabled || !farm || farm.any || !farm.monster || target.mtype === farm.monster) return false;
+        if (!pt.enabled || !farm || farm.any || !farm.monster || target.mtype === farm.monster) { offSince = 0; return false; }
+        if (stuckOffTarget(farm, target)) {
+            const spot0 = targeting.spotFor(farm.monster, farm.map);
+            return !(spot0 && spot0.map === character.map && util.distanceTo(spot0) < (pt.spotRadius || 400));
+        }
         if (party.enabled && party.isMember && !party.detached()) return false; // members follow the leader
         if (util.hpRatio() < (pt.minHp || 0.5)) return false;
         const spot = targeting.spotFor(farm.monster, farm.map);

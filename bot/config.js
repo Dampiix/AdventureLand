@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.132.0",
+    version: "1.132.1",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -331,7 +331,9 @@ module.exports = {
         // Pass through (2026-11-19): the leader/solo on its way to the farm spot leaves slower
         // attackers of other kinds behind instead of fighting them (above minHp, not within
         // spotRadius of the spot).
-        passThrough: { enabled: true, minHp: 0.5, speedShare: 0.8, spotRadius: 400 },
+        // leaveAfterMs (2026-11-19): after this long fighting another kind than the farm target, every
+        // fighter walks out towards the target whatever the speed or HP (slow ones are left behind).
+        passThrough: { enabled: true, minHp: 0.5, speedShare: 0.8, spotRadius: 400, leaveAfterMs: 60 * 1000 },
         withHealer: { potionHpBelow: 0.6, potionWhenMissing: false, fastLossPerSec: 0.06 },
         // MP: drink as soon as this share of an MP potion is missing – solo and in the party
         // (player decision 2026-11-17: "Mana kann ruhig immer voll sein", potions are cheap).
