@@ -2420,6 +2420,57 @@ module.exports = function createWorkshop(ctx) {
         const baseGold = shop ? (G.items[name].g || 0) : craft ? (G.craft[name].cost || 0) : 0;
         return { gold: first.gold + restarts * fresh.gold + (shop || craft ? bases * baseGold : 0), copies: shop || craft ? 0 : bases, crafts: craft ? bases : 0 };
     }
+    // Gain, cost and gain per hour of one wish (null without a gain from the fighter).
+    function wishValue(f, w, goldPerHour) {
+        if (typeof w.gain !== "number") return null;
+        const def = G.items[w.name];
+        const c = def.compound ? compoundCost(w.name, w.level) : upgradeCost(w.name, w.level);
+        let farmH = 0;
+        const unknown = [];
+        if (c.copies > 0.01) {
+            if (dropTimes[w.name]) farmH += c.copies * dropTimes[w.name] / 3600; else unknown.push(w.name);
+        }
+        const recipe = c.crafts > 0 && G.craft[w.name] ? G.craft[w.name].items : [];
+        // Crafted bases (Wanderer's pieces, Winged Boots): every expected craft needs the recipe.
+        recipe.forEach(function (it) {
+            const q = it[0], n = it[1];
+            if (sellerOf(n)) return; // bought (e.g. Shoes): already gold
+            const miss = Math.max(0, c.crafts * q - ingredientCount(n, 0));
+            if (!miss) return;
+            if (dropTimes[n]) farmH += miss * dropTimes[n] / 3600; else if (!unknown.includes(n)) unknown.push(n);
+        });
+        // Other craft ingredients reported missing for this wish (not counted above).
+        Object.keys(shortages).forEach(function (n) {
+            const s = shortages[n];
+            if (s.forItem !== w.name || !s.need || recipe.some(function (it) { return it[1] === n; })) return;
+            const miss = Math.max(0, s.need - ingredientCount(n, s.level));
+            if (!miss) return;
+            if (dropTimes[n]) farmH += miss * dropTimes[n] / 3600; else if (!unknown.includes(n)) unknown.push(n);
+        });
+        const goldH = goldPerHour ? c.gold / goldPerHour : 0;
+        const hours = goldH + farmH;
+        return { fighter: f, item: w.name + " +" + w.level, gain: w.gain, gold: Math.round(c.gold), copies: Math.round(c.copies * 10) / 10,
+            farmH: Math.round(farmH * 100) / 100, hours: Math.round(hours * 100) / 100, unknown: unknown,
+            value: unknown.length ? null : hours > 0 ? Math.round(w.gain / hours * 100) / 100 : null };
+    }
+    // Cached for a minute (openWishes runs several times per round).
+    const valueCache = {};
+    let valueGoldAt = 0, valueGold = null;
+    function cachedValue(f, w) {
+        const now = Date.now();
+        if (now - valueGoldAt > 60 * 1000) {
+            valueGoldAt = now;
+            const gb = goalBudget();
+            valueGold = gb.hours >= 1 && gb.earned > 0 ? gb.earned / gb.hours : null;
+        }
+        const id = f + "|" + w.name + "|" + w.level + "|" + w.gain;
+        const hit = valueCache[id];
+        if (hit && now - hit.at < 60 * 1000) return hit.v;
+        const v = wishValue(f, w, valueGold);
+        valueCache[id] = { at: now, v: v };
+        return v;
+    }
+
     function valueReport() {
         const vr = cfg.valueReport;
         if (!vr || !vr.enabled || Date.now() < nextValueAt || !bankSnapshot) return;
@@ -2429,35 +2480,8 @@ module.exports = function createWorkshop(ctx) {
         const rows = [];
         fighters().forEach(function (f) {
             wishList(f).forEach(function (w) {
-                if (typeof w.gain !== "number") return;
-                const def = G.items[w.name];
-                const c = def.compound ? compoundCost(w.name, w.level) : upgradeCost(w.name, w.level);
-                let farmH = 0, unknown = [];
-                if (c.copies > 0.01) {
-                    if (dropTimes[w.name]) farmH += c.copies * dropTimes[w.name] / 3600; else unknown.push(w.name);
-                }
-                // Craft ingredients we lack (e.g. Magical Feathers for Winged Boots).
-                Object.keys(shortages).forEach(function (n) {
-                    const s = shortages[n];
-                    if (s.forItem !== w.name || !s.need) return;
-                    const miss = Math.max(0, s.need - ingredientCount(n, s.level)) * Math.max(1, c.crafts || 1);
-                    if (!miss) return;
-                    if (dropTimes[n]) farmH += miss * dropTimes[n] / 3600; else unknown.push(n);
-                });
-                // Crafted bases (Wanderer's pieces, Winged Boots): every expected craft needs the recipe.
-                if (c.crafts > 0 && G.craft[w.name]) {
-                    G.craft[w.name].items.forEach(function (it) {
-                        const q = it[0], n = it[1];
-                        if (sellerOf(n)) return; // bought (e.g. Shoes): already gold
-                        const miss = Math.max(0, c.crafts * q - ingredientCount(n, 0));
-                        if (!miss) return;
-                        if (dropTimes[n]) farmH += miss * dropTimes[n] / 3600; else if (!unknown.includes(n)) unknown.push(n);
-                    });
-                }
-                const goldH = goldPerHour ? c.gold / goldPerHour : 0;
-                const hours = goldH + farmH;
-                rows.push({ fighter: f, item: w.name + " +" + w.level, gain: w.gain, gold: Math.round(c.gold), copies: Math.round(c.copies * 10) / 10,
-                    hours: Math.round(hours * 100) / 100, unknown: unknown, value: unknown.length ? null : hours > 0 ? Math.round(w.gain / hours * 100) / 100 : null });
+                const v = wishValue(f, w, goldPerHour);
+                if (v) rows.push(v);
             });
         });
         rows.sort(function (a, b) { return (b.value === null ? -1 : b.value) - (a.value === null ? -1 : a.value); });
@@ -2465,7 +2489,7 @@ module.exports = function createWorkshop(ctx) {
         const ask = [];
         rows.forEach(function (r) { r.unknown.forEach(function (n) { if (!ask.includes(n)) ask.push(n); }); });
         if (ask.length && config.leader) comms.send(config.leader, "timesfor", { list: ask });
-        const goldOnly = rows.filter(function (r) { return r.copies === 0 && !r.unknown.length && r.gold > 0 && r.gain > 0; });
+        const goldOnly = rows.filter(function (r) { return r.farmH === 0 && !r.unknown.length && r.gold > 0 && r.gain > 0; });
         const perGold = goldOnly.reduce(function (m, r) { return Math.max(m, r.gain / r.gold); }, 0);
         const goldPower = goldPerHour && perGold ? Math.round(perGold * goldPerHour * 100) / 100 : null;
         const xp = Object.keys(fighterValues).map(function (f) { const v = fighterValues[f]; return f + " " + (v.xpPower === null || v.xpPower === undefined ? "?" : v.xpPower) + "%/h"; }).join(", ");
@@ -2532,6 +2556,24 @@ module.exports = function createWorkshop(ctx) {
                 return x !== o && x.wish.name === o.wish.name && x.wish.level < o.wish.level && !copyAtLeast(x.wish.name, x.wish.level);
             });
         });
+        // Order by value (stage 2, player decision 2026-11-19): first what we can work on now
+        // without farming (copies and ingredients in hand), most gain per gold first; then the
+        // rest in the fighters' order; wishes without measurable gain (Wanderer's set) last.
+        if (cfg.valueReport && cfg.valueReport.orderWishes) {
+            staged.forEach(function (o) { o.v = cachedValue(o.fighter, o.wish); });
+            const tier = function (o) {
+                if (!o.v) return 1;                   // no gain number (e.g. carried mode weapons)
+                if (o.v.gain <= 0) return 2;          // a bonus, not stronger
+                return o.v.farmH > 0 || o.v.unknown.length ? 1 : 0;
+            };
+            const perGold = function (o) { return o.v.gold > 0 ? o.v.gain / o.v.gold : Number.MAX_VALUE; };
+            return staged.sort(function (a, b) {
+                const ta = tier(a), tb = tier(b);
+                if (ta !== tb) return ta - tb;
+                if (ta === 0 && perGold(a) !== perGold(b)) return perGold(b) > perGold(a) ? 1 : -1;
+                return a.rank - b.rank || (lastServed[a.fighter] || 0) - (lastServed[b.fighter] || 0);
+            });
+        }
         return staged.sort(function (a, b) {
             return a.rank - b.rank || (lastServed[a.fighter] || 0) - (lastServed[b.fighter] || 0);
         });

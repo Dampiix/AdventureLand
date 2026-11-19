@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.129.2",
+    version: "1.130.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -712,7 +712,8 @@ module.exports = {
         bankScanEveryMs: 10 * 60 * 1000,
         // Value report (stage 1, player request 2026-11-19): logs gain, cost and gain per hour of
         // every open wish plus the fighters' XP value - no decisions are made from it yet.
-        valueReport: { enabled: true, everyMs: 15 * 60 * 1000, top: 6 },
+        // orderWishes (stage 2, player decision 2026-11-19): open wishes are worked on by value.
+        valueReport: { enabled: true, everyMs: 15 * 60 * 1000, top: 6, orderWishes: true },
         redeliverAfterMs: 6 * 60 * 60 * 1000, // don't fulfil the same wish for a fighter again within 6 h
         // Grace farming (approved 2026-11-15): before a compound/rare item is risked at a
         // level whose chance is too low, cheap shop items are failed at that level to raise
