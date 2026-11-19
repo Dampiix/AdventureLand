@@ -12,7 +12,7 @@
 // compounds 35 %, token/drop items 50 %; a higher scroll grade is
 // tried when the normal one falls short), never spend below the gold reserve,
 // at most budgetPerWish
-// per wish, no offerings, no shells. Upgradeable items are upgraded step by
+// per wish (a safety cap; all gear spending comes out of the gear pot since 2026-11-19), no offerings, no shells. Upgradeable items are upgraded step by
 // step; compound items (rings, earrings, books, ...) are built from three
 // matching copies per level out of bag and bank (copies can't be bought).
 // Without open wishes, spare compound items are combined up to
@@ -230,6 +230,19 @@ module.exports = function createWorkshop(ctx) {
 
     // A bag copy that fulfils a wish/earmark: at least `level`, with the wished stat
     // (str/int/dex scroll) if one is asked for. Smallest such level first.
+    // A copy whose stat another fighter wishes for is that fighter's: re-scrolling it ping-ponged
+    // one pair of pants between STR (warrior) and INT (priest) at 8k a scroll (2026-11-19).
+    function statReserved(stat, name, fighter) {
+        if (!stat) return false;
+        return fighters().some(function (f) {
+            return f !== fighter && wishList(f).some(function (w) { return w.name === name && w.stat === stat; });
+        });
+    }
+    // Restat candidate for a wish: no stat yet, or a stat nobody else wishes on this item.
+    function restatOk(it, w, fighter) {
+        return it.stat_type !== w.stat && !statReserved(it.stat_type, it.name, fighter);
+    }
+
     function wishIndex(w, level) {
         let best = -1;
         character.items.forEach(function (item, i) {
@@ -380,6 +393,7 @@ module.exports = function createWorkshop(ctx) {
     // (fighters hand gold over regularly) is retried soon; a used-up wish budget
     // or any other reason (too risky, no copies, ...) waits giveUpForMs.
     function pauseAfter(k, reason) {
+        if (reason === "budget" && k !== GOALS && !isOwn(k) && goalBudget().allowed < 10000) return cfg.retryAfterBudgetMs || cfg.giveUpForMs;
         if (reason !== "budget" || k === GOALS) return cfg.giveUpForMs;
         const left = budgetFor(k) - (spent[k] || 0);
         return left < 10000 ? cfg.giveUpForMs : (cfg.retryAfterBudgetMs || cfg.giveUpForMs);
@@ -418,21 +432,31 @@ module.exports = function createWorkshop(ctx) {
         if (k === GOALS) return goalBudget().allowed >= amount;
         if (k === LADDER) return ladderBudget().allowed >= amount;
         if (k === SHOPPING) return shoppingBudget().allowed >= amount;
-        return (spent[k] || 0) + amount <= budgetFor(k);
+        if ((spent[k] || 0) + amount > budgetFor(k)) return false; // safety cap per wish
+        // One pot for all gear (player decision 2026-11-19): wishes, weapon plans, stock rules,
+        // stat scrolls - everything but the merchant's own tools - pays from the gear pot.
+        return isOwn(k) || goalBudget().allowed >= amount;
     }
+    function isOwn(k) { return k.indexOf("_own:") === 0; }
 
+    // Every workshop spend goes into the income window, so the income the pots share is the
+    // gross income minus consumables only (potions, materials bought through buy orders):
+    // gear spending is never a loss of income (player decision 2026-11-19, one gear pot).
+    // Ladder and shopping spends carry their key; the merchant's own tools are put back into
+    // the income but charged to no pot; everything else is gear-pot spending.
     function pay(k, amount) {
         if (k === LADDER || k === SHOPPING) {
             income.spends.push({ t: Date.now(), a: amount, k: k });
             saveIncome();
             return;
         }
-        if (k === GOALS) {
+        if (isOwn(k)) income.spends.push({ t: Date.now(), a: amount, k: "own" });
+        else {
             income.spends.push({ t: Date.now(), a: amount });
             income.total += amount;
-            saveIncome();
-            return;
         }
+        saveIncome();
+        if (k === GOALS) return;
         spent[k] = (spent[k] || 0) + amount;
         if (k.indexOf("grace:") === 0) saveGraceSpent();
     }
@@ -513,7 +537,7 @@ module.exports = function createWorkshop(ctx) {
         // All workshop spending is put back into the income; the gear goals' share only
         // counts their own spending (the weapon ladder has its own pot).
         const spentAll = income.spends.reduce(function (sum, s) { return sum + s.a; }, 0);
-        const spentInWindow = income.spends.reduce(function (sum, s) { return s.k ? sum : sum + s.a; }, 0);
+        const spentInWindow = income.spends.reduce(function (sum, s) { return s.k ? sum : sum + s.a; }, 0); // gear pot only
         const moved = transfers();
         const earned = character.gold - base.gold + spentAll - moved;
         // A player-granted extra (budget.extra: { amount, until }) on top of the income share,
@@ -3151,7 +3175,7 @@ module.exports = function createWorkshop(ctx) {
             const lvl = targetLevel(o.fighter, o.wish);
             if (wishIndex(o.wish, lvl) !== -1) continue;
             const idx = character.items.findIndex(function (it) {
-                return it && !it.l && it.name === o.wish.name && (it.level || 0) >= lvl && it.stat_type !== o.wish.stat;
+                return it && !it.l && it.name === o.wish.name && (it.level || 0) >= lvl && restatOk(it, o.wish, o.fighter);
             });
             if (idx === -1) continue;
             const k = key(o.fighter, o.wish);
@@ -3213,7 +3237,7 @@ module.exports = function createWorkshop(ctx) {
             if (job.wish.stat) {
                 const lvl = targetLevel(job.fighter, job.wish);
                 const idx = character.items.findIndex(function (it) {
-                    return it && !it.l && it.name === job.wish.name && (it.level || 0) >= lvl && it.stat_type !== job.wish.stat;
+                    return it && !it.l && it.name === job.wish.name && (it.level || 0) >= lvl && restatOk(it, job.wish, job.fighter);
                 });
                 if (idx !== -1) {
                     util.status(job.wish.stat + " scroll for " + job.wish.name, "orange");
@@ -3221,7 +3245,11 @@ module.exports = function createWorkshop(ctx) {
                     return;
                 }
             }
-            const banked = bankFind(job.wish.name, function (l) { return l >= job.wish.level; });
+            // A banked copy carrying another fighter's wished stat stays where it is.
+            const banked = bankSnapshot && bankSnapshot.items.filter(function (b) {
+                return b.name === job.wish.name && b.level >= job.wish.level &&
+                    (!job.wish.stat || b.stat === job.wish.stat || !statReserved(b.stat, b.name, job.fighter));
+            }).sort(function (a, b) { return b.level - a.level; })[0];
             if (banked) {
                 await retrieve(banked);
                 return;

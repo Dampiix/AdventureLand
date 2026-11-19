@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.139.0",
+    version: "1.140.1",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -870,8 +870,10 @@ module.exports = {
             slots: ["helmet", "chest", "pants", "shoes", "gloves", "mainhand", "offhand"],
             weapons: [], // fire weapons: workshop.bruteForce (weapon ladder) since 2026-11-16
             // Daily budget from income (player decision 2026-11-15): a share of the merchant's
-            // net gold gain over the last 24 h; the gear goals' own spending is not counted
-            // as a loss. Gold moved by hand (a jump of transferAbove or more within 10 min)
+            // net gold gain over the last 24 h; workshop spending is not counted as a loss, so
+            // only consumables (potions, buy-order materials) come off first. One gear pot
+            // (player decision 2026-11-19): wishes, weapon plans, stock rules and stat scrolls
+            // pay from it as well as the gear goals and Ponty; budgetPerWish is only a safety cap. Gold moved by hand (a jump of transferAbove or more within 10 min)
             // is not income. No fixed total since 2026-11-16 (player decision): long-term
             // positive cash flow, with workshop.keepGold as the floor. `total` (optional)
             // would cap everything ever spent on gear goals.
