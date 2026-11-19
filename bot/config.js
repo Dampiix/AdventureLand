@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.126.1",
+    version: "1.126.2",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -497,7 +497,7 @@ module.exports = {
         // compounds it to +2. An HP belt is only worn while no stat belt is there (the guide
         // fills the empty slot). Stat belts drop in Spooky Town (map drop).
         // Gear plan phase 1 (player decision 2026-11-19, docs/gear-guide/gear-plan.json):
-        // earrings, amulets and belts go on to +4, rings stay at +3. Item stages: a wish for
+        // earrings, amulets and belts go on to +4, rings too (player decision 2026-11-19). Item stages: a wish for
         // the next level waits while a lower wish for the same item is still missing
         // (workshop openWishes) - other items never block it.
         // Rings and earrings to +3 (player decision 2026-11-17): +2 first, then +3 for both
@@ -514,7 +514,7 @@ module.exports = {
             // (+3 to every main stat, 3 copies), then the class orb (+4 main stat already at +0).
             paladin: [
                 { steps: [{ name: "orbg", level: 0 }, { name: "orbg", level: 1 }, { name: "orbofstr", level: 0 }] }, // Fire Spirit
-                { steps: [{ name: "strring", level: 2 }, { name: "strring", level: 3 }], replace: true, anytime: true },
+                { steps: [{ name: "strring", level: 2 }, { name: "strring", level: 3 }, { name: "strring", level: 4 }], replace: true, anytime: true },
                 { steps: [{ name: "strearring", level: 2 }, { name: "strearring", level: 3 }, { name: "strearring", level: 4 }], replace: true, anytime: true },
                 { steps: [{ name: "stramulet", level: 2 }, { name: "stramulet", level: 3 }, { name: "stramulet", level: 4 }], replace: true, anytime: true },
                 { steps: [{ name: "strbelt", level: 0 }, { name: "strbelt", level: 1 }, { name: "strbelt", level: 2 }, { name: "strbelt", level: 3 }, { name: "strbelt", level: 4 }], replace: true, anytime: true },
@@ -526,7 +526,7 @@ module.exports = {
             ],
             priest: [
                 { steps: [{ name: "orbg", level: 0 }, { name: "orbg", level: 1 }, { name: "orbofint", level: 0 }] }, // big Pom Pom (level2n)
-                { steps: [{ name: "intring", level: 2 }, { name: "intring", level: 3 }], replace: true, anytime: true },
+                { steps: [{ name: "intring", level: 2 }, { name: "intring", level: 3 }, { name: "intring", level: 4 }], replace: true, anytime: true },
                 { steps: [{ name: "intearring", level: 2 }, { name: "intearring", level: 3 }, { name: "intearring", level: 4 }], replace: true, anytime: true },
                 { steps: [{ name: "intamulet", level: 2 }, { name: "intamulet", level: 3 }, { name: "intamulet", level: 4 }], replace: true, anytime: true },
                 { steps: [{ name: "intbelt", level: 0 }, { name: "intbelt", level: 1 }, { name: "intbelt", level: 2 }, { name: "intbelt", level: 3 }, { name: "intbelt", level: 4 }], replace: true, anytime: true },
@@ -536,7 +536,7 @@ module.exports = {
             // mwpants 11, mwarmor 12, mwboots 15 tokens; replace at +7).
             warrior: [
                 { steps: [{ name: "orbg", level: 0 }, { name: "orbg", level: 1 }, { name: "orbofstr", level: 0 }] }, // Fire Spirit
-                { steps: [{ name: "strring", level: 2 }, { name: "strring", level: 3 }], replace: true, anytime: true },
+                { steps: [{ name: "strring", level: 2 }, { name: "strring", level: 3 }, { name: "strring", level: 4 }], replace: true, anytime: true },
                 { steps: [{ name: "strearring", level: 2 }, { name: "strearring", level: 3 }, { name: "strearring", level: 4 }], replace: true, anytime: true },
                 { steps: [{ name: "stramulet", level: 2 }, { name: "stramulet", level: 3 }, { name: "stramulet", level: 4 }], replace: true, anytime: true },
                 { steps: [{ name: "strbelt", level: 0 }, { name: "strbelt", level: 1 }, { name: "strbelt", level: 2 }, { name: "strbelt", level: 3 }, { name: "strbelt", level: 4 }], replace: true, anytime: true },
@@ -559,7 +559,7 @@ module.exports = {
                 // a second copy; the worn +0 stays until it is done.
                 { steps: [{ name: "quiver", level: 0 }, { name: "quiver", level: 7 }] },
                 { steps: [{ name: "orbg", level: 0 }, { name: "orbg", level: 1 }, { name: "orbofdex", level: 0 }] }, // Fire Spirit
-                { steps: [{ name: "dexring", level: 2 }, { name: "dexring", level: 3 }], replace: true, anytime: true },
+                { steps: [{ name: "dexring", level: 2 }, { name: "dexring", level: 3 }, { name: "dexring", level: 4 }], replace: true, anytime: true },
                 { steps: [{ name: "dexearring", level: 2 }, { name: "dexearring", level: 3 }, { name: "dexearring", level: 4 }], replace: true, anytime: true },
                 { steps: [{ name: "dexamulet", level: 2 }, { name: "dexamulet", level: 3 }, { name: "dexamulet", level: 4 }], replace: true, anytime: true },
                 { steps: [{ name: "dexbelt", level: 0 }, { name: "dexbelt", level: 1 }, { name: "dexbelt", level: 2 }, { name: "dexbelt", level: 3 }, { name: "dexbelt", level: 4 }], replace: true, anytime: true },
@@ -568,7 +568,7 @@ module.exports = {
             // of the Dead from Ponty) come by hand for now.
             rogue: [
                 { steps: [{ name: "orbg", level: 0 }, { name: "orbg", level: 1 }, { name: "orbofdex", level: 0 }] },
-                { steps: [{ name: "dexring", level: 2 }, { name: "dexring", level: 3 }], replace: true, anytime: true },
+                { steps: [{ name: "dexring", level: 2 }, { name: "dexring", level: 3 }, { name: "dexring", level: 4 }], replace: true, anytime: true },
                 { steps: [{ name: "dexearring", level: 2 }, { name: "dexearring", level: 3 }, { name: "dexearring", level: 4 }], replace: true, anytime: true },
                 { steps: [{ name: "dexamulet", level: 2 }, { name: "dexamulet", level: 3 }, { name: "dexamulet", level: 4 }], replace: true, anytime: true },
                 { steps: [{ name: "dexbelt", level: 0 }, { name: "dexbelt", level: 1 }, { name: "dexbelt", level: 2 }, { name: "dexbelt", level: 3 }, { name: "dexbelt", level: 4 }], replace: true, anytime: true },

@@ -1,5 +1,5 @@
 {
-  "version": "draft-4",
+  "version": "draft-5",
   "updated": "2026-11-19",
   "about": "General gear progression rules the bot follows. Derived from the community chart (source-chart.webp) and our own decisions. Draft: not read by the bot yet.",
   "principles": [
@@ -258,11 +258,11 @@
       "ladder": [
         {
           "item": "{stat}ring",
-          "to": 2
+          "to": 3
         },
         {
           "item": "{stat}ring",
-          "to": 3
+          "to": 4
         }
       ],
       "alt": [
@@ -708,7 +708,8 @@
       "Elixirs: not for now.",
       "Dagger of the Dead may be crafted from Bones for the rogue.",
       "Jewelry targets +4 with item stages.",
-      "Wanderer pieces leave the sell list when the plan goes live."
+      "Wanderer pieces leave the sell list when the plan goes live.",
+      "Rings to +4 like the other jewelry."
     ]
   }
 }
