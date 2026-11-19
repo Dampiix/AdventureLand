@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.133.2",
+    version: "1.133.3",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -125,7 +125,9 @@ module.exports = {
         spacing: { enabled: true, minOwnRange: 100, margin: 50, gap: 130, step: 80, everyMs: 700 },
         // Easy farm targets: members pick their own monster near the leader instead
         // of only assisting (e.g. a 500-goo hunt).
-        spread: { enabled: true, maxHits: 3, maxDamageRatio: 0.05 },
+        // harmlessRatio (2026-11-19): a monster hitting for at most this share of our max HP is easy
+        // whatever its HP (a tank need not kill it in maxHits).
+        spread: { enabled: true, maxHits: 3, maxDamageRatio: 0.05, harmlessRatio: 0.02 },
     },
 
     // Damage meter (2026-11-19): every everyMs the leader (or a solo fighter) logs the real damage per

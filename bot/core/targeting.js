@@ -1036,6 +1036,10 @@ module.exports = function createTargeting(ctx) {
         const s = config.party.spread;
         const def = G.monsters[type];
         if (!s || !s.enabled || !def || def.cooperative) return false;
+        // Harmless ones (at most s.harmlessRatio of our HP per hit) are easy however long they take:
+        // the warrior (98 attack) needed 4 hits for a bee (300 HP) and only assisted while the
+        // ranger took his own - a bee hits him for 1 % of his HP (2026-11-19).
+        if (s.harmlessRatio && def.attack <= character.max_hp * s.harmlessRatio) return true;
         return def.hp <= character.attack * s.maxHits && def.attack <= character.max_hp * s.maxDamageRatio;
     }
 
