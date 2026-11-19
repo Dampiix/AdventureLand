@@ -1,0 +1,2749 @@
+{
+ "classes": {
+  "mage": {
+   "t1": {
+    "earring1": {
+     "name": "intearring",
+     "level": 1
+    },
+    "helmet": {
+     "name": "helmet",
+     "level": 6
+    },
+    "earring2": {
+     "name": "intearring",
+     "level": 1
+    },
+    "amulet": {
+     "name": "intamulet",
+     "level": 2
+    },
+    "mainhand": {
+     "name": "firestaff",
+     "level": 5
+    },
+    "chest": {
+     "name": "coat",
+     "level": 6
+    },
+    "offhand": {
+     "name": "wbook0",
+     "level": 2
+    },
+    "cape": {
+     "name": "cape",
+     "level": 4
+    },
+    "ring1": {
+     "name": "intring",
+     "level": 2
+    },
+    "pants": {
+     "name": "pants",
+     "level": 6
+    },
+    "ring2": {
+     "name": "intring",
+     "level": 2
+    },
+    "orb": {
+     "name": "cave_loaded_die",
+     "level": null
+    },
+    "belt": {
+     "name": "intbelt",
+     "level": 1
+    },
+    "shoes": {
+     "name": "shoes",
+     "level": 6
+    },
+    "gloves": {
+     "name": "gloves",
+     "level": 6
+    },
+    "elixir": {
+     "name": "pumpkinspice",
+     "level": null
+    }
+   },
+   "t2s": {
+    "earring1": {
+     "name": "moonshardearring",
+     "level": 2
+    },
+    "helmet": {
+     "name": "mmhat",
+     "level": 7
+    },
+    "earring2": {
+     "name": "moonshardearring",
+     "level": 2
+    },
+    "amulet": {
+     "name": "intamulet",
+     "level": 4
+    },
+    "mainhand": {
+     "name": "firestaff",
+     "level": 9
+    },
+    "chest": {
+     "name": "coat",
+     "level": 9
+    },
+    "offhand": {
+     "name": "wbook0",
+     "level": 4
+    },
+    "cape": {
+     "name": "ecape",
+     "level": 7
+    },
+    "ring1": {
+     "name": "cring",
+     "level": 3
+    },
+    "pants": {
+     "name": "starkillers",
+     "level": 5
+    },
+    "ring2": {
+     "name": "cring",
+     "level": 3
+    },
+    "orb": {
+     "name": "cave_loaded_die",
+     "level": 2
+    },
+    "belt": {
+     "name": "intbelt",
+     "level": 4
+    },
+    "shoes": {
+     "name": "wingedboots",
+     "level": 9
+    },
+    "gloves": {
+     "name": "supermittens",
+     "level": 5
+    },
+    "elixir": {
+     "name": "pumpkinspice",
+     "level": null
+    }
+   },
+   "t2a": {
+    "earring1": {
+     "name": "moonshardearring",
+     "level": 2
+    },
+    "helmet": {
+     "name": "mmhat",
+     "level": 7
+    },
+    "earring2": {
+     "name": "moonshardearring",
+     "level": 2
+    },
+    "amulet": {
+     "name": "intamulet",
+     "level": 4
+    },
+    "mainhand": {
+     "name": "sparkstaff",
+     "level": 7
+    },
+    "chest": {
+     "name": "coat",
+     "level": 9
+    },
+    "offhand": {
+     "name": "-empty-",
+     "level": null
+    },
+    "cape": {
+     "name": "ecape",
+     "level": 7
+    },
+    "ring1": {
+     "name": "cring",
+     "level": 3
+    },
+    "pants": {
+     "name": "starkillers",
+     "level": 5
+    },
+    "ring2": {
+     "name": "cring",
+     "level": 3
+    },
+    "orb": {
+     "name": "cave_loaded_die",
+     "level": 2
+    },
+    "belt": {
+     "name": "intbelt",
+     "level": 4
+    },
+    "shoes": {
+     "name": "wingedboots",
+     "level": 9
+    },
+    "gloves": {
+     "name": "supermittens",
+     "level": 5
+    },
+    "elixir": {
+     "name": "pumpkinspice",
+     "level": null
+    }
+   },
+   "t3s": {
+    "earring1": {
+     "name": "moonshardearring",
+     "level": 4
+    },
+    "helmet": {
+     "name": "mmhat",
+     "level": 9
+    },
+    "earring2": {
+     "name": "moonshardearring",
+     "level": 4
+    },
+    "amulet": {
+     "name": "intamulet",
+     "level": 5
+    },
+    "mainhand": {
+     "name": "firestaff",
+     "level": 10
+    },
+    "chest": {
+     "name": "coat",
+     "level": 10
+    },
+    "offhand": {
+     "name": "wbook0",
+     "level": 5
+    },
+    "cape": {
+     "name": "ecape",
+     "level": 9
+    },
+    "ring1": {
+     "name": "cring",
+     "level": 5
+    },
+    "pants": {
+     "name": "starkillers",
+     "level": 9
+    },
+    "ring2": {
+     "name": "cring",
+     "level": 5
+    },
+    "orb": {
+     "name": "cave_loaded_die",
+     "level": 3
+    },
+    "belt": {
+     "name": "intbelt",
+     "level": 5
+    },
+    "shoes": {
+     "name": "wingedboots",
+     "level": 10
+    },
+    "gloves": {
+     "name": "supermittens",
+     "level": 9
+    },
+    "elixir": {
+     "name": "pumpkinspice",
+     "level": null
+    }
+   },
+   "t3a": {
+    "earring1": {
+     "name": "moonshardearring",
+     "level": 4
+    },
+    "helmet": {
+     "name": "mmhat",
+     "level": 9
+    },
+    "earring2": {
+     "name": "moonshardearring",
+     "level": 4
+    },
+    "amulet": {
+     "name": "intamulet",
+     "level": 5
+    },
+    "mainhand": {
+     "name": "firestaff",
+     "level": 10
+    },
+    "chest": {
+     "name": "coat",
+     "level": 10
+    },
+    "offhand": {
+     "name": "wbook0",
+     "level": 5
+    },
+    "cape": {
+     "name": "ecape",
+     "level": 9
+    },
+    "ring1": {
+     "name": "cring",
+     "level": 5
+    },
+    "pants": {
+     "name": "starkillers",
+     "level": 9
+    },
+    "ring2": {
+     "name": "cring",
+     "level": 5
+    },
+    "orb": {
+     "name": "cave_loaded_die",
+     "level": 3
+    },
+    "belt": {
+     "name": "intbelt",
+     "level": 5
+    },
+    "shoes": {
+     "name": "wingedboots",
+     "level": 10
+    },
+    "gloves": {
+     "name": "supermittens",
+     "level": 9
+    },
+    "elixir": {
+     "name": "pumpkinspice",
+     "level": null
+    }
+   }
+  },
+  "paladin": {
+   "t1": {
+    "earring1": {
+     "name": "strearring",
+     "level": 1
+    },
+    "helmet": {
+     "name": "helmet",
+     "level": 6
+    },
+    "earring2": {
+     "name": "strearring",
+     "level": 1
+    },
+    "amulet": {
+     "name": "stramulet",
+     "level": 2
+    },
+    "mainhand": {
+     "name": "mace",
+     "level": 7
+    },
+    "chest": {
+     "name": "coat",
+     "level": 6
+    },
+    "offhand": {
+     "name": "wshield",
+     "level": 6
+    },
+    "cape": {
+     "name": "cape",
+     "level": 4
+    },
+    "ring1": {
+     "name": "strring",
+     "level": 2
+    },
+    "pants": {
+     "name": "pants",
+     "level": 6
+    },
+    "ring2": {
+     "name": "strring",
+     "level": 2
+    },
+    "orb": {
+     "name": "cave_loaded_die",
+     "level": null
+    },
+    "belt": {
+     "name": "strbelt",
+     "level": 1
+    },
+    "shoes": {
+     "name": "shoes",
+     "level": 6
+    },
+    "gloves": {
+     "name": "gloves",
+     "level": 6
+    },
+    "elixir": {
+     "name": "pumpkinspice",
+     "level": null
+    }
+   },
+   "t2s": {
+    "earring1": {
+     "name": "cearring",
+     "level": 3
+    },
+    "helmet": {
+     "name": "fury",
+     "level": 4
+    },
+    "earring2": {
+     "name": "cearring",
+     "level": 3
+    },
+    "amulet": {
+     "name": "keepsakependant",
+     "level": null
+    },
+    "mainhand": {
+     "name": "maceofthedead",
+     "level": 9
+    },
+    "chest": {
+     "name": "cdragon",
+     "level": null
+    },
+    "offhand": {
+     "name": "cave_counterweight",
+     "level": 7
+    },
+    "cape": {
+     "name": "ecape",
+     "level": 7
+    },
+    "ring1": {
+     "name": "emberseal",
+     "level": 3
+    },
+    "pants": {
+     "name": "pants",
+     "level": 9
+    },
+    "ring2": {
+     "name": "emberseal",
+     "level": 3
+    },
+    "orb": {
+     "name": "cave_loaded_die",
+     "level": 2
+    },
+    "belt": {
+     "name": "strbelt",
+     "level": 4
+    },
+    "shoes": {
+     "name": "wingedboots",
+     "level": 9
+    },
+    "gloves": {
+     "name": "supermittens",
+     "level": 5
+    },
+    "elixir": {
+     "name": "pumpkinspice",
+     "level": null
+    }
+   },
+   "t2a": {
+    "earring1": {
+     "name": "cearring",
+     "level": 3
+    },
+    "helmet": {
+     "name": "fury",
+     "level": 4
+    },
+    "earring2": {
+     "name": "cearring",
+     "level": 3
+    },
+    "amulet": {
+     "name": "keepsakependant",
+     "level": null
+    },
+    "mainhand": {
+     "name": "ololipop",
+     "level": 9
+    },
+    "chest": {
+     "name": "cdragon",
+     "level": null
+    },
+    "offhand": {
+     "name": "exoarm",
+     "level": 1
+    },
+    "cape": {
+     "name": "ecape",
+     "level": 7
+    },
+    "ring1": {
+     "name": "suckerpunch",
+     "level": 1
+    },
+    "pants": {
+     "name": "pants",
+     "level": 9
+    },
+    "ring2": {
+     "name": "suckerpunch",
+     "level": 1
+    },
+    "orb": {
+     "name": "cave_loaded_die",
+     "level": 2
+    },
+    "belt": {
+     "name": "strbelt",
+     "level": 4
+    },
+    "shoes": {
+     "name": "wingedboots",
+     "level": 9
+    },
+    "gloves": {
+     "name": "supermittens",
+     "level": 5
+    },
+    "elixir": {
+     "name": "pumpkinspice",
+     "level": null
+    }
+   },
+   "t3s": {
+    "earring1": {
+     "name": "cearring",
+     "level": 5
+    },
+    "helmet": {
+     "name": "fury",
+     "level": 9
+    },
+    "earring2": {
+     "name": "cearring",
+     "level": 5
+    },
+    "amulet": {
+     "name": "mpxamulet",
+     "level": 1
+    },
+    "mainhand": {
+     "name": "concordmace",
+     "level": 9
+    },
+    "chest": {
+     "name": "tshirt9",
+     "level": 5
+    },
+    "offhand": {
+     "name": "cave_counterweight",
+     "level": 9
+    },
+    "cape": {
+     "name": "ecape",
+     "level": 9
+    },
+    "ring1": {
+     "name": "emberseal",
+     "level": 4
+    },
+    "pants": {
+     "name": "pants",
+     "level": 10
+    },
+    "ring2": {
+     "name": "emberseal",
+     "level": 4
+    },
+    "orb": {
+     "name": "cave_loaded_die",
+     "level": 3
+    },
+    "belt": {
+     "name": "strbelt",
+     "level": 5
+    },
+    "shoes": {
+     "name": "wingedboots",
+     "level": 10
+    },
+    "gloves": {
+     "name": "mpxgloves",
+     "level": 7
+    },
+    "elixir": {
+     "name": "pumpkinspice",
+     "level": null
+    }
+   },
+   "t3a": {
+    "earring1": {
+     "name": "cearring",
+     "level": 5
+    },
+    "helmet": {
+     "name": "fury",
+     "level": 9
+    },
+    "earring2": {
+     "name": "cearring",
+     "level": 5
+    },
+    "amulet": {
+     "name": "mpxamulet",
+     "level": 1
+    },
+    "mainhand": {
+     "name": "vhammer",
+     "level": 9
+    },
+    "chest": {
+     "name": "tshirt9",
+     "level": 5
+    },
+    "offhand": {
+     "name": "exoarm",
+     "level": 3
+    },
+    "cape": {
+     "name": "ecape",
+     "level": 7
+    },
+    "ring1": {
+     "name": "suckerpunch",
+     "level": 2
+    },
+    "pants": {
+     "name": "pants",
+     "level": 10
+    },
+    "ring2": {
+     "name": "suckerpunch",
+     "level": 2
+    },
+    "orb": {
+     "name": "cave_loaded_die",
+     "level": 2
+    },
+    "belt": {
+     "name": "strbelt",
+     "level": 5
+    },
+    "shoes": {
+     "name": "wingedboots",
+     "level": 10
+    },
+    "gloves": {
+     "name": "supermittens",
+     "level": 9
+    },
+    "elixir": {
+     "name": "pumpkinspice",
+     "level": null
+    }
+   }
+  },
+  "priest": {
+   "t1": {
+    "earring1": {
+     "name": "intearring",
+     "level": 1
+    },
+    "helmet": {
+     "name": "wcap",
+     "level": 5
+    },
+    "earring2": {
+     "name": "intearring",
+     "level": 1
+    },
+    "amulet": {
+     "name": "intamulet",
+     "level": 2
+    },
+    "mainhand": {
+     "name": "firestaff",
+     "level": 5
+    },
+    "chest": {
+     "name": "wattire",
+     "level": 5
+    },
+    "offhand": {
+     "name": "wshield",
+     "level": 6
+    },
+    "cape": {
+     "name": "cape",
+     "level": 4
+    },
+    "ring1": {
+     "name": "intring",
+     "level": 2
+    },
+    "pants": {
+     "name": "wbreeches",
+     "level": 5
+    },
+    "ring2": {
+     "name": "intring",
+     "level": 2
+    },
+    "orb": {
+     "name": "rabbitsfoot",
+     "level": null
+    },
+    "belt": {
+     "name": "intbelt",
+     "level": 1
+    },
+    "shoes": {
+     "name": "wshoes",
+     "level": 5
+    },
+    "gloves": {
+     "name": "wgloves",
+     "level": 5
+    },
+    "elixir": {
+     "name": "elixirluck",
+     "level": null
+    }
+   },
+   "t2": {
+    "earring1": {
+     "name": "cearring",
+     "level": 3
+    },
+    "helmet": {
+     "name": "hhelmet",
+     "level": 6
+    },
+    "earring2": {
+     "name": "cearring",
+     "level": 3
+    },
+    "amulet": {
+     "name": "intamulet",
+     "level": 4
+    },
+    "mainhand": {
+     "name": "lmace",
+     "level": 6
+    },
+    "chest": {
+     "name": "harmor",
+     "level": 6
+    },
+    "offhand": {
+     "name": "mshield",
+     "level": 6
+    },
+    "cape": {
+     "name": "gcape",
+     "level": 7
+    },
+    "ring1": {
+     "name": "cring",
+     "level": 3
+    },
+    "pants": {
+     "name": "starkillers",
+     "level": 5
+    },
+    "ring2": {
+     "name": "cring",
+     "level": 3
+    },
+    "orb": {
+     "name": "rabbitsfoot",
+     "level": 2
+    },
+    "belt": {
+     "name": "intbelt",
+     "level": 4
+    },
+    "shoes": {
+     "name": "wingedboots",
+     "level": 8
+    },
+    "gloves": {
+     "name": "supermittens",
+     "level": 5
+    },
+    "elixir": {
+     "name": "elixirluck",
+     "level": null
+    }
+   },
+   "t3": {
+    "earring1": {
+     "name": "cearring",
+     "level": 5
+    },
+    "helmet": {
+     "name": "xhelmet",
+     "level": 8
+    },
+    "earring2": {
+     "name": "cearring",
+     "level": 5
+    },
+    "amulet": {
+     "name": "mpxamulet",
+     "level": 1
+    },
+    "mainhand": {
+     "name": "lmace",
+     "level": 9
+    },
+    "chest": {
+     "name": "vattire",
+     "level": 8
+    },
+    "offhand": {
+     "name": "mshield",
+     "level": 9
+    },
+    "cape": {
+     "name": "covemantle",
+     "level": 8
+    },
+    "ring1": {
+     "name": "zapper",
+     "level": 1
+    },
+    "pants": {
+     "name": "starkillers",
+     "level": 9
+    },
+    "ring2": {
+     "name": "zapper",
+     "level": 1
+    },
+    "orb": {
+     "name": "rabbitsfoot",
+     "level": 3
+    },
+    "belt": {
+     "name": "sbelt",
+     "level": 2
+    },
+    "shoes": {
+     "name": "wingedboots",
+     "level": 10
+    },
+    "gloves": {
+     "name": "mpxgloves",
+     "level": 7
+    },
+    "elixir": {
+     "name": "elixirluck",
+     "level": null
+    }
+   }
+  },
+  "ranger": {
+   "t1": {
+    "earring1": {
+     "name": "dexearring",
+     "level": 1
+    },
+    "helmet": {
+     "name": "helmet",
+     "level": 6
+    },
+    "earring2": {
+     "name": "dexearring",
+     "level": 1
+    },
+    "amulet": {
+     "name": "dexamulet",
+     "level": 2
+    },
+    "mainhand": {
+     "name": "firebow",
+     "level": 5
+    },
+    "chest": {
+     "name": "coat",
+     "level": 6
+    },
+    "offhand": {
+     "name": "quiver",
+     "level": 5
+    },
+    "cape": {
+     "name": "cape",
+     "level": 4
+    },
+    "ring1": {
+     "name": "dexring",
+     "level": 2
+    },
+    "pants": {
+     "name": "pants",
+     "level": 6
+    },
+    "ring2": {
+     "name": "dexring",
+     "level": 2
+    },
+    "orb": {
+     "name": "cave_loaded_die",
+     "level": null
+    },
+    "belt": {
+     "name": "dexbelt",
+     "level": 1
+    },
+    "shoes": {
+     "name": "shoes",
+     "level": 6
+    },
+    "gloves": {
+     "name": "gloves",
+     "level": 6
+    },
+    "elixir": {
+     "name": "pumpkinspice",
+     "level": null
+    }
+   },
+   "t2s": {
+    "earring1": {
+     "name": "dexearring",
+     "level": 4
+    },
+    "helmet": {
+     "name": "fury",
+     "level": 5
+    },
+    "earring2": {
+     "name": "dexearring",
+     "level": 4
+    },
+    "amulet": {
+     "name": "dexamulet",
+     "level": 4
+    },
+    "mainhand": {
+     "name": "firebow",
+     "level": 9
+    },
+    "chest": {
+     "name": "coat",
+     "level": 9
+    },
+    "offhand": {
+     "name": "t2quiver",
+     "level": 7
+    },
+    "cape": {
+     "name": "ecape",
+     "level": 7
+    },
+    "ring1": {
+     "name": "suckerpunch",
+     "level": 1
+    },
+    "pants": {
+     "name": "pants",
+     "level": 9
+    },
+    "ring2": {
+     "name": "suckerpunch",
+     "level": 1
+    },
+    "orb": {
+     "name": "cave_loaded_die",
+     "level": 2
+    },
+    "belt": {
+     "name": "dexbelt",
+     "level": 4
+    },
+    "shoes": {
+     "name": "wingedboots",
+     "level": 9
+    },
+    "gloves": {
+     "name": "supermittens",
+     "level": 5
+    },
+    "elixir": {
+     "name": "pumpkinspice",
+     "level": null
+    }
+   },
+   "t2a": {
+    "earring1": {
+     "name": "dexearring",
+     "level": 4
+    },
+    "helmet": {
+     "name": "fury",
+     "level": 5
+    },
+    "earring2": {
+     "name": "dexearring",
+     "level": 4
+    },
+    "amulet": {
+     "name": "dexamulet",
+     "level": 4
+    },
+    "mainhand": {
+     "name": "pouchbow",
+     "level": 9
+    },
+    "chest": {
+     "name": "coat",
+     "level": 9
+    },
+    "offhand": {
+     "name": "alloyquiver",
+     "level": 7
+    },
+    "cape": {
+     "name": "ecape",
+     "level": 7
+    },
+    "ring1": {
+     "name": "suckerpunch",
+     "level": 1
+    },
+    "pants": {
+     "name": "pants",
+     "level": 9
+    },
+    "ring2": {
+     "name": "suckerpunch",
+     "level": 1
+    },
+    "orb": {
+     "name": "cave_loaded_die",
+     "level": 2
+    },
+    "belt": {
+     "name": "dexbelt",
+     "level": 4
+    },
+    "shoes": {
+     "name": "wingedboots",
+     "level": 9
+    },
+    "gloves": {
+     "name": "supermittens",
+     "level": 5
+    },
+    "elixir": {
+     "name": "pumpkinspice",
+     "level": null
+    }
+   },
+   "t3s": {
+    "earring1": {
+     "name": "dexearring",
+     "level": 5
+    },
+    "helmet": {
+     "name": "fury",
+     "level": 9
+    },
+    "earring2": {
+     "name": "dexearring",
+     "level": 5
+    },
+    "amulet": {
+     "name": "dexamulet",
+     "level": 5
+    },
+    "mainhand": {
+     "name": "firebow",
+     "level": 10
+    },
+    "chest": {
+     "name": "coat",
+     "level": 10
+    },
+    "offhand": {
+     "name": "t2quiver",
+     "level": 9
+    },
+    "cape": {
+     "name": "ecape",
+     "level": 9
+    },
+    "ring1": {
+     "name": "suckerpunch",
+     "level": 2
+    },
+    "pants": {
+     "name": "pants",
+     "level": 10
+    },
+    "ring2": {
+     "name": "suckerpunch",
+     "level": 2
+    },
+    "orb": {
+     "name": "cave_loaded_die",
+     "level": 3
+    },
+    "belt": {
+     "name": "dexbelt",
+     "level": 5
+    },
+    "shoes": {
+     "name": "wingedboots",
+     "level": 10
+    },
+    "gloves": {
+     "name": "supermittens",
+     "level": 9
+    },
+    "elixir": {
+     "name": "pumpkinspice",
+     "level": null
+    }
+   },
+   "t3a": {
+    "earring1": {
+     "name": "dexearring",
+     "level": 5
+    },
+    "helmet": {
+     "name": "fury",
+     "level": 9
+    },
+    "earring2": {
+     "name": "dexearring",
+     "level": 5
+    },
+    "amulet": {
+     "name": "dexamulet",
+     "level": 5
+    },
+    "mainhand": {
+     "name": "pouchbow",
+     "level": 10
+    },
+    "chest": {
+     "name": "coat",
+     "level": 10
+    },
+    "offhand": {
+     "name": "alloyquiver",
+     "level": 9
+    },
+    "cape": {
+     "name": "ecape",
+     "level": 9
+    },
+    "ring1": {
+     "name": "suckerpunch",
+     "level": 2
+    },
+    "pants": {
+     "name": "pants",
+     "level": 10
+    },
+    "ring2": {
+     "name": "suckerpunch",
+     "level": 2
+    },
+    "orb": {
+     "name": "cave_loaded_die",
+     "level": 3
+    },
+    "belt": {
+     "name": "dexbelt",
+     "level": 5
+    },
+    "shoes": {
+     "name": "wingedboots",
+     "level": 10
+    },
+    "gloves": {
+     "name": "supermittens",
+     "level": 9
+    },
+    "elixir": {
+     "name": "pumpkinspice",
+     "level": null
+    }
+   }
+  },
+  "rogue": {
+   "t1": {
+    "earring1": {
+     "name": "dexearring",
+     "level": 1
+    },
+    "helmet": {
+     "name": "helmet",
+     "level": 6
+    },
+    "earring2": {
+     "name": "dexearring",
+     "level": 1
+    },
+    "amulet": {
+     "name": "dexamulet",
+     "level": 2
+    },
+    "mainhand": {
+     "name": "cclaw",
+     "level": 6
+    },
+    "chest": {
+     "name": "coat",
+     "level": 6
+    },
+    "offhand": {
+     "name": "cclaw",
+     "level": 6
+    },
+    "cape": {
+     "name": "cape",
+     "level": 4
+    },
+    "ring1": {
+     "name": "dexring",
+     "level": 2
+    },
+    "pants": {
+     "name": "pants",
+     "level": 6
+    },
+    "ring2": {
+     "name": "dexring",
+     "level": 2
+    },
+    "orb": {
+     "name": "cave_loaded_die",
+     "level": null
+    },
+    "belt": {
+     "name": "dexbelt",
+     "level": 1
+    },
+    "shoes": {
+     "name": "shoes",
+     "level": 6
+    },
+    "gloves": {
+     "name": "gloves",
+     "level": 6
+    },
+    "elixir": {
+     "name": "pumpkinspice",
+     "level": null
+    }
+   },
+   "t2": {
+    "earring1": {
+     "name": "dexearring",
+     "level": 4
+    },
+    "helmet": {
+     "name": "fury",
+     "level": 4
+    },
+    "earring2": {
+     "name": "dexearring",
+     "level": 4
+    },
+    "amulet": {
+     "name": "gloampendant",
+     "level": 2
+    },
+    "mainhand": {
+     "name": "daggerofthedead",
+     "level": 9
+    },
+    "chest": {
+     "name": "coat",
+     "level": 9
+    },
+    "offhand": {
+     "name": "daggerofthedead",
+     "level": 9
+    },
+    "cape": {
+     "name": "ecape",
+     "level": 7
+    },
+    "ring1": {
+     "name": "suckerpunch",
+     "level": 1
+    },
+    "pants": {
+     "name": "pants",
+     "level": 9
+    },
+    "ring2": {
+     "name": "suckerpunch",
+     "level": 1
+    },
+    "orb": {
+     "name": "cave_loaded_die",
+     "level": 2
+    },
+    "belt": {
+     "name": "knifebelt",
+     "level": null
+    },
+    "shoes": {
+     "name": "wingedboots",
+     "level": 9
+    },
+    "gloves": {
+     "name": "supermittens",
+     "level": 5
+    },
+    "elixir": {
+     "name": "pumpkinspice",
+     "level": null
+    }
+   },
+   "t3": {
+    "earring1": {
+     "name": "dexearring",
+     "level": 5
+    },
+    "helmet": {
+     "name": "fury",
+     "level": 9
+    },
+    "earring2": {
+     "name": "dexearring",
+     "level": 5
+    },
+    "amulet": {
+     "name": "mpxamulet",
+     "level": 1
+    },
+    "mainhand": {
+     "name": "vdagger",
+     "level": 9
+    },
+    "chest": {
+     "name": "tshirt9",
+     "level": 7
+    },
+    "offhand": {
+     "name": "vdagger",
+     "level": 9
+    },
+    "cape": {
+     "name": "ecape",
+     "level": 9
+    },
+    "ring1": {
+     "name": "suckerpunch",
+     "level": 2
+    },
+    "pants": {
+     "name": "fallen",
+     "level": 8
+    },
+    "ring2": {
+     "name": "suckerpunch",
+     "level": 2
+    },
+    "orb": {
+     "name": "cave_loaded_die",
+     "level": 3
+    },
+    "belt": {
+     "name": "knifebelt",
+     "level": null
+    },
+    "shoes": {
+     "name": "wingedboots",
+     "level": 10
+    },
+    "gloves": {
+     "name": "mpxgloves",
+     "level": 7
+    },
+    "elixir": {
+     "name": "pumpkinspice",
+     "level": null
+    }
+   }
+  },
+  "warrior": {
+   "t1": {
+    "earring1": {
+     "name": "strearring",
+     "level": 1
+    },
+    "helmet": {
+     "name": "helmet",
+     "level": 6
+    },
+    "earring2": {
+     "name": "strearring",
+     "level": 1
+    },
+    "amulet": {
+     "name": "stramulet",
+     "level": 2
+    },
+    "mainhand": {
+     "name": "fireblade",
+     "level": 5
+    },
+    "chest": {
+     "name": "coat",
+     "level": 6
+    },
+    "offhand": {
+     "name": "fireblade",
+     "level": 5
+    },
+    "cape": {
+     "name": "cape",
+     "level": 4
+    },
+    "ring1": {
+     "name": "strring",
+     "level": 2
+    },
+    "pants": {
+     "name": "pants",
+     "level": 6
+    },
+    "ring2": {
+     "name": "strring",
+     "level": 2
+    },
+    "orb": {
+     "name": "cave_loaded_die",
+     "level": null
+    },
+    "belt": {
+     "name": "strbelt",
+     "level": 1
+    },
+    "shoes": {
+     "name": "shoes",
+     "level": 6
+    },
+    "gloves": {
+     "name": "gloves",
+     "level": 6
+    },
+    "elixir": {
+     "name": "pumpkinspice",
+     "level": null
+    }
+   },
+   "t2s": {
+    "earring1": {
+     "name": "strearring",
+     "level": 4
+    },
+    "helmet": {
+     "name": "fury",
+     "level": 4
+    },
+    "earring2": {
+     "name": "strearring",
+     "level": 4
+    },
+    "amulet": {
+     "name": "stramulet",
+     "level": 4
+    },
+    "mainhand": {
+     "name": "fireblade",
+     "level": 9
+    },
+    "chest": {
+     "name": "coat",
+     "level": 9
+    },
+    "offhand": {
+     "name": "fireblade",
+     "level": 9
+    },
+    "cape": {
+     "name": "ecape",
+     "level": 7
+    },
+    "ring1": {
+     "name": "suckerpunch",
+     "level": 1
+    },
+    "pants": {
+     "name": "pants",
+     "level": 9
+    },
+    "ring2": {
+     "name": "suckerpunch",
+     "level": 1
+    },
+    "orb": {
+     "name": "cave_loaded_die",
+     "level": 2
+    },
+    "belt": {
+     "name": "strbelt",
+     "level": 4
+    },
+    "shoes": {
+     "name": "wingedboots",
+     "level": 8
+    },
+    "gloves": {
+     "name": "supermittens",
+     "level": 5
+    },
+    "elixir": {
+     "name": "pumpkinspice",
+     "level": null
+    }
+   },
+   "t2a": {
+    "earring1": {
+     "name": "strearring",
+     "level": 4
+    },
+    "helmet": {
+     "name": "fury",
+     "level": 4
+    },
+    "earring2": {
+     "name": "strearring",
+     "level": 4
+    },
+    "amulet": {
+     "name": "stramulet",
+     "level": 4
+    },
+    "mainhand": {
+     "name": "vhammer",
+     "level": 7
+    },
+    "chest": {
+     "name": "coat",
+     "level": 9
+    },
+    "offhand": {
+     "name": "ololipop",
+     "level": 9
+    },
+    "cape": {
+     "name": "ecape",
+     "level": 7
+    },
+    "ring1": {
+     "name": "suckerpunch",
+     "level": 1
+    },
+    "pants": {
+     "name": "pants",
+     "level": 9
+    },
+    "ring2": {
+     "name": "suckerpunch",
+     "level": 1
+    },
+    "orb": {
+     "name": "cave_loaded_die",
+     "level": 2
+    },
+    "belt": {
+     "name": "strbelt",
+     "level": 4
+    },
+    "shoes": {
+     "name": "wingedboots",
+     "level": 9
+    },
+    "gloves": {
+     "name": "supermittens",
+     "level": 5
+    },
+    "elixir": {
+     "name": "pumpkinspice",
+     "level": null
+    }
+   },
+   "t3s": {
+    "earring1": {
+     "name": "cearring",
+     "level": 5
+    },
+    "helmet": {
+     "name": "fury",
+     "level": 9
+    },
+    "earring2": {
+     "name": "cearring",
+     "level": 5
+    },
+    "amulet": {
+     "name": "stramulet",
+     "level": 5
+    },
+    "mainhand": {
+     "name": "fireblade",
+     "level": 10
+    },
+    "chest": {
+     "name": "coat",
+     "level": 10
+    },
+    "offhand": {
+     "name": "fireblade",
+     "level": 10
+    },
+    "cape": {
+     "name": "ecape",
+     "level": 9
+    },
+    "ring1": {
+     "name": "suckerpunch",
+     "level": 2
+    },
+    "pants": {
+     "name": "fallen",
+     "level": 8
+    },
+    "ring2": {
+     "name": "suckerpunch",
+     "level": 2
+    },
+    "orb": {
+     "name": "cave_loaded_die",
+     "level": 3
+    },
+    "belt": {
+     "name": "strbelt",
+     "level": 5
+    },
+    "shoes": {
+     "name": "wingedboots",
+     "level": 10
+    },
+    "gloves": {
+     "name": "supermittens",
+     "level": 9
+    },
+    "elixir": {
+     "name": "pumpkinspice",
+     "level": null
+    }
+   },
+   "t3a": {
+    "earring1": {
+     "name": "cearring",
+     "level": 5
+    },
+    "helmet": {
+     "name": "fury",
+     "level": 9
+    },
+    "earring2": {
+     "name": "cearring",
+     "level": 5
+    },
+    "amulet": {
+     "name": "stramulet",
+     "level": 5
+    },
+    "mainhand": {
+     "name": "vhammer",
+     "level": 9
+    },
+    "chest": {
+     "name": "coat",
+     "level": 10
+    },
+    "offhand": {
+     "name": "ololipop",
+     "level": 10
+    },
+    "cape": {
+     "name": "ecape",
+     "level": 9
+    },
+    "ring1": {
+     "name": "suckerpunch",
+     "level": 2
+    },
+    "pants": {
+     "name": "fallen",
+     "level": 8
+    },
+    "ring2": {
+     "name": "suckerpunch",
+     "level": 2
+    },
+    "orb": {
+     "name": "cave_loaded_die",
+     "level": 3
+    },
+    "belt": {
+     "name": "strbelt",
+     "level": 5
+    },
+    "shoes": {
+     "name": "wingedboots",
+     "level": 10
+    },
+    "gloves": {
+     "name": "supermittens",
+     "level": 9
+    },
+    "elixir": {
+     "name": "pumpkinspice",
+     "level": null
+    }
+   }
+  }
+ },
+ "swaps": {
+  "mage": [
+   "gstaff",
+   "froststaff",
+   "harbringer",
+   "wblade",
+   "exoarm",
+   "guestbook",
+   "scribeorb",
+   "intearring",
+   "frostfang",
+   "stillwaterlens",
+   "harpyecho",
+   "jacko",
+   "glacierseal",
+   "zapper",
+   "mittens",
+   "tshirt9",
+   "vcape"
+  ],
+  "paladin": [
+   "mittens",
+   "vcape",
+   "frostfang",
+   "hammer",
+   "vring"
+  ],
+  "priest": [
+   "tshirt88",
+   "ringhs",
+   "ringofluck",
+   "gcape",
+   "djinncrown",
+   "mearring",
+   "wbookhs",
+   "bcape",
+   "staff",
+   "froststaff"
+  ],
+  "ranger": [
+   "tshirt9",
+   "vcape",
+   "mpxgloves",
+   "frostfang",
+   "molesteeth",
+   "amuletofm",
+   "paleclaw",
+   "canopener",
+   "windbelt"
+  ],
+  "rogue": [
+   "duskweavehood",
+   "vcape",
+   "mpxbelt",
+   "canopener",
+   "cave_backstabber",
+   "rapier",
+   "snowflakes",
+   "firestars",
+   "molesteeth",
+   "frostfang",
+   "paleclaw",
+   "bfangamulet"
+  ],
+  "warrior": [
+   "bataxe",
+   "cave_tunnelaxe",
+   "cave_reedscythe",
+   "cave_deepaxe",
+   "glolipop",
+   "tshirt9",
+   "tshirt7",
+   "canopener",
+   "frostfang",
+   "molesteeth",
+   "paleclaw",
+   "bfangamulet"
+  ]
+ },
+ "info": {
+  "intearring": {
+   "title": "Earring of Intelligence",
+   "type": "earring",
+   "set": "pack_20",
+   "x": 7,
+   "y": 17,
+   "source": "Drop: Dracul, Phoenix"
+  },
+  "helmet": {
+   "title": "Helmet",
+   "type": "helmet",
+   "set": "pack_20",
+   "x": 2,
+   "y": 0,
+   "source": "NPC shop"
+  },
+  "intamulet": {
+   "title": "Amulet of Intelligence",
+   "type": "amulet",
+   "set": "pack_20",
+   "x": 9,
+   "y": 19,
+   "source": "Map drop: Spooky Forest · Drop: Ms. Dracul"
+  },
+  "firestaff": {
+   "title": "Fiery Staff",
+   "type": "weapon",
+   "set": "pack_20",
+   "x": 3,
+   "y": 10,
+   "source": "Craft: Staff + Essence of Fire · Drop: Dracul, Ms. Dracul, Phoenix +1"
+  },
+  "coat": {
+   "title": "Coat",
+   "type": "chest",
+   "set": "pack_20",
+   "x": 2,
+   "y": 1,
+   "source": "NPC shop"
+  },
+  "wbook0": {
+   "title": "Book of Knowledge",
+   "type": "source",
+   "set": "pack_20",
+   "x": 1,
+   "y": 14,
+   "source": "Drop: Bat"
+  },
+  "cape": {
+   "title": "Cape",
+   "type": "cape",
+   "set": "pack_20",
+   "x": 0,
+   "y": 6,
+   "source": "From: Leather"
+  },
+  "intring": {
+   "title": "Ring of Intelligence",
+   "type": "ring",
+   "set": "pack_20",
+   "x": 15,
+   "y": 15,
+   "source": "Map drop: Frozen Cave, Winterland"
+  },
+  "pants": {
+   "title": "Pants",
+   "type": "pants",
+   "set": "pack_20",
+   "x": 2,
+   "y": 4,
+   "source": "NPC shop"
+  },
+  "cave_loaded_die": {
+   "title": "Loaded Die",
+   "type": "orb",
+   "set": "rawitems",
+   "x": 8,
+   "y": 4,
+   "source": "Craft: 10× Cave Amber + 8× Seashell + 2× Reef Glass"
+  },
+  "intbelt": {
+   "title": "Belt of Intelligence",
+   "type": "belt",
+   "set": "pack_20",
+   "x": 12,
+   "y": 3,
+   "source": "Map drop: Spooky Town"
+  },
+  "shoes": {
+   "title": "Shoes",
+   "type": "shoes",
+   "set": "pack_20",
+   "x": 2,
+   "y": 5,
+   "source": "NPC shop"
+  },
+  "gloves": {
+   "title": "Gloves",
+   "type": "gloves",
+   "set": "pack_20",
+   "x": 2,
+   "y": 2,
+   "source": "NPC shop"
+  },
+  "pumpkinspice": {
+   "title": "Pumpkin Spice Latte",
+   "type": "elixir",
+   "set": "pack_20",
+   "x": 9,
+   "y": 21,
+   "source": "From: Rare Candy, Candy"
+  },
+  "strearring": {
+   "title": "Earring of Strength",
+   "type": "earring",
+   "set": "pack_20",
+   "x": 6,
+   "y": 17,
+   "source": "Drop: Dracul, Phoenix"
+  },
+  "stramulet": {
+   "title": "Amulet of Strength",
+   "type": "amulet",
+   "set": "pack_20",
+   "x": 8,
+   "y": 19,
+   "source": "Map drop: Spooky Forest · Drop: Ms. Dracul"
+  },
+  "mace": {
+   "title": "Mace",
+   "type": "weapon",
+   "set": "pack_20",
+   "x": 14,
+   "y": 11,
+   "source": "NPC shop"
+  },
+  "wshield": {
+   "title": "Wooden Shield",
+   "type": "shield",
+   "set": "pack_20",
+   "x": 7,
+   "y": 12,
+   "source": "NPC shop"
+  },
+  "strring": {
+   "title": "Ring of Strength",
+   "type": "ring",
+   "set": "pack_20",
+   "x": 0,
+   "y": 16,
+   "source": "Map drop: Frozen Cave, Winterland"
+  },
+  "strbelt": {
+   "title": "Belt of Strength",
+   "type": "belt",
+   "set": "pack_20",
+   "x": 11,
+   "y": 3,
+   "source": "Map drop: Spooky Town"
+  },
+  "wcap": {
+   "title": "Wanderer's Cap",
+   "type": "helmet",
+   "set": "pack_20",
+   "x": 0,
+   "y": 42,
+   "source": "Craft: 50× Bee Wings + 3× Slime Core · Map drop: Mainland"
+  },
+  "wattire": {
+   "title": "Wanderer's Attire",
+   "type": "chest",
+   "set": "pack_20",
+   "x": 0,
+   "y": 43,
+   "source": "Craft: 100× Slime Core + 200× Crab Claw · Map drop: Winterland, Cave of Darkness"
+  },
+  "wbreeches": {
+   "title": "Wanderer's Breeches",
+   "type": "pants",
+   "set": "pack_20",
+   "x": 0,
+   "y": 45,
+   "source": "Craft: 10× Crab Claw + 100× Spores · Map drop: Spooky Forest, Spooky Town"
+  },
+  "rabbitsfoot": {
+   "title": "Rabbit's Foot",
+   "type": "orb",
+   "set": "pack_20",
+   "x": 14,
+   "y": 30,
+   "source": "Tokens: Fun Token ×120 · Drop: Wabbit"
+  },
+  "wshoes": {
+   "title": "Wanderer's Shoes",
+   "type": "shoes",
+   "set": "pack_20",
+   "x": 0,
+   "y": 46,
+   "source": "Craft: 5× Frog Tongue + 500× Bee Wings + 100× Crab Claw · Map drop: Mainland"
+  },
+  "wgloves": {
+   "title": "Wanderer's Gloves",
+   "type": "gloves",
+   "set": "pack_20",
+   "x": 0,
+   "y": 44,
+   "source": "Craft: 60× Bee Wings + 20× Spores · Map drop: Spooky Forest, Cave of Darkness"
+  },
+  "elixirluck": {
+   "title": "Liquid Luck",
+   "type": "elixir",
+   "set": "pack_20",
+   "x": 15,
+   "y": 31,
+   "source": "NPC shop"
+  },
+  "dexearring": {
+   "title": "Earring of Dexterity",
+   "type": "earring",
+   "set": "pack_20",
+   "x": 8,
+   "y": 17,
+   "source": "Drop: Dracul, Phoenix"
+  },
+  "dexamulet": {
+   "title": "Amulet of Dexterity",
+   "type": "amulet",
+   "set": "pack_20",
+   "x": 10,
+   "y": 19,
+   "source": "Map drop: Spooky Forest · Drop: Ms. Dracul"
+  },
+  "firebow": {
+   "title": "Fire Bow",
+   "type": "weapon",
+   "set": "pack_20",
+   "x": 11,
+   "y": 9,
+   "source": "Craft: Bow + Essence of Fire · Drop: Phoenix, Mimic"
+  },
+  "quiver": {
+   "title": "Quiver",
+   "type": "quiver",
+   "set": "pack_20",
+   "x": 0,
+   "y": 13,
+   "source": "Craft: Armadillo Scale + 200× Bee Wings · Drop: Scorpion"
+  },
+  "dexring": {
+   "title": "Ring of Dexterity",
+   "type": "ring",
+   "set": "pack_20",
+   "x": 14,
+   "y": 15,
+   "source": "Map drop: Frozen Cave, Winterland"
+  },
+  "dexbelt": {
+   "title": "Belt of Dexterity",
+   "type": "belt",
+   "set": "pack_20",
+   "x": 13,
+   "y": 3,
+   "source": "Map drop: Spooky Town"
+  },
+  "cclaw": {
+   "title": "Crab Claw",
+   "type": "weapon",
+   "set": "pack_20",
+   "x": 3,
+   "y": 55,
+   "source": "Craft: Claw + Crab Claw · Drop: Tiny Crab, Huge Crab, Giga Crab"
+  },
+  "fireblade": {
+   "title": "Fiery Blade",
+   "type": "weapon",
+   "set": "pack_20",
+   "x": 1,
+   "y": 8,
+   "source": "Craft: Blade + Essence of Fire · Drop: Dark Knight, Phoenix, Mimic"
+  },
+  "moonshardearring": {
+   "title": "Moonshard Earring",
+   "type": "earring",
+   "set": "items40",
+   "x": 7,
+   "y": 1,
+   "source": "Craft: Earring of Intelligence + 8× Void Thread + 40× Bat Wing + 4× Ethereal Essence"
+  },
+  "mmhat": {
+   "title": "Hat of the Hunter Mage",
+   "type": "helmet",
+   "set": "pack_20",
+   "x": 4,
+   "y": 42,
+   "source": "Tokens: Monster Token ×7"
+  },
+  "ecape": {
+   "title": "Fluffy Blanket",
+   "type": "cape",
+   "set": "pack_20",
+   "x": 2,
+   "y": 47,
+   "source": "Drop: Wabbit · From: Basket of Easter Eggs"
+  },
+  "cring": {
+   "title": "Ring of The Crypt",
+   "type": "ring",
+   "set": "custom",
+   "x": 0,
+   "y": 6,
+   "source": "Drop: Vampireling"
+  },
+  "starkillers": {
+   "title": "Star Killer's Pants",
+   "type": "pants",
+   "set": "pack_20",
+   "x": 6,
+   "y": 4,
+   "source": "Drop: Dark Mage, Mimic · From: Rare Candy, Candy"
+  },
+  "wingedboots": {
+   "title": "Winged Boots",
+   "type": "shoes",
+   "set": "pack_20",
+   "x": 10,
+   "y": 5,
+   "source": "Craft: Shoes + 20× Magical Feather"
+  },
+  "supermittens": {
+   "title": "Super Mittens",
+   "type": "gloves",
+   "set": "pack_20",
+   "x": 2,
+   "y": 33,
+   "source": "From: Mistletoe, Candy Cane"
+  },
+  "sparkstaff": {
+   "title": "Spark Staff",
+   "type": "weapon",
+   "set": "community",
+   "x": 3,
+   "y": 0,
+   "source": "Drop: Spark Bot"
+  },
+  "cearring": {
+   "title": "Earring of The Crypt",
+   "type": "earring",
+   "set": "custom",
+   "x": 1,
+   "y": 6,
+   "source": "Drop: Vampireling"
+  },
+  "fury": {
+   "title": "Band of Fury",
+   "type": "helmet",
+   "set": "pack_20",
+   "x": 0,
+   "y": 0,
+   "source": "Drop: Mimic · From: Rare Candy, Candy"
+  },
+  "keepsakependant": {
+   "title": "Keepsake Pendant",
+   "type": "amulet",
+   "set": "rawitems",
+   "x": 5,
+   "y": 2,
+   "source": "Craft: Sixfold Cake + Amulet of HP + Bronze Ingot + 20× Drapes · From: Sixfold Cake"
+  },
+  "maceofthedead": {
+   "title": "Mace of the Dead",
+   "type": "weapon",
+   "set": "pack_20",
+   "x": 15,
+   "y": 11,
+   "source": "Craft: Bones + Wooden Basher · Drop: Mummy"
+  },
+  "cdragon": {
+   "title": "Dragon Armor",
+   "type": "chest",
+   "set": "pack_20",
+   "x": 14,
+   "y": 1,
+   "source": "From: Red Envelope, Green Envelope"
+  },
+  "cave_counterweight": {
+   "title": "Counterweight",
+   "type": "shield",
+   "set": "rawitems",
+   "x": 6,
+   "y": 4,
+   "source": "Craft: 8× Cave Amber + Wooden Shield + Digestive Stones"
+  },
+  "emberseal": {
+   "title": "Ember Seal",
+   "type": "ring",
+   "set": "items40",
+   "x": 3,
+   "y": 1,
+   "source": "Craft: Ring of Strength + Ember Core + 6× Essence of Fire"
+  },
+  "ololipop": {
+   "title": "Lolipop Mace",
+   "type": "weapon",
+   "set": "pack_20",
+   "x": 1,
+   "y": 61,
+   "source": "Drop: Jr."
+  },
+  "exoarm": {
+   "title": "Exoskeletal Arm",
+   "type": "misc_offhand",
+   "set": "pack_20",
+   "x": 8,
+   "y": 11,
+   "source": "Tokens: Fun Token ×999 · From: Xmas Box"
+  },
+  "suckerpunch": {
+   "title": "Sucker Punch",
+   "type": "ring",
+   "set": "pack_20",
+   "x": 11,
+   "y": 15,
+   "source": "Drop: Tiny Crab, Huge Crab, Giga Crab"
+  },
+  "hhelmet": {
+   "title": "Heavy Helmet",
+   "type": "helmet",
+   "set": "pack_20",
+   "x": 4,
+   "y": 0,
+   "source": "Drop: Mimic · From: Rare Candy, Candy"
+  },
+  "lmace": {
+   "title": "Lunar Mace",
+   "type": "weapon",
+   "set": "pack_20",
+   "x": 11,
+   "y": 11,
+   "source": "Drop: Dragold · From: Green Envelope, Brown Envelope"
+  },
+  "harmor": {
+   "title": "Heavy Armor",
+   "type": "chest",
+   "set": "pack_20",
+   "x": 4,
+   "y": 1,
+   "source": "Drop: Mimic · From: Rare Candy, Candy"
+  },
+  "mshield": {
+   "title": "Shield M",
+   "type": "shield",
+   "set": "pack_20",
+   "x": 10,
+   "y": 12,
+   "source": "Tokens: Fun Token ×10 · From: Mistletoe, Candy Cane"
+  },
+  "gcape": {
+   "title": "Grinch's Cape",
+   "type": "cape",
+   "set": "pack_20",
+   "x": 15,
+   "y": 6,
+   "source": "Drop: Grinch"
+  },
+  "t2quiver": {
+   "title": "Agile Quiver",
+   "type": "quiver",
+   "set": "pack_20",
+   "x": 1,
+   "y": 13,
+   "source": "From: Xmas Box"
+  },
+  "pouchbow": {
+   "title": "Poucher",
+   "type": "weapon",
+   "set": "pack_20",
+   "x": 5,
+   "y": 59,
+   "source": "Craft: Bow + Pouch of Poof"
+  },
+  "alloyquiver": {
+   "title": "Alloy Quiver",
+   "type": "quiver",
+   "set": "community",
+   "x": 2,
+   "y": 0,
+   "source": "Drop: Targetron"
+  },
+  "gloampendant": {
+   "title": "Gloam Pendant",
+   "type": "amulet",
+   "set": "rawitems",
+   "x": 3,
+   "y": 0,
+   "source": "Craft: Amulet of Dexterity + 30× Void Thread + 80× Bat Wing + 6× Ethereal Essence"
+  },
+  "daggerofthedead": {
+   "title": "Dagger of the Dead",
+   "type": "weapon",
+   "set": "pack_20",
+   "x": 15,
+   "y": 7,
+   "source": "Craft: Bones + Wand · Drop: Mummy"
+  },
+  "knifebelt": {
+   "title": "Knife Belt",
+   "type": "belt",
+   "set": "rawitems",
+   "x": 9,
+   "y": 3,
+   "source": "Craft: Belt of Dexterity + 30× Spider Silk + 8× Void Thread + 20× Bat Wing + 12× Poison Sack"
+  },
+  "vhammer": {
+   "title": "Vampiric Hammer",
+   "type": "weapon",
+   "set": "custom",
+   "x": 0,
+   "y": 5,
+   "source": "Drop: Lestat"
+  },
+  "mpxamulet": {
+   "title": "Amulet of MP",
+   "type": "amulet",
+   "set": "pack_20",
+   "x": 6,
+   "y": 20,
+   "source": "Drop: Mech-a Gnome, Dark Mage"
+  },
+  "concordmace": {
+   "title": "Concord Mace",
+   "type": "weapon",
+   "set": "rawitems",
+   "x": 4,
+   "y": 1,
+   "source": "Tokens: Monster Token ×12"
+  },
+  "tshirt9": {
+   "title": "T-Shirt (Manasteal)",
+   "type": "chest",
+   "set": "pack_20",
+   "x": 11,
+   "y": 38,
+   "source": "From: T-Shirt Roll"
+  },
+  "mpxgloves": {
+   "title": "Mana Gloves",
+   "type": "gloves",
+   "set": "pack_20",
+   "x": 6,
+   "y": 2,
+   "source": "Drop: Dark Mage"
+  },
+  "xhelmet": {
+   "title": "Darkforge Helmet",
+   "type": "helmet",
+   "set": "pack_20",
+   "x": 5,
+   "y": 0,
+   "source": "Drop: Mimic · From: Rare Candy, Candy"
+  },
+  "vattire": {
+   "title": "Spike's Attire",
+   "type": "chest",
+   "set": "custom",
+   "x": 0,
+   "y": 4,
+   "source": "Drop: Spike"
+  },
+  "covemantle": {
+   "title": "Cove Mantle",
+   "type": "cape",
+   "set": "rawitems",
+   "x": 3,
+   "y": 4,
+   "source": "Craft: 120× Rimeglass + 12× Spider Silk + 4× Harpy Feather + Cape · Drop: Rime Djinn"
+  },
+  "zapper": {
+   "title": "The Zapper",
+   "type": "ring",
+   "set": "community",
+   "x": 6,
+   "y": 0,
+   "source": "Drop: Dark Mage"
+  },
+  "sbelt": {
+   "title": "Belt of Hallowed Trials",
+   "type": "belt",
+   "set": "pack_20",
+   "x": 14,
+   "y": 3,
+   "source": "Drop: Slenderman, Elena, Angel +1"
+  },
+  "vdagger": {
+   "title": "Vampiric Dagger",
+   "type": "weapon",
+   "set": "custom",
+   "x": 1,
+   "y": 5,
+   "source": "Drop: Bill"
+  },
+  "fallen": {
+   "title": "Pants of the Fallen Master",
+   "type": "pants",
+   "set": "pack_20",
+   "x": 0,
+   "y": 4,
+   "source": "Event / special"
+  },
+  "gstaff": {
+   "title": "Blaster",
+   "type": "weapon",
+   "set": "pack_20",
+   "x": 0,
+   "y": 10,
+   "source": "Craft: Staff + Essence of Greed"
+  },
+  "froststaff": {
+   "title": "Frost Staff",
+   "type": "weapon",
+   "set": "pack_20",
+   "x": 8,
+   "y": 10,
+   "source": "Craft: Staff + 2× Essence of Frost"
+  },
+  "harbringer": {
+   "title": "Harbringer",
+   "type": "weapon",
+   "set": "pack_20",
+   "x": 7,
+   "y": 10,
+   "source": "Tokens: PVP Token ×25 · Drop: Harpy, Wabbit, Mimic"
+  },
+  "wblade": {
+   "title": "Ethereal Blade of Destiny",
+   "type": "weapon",
+   "set": "pack_20",
+   "x": 8,
+   "y": 8,
+   "source": "Craft: Stick + Blade + 800× Essence of Frost"
+  },
+  "guestbook": {
+   "title": "The Guestbook",
+   "type": "source",
+   "set": "rawitems",
+   "x": 19,
+   "y": 1,
+   "source": "Craft: Sixfold Cake + Book of Knowledge + Ink + 2× Void Thread + 30× Drapes · From: Sixfold Cake"
+  },
+  "scribeorb": {
+   "title": "Scribe Orb",
+   "type": "source",
+   "set": "rawitems",
+   "x": 10,
+   "y": 3,
+   "source": "Craft: Book of Knowledge + 12× Void Thread + 50× Bat Wing + 4× Ethereal Essence"
+  },
+  "frostfang": {
+   "title": "Frostfang Earring",
+   "type": "earring",
+   "set": "rawitems",
+   "x": 7,
+   "y": 5,
+   "source": "Drop: White Wolf"
+  },
+  "mittens": {
+   "title": "Mittens",
+   "type": "gloves",
+   "set": "pack_20",
+   "x": 8,
+   "y": 29,
+   "source": "From: Mistletoe, Candy Cane"
+  },
+  "vcape": {
+   "title": "Vampiric Cape",
+   "type": "cape",
+   "set": "custom",
+   "x": 3,
+   "y": 4,
+   "source": "Drop: Spike"
+  },
+  "hammer": {
+   "title": "Hammer",
+   "type": "weapon",
+   "set": "pack_20",
+   "x": 12,
+   "y": 10,
+   "source": "Tokens: PVP Token ×120 · Drop: Mimic"
+  },
+  "vring": {
+   "title": "Vampiring",
+   "type": "ring",
+   "set": "custom",
+   "x": 2,
+   "y": 6,
+   "source": "Drop: Spike, Bill"
+  },
+  "tshirt88": {
+   "title": "T-Shirt (Lucky)",
+   "type": "chest",
+   "set": "pack_20",
+   "x": 7,
+   "y": 38,
+   "source": "From: T-Shirt Roll"
+  },
+  "ringhs": {
+   "title": "Ring of Holidays",
+   "type": "ring",
+   "set": "pack_20",
+   "x": 11,
+   "y": 62,
+   "source": "Drop: Grinch"
+  },
+  "ringofluck": {
+   "title": "Ring of Luck",
+   "type": "ring",
+   "set": "pack_20",
+   "x": 6,
+   "y": 16,
+   "source": "Drop: Sprawling"
+  },
+  "molesteeth": {
+   "title": "Mole's Teeth",
+   "type": "earring",
+   "set": "pack_20",
+   "x": 5,
+   "y": 17,
+   "source": "Drop: Mole"
+  },
+  "amuletofm": {
+   "title": "Amulet of Mystery",
+   "type": "amulet",
+   "set": "pack_20",
+   "x": 14,
+   "y": 19,
+   "source": "Drop: One Eye"
+  },
+  "paleclaw": {
+   "title": "Paleclaw Totem",
+   "type": "amulet",
+   "set": "rawitems",
+   "x": 8,
+   "y": 5,
+   "source": "Drop: Pale Dino"
+  },
+  "canopener": {
+   "title": "The Can Opener",
+   "type": "ring",
+   "set": "rawitems",
+   "x": 3,
+   "y": 5,
+   "source": "Drop: Black Scorpion"
+  },
+  "windbelt": {
+   "title": "Wind Belt",
+   "type": "belt",
+   "set": "items40",
+   "x": 0,
+   "y": 2,
+   "source": "Craft: Belt of Dexterity + 40× Storm Feather + 4× Ethereal Essence"
+  },
+  "duskweavehood": {
+   "title": "Duskweave Hood",
+   "type": "helmet",
+   "set": "rawitems",
+   "x": 3,
+   "y": 3,
+   "source": "From: Market Parcel"
+  },
+  "mpxbelt": {
+   "title": "Belt of MP Reduction",
+   "type": "belt",
+   "set": "pack_20",
+   "x": 6,
+   "y": 3,
+   "source": "Drop: One Eye"
+  },
+  "bataxe": {
+   "title": "Ghastly Battle Axe",
+   "type": "weapon",
+   "set": "pack_20",
+   "x": 2,
+   "y": 8,
+   "source": "Craft: The Crypt Key + Wooden Basher + Essence of Life · Drop: Wabbit, Golden Bat"
+  },
+  "cave_tunnelaxe": {
+   "title": "Tunnel Axe",
+   "type": "weapon",
+   "set": "rawitems",
+   "x": 14,
+   "y": 4,
+   "source": "Craft: 8× Cave Amber + Blade + Wooden Basher"
+  },
+  "cave_reedscythe": {
+   "title": "Reed Scythe",
+   "type": "weapon",
+   "set": "rawitems",
+   "x": 15,
+   "y": 4,
+   "source": "NPC shop · Craft: Wooden Basher + Blade + Spider Silk"
+  },
+  "cave_deepaxe": {
+   "title": "Deepvein Axe",
+   "type": "weapon",
+   "set": "rawitems",
+   "x": 16,
+   "y": 4,
+   "source": "Craft: 200× Cave Amber + Tunnel Axe + 10× Gem Fragment + 20× Leather"
+  },
+  "glolipop": {
+   "title": "Lolipop Mace",
+   "type": "weapon",
+   "set": "pack_20",
+   "x": 2,
+   "y": 61,
+   "source": "Drop: Green Jr."
+  },
+  "tshirt7": {
+   "title": "T-Shirt (Armor Piercing)",
+   "type": "chest",
+   "set": "pack_20",
+   "x": 9,
+   "y": 38,
+   "source": "From: T-Shirt Roll"
+  },
+  "stillwaterlens": {
+   "title": "Stillwater Lens",
+   "type": "orb",
+   "set": "rawitems",
+   "x": 4,
+   "y": 4,
+   "source": "Craft: 240× Rimeglass + 6× Gem Fragment + 8× Seashell + Orb of Intelligence · Drop: Rime Djinn"
+  },
+  "harpyecho": {
+   "title": "Harpy's Echo",
+   "type": "orb",
+   "set": "rawitems",
+   "x": 2,
+   "y": 5,
+   "source": "Drop: Harpy"
+  },
+  "jacko": {
+   "title": "Jack-o Lantern",
+   "type": "orb",
+   "set": "pack_20",
+   "x": 12,
+   "y": 38,
+   "source": "From: Rare Candy"
+  },
+  "glacierseal": {
+   "title": "Glacier Seal",
+   "type": "ring",
+   "set": "items40",
+   "x": 4,
+   "y": 1,
+   "source": "Craft: Ring of Intelligence + Frost Core + 6× Essence of Frost"
+  },
+  "djinncrown": {
+   "title": "Djinn Crown",
+   "type": "helmet",
+   "set": "rawitems",
+   "x": 2,
+   "y": 4,
+   "source": "Craft: 80× Rimeglass + 8× Large Spores + 2× Essence of Frost + Helmet · Drop: Rime Djinn"
+  },
+  "mearring": {
+   "title": "Mistletoe Earring",
+   "type": "earring",
+   "set": "pack_20",
+   "x": 9,
+   "y": 17,
+   "source": "From: Mistletoe"
+  },
+  "wbookhs": {
+   "title": "Book of Cheer",
+   "type": "source",
+   "set": "pack_20",
+   "x": 4,
+   "y": 14,
+   "source": "Drop: Snowman, Grinch"
+  },
+  "bcape": {
+   "title": "Well-Crafted Cape",
+   "type": "cape",
+   "set": "pack_20",
+   "x": 6,
+   "y": 6,
+   "source": "From: Leather"
+  },
+  "cave_backstabber": {
+   "title": "Last Word",
+   "type": "weapon",
+   "set": "rawitems",
+   "x": 10,
+   "y": 4,
+   "source": "Event / special"
+  },
+  "rapier": {
+   "title": "Rapier",
+   "type": "weapon",
+   "set": "pack_20",
+   "x": 11,
+   "y": 7,
+   "source": "Drop: Mimic · From: Weapon Box"
+  },
+  "snowflakes": {
+   "title": "Snowflakes",
+   "type": "weapon",
+   "set": "pack_20",
+   "x": 6,
+   "y": 37,
+   "source": "Craft: Throwing Stars + Essence of Frost · From: Candy Cane"
+  },
+  "firestars": {
+   "title": "Fiery Throwing Stars",
+   "type": "weapon",
+   "set": "pack_20",
+   "x": 5,
+   "y": 37,
+   "source": "Craft: Throwing Stars + Essence of Fire"
+  },
+  "bfangamulet": {
+   "title": "Ghastly Bat Fang",
+   "type": "amulet",
+   "set": "community",
+   "x": 1,
+   "y": 0,
+   "source": "Craft: Bat Fang + 5000× Bat Wing"
+  },
+  "staff": {
+   "title": "Staff",
+   "type": "weapon",
+   "set": "pack_20",
+   "x": 2,
+   "y": 10,
+   "source": "NPC shop"
+  }
+ }
+}
