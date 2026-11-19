@@ -372,11 +372,16 @@ module.exports = function createFighter(ctx, cls) {
             return e && e.type === "monster" && !e.dead && !e.target;
         }).map(util.xy);
         const step = k.step || 60;
+        // Never out of our own range of the target (player rule 2026-11-19: the Viz ranger kited a
+        // long way off and could not shoot any more) - every step and every way out stays within it.
+        const aim = target ? util.xy(target) : util.xy(threat);
+        const inReach = function (x, y) { return Math.hypot(x - aim.x, y - aim.y) <= myRange * 0.95; };
         let best = null, bestScore = -Infinity;
         for (const turn of [0, 0.5, -0.5, 1, -1, 1.5, -1.5]) {
             const ux = dx * Math.cos(turn) - dy * Math.sin(turn), uy = dx * Math.sin(turn) + dy * Math.cos(turn);
             const x = me.x + ux * step, y = me.y + uy * step;
             if (!can_move_to(x, y)) continue;
+            if (!inReach(x, y)) continue;
             // Away from the pack, and not next to free monsters (they would join).
             const crowd = free.filter(function (p) { return Math.hypot(p.x - x, p.y - y) < (k.avoidRadius || 120); }).length;
             if (!team.allows(x, y)) continue;
@@ -394,7 +399,7 @@ module.exports = function createFighter(ctx, cls) {
                 return true;
             }
             const esc = escapePoint(me, { x: cx, y: cy }, free, k, team);
-            if (!esc) return false; // nowhere to go: stand and fight
+            if (!esc || !inReach(esc.x, esc.y)) return false; // nowhere to go within range: stand and fight
             lastKite = Date.now();
             escape = { x: esc.x, y: esc.y, until: Date.now() + 4000 };
             // A straight line needs no path search (the search is what loses the path).
