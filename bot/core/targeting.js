@@ -615,7 +615,10 @@ module.exports = function createTargeting(ctx) {
         let best = null, bestD = Infinity;
         ((G.maps[character.map] || {}).monsters || []).forEach(function (pack) {
             if (pack.type !== type) return;
-            const boxes = pack.boundaries ? pack.boundaries.filter(function (b) { return b[0] === character.map; }).map(function (b) { return b.slice(1); })
+            // A spawn with a rage zone (map data "rage", 2026-11-19: the mummies): every 4.2 s each
+            // free monster of that spawn goes for a player standing inside it - wait outside that.
+            const boxes = pack.rage ? [pack.rage]
+                : pack.boundaries ? pack.boundaries.filter(function (b) { return b[0] === character.map; }).map(function (b) { return b.slice(1); })
                 : pack.boundary ? [pack.boundary] : [];
             boxes.forEach(function (b) {
                 const cx = (b[0] + b[2]) / 2, cy = (b[1] + b[3]) / 2;
