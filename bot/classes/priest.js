@@ -36,12 +36,16 @@ module.exports = function createPriest(ctx) {
     // Returns true when this tick's action was used (heal cast or walking to the target).
     // On cooldown it returns `whileCooling`: support() blocks attacks then, survive() lets potions run.
     function tryHeal(entity, whileCooling) {
-        if (is_on_cooldown("heal")) return whileCooling; // heal shares the attack cooldown
+        if (is_on_cooldown("heal")) {
+            // The strike loop heals the moment the cooldown ends (2026-11-20) - only one we reach.
+            if (whileCooling && (entity === character || is_in_range(entity, "heal"))) ctx.strike.heal(entity);
+            return whileCooling; // heal shares the attack cooldown
+        }
         if (entity !== character && !is_in_range(entity, "heal")) {
             if (!is_moving(character)) util.moveToEntity(entity);
             return true;
         }
-        heal(entity).catch(function () {});
+        ctx.strike.heal(entity);
         return true;
     }
 
@@ -117,6 +121,17 @@ module.exports = function createPriest(ctx) {
         survive: function () {
             if (util.hpRatio() < c.selfHealBelow) return tryHeal(character, false);
             return false;
+        },
+
+        // Busy phases (following, waiting, trips): Party Heal and heals on members already in
+        // range - never a step (2026-11-20). True when a heal is planned.
+        supportInPlace: function () {
+            const hurt = hurtMembers();
+            if (tryPartyHeal(hurt)) return false;
+            const worst = hurt.find(function (m) { return m.ratio < c.healBelow && (m.entity === character || is_in_range(m.entity, "heal")); });
+            if (!worst) return false;
+            ctx.strike.heal(worst.entity);
+            return true;
         },
 
         support: function () {

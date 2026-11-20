@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.155.2",
+    version: "1.159.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -152,6 +152,12 @@ module.exports = {
         // Leader waits while a fighter is farther than waitDistance px (or out of sight), at most
         // waitMaxMs per separation, and not while something attacks it (player request 2026-11-18).
         waitForTeam: true, waitDistance: 500, waitMaxMs: 45000, waitAgainMs: 60000,
+        // Chest opener (player decision 2026-11-20): a party chest's gold uses the opener's gold
+        // multiplier, so the fighter with the highest gold bonus opens (fixed: a name to force one).
+        // The others open only when it is dead, out of sight or farther than awayRange px from the
+        // chest (its bonus counts only within 400 px), or after fallbackMs.
+        // The leader decides and tells the members (2026-11-20: own decisions disagreed, chests piled up).
+        chestOpener: { enabled: true, fixed: null, awayRange: 400, fallbackMs: 10000 },
         // Ranged fighters keep out of the monsters' melee reach (+margin) while a tank class is
         // near (player request 2026-11-18); monsters reaching farther than we shoot are ignored.
         spacing: { enabled: true, minOwnRange: 100, margin: 50, gap: 130, step: 80, everyMs: 700 },
@@ -283,6 +289,11 @@ module.exports = {
         // the wish list. (Overnight 2026-11-19 it was ["mummy", "booboo", "stoneworm"].)
         farm: null, // a list (2026-11-19): the first one not too strong/crowded; null = the guide picks
         fallback: "goo",          // used when the progression guide has no answer
+        // Rare monsters attacked first when in sight (player decision 2026-11-20): golden bat
+        // (24k HP, attack 50, gold), cutebee (300 HP, 99.9 avoidance), tiny pinky (5.6k HP, attack
+        // 240, always a Primling), wabbit/pinkgoo/snowman (seasonal). Not tiger (attack 960) or
+        // golden bot (500k HP, attack 500). Skipped while invulnerable (snowman fullguard).
+        rare: { enabled: true, range: 400, types: ["goldenbat", "cutebee", "tinyp", "wabbit", "pinkgoo", "snowman"] },
         // Farm only where every fighter's own guide calls the spot safe; routes the guide
         // only offers as a careful trial count once proven â€“ by the guide's own fights, or
         // by 15 min of team farming there without a death (remembered across restarts).
@@ -591,7 +602,7 @@ module.exports = {
             "Item stages: an item goes up level by level across the team - e.g. STR rings +4 are wished only once every STR-ring wish at +3 is fulfilled. Different items never block each other.",
             "A worn alternative pauses the ladder of its slot: while e.g. a Loaded Die is worn, no class orb is built.",
             "Shop weapons stop at +8 and only while no better copy is there (a worn Fiery Blade +7 already beats a Blade +8: 54 + burn vs 50). Above that the fire weapon ladder is the way up.",
-            "Wanderer's set: each piece has the stats of the shop piece of its slot plus a little (cap +120 HP, attire +80 MP, breeches +1 speed) and the set bonus (2: +200 HP, 3: +100 MP, 4: +10% gold, 5: +16 luck). A dropped piece is built to the worn shop piece's level and replaces it, then runs with the armor goals in parallel - a horizontal upgrade, never crafted, never ahead of real upgrades. Not for tanks on the Rugged set.",
+            "Wanderer's set: each piece has the stats of the shop piece of its slot plus a little (cap +120 HP, attire +80 MP, breeches +1 speed) and the set bonus (2: +200 HP, 3: +100 MP, 4: +10% gold, 5: +16 luck). A dropped piece is built to the worn shop piece's level and replaces it, then runs with the armor goals in parallel - a horizontal upgrade, never crafted, never ahead of real upgrades. Not for tanks on the Rugged set. Exception: the chest opener (priest) wishes its pieces actively (2026-11-20).",
         ],
         decisions: {
             "2026-11-19": [
@@ -604,6 +615,14 @@ module.exports = {
                 "Winged Boots built to +7 (rare scrolls from +8).",
                 "The warrior stays on Fiery Blades (no Swords of the Dead).",
                 "Shop weapons run through the stages with the armor: everything to +7 first, then +8.",
+            ],
+            "2026-11-20": [
+                "The fighter with the highest gold bonus opens the party's chests (the opener's gold multiplier counts for the whole chest).",
+                "The priest (our opener) wishes Wanderer's Attire, Breeches and Gloves +8 once its shop gear is done - with the cap +10% gold. Bases from Ponty; never a stat loss (delivered only at +8).",
+                "Wanderer's Shoes +8 stand in for the Winged Boots on the priest (full set: +16 luck); finished Winged Boots replace them.",
+                "Shop gear and armor take the High scroll from +5 -> +6 on.",
+                "Stages are team-wide: everyone's shop gear to +7, then everyone to +8.",
+                "Weapon wishes and Ponty finds only for the weapon types of the class's plan.",
             ],
         },
         groups: {
@@ -673,6 +692,16 @@ module.exports = {
             { slot: "pants", item: "pants1", to: 7, replace: true, for: "tank", how: "armor box" },
             { slot: "chest", item: "coat1", to: 7, replace: true, for: "tank", how: "armor box" },
             { slot: "shoes", item: "shoes1", to: 7, replace: true, for: "tank", how: "armor box" },
+            // Priest - the chest opener: Wanderer's pieces +8 (int) replace the shop pieces once its
+            // own shop gear is done (player decision 2026-11-20). With the cap that is 4 pieces:
+            // +10% gold on every chest it opens. Bases from Ponty (+0 copies are plentiful).
+            // Shoes: Wanderer's Shoes +8 stand in for the Winged Boots (long to get) - the full set adds
+            // +16 luck. Worn Winged Boots pause this chain; finished ones replace the stand-in (2026-11-20).
+            { slot: "chest", item: "wattire", to: 8, replace: true, for: "priest", how: "Ponty / craft" },
+            { slot: "pants", item: "wbreeches", to: 8, replace: true, for: "priest", how: "Ponty / craft" },
+            { slot: "gloves", item: "wgloves", to: 8, replace: true, for: "priest", how: "Ponty / craft" },
+            { slot: "shoes", item: "wshoes", to: 8, replace: true, for: "priest", how: "Ponty / craft",
+                alts: [{ item: "wingedboots", how: "craft: Shoes + 20 Magical Feathers" }] },
             // Warrior Agitate mode: two orange Lolipop Maces carried in the bag; green ones stand in.
             { slot: "mainhand", item: "ololipop", to: 7, carry: true, count: 2, for: "warrior", how: "drop: Jr." },
             { slot: "mainhand", item: "glolipop", to: 7, carry: true, count: 2, insteadOf: "ololipop", for: "warrior", how: "drop: Green Jr." },
@@ -764,6 +793,9 @@ module.exports = {
             maxScrollGrade: 2,     // try up to Rare scrolls when the normal one falls short
             // Weapons nobody sells in normal grade use the High scroll (40k) from +4 -> +5 on.
             higherScrollFrom: 5,
+            // Shop gear (armor and weapons) and other armor (Wanderer pieces): the High scroll from
+            // +5 -> +6 on instead of the normal one - faster stages (player decision 2026-11-20).
+            gearHighScrollFrom: 5,
             buyStrongerScrolls: true, // only within budgetPerWish; owned/banked ones are used first
         },
         // Gold per wish (base item + scrolls, failures included): shop gear vs token/drop
@@ -771,7 +803,8 @@ module.exports = {
         budgetPerWish: {
             shop: 1000000, rare: 4000000,
             // Per item, e.g. { waxe: 4000000 } (the Wooden Axe plan was dropped 2026-11-17).
-            byItem: {},
+            // Wanderer's pieces to +8 from Ponty copies (~24k each, many burnt on the way): 2026-11-20.
+            byItem: { wattire: 8000000, wbreeches: 8000000, wgloves: 8000000, wshoes: 8000000 },
         },
         massSkills: true,             // Mass Production / Mass Exchange before upgrades and exchanges
         mainStatOnArmor: true,        // wished armor always gets the class's main stat scroll
@@ -1050,6 +1083,10 @@ module.exports = {
         onePerCharacter: ["tracker"],
         // The merchant keeps no copy for itself (player decision 2026-11-19: 3 for 12 tokens).
         onePerCharacterKeepOwn: false,
+        // Merchant's Luck (player decision 2026-11-20): ourselves, our fighters and every other
+        // non-merchant player in reach (2 % chance of a copy of what they loot). Ours is renewed
+        // below refreshBelowMs; strangers' "strong" mluck (their own merchant's) is left alone.
+        mluck: { enabled: true, strangers: true, refreshBelowMs: 30 * 60 * 1000, mpReserve: 100 },
         // Skill ingredients go to the class that uses them on every delivery.
         classItems: { priest: ["essenceoflife"], ranger: ["poison"] },
         // Bank: when the bag runs low on space, everything that is neither sold

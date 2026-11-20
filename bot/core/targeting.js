@@ -627,7 +627,7 @@ module.exports = function createTargeting(ctx) {
             if (!isolated(e)) return;
             if (!e.target && inOccupied(e)) return; // another player's spot
             const d = util.distanceTo(e);
-            if (d < bestD) { bestD = d; best = e; }
+            if (d < bestD && !skipDoomed(e)) { bestD = d; best = e; }
         });
         return best;
     }
@@ -1103,6 +1103,80 @@ module.exports = function createTargeting(ctx) {
     }
 
     // A target stays valid while it is visible, alive and not fighting someone else.
+    // ---- doomed targets (player decision 2026-11-20, from earthiverse's bot) ---------
+    // Every attack the server announces ("action": attacker, target, raw damage, flight time)
+    // is noted until its "hit" lands. A monster the damage already in the air will kill is
+    // skipped: the warrior no longer walks to a bee that dies on the way, the ranger no longer
+    // shoots one the warrior's swing finishes. Minimum damage only (raw x armor/resistance
+    // multiplier x 0.9); evasion, reflection and avoidance count as "may miss" (no damage).
+    // The listeners live on the game page and are swapped on each load (like the hit log).
+    const PAGE = parent;
+    try {
+        if (PAGE.__dmpxActFn) PAGE.socket.off("action", PAGE.__dmpxActFn);
+        if (PAGE.__dmpxActHitFn) PAGE.socket.off("hit", PAGE.__dmpxActHitFn);
+        PAGE.__dmpxInflight = {};
+        PAGE.__dmpxDoomedSkips = PAGE.__dmpxDoomedSkips || 0;
+        PAGE.__dmpxActFn = function (d) {
+            try {
+                if (!d || !d.damage || d.heal || !d.target || !d.pid) return;
+                const t = PAGE.entities && PAGE.entities[d.target];
+                if (!t || t.type !== "monster") return;
+                PAGE.__dmpxInflight[d.pid] = { target: d.target, attacker: d.attacker, type: d.type, damage: d.damage, until: Date.now() + (d.eta || 0) + 600 };
+            } catch (e) { /* estimate only */ }
+        };
+        PAGE.__dmpxActHitFn = function (d) {
+            try { if (d && d.pid && PAGE.__dmpxInflight) delete PAGE.__dmpxInflight[d.pid]; } catch (e) { /* estimate only */ }
+        };
+        PAGE.socket.on("action", PAGE.__dmpxActFn);
+        PAGE.socket.on("hit", PAGE.__dmpxActHitFn);
+    } catch (e) { /* no socket */ }
+    // The game's damage multiplier for armor/resistance (server formula, as ALClient's Tools).
+    function defenseMult(d) {
+        if (d <= -980) return 1.32;
+        if (d <= -150) return 1.1125 - (d + 150) * 0.00025;
+        if (d <= -100) return 1.0875 - (d + 100) * 0.0005;
+        if (d <= -50) return 1.05 - (d + 50) * 0.00075;
+        if (d <= 100) return 1 - d * 0.001;
+        if (d <= 200) return 0.9 - (d - 100) * 0.001;
+        if (d <= 300) return 0.8 - (d - 200) * 0.00095;
+        if (d <= 400) return 0.705 - (d - 300) * 0.0009;
+        if (d <= 500) return 0.615 - (d - 400) * 0.00082;
+        if (d <= 600) return 0.533 - (d - 500) * 0.0007;
+        if (d <= 700) return 0.463 - (d - 600) * 0.0006;
+        if (d <= 800) return 0.403 - (d - 700) * 0.0005;
+        if (d <= 1557.5) return 0.353 - (d - 800) * 0.0004;
+        return 0.05;
+    }
+    // Will the damage already on its way kill this monster?
+    function doomed(t) {
+        const fl = PAGE.__dmpxInflight;
+        if (!t || !fl) return false;
+        const def = G.monsters[t.mtype] || {};
+        if (t.avoidance || def.avoidance) return false;
+        const now = Date.now();
+        let sum = 0;
+        for (const pid in fl) {
+            const p = fl[pid];
+            if (p.until < now) { delete fl[pid]; continue; }
+            if (p.target !== t.id) continue;
+            const a = p.attacker === character.id ? character : (PAGE.entities && PAGE.entities[p.attacker]);
+            const mh = a && a.slots && a.slots.mainhand && G.items[a.slots.mainhand.name];
+            const dtype = (p.type !== "attack" && G.skills[p.type] && G.skills[p.type].damage_type) ||
+                (mh && mh.damage_type) || (a && G.classes[a.ctype] && G.classes[a.ctype].damage_type) || "physical";
+            if (dtype === "magical" && (t.reflection || def.reflection)) continue;
+            if (dtype === "physical" && (t.evasion || def.evasion)) continue;
+            const defense = dtype === "magical" ? (t.resistance != null ? t.resistance : (def.resistance || 0)) : (t.armor != null ? t.armor : (def.armor || 0));
+            sum += def["1hp"] ? 1 : p.damage * defenseMult(defense) * 0.9;
+            if (sum >= t.hp) return true;
+        }
+        return false;
+    }
+    function skipDoomed(t) {
+        if (!doomed(t)) return false;
+        PAGE.__dmpxDoomedSkips = (PAGE.__dmpxDoomedSkips || 0) + 1;
+        return true;
+    }
+
     function isValid(t) {
         if (!t || !t.visible || t.dead || t.type !== "monster") return false;
         if (util.tooSpiky(config, t)) return false; // melee vs. damage return: our own hit kills us
@@ -1111,27 +1185,55 @@ module.exports = function createTargeting(ctx) {
     }
 
     // Nearest monster attacking us or any party member (V1's party-aggro priority).
+    // Doomed ones (dying to damage already in the air) are passed over (2026-11-20).
     function nearestPartyAttacker() {
         const names = party.memberNames();
         if (!names.includes(character.name)) names.push(character.name);
         let best = null;
         let bestDistance = Infinity;
-        names.forEach(function (name) {
-            const m = get_nearest_monster({ target: name });
-            if (!m) return;
+        Object.values(parent.entities || {}).forEach(function (m) {
+            if (!m || m.type !== "monster" || m.dead || !m.target || !names.includes(m.target)) return;
             const d = util.distanceTo(m);
-            if (d < bestDistance) { best = m; bestDistance = d; }
+            if (d >= bestDistance || skipDoomed(m)) return;
+            best = m;
+            bestDistance = d;
         });
         return best;
     }
 
+    // Rare monsters (player decision 2026-11-20, from earthiverse's bot): a golden bat, cutebee,
+    // tiny pinky or a seasonal one in sight goes first - before the current target. Only ones we
+    // get credit for (no target, or on us or a member), within rare.range px, and not invulnerable.
+    function rareTarget() {
+        const rc = config.targeting.rare || {};
+        if (!rc.enabled || !(rc.types || []).length) return null;
+        const ours = [character.name].concat(party.enabled ? party.memberNames() : []);
+        let best = null, bestD = Infinity;
+        Object.values(parent.entities || {}).forEach(function (e) {
+            if (!e || e.type !== "monster" || e.dead || !rc.types.includes(e.mtype)) return;
+            if (e.target && !ours.includes(e.target)) return;
+            if (e.s && (e.s.fullguard || e.s.fullguardx || e.s.invincible)) return;
+            const d = util.distanceTo(e);
+            if (d <= (rc.range || 400) && d < bestD) { best = e; bestD = d; }
+        });
+        if (best && best.id !== lastRareId) {
+            lastRareId = best.id;
+            util.log("target", "rare monster: " + best.mtype + " (" + Math.round(bestD) + " px) - attacking", "yellow");
+        }
+        return best;
+    }
+    let lastRareId = null;
+
     function pick(farmTarget) {
         checkOccupied();
+        const rare = rareTarget();
+        if (rare) return rare;
         const current = get_targeted_monster();
         // A lone pull we are still walking up to must stay alone until it is engaged: the
         // White Wolf wandered deeper into the pack while the priest followed it (2026-11-17).
         // Dropped, we hold (waitForLone) until it – or another one – stands alone again.
-        if (isValid(current) && !(!current.target && aggressive(current) && !isolated(current))) return current;
+        // A current target the damage in the air already kills is let go (2026-11-20).
+        if (isValid(current) && !(!current.target && aggressive(current) && !isolated(current)) && !skipDoomed(current)) return current;
 
         const attacker = nearestPartyAttacker();
         // Easy monsters (spread): help only with ones in our range or on us - the rest walk to
@@ -1171,12 +1273,12 @@ module.exports = function createTargeting(ctx) {
             // Otherwise only assist the leader, never pull new monsters –
             // and never wander off to a farm spot of our own.
             const assist = lead && lead.target ? get_monster(lead.target) : null;
-            return isValid(assist) && (assist.target || isCoop(assist)) ? assist : null;
+            return isValid(assist) && (assist.target || isCoop(assist)) && !skipDoomed(assist) ? assist : null;
         }
 
         const type = farmTarget.monster;
         if (G.monsters[type] && G.monsters[type].cooperative) {
-            const boss = get_nearest_monster({ type: type });
+            const boss = get_nearest_monster({ type: type }); // bosses never die to one volley
             if (isValid(boss)) return boss;
         }
         const best = nearestSafe(type);
@@ -1184,7 +1286,7 @@ module.exports = function createTargeting(ctx) {
         return best;
     }
 
-    return { currentFarm: currentFarm, farmNow: function () { return farm; }, pick: pick, isValid: isValid, reportSearch: reportSearch, isTeamSafe: isTeamSafe, whyUnsafe: whyUnsafe,
+    return { currentFarm: currentFarm, farmNow: function () { return farm; }, pick: pick, doomed: doomed, isValid: isValid, reportSearch: reportSearch, isTeamSafe: isTeamSafe, whyUnsafe: whyUnsafe,
         teamModelOn: teamModelOn, teamVerdict: teamVerdict, safetyReport: safetyReport, waitForLone: waitForLone, watchPoint: watchPoint, standPoint: standPoint, aggressive: aggressive, diedAt: diedAt, deathAt: deathAt, spotFor: spotFor, liveSafe: liveSafe, inOccupied: inOccupied, packVerdict: packVerdict, isEasy: isEasy,
         // HP a solo fight against this monster costs (0 if it was never checked: harmless or low level).
         soloCost: function (e) { return (e && soloCostById[e.id]) || 0; } };

@@ -713,6 +713,57 @@ module.exports = function createMerchant(ctx) {
         }
     }
 
+    // ---- Merchant's Luck for everyone in reach (player decision 2026-11-20) -----------
+    // +12 luck for 60 min, and the caster gets a 2 % chance of a copy of every item the target
+    // loots (game source: drop logic checks s.mluck.f) - a Ring of Joy +2 with the M mark came
+    // that way. So: ourselves, our fighters, and every other non-merchant player passing by.
+    // The server only overwrites another merchant's mluck when it is not "strong" (strong =
+    // cast by the target's own account), so those are skipped. 10 MP per cast; potions below
+    // 20 % MP as before (survive).
+    const mlc = (config.merchantRole && config.merchantRole.mluck) || {};
+    let lastMluck = 0, mluckCasts = 0, mluckSince = Date.now();
+    function mluckTick() {
+        if (!mlc.enabled || !G.skills.mluck || character.level < (G.skills.mluck.level || 0)) return;
+        if (Date.now() - lastMluck < 500 || !util.canCast("mluck")) return;
+        // Never during a channel (Town teleport, fishing, mining): a skill would cancel it.
+        if (util.townChannel() || (character.c && (character.c.fishing || character.c.mining))) return;
+        if (character.mp < G.skills.mluck.mp + (mlc.mpReserve || 100)) return;
+        const refresh = mlc.refreshBelowMs || 30 * 60 * 1000;
+        const team = ((config.team && config.team.fighters) || []).concat([character.name]);
+        const range = G.skills.mluck.range || 320;
+        const needs = function (p) {
+            const s = p.s && p.s.mluck;
+            if (!s) return 0; // none at all: most urgent
+            if (s.f === character.name) return s.ms < refresh ? s.ms : -1;
+            if (s.strong) return -1; // another account's own merchant: the server keeps theirs
+            return 1;
+        };
+        const list = [character];
+        Object.values(parent.entities || {}).forEach(function (e) {
+            if (!e || e.type !== "character" || e.npc || e.rip) return;
+            if (!team.includes(e.name) && (!mlc.strangers || e.ctype === "merchant")) return; // merchants loot nothing
+            if (util.distanceTo(e) > range) return;
+            list.push(e);
+        });
+        let best = null, bestNeed = Infinity, bestOurs = false;
+        list.forEach(function (p) {
+            const n = needs(p);
+            if (n < 0) return;
+            const ours = team.includes(p.name);
+            // Our own characters first, then the most urgent.
+            if (!best || (ours && !bestOurs) || (ours === bestOurs && n < bestNeed)) { best = p; bestNeed = n; bestOurs = ours; }
+        });
+        if (!best) return;
+        lastMluck = Date.now();
+        use_skill("mluck", best === character ? character.name : best.name).catch(function () {});
+        mluckCasts++;
+        if (Date.now() - mluckSince > 60 * 60 * 1000) {
+            util.log("merchant", "Merchant's Luck: " + mluckCasts + " casts in the last hour", "white");
+            mluckCasts = 0;
+            mluckSince = Date.now();
+        }
+    }
+
     async function loop() {
         running = true;
         util.log("bot", "merchant started", "green");
@@ -725,6 +776,7 @@ module.exports = function createMerchant(ctx) {
                     }
                 } else {
                     survive();
+                    mluckTick();
                     work();
                 }
             } catch (e) {

@@ -569,10 +569,8 @@ module.exports = function createWarrior(ctx) {
                 inRange.forEach(function (m) { const n = splashNeighbours(m, mine); if (n > bestN) { bestN = n; t = m; } });
             }
             if (get_targeted_monster() !== t) change_target(t);
-            if (can_attack(t)) {
-                attack(t).catch(function () {});
-                noteHit(t.mtype, splashNeighbours(t, onMe())); // learning: (would-have) splash per hit
-            }
+            // Fired by the strike loop the moment the cooldown ends (2026-11-20).
+            ctx.strike.attack(t, function (m) { noteHit(m.mtype, splashNeighbours(m, onMe())); }); // learning: (would-have) splash per hit
             streamWalkTo = null;
             util.status("agitate stream: " + t.mtype + " (" + onMe().length + " on us)", "green");
             return true;
@@ -871,14 +869,15 @@ module.exports = function createWarrior(ctx) {
             }
         }
         if (get_targeted_monster() !== best) change_target(best);
-        if (can_attack(best)) {
-            attack(best).catch(function () {});
+        // Fired by the strike loop the moment the cooldown ends (2026-11-20).
+        ctx.strike.attack(best, function (m) {
+            const n = splashNeighbours(m, onMe());
             pack.attacks++;
-            pack.neighborSum += bestN;
-            noteHit(best.mtype, bestN);
-            pack.recent.push(bestN);
+            pack.neighborSum += n;
+            noteHit(m.mtype, n);
+            pack.recent.push(n);
             if (pack.recent.length > 6) pack.recent.shift();
-        }
+        });
         util.status("agitate: " + mine.length + " on us, splash " + bestN, "green");
         return true;
     }

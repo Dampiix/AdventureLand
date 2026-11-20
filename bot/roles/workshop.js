@@ -1771,6 +1771,11 @@ module.exports = function createWorkshop(ctx) {
             // higher adds nothing more (server.js).
             const hs = cfg.risk.higherScrollFrom;
             if (hs && grade === 0 && level + 1 >= hs && !sellerOf(w.name) && G.items[w.name].type === "weapon") scroll = "scroll1";
+            // Shop gear and armor (Wanderer pieces) from +5 -> +6 on: the High scroll too - fewer
+            // copies burnt, the stages are reached faster (player decision 2026-11-20).
+            const gs = cfg.risk.gearHighScrollFrom;
+            const armor = ["helmet", "chest", "pants", "shoes", "gloves"].includes(G.items[w.name].type);
+            if (gs && grade === 0 && level >= gs && (sellerOf(w.name) || armor)) scroll = "scroll1";
             await ensureScroll(k, scroll, w.level - level);
             await goTo("newupgrade");
             // Buying and walking can reorder the bag: re-locate the working copy.

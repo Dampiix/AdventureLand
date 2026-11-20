@@ -650,7 +650,7 @@ module.exports = function createFighter(ctx, cls) {
         const kiting = kiteStep(target) || spacingStep(target);
         if (!kiting) util.status(cls.name + ": " + target.mtype, "green");
         if (cls.fight(target)) return;
-        if (can_attack(target)) attack(target).catch(function () {});
+        strike.attack(target); // fires at once, or the moment the cooldown ends
     }
 
     // Cavalry (Tracktrix, interact("cavalry"); player decision 2026-11-18). Below account level 80
@@ -723,6 +723,181 @@ module.exports = function createFighter(ctx, cls) {
         }
     }
 
+    // ---- strike loop (player decision 2026-11-20, idea from earthiverse's bot) ------
+    // Attacks and heals fire the moment the cooldown ends instead of on the next 250 ms tick
+    // (on average ~125 ms lost per swing, 15-25 % of damage and heals). The tick decides WHAT
+    // to hit (strike.attack / strike.heal set an intent for ~700 ms); this loop decides WHEN.
+    // After each strike the local cooldown is shortened by our ping (reduce_cooldown).
+    let strikeIntent = null; // { kind: "attack"|"heal", id|name, at, after }
+    function msToAttack() {
+        const n = parent.next_skill && parent.next_skill.attack;
+        return n ? n - Date.now() : 0;
+    }
+    function pingComp() { return Math.min(150, Math.max(0, (character.ping || 0) * 0.9)); }
+    function fire() {
+        const i = strikeIntent;
+        if (!i || Date.now() - i.at > 700 || character.rip) return false;
+        if (msToAttack() > 0) return false;
+        if (parent.is_disabled && parent.is_disabled(character)) return false;
+        if (i.kind === "heal") {
+            const p = i.name === character.name ? character : get_player(i.name);
+            if (!p || p.rip || (p !== character && !is_in_range(p, "heal"))) return false;
+            heal(p).then(function () { reduce_cooldown("attack", pingComp()); }).catch(function () {});
+            return true;
+        }
+        const t = parent.entities && parent.entities[i.id];
+        if (!t || t.dead || !is_in_range(t)) return false;
+        if (targeting.doomed && targeting.doomed(t)) return false; // the next tick picks another
+        attack(t).then(function () { reduce_cooldown("attack", pingComp()); }).catch(function () {});
+        if (i.after) { try { i.after(t); } catch (e) { /* bookkeeping only */ } }
+        return true;
+    }
+    const strike = {
+        // Hit this monster as soon as the cooldown allows; `after` runs once per swing sent.
+        attack: function (target, after) {
+            if (!target) return;
+            strikeIntent = { kind: "attack", id: target.id, at: Date.now(), after: after || null };
+            fire();
+        },
+        heal: function (entity) {
+            if (!entity) return;
+            strikeIntent = { kind: "heal", name: entity === character ? character.name : entity.name, at: Date.now() };
+            fire();
+        },
+    };
+    ctx.strike = strike;
+    async function strikeLoop() {
+        while (running) {
+            let wait = 100;
+            try {
+                if (!fire()) {
+                    const ms = msToAttack();
+                    wait = strikeIntent && ms > 0 ? Math.min(200, Math.max(10, ms)) : 100;
+                } else wait = 60;
+            } catch (e) { /* next round */ }
+            await sleep(wait);
+        }
+    }
+
+    // Busy phases (waiting for the team, following, trips, events, Daisy): defend and heal in
+    // place - only targets already in range, never a step (player decision 2026-11-20, from
+    // earthiverse: his fight loop never moves, the move loop decides where to go). We had cut
+    // all fighting there because fights kept the team from leaving a spot.
+    function defendInPlace() {
+        if (character.rip) return;
+        if (cls.supportInPlace && cls.supportInPlace()) return;
+        const ours = [character.name].concat(party.enabled ? party.memberNames() : []);
+        let best = null;
+        Object.values(parent.entities || {}).forEach(function (e) {
+            if (!e || e.type !== "monster" || e.dead || !e.target || !ours.includes(e.target)) return;
+            if (!is_in_range(e) || util.tooSpiky(config, e)) return;
+            if (targeting.doomed && targeting.doomed(e)) return; // dies to damage already in the air
+            if (!best || e.hp < best.hp) best = e;
+        });
+        if (best) strike.attack(best);
+    }
+
+    // ---- chest opener (player decision 2026-11-20) ---------------------------------
+    // A party chest's gold uses the OPENER's gold multiplier for everyone (game guide: opener
+    // within 400 px, within 8 min). So the fighter with the highest gold bonus opens them; the
+    // others leave a chest to it - unless it is dead, out of sight or farther than awayRange
+    // from the chest (its bonus would not count anyway), or the chest has waited fallbackMs.
+    // The game's own loot() opens every chest on the map, whoever is first.
+    const co = (config.party && config.party.chestOpener) || {};
+    const goldOf = {}; // fighter -> { g, at } gold multipliers the others reported
+    let lastGoldSend = 0, lastLootAt = 0, lastOpenerSend = 0, lastOpenerSent = "";
+    let leaderOpener = null; // { name, at } - the leader's choice (members follow it)
+    let lastStuckLog = 0;
+    const chestSeen = {}; // chest id -> first time we saw it
+    ctx.comms.on("goldm", function (data, from) {
+        if (!data || typeof data.g !== "number" || !((config.team && config.team.fighters) || []).includes(from)) return;
+        goldOf[from] = { g: data.g, at: Date.now() };
+    });
+    // One decision for the whole team (2026-11-20): every fighter choosing on its own from
+    // reports up to a minute old disagreed when a gold bonus changed - the priest saw another
+    // opener, the others saw the priest, and the bees' chests piled up until fallbackMs.
+    ctx.comms.on("opener", function (data, from) {
+        if (from !== config.leader || !data || !data.name) return;
+        leaderOpener = { name: data.name, at: Date.now() };
+    });
+    function shareGold() {
+        const now = Date.now();
+        const team = (config.team && config.team.fighters) || [];
+        const others = party.memberNames().filter(function (n) { return n !== character.name && team.includes(n); });
+        if (party.isLeader) {
+            // The leader tells everyone its choice: every 5 s, at once when it changes.
+            const op = chooseOpener();
+            if (op !== lastOpenerSent || now - lastOpenerSend > 5000) {
+                lastOpenerSent = op;
+                lastOpenerSend = now;
+                others.forEach(function (n) { ctx.comms.send(n, "opener", { name: op }); });
+            }
+        }
+        if (now - lastGoldSend < 30 * 1000) return;
+        lastGoldSend = now;
+        if (!party.isLeader && config.leader && others.includes(config.leader)) ctx.comms.send(config.leader, "goldm", { g: character.goldm || 1 });
+    }
+    // Members: the leader's choice while it is fresh; the leader (or without it): our own.
+    function chestOpener() {
+        if (!party.isLeader && leaderOpener && Date.now() - leaderOpener.at < 30 * 1000) return leaderOpener.name;
+        return chooseOpener();
+    }
+    // The fighter that opens chests: config fixed one, else the highest gold multiplier among
+    // the team fighters in the party (reports younger than 3 min); ties: the leader, then team order.
+    function chooseOpener() {
+        const team = (config.team && config.team.fighters) || [];
+        const here = team.filter(function (n) { return n === character.name || party.memberNames().includes(n); });
+        if (co.fixed && here.includes(co.fixed)) return co.fixed;
+        let best = null, bestG = -1;
+        const order = [config.leader].concat(team).filter(function (n, i, a) { return n && a.indexOf(n) === i && here.includes(n); });
+        order.forEach(function (n) {
+            const g = n === character.name ? (character.goldm || 1)
+                : (goldOf[n] && Date.now() - goldOf[n].at < 3 * 60 * 1000 ? goldOf[n].g : null);
+            if (g !== null && g > bestG + 1e-9) { best = n; bestG = g; }
+        });
+        return best || character.name;
+    }
+    function openerAway(name, chest) {
+        if (name === character.name) return false;
+        const p = get_player(name);
+        if (!p || p.rip || (p.map && p.map !== character.map)) return true;
+        return Math.hypot((p.x || 0) - chest.x, (p.y || 0) - chest.y) > (co.awayRange || 400);
+    }
+    function lootChests() {
+        if (!co.enabled || !party.enabled) { loot(); return; }
+        shareGold();
+        const now = Date.now();
+        if (now - lastLootAt < Math.min(300, (character.ping || 100) * 3)) return;
+        const opener = chestOpener();
+        const ids = Object.keys(parent.chests || {});
+        Object.keys(chestSeen).forEach(function (id) { if (!ids.includes(id)) delete chestSeen[id]; });
+        // Diagnosis (2026-11-20: a pile of chests stayed behind): any fighter with chests older than
+        // twice fallbackMs says what it sees - at most every 2 min.
+        if (now - lastStuckLog > 2 * 60 * 1000) {
+            const oldIds = ids.filter(function (id) { return chestSeen[id] && now - chestSeen[id] > 2 * (co.fallbackMs || 10000); });
+            if (oldIds.length >= 3) {
+                lastStuckLog = now;
+                const c0 = parent.chests[oldIds[0]] || {};
+                const fromLeader = !party.isLeader && leaderOpener && now - leaderOpener.at < 30 * 1000;
+                util.log("loot", oldIds.length + " chests older than " + Math.round(2 * (co.fallbackMs || 10000) / 1000) + " s - opener " + opener +
+                    (opener === character.name ? " (us)" : " (away: " + openerAway(opener, c0) + ")") + ", choice from " + (fromLeader ? "leader" : "own") +
+                    ", first at " + Math.round(Math.hypot((c0.x || 0) - character.x, (c0.y || 0) - character.y)) + " px, items " + (c0.items || 0) + "/" + character.esize, "orange");
+            }
+        }
+        let opened = 0;
+        for (let i = 0; i < ids.length && opened < 2; i++) {
+            const id = ids[i], chest = parent.chests[id];
+            if (!chest) continue;
+            if (!chestSeen[id]) chestSeen[id] = now;
+            if ((chest.items || 0) > character.esize || (chest.last_loot && now - chest.last_loot < 1600)) continue;
+            if (opener !== character.name && !openerAway(opener, chest) && now - chestSeen[id] < (co.fallbackMs || 30000)) continue;
+            chest.last_loot = now;
+            lastLootAt = now;
+            opened++;
+            try { Promise.resolve(loot(id)).catch(function () {}); } catch (e) { /* chest gone */ }
+        }
+    }
+
     // Leader: wait for fighters far behind (player request 2026-11-18: the priest walked into the
     // farm spot while warrior and ranger were still on the way). Only while nothing attacks us;
     // members farming on their own (damage return) and dead ones are not waited for; after
@@ -782,20 +957,14 @@ module.exports = function createFighter(ctx, cls) {
         if (!party.enabled || party.isLeader) meterReport(false); // the leader sees the whole team
         if (!cls.survive()) handlePotions();
         if (cls.always) cls.always(); // every tick, also while a trip keeps the loop busy
-        loot();
+        lootChests();
         party.manage();
         // Leader: share position every tick – also while searching, travelling or at Daisy,
         // so members never lose track (party.broadcast throttles itself).
         party.broadcast(lastFarm, lastTarget, ctx.events.current());
         ctx.gear.tick();
         cavalryTick();
-        if (waitForTeam()) return;
-        if (supply.tick() === "busy") return;
-        if (ctx.events.tick() === "busy") return;
-        if (!ctx.events.current() && ctx.hunts.tick() === "busy") return; // no Daisy trips during events
-        const ev = ctx.events.current();
-        if (party.keepUp(!!(ev && ev.join))) return;
-        if (party.leaderTravels && party.leaderTravels()) { party.idleFollow(); return; } // no fights on the way
+        if (busyStep()) { defendInPlace(); return; }
         const covering = coverMembers();
         if (cls.support()) {
             // Healing while passing through: keep walking (a priest healing the warrior every tick
@@ -805,6 +974,18 @@ module.exports = function createFighter(ctx, cls) {
         }
         if (covering) return;
         handleCombat();
+    }
+
+    // True while something else than the fight decides where we go this tick.
+    function busyStep() {
+        if (waitForTeam()) return true;
+        if (supply.tick() === "busy") return true;
+        if (ctx.events.tick() === "busy") return true;
+        if (!ctx.events.current() && ctx.hunts.tick() === "busy") return true; // no Daisy trips during events
+        const ev = ctx.events.current();
+        if (party.keepUp(!!(ev && ev.join))) return true;
+        if (party.leaderTravels && party.leaderTravels()) { party.idleFollow(); return true; } // no fights on the way
+        return false;
     }
 
     // A healer leader stays with a member under attack instead of walking on to the next spot
@@ -837,6 +1018,7 @@ module.exports = function createFighter(ctx, cls) {
     async function loop() {
         running = true;
         util.log("bot", "fighter started (" + cls.name + (party.enabled ? ", party " + (party.isLeader ? "leader" : "member") : ", solo") + ")", "green");
+        strikeLoop();
         while (running) {
             try {
                 tick();
