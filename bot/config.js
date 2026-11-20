@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.144.1",
+    version: "1.145.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -337,7 +337,9 @@ module.exports = {
         // Another player within occupiedRadius of the farm spot we walk to: that spot is skipped
         // for occupiedForMs and its free monsters are left alone (2026-11-18, Eagle at the bats).
         // occupiedForMs 20 -> 60 min (player decision 2026-11-19).
-        occupiedBy: 1, occupiedRadius: 300, occupiedAfterMs: 20000, occupiedForMs: 60 * 60 * 1000,
+        // A taken spot we stand on without another player's fighter for occupiedFreeMs is free
+        // again (player decision 2026-11-20).
+        occupiedBy: 1, occupiedRadius: 300, occupiedAfterMs: 20000, occupiedForMs: 60 * 60 * 1000, occupiedFreeMs: 30 * 1000,
         crowdedMaxMs: 6 * 60 * 60 * 1000, // doubled each time the same spot is crowded again within a day
     },
 

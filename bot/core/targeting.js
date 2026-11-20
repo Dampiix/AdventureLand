@@ -400,14 +400,39 @@ module.exports = function createTargeting(ctx) {
         return occupiedSpots().some(function (s) { return s.map === character.map && Math.hypot(p.x - s.x, p.y - s.y) <= r; });
     }
     const strangerSince = {}; // name -> first seen on our spot (checkOccupied)
+    const emptySince = {}; // occupied spot key -> first time we saw it without other fighters
+    // Other players' fighters on a spot (merchants never count).
+    function fightersNear(p) {
+        return strangersNear(p, cfg.occupiedRadius || 300).filter(function (e) { return e.ctype !== "merchant"; });
+    }
+    // An occupied spot we stand on with no other fighter on it for occupiedFreeMs is free again
+    // (player decision 2026-11-20: the croc spot stayed "taken" long after the player had left,
+    // and the detached warrior stood idle among six free crocs until the crowded check fired).
+    function releaseFreedSpots() {
+        const now = Date.now();
+        occupiedSpots().forEach(function (s) {
+            const k = spotKey(s);
+            const near = character.map === s.map && Math.hypot(character.real_x - s.x, character.real_y - s.y) <= 400;
+            if (!near || fightersNear(s).length) { delete emptySince[k]; return; }
+            if (!emptySince[k]) emptySince[k] = now;
+            if (now - emptySince[k] < (cfg.occupiedFreeMs || 30 * 1000)) return;
+            delete occupiedUntil[k];
+            delete emptySince[k];
+            util.log("target", "spot " + s.map + " " + s.x + "," + s.y + " is free again", "green");
+        });
+    }
     function checkOccupied() {
+        releaseFreedSpots();
         const s = lastSpot;
-        if (!s || character.map !== s.map || occupiedUntil[spotKey(s)] > Date.now()) return;
+        // Only the spot of our current farm target (2026-11-20): a spot remembered from an earlier
+        // target was marked taken while we stood next to it with the leader, and blocked it later.
+        if (!s || !farm || farm.any || s.type !== farm.monster) return;
+        if (character.map !== s.map || occupiedUntil[spotKey(s)] > Date.now()) return;
         if (Math.hypot(character.real_x - s.x, character.real_y - s.y) > 400) return; // judged on the spot only
         // Only players who stay: merchants never count, and a fighter must be seen on the spot
         // for occupiedAfterMs (2026-11-18: a merchant walking past blocked the goo spot for 20 min).
         const now = Date.now();
-        const here = strangersNear(s, cfg.occupiedRadius || 300).filter(function (e) { return e.ctype !== "merchant"; });
+        const here = fightersNear(s);
         Object.keys(strangerSince).forEach(function (n) { if (!here.some(function (e) { return e.name === n; })) delete strangerSince[n]; });
         here.forEach(function (e) { if (!strangerSince[e.name]) strangerSince[e.name] = now; });
         const others = here.filter(function (e) { return now - strangerSince[e.name] >= (cfg.occupiedAfterMs || 20000); });
@@ -460,7 +485,7 @@ module.exports = function createTargeting(ctx) {
             });
         });
         const pickSpot = bestFree || best; // every spot taken: the best one anyway
-        if (pickSpot) lastSpot = { map: pickSpot.map, x: pickSpot.x, y: pickSpot.y };
+        if (pickSpot) lastSpot = { map: pickSpot.map, x: pickSpot.x, y: pickSpot.y, type: type };
         return pickSpot ? { map: pickSpot.map, x: pickSpot.x, y: pickSpot.y } : null;
     }
 
@@ -605,6 +630,31 @@ module.exports = function createTargeting(ctx) {
             if (d < bestD) { bestD = d; best = e; }
         });
         return best;
+    }
+    // Why none of the farm target's monsters in sight was picked (player request 2026-11-20: the
+    // warrior stood idle among free crocs and nothing said why) - once a minute per type.
+    const noneLogged = {};
+    function explainNone(type) {
+        const now = Date.now();
+        if (now - (noneLogged[type] || 0) < 60 * 1000) return;
+        const seen = Object.values(parent.entities || {}).filter(function (e) {
+            return e && e.type === "monster" && e.mtype === type && !e.dead && e.visible;
+        });
+        if (!seen.length) return;
+        noneLogged[type] = now;
+        let busy = 0, unsafe = 0, notAlone = 0, occupied = 0;
+        seen.forEach(function (e) {
+            if (e.target) busy++;
+            else if (util.tooSpiky(config, e) || !liveSafe(e)) unsafe++;
+            else if (!isolated(e)) notAlone++;
+            else if (inOccupied(e)) occupied++;
+        });
+        const parts = [];
+        if (busy) parts.push(busy + " already fighting");
+        if (unsafe) parts.push(unsafe + " too strong");
+        if (notAlone) parts.push(notAlone + " not alone");
+        if (occupied) parts.push(occupied + " on another player's spot");
+        util.log("target", seen.length + " " + type + " in sight, none picked: " + (parts.join(", ") || "no reason found"), "orange");
     }
     // We see monsters of this type but none stands alone: hold position until one does,
     // instead of walking on into the pack.
@@ -1129,7 +1179,9 @@ module.exports = function createTargeting(ctx) {
             const boss = get_nearest_monster({ type: type });
             if (isValid(boss)) return boss;
         }
-        return nearestSafe(type);
+        const best = nearestSafe(type);
+        if (!best) explainNone(type);
+        return best;
     }
 
     return { currentFarm: currentFarm, pick: pick, isValid: isValid, reportSearch: reportSearch, isTeamSafe: isTeamSafe, whyUnsafe: whyUnsafe,
