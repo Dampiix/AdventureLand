@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.144.0",
+    version: "1.144.1",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -81,7 +81,10 @@ module.exports = {
         // goal at its level, priced at priceShare of our own expected cost (two digits), only when
         // funded and at most maxShareOfPot of the gear pot; not for +0 NPC stock; taken down once we
         // hold such a copy. Keeps the stand open for Merrit's parcels with orders worth filling.
-        wishOrders: { enabled: true, priceShare: 1, maxShareOfPot: 0.5, minPrice: 1000, max: 8 },
+        // OFF since 2026-11-20 (player decision): ownCost valued drop hours with gold/hour from a
+        // 24 h window holding the 45M token sale - orbg +0 went for 9.9M, ringsj +1 for 6.3M.
+        // Stays off until the price rule is settled.
+        wishOrders: { enabled: false, priceShare: 1, maxShareOfPot: 0.5, minPrice: 1000, max: 8 },
         // Ponty (player request 2026-11-19, fresh account): every everyMs the merchant checks his
         // listings and buys what a fighter wishes or a gear goal needs - better than our best copy
         // and at most maxShareOfOwn of what making it ourselves would cost. From the shopping pot.

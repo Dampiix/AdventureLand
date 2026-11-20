@@ -1,0 +1,21 @@
+{
+  "account": "viz",
+  "taken": "2026-11-20T02:48:00Z",
+  "note": "Morning after the first night (bot v1.144.0). Compare with 2026-11-19-2231-viz-night-start.json.",
+  "merchant": { "gold": 20328352, "monstertokenBag": 7 },
+  "bank": { "gold": 1000, "monstertoken": 68, "beewings": 43, "spores": 20, "stormfeather": 58, "crabclaw": 300, "seashell": 18, "marketparcel": 7, "gslime": 8 },
+  "levels": { "VizPri": 45, "VizWar": 47, "VizRng": 46 },
+  "goldFlowSinceNightStart": {
+    "in": 3083512,
+    "out": 23394239,
+    "workshopSpends": 6928300,
+    "wishBuyOrdersFilled": { "orbg+0 (CargoShorts)": 9900000, "ringsj+1 (Meltymerch)": 6300000 },
+    "note": "The two wish buy orders were priced by ownCost, whose drop-time value used gold/hour from a 24 h window that held the 45M token sale."
+  },
+  "standBuyOrders": ["essenceoffire x10 @140k", "wgloves+8 @1.2M", "ololipop+0 x2 @150k", "gslime x99 @60", "frogt x10 @10", "glolipop+0 x4 @80k", "offeringp x2 @350k", "crossbow+0 @400k", "wshoes+8 @1.2M", "pants+8 @2.6M", "spores x20 @360", "beewings x27 @75"],
+  "worn": {
+    "VizPri": { "ring1": "ringsj+1", "ring2": "ringsj+1", "earring1": "intearring+0", "earring2": "vitearring+0", "belt": "hpbelt+0", "mainhand": "staff+8", "helmet": "wcap+8:int", "chest": "coat+8:int", "pants": "pants+7:int", "shoes": "shoes+7:int", "gloves": "gloves+7:int", "amulet": "hpamulet+0" },
+    "VizRng": { "ring1": "ringsj+1", "ring2": "ringsj+1", "earring1": "dexearring+0", "earring2": "vitearring+0", "belt": "hpbelt+0", "mainhand": "bow+7", "helmet": "helmet+4:dex", "chest": "coat+3:dex", "pants": "pants+3:dex", "shoes": "shoes+3:dex", "gloves": "gloves+3:dex", "amulet": "dexamulet+0", "orb": "orbg+0" },
+    "VizWar": { "ring1": "ringsj+1", "ring2": "ringsj+1", "earring1": "strearring+0", "earring2": "vitearring+0", "belt": "hpbelt+0", "mainhand": "blade+7", "offhand": "blade+5", "helmet": "helmet+7:str", "chest": "coat+3:str", "pants": "pants+3:str", "shoes": "shoes+3:str", "gloves": "gloves+4:str", "amulet": "stramulet+0" }
+  }
+}
