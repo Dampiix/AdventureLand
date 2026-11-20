@@ -579,8 +579,13 @@ module.exports = function createMerchant(ctx) {
     }
 
     // Everything that is neither sold, kept, part of the potion stock nor a gift.
-    function isBankable(item) {
-        if (!item || isSellable(item) || workshop.isReserved(item) || workshop.isGoalFinished(item)) return false;
+    // tight: the bag runs full - then reserved wish material (accessory and Wanderer copies) goes
+    // to the bank as well, except what is about to be delivered (keep: bag indexes). The workshop
+    // takes copies out of the bank again when it compounds or upgrades (2026-11-20: 42/42 slots,
+    // pickups failed with "no space" while the bank had 52 free).
+    function isBankable(item, index, tight, keep) {
+        if (!item || isSellable(item) || workshop.isGoalFinished(item)) return false;
+        if (workshop.isReserved(item) && !(tight && tight() && !(keep && keep.has(index)))) return false;
         if (G.items[item.name] && G.items[item.name].type === "pot") return false; // potion stock stays with us
         if (m.bank.keep.includes(item.name)) return false;
         if (marketSurplus(item.name, item.level) > 0) return false; // waits for a slot in the stand
@@ -602,9 +607,12 @@ module.exports = function createMerchant(ctx) {
         let stored = 0;
         let full = false;
         // Walk the bag once from the end; each index is checked right before storing.
+        // Reserved items only while fewer than whenFreeBelow + 5 slots are free (no back and forth).
+        const keep = workshop.deliveryIndexes ? workshop.deliveryIndexes() : new Set();
+        const tight = function () { return character.esize < (m.bank.whenFreeBelow || 6) + 5; };
         for (let index = character.items.length - 1; index >= 0; index--) {
             const item = character.items[index];
-            if (!isBankable(item)) continue;
+            if (!isBankable(item, index, tight, keep)) continue;
             try {
                 await bank_store(index); // auto placement, merges into existing stacks
                 stored++;
@@ -616,6 +624,7 @@ module.exports = function createMerchant(ctx) {
             }
         }
         util.log("merchant", "banked " + stored + " stacks" + (full ? " - bank is full, a new pack is needed" : ""), full ? "orange" : "green");
+        if (stored && workshop.refreshBank) workshop.refreshBank(); // the workshop counts the bank from its snapshot
         await takeSellablesFromBank();
         return stored;
     }
@@ -823,10 +832,19 @@ module.exports = function createMerchant(ctx) {
     }
     function offerKey(seller, item, level) { return seller + "|" + item + "|" + level; }
     // A stand we just walked to may take a moment to show up.
+    // Seen but not where the merchant list put the stand: walk up to where it really is - the
+    // server trades only within a short distance (2026-11-20: "selling to Rocky: distance", the
+    // list said 0,0).
     async function waitForPlayer(name) {
         for (let i = 0; i < 25; i++) {
             const p = get_player(name);
-            if (p) return p;
+            if (p) {
+                if (util.distanceTo(p) > 150) {
+                    try { await util.walk({ map: character.map, x: p.x, y: p.y }); } catch (e) { /* checked by the trade */ }
+                    return get_player(name) || p;
+                }
+                return p;
+            }
             await sleep(200);
         }
         return null;
@@ -982,7 +1000,8 @@ module.exports = function createMerchant(ctx) {
                     } catch (e) { util.log("merchant", "buying from " + d.seller + ": " + util.errReason(e), "orange"); }
                 }
             }
-            if (seller) scanAgainIn(30 * 1000); // more offers may wait: look again soon
+            // No quick follow-up scan after a purchase any more (2026-11-20): the next one comes with
+            // the normal interval, so the merchant gets on with its work between trips.
             t.phase = here === home ? "done" : "home";
             t.at = Date.now();
             saveTrip(t.phase === "done" ? null : t);

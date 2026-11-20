@@ -155,6 +155,25 @@ module.exports = function createHunts(ctx) {
         return list;
     }
 
+    // Hunts only for monsters among the team's best XP spots (config.hunts.xpTop, player decision
+    // 2026-11-20): a fresh account hunts its beginner monsters - they are its best XP anyway - and
+    // stops once it outgrows them (bees, snakes and goos kept a level-54 team from its XP spots).
+    // Skipped hunts run out; Daisy hands out the next one. No ranking yet (guide not ready): allowed.
+    const rankLogged = {};
+    function inXpTop(monster) {
+        const n = cfg.xpTop;
+        if (!n || cfg.allow.includes(monster)) return true;
+        const list = ctx.targeting && ctx.targeting.xpRanking ? ctx.targeting.xpRanking() : null;
+        if (!list) return true;
+        const rank = list.indexOf(monster);
+        const ok = rank !== -1 && rank < n;
+        if (!ok && !rankLogged[monster]) {
+            util.log("hunt", monster + " hunt skipped: not among the top " + n + " XP spots (" + (rank === -1 ? "not listed" : "#" + (rank + 1)) + "; top: " + list.slice(0, n).join(", ") + ")", "white");
+        }
+        rankLogged[monster] = !ok;
+        return ok;
+    }
+
     // Leader (or a member farming on its own: only its own hunt): the hunt monster to
     // farm right now, or null.
     function target() {
@@ -164,7 +183,7 @@ module.exports = function createHunts(ctx) {
         const open = (alone ? [{ name: character.name, hunt: own() }] : allHunts())
             .filter(function (x) {
                 const h = x.hunt;
-                return h && h.c > 0 && h.sn === sn && h.ms > cfg.minRemainingMs && isSafe(h.id) && fitsInTime(x);
+                return h && h.c > 0 && h.sn === sn && h.ms > cfg.minRemainingMs && isSafe(h.id) && inXpTop(h.id) && fitsInTime(x);
             })
             .sort(function (a, b) { return a.hunt.ms - b.hunt.ms; });
         if (!open.length) {

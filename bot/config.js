@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.170.2",
+    version: "1.171.3",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -80,7 +80,9 @@ module.exports = {
         // (wishes, gear goals, finds - market.ponty rules) is bought from players' stands too.
         sellTo: {
             enabled: true,
-            scanEveryMs: 5 * 60 * 1000,
+            // Every 20 min (player decision 2026-11-20, was 5): every trip restarts the merchant twice (hop
+            // out and home) and its work list starts over - jobs at the end of it never came up.
+            scanEveryMs: 20 * 60 * 1000,
             // Items without a known own cost (drops) are capped by the pot share only - an orange
             // Lolipop +0 went for 1M; fine for an endgame piece (player decision 2026-11-20), so the
             // pot share went from 0.5 to 0.2 (market.ponty) instead of a price rule.
@@ -284,6 +286,10 @@ module.exports = {
         minLevel: 20,                    // only once every fighter has this level (Daisy ignores our level)
         allow: [],                       // always hunt these, even if the guide calls them unsafe
         deny: [],                        // never hunt these
+        // Only hunts for monsters among the team's top xpTop XP spots (player decision 2026-11-20; the
+        // farm pick's ranking): a fresh account keeps hunting its beginner monsters, a stronger team
+        // farms its XP spots instead of bees and snakes. 0 = every safe hunt.
+        xpTop: 5,
         minRemainingMs: 2 * 60 * 1000,   // skip hunts about to expire
         teamSpeedup: 2,                  // the team kills ~2x as fast as the leader alone (time check)
         visitCooldownMs: 10 * 60 * 1000, // at most one Daisy trip per 10 min

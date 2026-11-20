@@ -3670,6 +3670,18 @@ module.exports = function createWorkshop(ctx) {
         // Units of an item we hold (bag + last bank snapshot), e.g. for the stand's buy orders.
         ownedCount: ownedCount,
         bankKnown: function () { return !!bankSnapshot; },
+        // Bag indexes about to go out to a fighter (ready wishes, earmarks): they stay in the bag
+        // even when it runs full (merchant bankTrip, 2026-11-20).
+        deliveryIndexes: function () {
+            const out = new Set();
+            fighters().forEach(function (f) {
+                readyFor(f).forEach(function (w) {
+                    const i = wishIndex(w, targetLevel(f, w));
+                    if (i !== -1) out.add(i);
+                });
+            });
+            return out;
+        },
         // Re-read the bank (only while inside it) after the merchant took things out itself: the
         // snapshot counted them twice for up to bankScanEveryMs - bag and "bank" (review 2026-11-20:
         // the 20 kept Monster Tokens could be sold).

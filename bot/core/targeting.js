@@ -797,6 +797,27 @@ module.exports = function createTargeting(ctx) {
         const d = r && G.monsters[r.monster];
         return d && r.cycle > 0 ? (d.xp || 0) / r.cycle : ((r && r.xp) || 0);
     }
+    // The team's XP ranking - the same list the farm pick walks (guide routes by XP/s, every
+    // monster the team may take), crowded spots not left out. Monster names, best first; null
+    // while the guide has no routes. Cached 60 s. For hunts.xpTop (player decision 2026-11-20).
+    let rankCache = null;
+    function teamXpRanking() {
+        if (rankCache && Date.now() - rankCache.at < 60 * 1000) return rankCache.list;
+        let advice = null;
+        try { advice = get_progression(); } catch (e) { return null; }
+        if (!advice || !Array.isArray(advice.routes)) return null;
+        const own = ownSafe(advice);
+        const model = teamModelOn();
+        const seen = {};
+        const list = advice.routes
+            .filter(function (r) { return r && G.monsters[r.monster] && (model || r.safe) && !lastingObjector(r.monster, own); })
+            .sort(function (a, b) { return calcXp(b) - calcXp(a); })
+            .filter(function (r) { if (seen[r.monster]) return false; seen[r.monster] = true; return true; })
+            .map(function (r) { return r.monster; });
+        rankCache = { at: Date.now(), list: list };
+        return list;
+    }
+
     function fromProgression() {
         let list = [];
         let spare = []; // other safe routes, for when every choice is crowded
@@ -1286,7 +1307,7 @@ module.exports = function createTargeting(ctx) {
         return best;
     }
 
-    return { currentFarm: currentFarm, farmNow: function () { return farm; }, pick: pick, doomed: doomed, isValid: isValid, reportSearch: reportSearch, isTeamSafe: isTeamSafe, whyUnsafe: whyUnsafe,
+    return { currentFarm: currentFarm, farmNow: function () { return farm; }, pick: pick, xpRanking: teamXpRanking, doomed: doomed, isValid: isValid, reportSearch: reportSearch, isTeamSafe: isTeamSafe, whyUnsafe: whyUnsafe,
         teamModelOn: teamModelOn, teamVerdict: teamVerdict, safetyReport: safetyReport, waitForLone: waitForLone, watchPoint: watchPoint, standPoint: standPoint, aggressive: aggressive, diedAt: diedAt, deathAt: deathAt, spotFor: spotFor, liveSafe: liveSafe, inOccupied: inOccupied, packVerdict: packVerdict, isEasy: isEasy,
         // HP a solo fight against this monster costs (0 if it was never checked: harmless or low level).
         soloCost: function (e) { return (e && soloCostById[e.id]) || 0; } };
