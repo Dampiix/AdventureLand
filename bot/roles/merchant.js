@@ -219,7 +219,9 @@ module.exports = function createMerchant(ctx) {
             const free = slots.find(function (s) { return !character.slots[s]; });
             if (!free) return;
             const item = character.items[idx];
-            const q = Math.min(surplus, item.q || 1);
+            // max (2026-11-20): only part of the surplus at the stand - Monster Tokens go into
+            // other players' buy orders as well (market.sellTo), which only sees bag + bank.
+            const q = Math.min(surplus, item.q || 1, o.max || Infinity);
             character.slots[free] = { name: o.item, price: o.price }; // claimed until the server answers
             trade(idx, free, o.price, q);
             util.log("merchant", "sell order: " + q + "x " + o.item + lvlText(o.item, level) + " at " + o.price, "white");

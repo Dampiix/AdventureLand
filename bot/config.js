@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.169.0",
+    version: "1.170.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -69,6 +69,9 @@ module.exports = {
         sell: [
             { item: "leather",       price:  120000, keep: 0 }, // a player buys at 100k
             { item: "snakefang",     price: 3500000, keep: 0 }, // a player buys at 3M
+            // Monster Tokens at our own stand too (player decision 2026-11-20): 1M, under the cheapest
+            // ask on the market (1.1M); max 20 at a time - the rest stays for buy orders (sellTo, 700k+).
+            { item: "monstertoken",  price: 1000000, keep: 20, max: 20 },
         ],
         // Selling into other players' buy orders on any server (player decision 2026-11-20): every
         // scanEveryMs the game's merchant list is checked; a buy order at minPrice or more for

@@ -104,14 +104,30 @@ module.exports = function createEvents(ctx) {
     //   time:    the team alone kills it within maxFightMinutes (if set)
     // A death while fighting a boss pauses it for pauseAfterDeathMs (persisted).
     const bcfg = cfg.boss || {};
-    const stats = {};                // fighter -> { s, at }
+    // The members' stats survive a restart of the leader (player decision 2026-11-20): members
+    // report only every 60 s, and until then the boss check said "waiting for the team's stats" -
+    // a Phoenix in sight was left alone for up to a minute. Stored copies up to 30 min old count
+    // as fresh right after the start (teamStats takes reports up to 3 min); new reports replace them.
+    const STATS_KEY = "dmpx_team_stats:" + character.name;
+    const stats = (function () {
+        const out = {};
+        try {
+            const saved = get(STATS_KEY) || {};
+            Object.keys(saved).forEach(function (n) {
+                if (saved[n] && saved[n].s && Date.now() - saved[n].at < 30 * 60 * 1000) out[n] = { s: saved[n].s, at: Date.now() };
+            });
+        } catch (e) { /* storage unavailable */ }
+        return out;
+    })();                            // fighter -> { s, at }
     let lastStatsSent = 0;
     const PAUSE_KEY = "dmpx_boss_pause:" + character.name;
     const paused = (function () { try { return get(PAUSE_KEY) || {}; } catch (e) { return {}; } })();
     const verdicts = {};             // boss -> { ok, why, at }
 
     ctx.comms.on("stats", function (data, from) {
-        if (config.characters[from] && data && data.max_hp) stats[from] = { s: data, at: Date.now() };
+        if (!config.characters[from] || !data || !data.max_hp) return;
+        stats[from] = { s: data, at: Date.now() };
+        try { set(STATS_KEY, stats); } catch (e) { /* storage unavailable */ }
     });
 
     function shareStats() {
