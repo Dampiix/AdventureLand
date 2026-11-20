@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.170.0",
+    version: "1.170.1",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -850,6 +850,9 @@ module.exports = {
         // copies (drops, earrings at their sell price) get the higher one where it saves gold.
         // A +0 copy no shop sells: max(drop hours x team gold/h, game value x valueFactor); unknownValue without either.
         scrollChoice: { enabled: true, valueFactor: 3, unknownValue: 1000000 },
+        // A drop counts as farmable up to this many hours per copy (2026-11-20); beyond, its own cost is
+        // unknown (no buy order at own cost) - Orange Lollipops "dropped" every 48 billion s and counted as free.
+        dropNeverHours: 1000,
         // Gold per wish (base item + scrolls, failures included): shop gear vs token/drop
         // items (player decision 2026-11-16: room for Rare scrolls, 1.6M each).
         budgetPerWish: {

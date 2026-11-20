@@ -2647,7 +2647,7 @@ module.exports = function createWorkshop(ctx) {
             // Not in a shop: the larger of its drop hours at the team's gold/h and its game value x
             // valueFactor (Ponty sells such copies at about that: Wanderer's Gloves 6.8k -> ~24k).
             const t = dropTimes[name], h = dropCosts[name], sc = cfg.scrollChoice || {};
-            const drop = t && typeof h === "number" ? t / 3600 * h : null;
+            const drop = t && typeof h === "number" && farmable(name) ? t / 3600 * h : null;
             const resale = def.g ? def.g * (sc.valueFactor || 3) : null;
             v = sellerOf(name) ? (def.g || 0) : (drop !== null || resale !== null) ? Math.max(drop || 0, resale || 0) : sc.unknownValue || 1000000;
         } else {
@@ -2975,10 +2975,19 @@ module.exports = function createWorkshop(ctx) {
         let gold = c.gold;
         if (c.copies > 0.01) {
             const t = dropTimes[name], h = dropCosts[name];
-            if (t && typeof h === "number") gold += c.copies * t / 3600 * h;
-            else { costAsk[name] = true; gold = Infinity; }
+            if (t && typeof h === "number" && farmable(name)) gold += c.copies * t / 3600 * h;
+            else { if (!t || typeof h !== "number") costAsk[name] = true; gold = Infinity; }
         }
         return gold;
+    }
+    // A drop we can farm in useful time: at most dropNeverHours per copy (player decision
+    // 2026-11-20). Orange Lollipops "dropped" every 48 billion s (a stray global drop) on the spot
+    // we farm anyway - 0 gold/h lost, so the copies counted as free and a +7 buy order went up at
+    // 280k (we paid 1M per +0 copy). Beyond the limit the cost is unknown: no order at own cost,
+    // Ponty and player buys stay capped by the pot share.
+    function farmable(name) {
+        const t = dropTimes[name];
+        return !!t && t <= (cfg.dropNeverHours || 1000) * 3600;
     }
     // A filled wish buy order (player decision 2026-11-20): paid from the gear pot like a Ponty
     // purchase. Before, the gold just left the stand and counted as consumables, so the gear
