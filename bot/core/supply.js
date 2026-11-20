@@ -186,6 +186,14 @@ module.exports = function createSupply(ctx) {
         return "ok";
     }
 
+    // The merchant calls us before it leaves for a Ponty round on other servers (player
+    // decision 2026-11-20): we ask for a pickup at once, so everyone is stocked and emptied.
+    comms.on("callpickup", function (data, from) {
+        if (!merchant || from !== merchant) return;
+        requestPickup(counts());
+        util.log("supply", "merchant calls before its Ponty round - pickup requested", "yellow");
+    });
+
     // Manual trigger (chat command /pickup): call the merchant right now.
     function requestNow() {
         if (!merchant) return false;

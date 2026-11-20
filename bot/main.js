@@ -164,6 +164,140 @@ function startBot() {
             .then(function () { BOT_UTIL.log("bot", "started " + BOT_CONFIG.merchant, "green"); })
             .catch(function () { /* already running or not possible */ });
     }
+    startHopWatcher();
+    startWatchdog();
+}
+
+// Server hop for the merchant (player decision 2026-11-20, tested EU III -> EU IV -> EU III):
+// the client that hosts the merchant's bot window (start_character puts it into #iframelist)
+// does the hop the merchant asks for in the shared storage: stop its runner, then re-create the
+// same window with another server in the address (js/functions.js start_character_runner).
+// change_server is never used - from a bot window it loaded a full game (extra Steam window).
+// Watchdog: a merchant away on a Ponty round that stays silent for 6 min is brought home.
+// Stop a bot window this client hosts and open it again on server `to` ("EU III"): the game's own
+// start_character_runner markup (js/functions.js) with that server in the address. Used by the
+// merchant's server hop and the member watchdog. False when `to` is not "REGION ID".
+async function reopenRunner(name, to) {
+    const parts = String(to || "").split(" ");
+    if (parts.length !== 2) return false;
+    const rid = "ichar" + name.toLowerCase();
+    try { parent.stop_character_runner(name); } catch (e) { /* not running */ }
+    await sleep(6000); // the old session has to end before the new one logs in
+    parent.$("#" + rid).parent(".clickable").remove();
+    parent.$("#" + rid).remove();
+    const url = "/character/" + name + "/in/" + parts[0] + "/" + parts[1] + "/?no_html=true&is_bot=1&code=bot_main";
+    parent.$("#iframelist").append('<div class="clickable" onclick="show_character_snippet(\'' + name + '\')"><iframe src="' + url + '" id="' + rid +
+        '" style="border: 5px solid gray; background-color: black; margin-top: -5px; height: 60px; width: 128px; overflow: hidden; pointer-events: none" data-name="' + name + '"></iframe></div>');
+    parent.$("#iframelist").css("display", "inline-block");
+    return true;
+}
+
+// Member watchdog (player decision 2026-11-20, earthiverse idea #8): every bot writes a heartbeat
+// (util.heartbeat, "dmpx_beat:<name>") after each loop step. The client that hosts a bot window
+// restarts it when the beat is silentMs old or the window is gone: the leader for the fighters it
+// starts (startWithLeader), any client for a window it hosts (the merchant). Never a window another
+// client hosts - two hosts would both answer the merchant's hop requests. Brakes: gapMs between
+// restarts of one character, at most maxPerHour, then it gives up (red log). The leader's own
+// window is not covered (the player's game window).
+let watchdogOn = false;
+function startWatchdog() {
+    const wd = BOT_CONFIG.watchdog || {};
+    if (watchdogOn || !wd.enabled) return;
+    watchdogOn = true;
+    const startedAt = Date.now();
+    const restarts = {}; // name -> [times]
+    const gaveUp = {};   // name -> true once maxPerHour was hit (logged once)
+    let busy = false;
+    const phase = BOT_CONFIG.phases[BOT_CONFIG.phase] || {};
+    const fighters = (BOT_CONFIG.team && BOT_CONFIG.team.fighters) || [];
+    const mine = character.name === BOT_CONFIG.leader
+        ? (phase.startWithLeader || []).filter(function (n) { return n !== character.name && fighters.includes(n); }) : [];
+    const hosted = {}; // windows seen in this client
+    setInterval(async function () {
+        if (busy) return;
+        busy = true;
+        try {
+            const now = Date.now();
+            Object.keys(BOT_CONFIG.characters).forEach(function (n) {
+                if (n !== character.name && parent.document.getElementById("ichar" + n.toLowerCase())) hosted[n] = true;
+            });
+            const watch = mine.concat(Object.keys(hosted).filter(function (n) { return !mine.includes(n); }));
+            for (const n of watch) {
+                const beat = get("dmpx_beat:" + n) || {};
+                const hasWindow = !!parent.document.getElementById("ichar" + n.toLowerCase());
+                const list = (restarts[n] || []).filter(function (t) { return now - t < 60 * 60 * 1000; });
+                restarts[n] = list;
+                const last = list.length ? list[list.length - 1] : 0;
+                const since = Math.max(beat.at || 0, last, startedAt);
+                // A hop of the merchant in progress (request open or done < 2 min ago) is no silence.
+                const hop = get("dmpx_hop_request:" + n);
+                if (hop && (!hop.done || now - hop.done < 2 * 60 * 1000)) continue;
+                const silent = now - since > (wd.silentMs || 120000);
+                if (!silent && hasWindow) continue;
+                if (!hasWindow && now - startedAt < (wd.silentMs || 120000)) continue; // still starting up
+                if (now - last < (wd.gapMs || 600000)) continue;
+                if (list.length >= (wd.maxPerHour || 3)) {
+                    if (!gaveUp[n]) BOT_UTIL.log("bot", "watchdog: " + n + " restarted " + list.length + " times this hour - giving up, please check it", "red");
+                    gaveUp[n] = true;
+                    continue;
+                }
+                const to = beat.server || (parent.server_region + " " + parent.server_identifier);
+                BOT_UTIL.log("bot", "watchdog: " + n + (hasWindow ? " silent for " + Math.round((now - since) / 60000) + " min" : " window gone") + " - restarting on " + to, "orange");
+                list.push(now);
+                gaveUp[n] = false;
+                await reopenRunner(n, to);
+            }
+        } catch (e) {
+            BOT_UTIL.log("bot", "watchdog: " + BOT_UTIL.errReason(e), "red");
+        } finally {
+            busy = false;
+        }
+    }, wd.checkEveryMs || 15000);
+}
+
+let hopWatcherOn = false;
+function startHopWatcher() {
+    const merch = BOT_CONFIG.merchant;
+    if (hopWatcherOn || !merch || character.name === merch) return;
+    hopWatcherOn = true;
+    const rid = "ichar" + merch.toLowerCase();
+    const HOP_KEY = "dmpx_hop_request:" + merch, ROUND_KEY = "dmpx_ponty_round:" + merch, TRIP_KEY = "dmpx_trade_trip:" + merch;
+    const pr = (BOT_CONFIG.merchantRole && BOT_CONFIG.merchantRole.pontyRound) || {};
+    const home = (pr.home || ["EU", "III"]).join(" ");
+    let hosting = false, handled = null, hopping = false;
+    async function hopTo(to) {
+        if (!(await reopenRunner(merch, to))) return;
+        BOT_UTIL.log("bot", merch + " hopped to " + to, "yellow");
+    }
+    setInterval(async function () {
+        if (hopping) return;
+        try {
+            if (parent.document.getElementById(rid)) hosting = true;
+            if (!hosting) return;
+            const req = get(HOP_KEY);
+            const st = get(ROUND_KEY);
+            const trip = get(TRIP_KEY);
+            const away = (st && st.phase !== "prep" && st.beat) ? st : (trip && trip.phase !== "fetch" && trip.beat ? trip : null);
+            if (away && Date.now() - away.beat > 6 * 60 * 1000 && !(req && !req.done)) {
+                hopping = true;
+                BOT_UTIL.log("bot", merch + " silent for 6 min on its " + (away === st ? "Ponty round" : "sell trip") + " - bringing it home", "orange");
+                set(ROUND_KEY, null);
+                set(TRIP_KEY, null);
+                await hopTo(home);
+                return;
+            }
+            if (!req || req.done || req.id === handled) return;
+            handled = req.id;
+            hopping = true;
+            await hopTo(req.to);
+            req.done = Date.now();
+            set(HOP_KEY, req);
+        } catch (e) {
+            BOT_UTIL.log("bot", "hop watcher: " + BOT_UTIL.errReason(e), "red");
+        } finally {
+            hopping = false;
+        }
+    }, 2000);
 }
 
 // Called by the game when a party invite arrives – bot_party only accepts the leader

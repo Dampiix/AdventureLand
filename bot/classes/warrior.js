@@ -58,12 +58,21 @@ module.exports = function createWarrior(ctx) {
         });
     }
 
-    // A monster on an ally is worth taunting when the ally is hurt or the monster hits hard.
+    // A monster on an ally is worth taunting when the ally is hurt or the monster hits hard -
+    // and always (player decision 2026-11-20) when it is a boss, or when it is on our healer:
+    // the Phoenix (attack 125, under 5 % of the priest's HP) stayed on the kiting priest, who
+    // walked it around the map while the warrior never took it.
+    let tauntWalk = null; // where we last walked to for a taunt (a new order when it moved 30+ px)
     function worthTaunting(m) {
         const p = get_player(m.target);
         if (!p || p.rip) return false;
         const t = c.taunt || {};
-        return p.hp / p.max_hp < (t.allyHpBelow || 0.8) || (m.attack || 0) >= p.max_hp * (t.hitRatio || 0.05);
+        if (p.hp / p.max_hp < (t.allyHpBelow || 0.8) || (m.attack || 0) >= p.max_hp * (t.hitRatio || 0.05)) return true;
+        const def = G.monsters[m.mtype] || {};
+        const bosses = (ctx.config.events && ctx.config.events.search) || [];
+        if (t.bosses !== false && (def.cooperative || bosses.includes(m.mtype) || (m.max_hp || def.hp || 0) >= (t.bossHp || 20000))) return true;
+        const healer = G.skills.heal && (G.skills.heal.class || []).includes(p.ctype);
+        return t.offHealer !== false && !!healer;
     }
 
     // Dash: a short jump towards a point ([x, y]). It has no cooldown, so we space the
@@ -947,12 +956,35 @@ module.exports = function createWarrior(ctx) {
                 util.log("warrior", "Agitate (" + others.length + " monsters on allies)", "yellow");
                 return false;
             }
-            if (!(c.taunt && c.taunt.enabled) || !util.canCast("taunt")) return false;
-            const m = others.find(function (e) { return util.distanceTo(e) <= G.skills.taunt.range && worthTaunting(e); });
-            if (m) {
-                use_skill("taunt", m).catch(function () {});
+            const t = c.taunt || {};
+            if (!t.enabled) return false;
+            // Walk to it first, then taunt (player decision 2026-11-20): taunted from 200 px, the
+            // monster - slowed by the priest's Curse - took ages to come over while the warrior stood
+            // waiting next to the priest. Taunted up close, it turns on us right where we stand and the
+            // ranged ones keep hitting it. From afar only when the ally is in danger (urgentHpBelow) or
+            // the monster returns damage to melee (we don't fight those up close).
+            let m = null;
+            others.forEach(function (e) {
+                if (!worthTaunting(e)) return;
+                if (!m || util.distanceTo(e) < util.distanceTo(m)) m = e;
+            });
+            if (!m) return false;
+            const d = util.distanceTo(m);
+            const ally = get_player(m.target);
+            const urgent = !!ally && ally.hp / ally.max_hp < (t.urgentHpBelow || 0.5);
+            const close = d <= (character.range || 20) + (t.closeBy || 25);
+            if (close || ((t.walkFirst === false || urgent || util.tooSpiky(ctx.config, m)) && d <= G.skills.taunt.range)) {
+                if (util.canCast("taunt")) use_skill("taunt", m).catch(function () {});
+                return false; // taunting doesn't use the attack
             }
-            return false; // taunting doesn't use the attack
+            if (t.walkFirst === false || util.tooSpiky(ctx.config, m)) return false;
+            util.status("to taunt " + m.mtype, "orange");
+            const p = util.xy(m);
+            if (!is_moving(character) || !tauntWalk || Math.hypot(tauntWalk.x - p.x, tauntWalk.y - p.y) > 30) {
+                tauntWalk = { x: p.x, y: p.y };
+                try { Promise.resolve(xmove(p.x, p.y)).catch(function () {}); } catch (e) { /* next tick */ }
+            }
+            return true; // walking to it: no fight elsewhere meanwhile
         },
 
         fight: function (target) {

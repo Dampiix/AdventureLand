@@ -1,0 +1,28 @@
+{
+  "account": "viz",
+  "taken": "2026-11-20T16:08:52Z",
+  "note": "3.8 h after 2026-11-20-1321-viz-midday.json (bot v1.153.0 -> v1.159.0: chest opener, Wanderer goals, High scroll from +5, cooldown-timed strikes, defend while busy, rare monsters, mluck for all, doomed targets). Many reloads in between (each one restarts measurements and the team-stats wait); mostly bee hunts, two boss searches.",
+  "merchant": { "gold": 55834965, "level": 47, "xp": 2929789, "max_xp": 3100000 },
+  "bank": { "gold": 1000, "monstertoken": 184, "stormfeather": 242, "crabclaw": 300, "beewings": 43, "gslime": 22, "marketparcel": 19, "funtoken": 20, "gem0": 6, "seashell": 8, "ascale": 5, "candycane": 5, "embercore": 3, "cscale": 3, "bwing": 3, "carrot": 3, "bfur": 2, "frostcore": 1, "mistletoe": 1, "elixirvit0": 1, "rfangs": 1, "frogt": 1,
+    "gear": ["bow+3", "bow+7", "t2bow+3", "wbook0+0", "ringsj+0", "ringsj+1", "helmet+6:dex", "coat+6:str", "pants+5:dex", "shoes+5:dex", "gloves+5:dex"] },
+  "xp": {
+    "taken": "2026-11-20T16:08:52Z",
+    "VizPri": { "level": 52, "xp": 1400831, "max_xp": 9000000 },
+    "VizWar": { "level": 53, "xp": 8403704, "max_xp": 11000000 },
+    "VizRng": { "level": 52, "xp": 7864798, "max_xp": 9000000 },
+    "VizMerch": { "level": 47, "xp": 2929789, "max_xp": 3100000 }
+  },
+  "xpPerHourSinceMidday": { "VizPri": 1780000, "VizWar": 2400000, "VizRng": 2400000 },
+  "goldFlowSinceMidday": { "in": 2675906, "bookedIncome": 2618673, "out": 5894044, "gearPot": 6010444 },
+  "goldFlowSinceDayStart": { "in": 8603419, "bookedIncome": 7379200, "out": 20425297, "gearPot": 20249644 },
+  "purchases": [
+    { "at": "12:35Z", "kind": "Ponty find", "item": "tshirt1+3", "price": 120144, "for": "VizRng" }
+  ],
+  "merchantBag": ["firestaff+0", "fireblade+0", "wgloves+0 x2", "dexamulet+0 x2", "intearring+0 x2", "strearring+1 x2", "strearring+0 x2", "stramulet+1", "intamulet+0", "intring+1", "intring+0", "dexring+1", "dexearring+0", "ringsj+0", "scroll1", "scroll0 x3", "vitscroll", "stormfeather x15", "beewings x13", "marketparcel", "hpot1 x899", "mpot0 x584", "mpot1 x287"],
+  "standBuyOrders": "stand closed at the time (merchant away)",
+  "worn": {
+    "VizPri": { "ring1": "ringsj+2", "ring2": "ringsj+2", "earring1": "intearring+1", "earring2": "intearring+1", "belt": "hpbelt+0", "mainhand": "staff+8", "offhand": "wbook0+1", "helmet": "wcap+8:int", "chest": "coat+8:int", "pants": "pants+8:int", "shoes": "shoes+8:int", "gloves": "gloves+7:int", "amulet": "intamulet+0" },
+    "VizRng": { "ring1": "ringsj+2", "ring2": "ringsj+1", "earring1": "dexearring+1", "earring2": "dexearring+1", "belt": "hpbelt+0", "mainhand": "bow+7", "offhand": "quiver+0", "helmet": "helmet+7:dex", "chest": "tshirt1+3", "pants": "pants+7:dex", "shoes": "shoes+7:dex", "gloves": "gloves+7:dex", "amulet": "dexamulet+0", "orb": "orbg+0" },
+    "VizWar": { "ring1": "ringsj+2", "ring2": "ringsj+2", "earring1": "strearring+1", "earring2": "strearring+1", "belt": "strbelt+0", "mainhand": "blade+7", "offhand": "blade+7", "helmet": "helmet+7:str", "chest": "coat+7:str", "pants": "pants+7:str", "shoes": "shoes+7:str", "gloves": "gloves+7:str", "amulet": "stramulet+1", "cape": "cape+0:str" }
+  }
+}

@@ -921,6 +921,9 @@ module.exports = function createFighter(ctx, cls) {
         if (Object.values(parent.entities || {}).some(function (e) {
             return e && e.type === "monster" && !e.dead && e.target && (e.target === character.name || members.includes(e.target));
         })) { endWaitStatus(); return false; }
+        // A target boss in sight (ours or a member's): the members are already at it, the leader
+        // goes there too instead of waiting for them (2026-11-20, Phoenix at the armadillos).
+        if (ctx.events && ctx.events.engaging && ctx.events.engaging()) { teamWaitSince = 0; endWaitStatus(); return false; }
         const fighters = (config.team && config.team.fighters) || [];
         const far = party.memberNames().filter(function (n) {
             if (n === character.name || !fighters.includes(n)) return false;
@@ -1022,6 +1025,7 @@ module.exports = function createFighter(ctx, cls) {
         while (running) {
             try {
                 tick();
+                util.heartbeat(); // member watchdog (main.js): only after a step went through
             } catch (e) {
                 util.log("bot", "tick error: " + util.errReason(e), "red");
             }

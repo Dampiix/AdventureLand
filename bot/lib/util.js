@@ -322,7 +322,22 @@ function tooSpiky(config, m, ctype) {
     return (mc.classes || ["warrior", "paladin", "rogue"]).includes(ctype || character.ctype);
 }
 
+// Heartbeat for the member watchdog (main.js, player decision 2026-11-20): every 10 s after a
+// loop step went through, "dmpx_beat:<name>" = { at, server } in the storage all our windows
+// share. A loop that stops or throws every step stops the beat.
+let lastBeatAt = 0;
+function heartbeat() {
+    const now = Date.now();
+    if (now - lastBeatAt < 10000) return;
+    lastBeatAt = now;
+    try {
+        const server = typeof parent !== "undefined" && parent.server_region ? parent.server_region + " " + parent.server_identifier : null;
+        set("dmpx_beat:" + character.name, { at: now, server: server });
+    } catch (e) { /* storage unavailable */ }
+}
+
 module.exports = {
+    heartbeat: heartbeat,
     tooSpiky: tooSpiky,
     teamCycle: teamCycle,
     deriveTeam: deriveTeam,

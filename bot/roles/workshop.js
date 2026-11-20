@@ -46,7 +46,12 @@ module.exports = function createWorkshop(ctx) {
     const blockedUntil = {}; // wish key -> timestamp (gave up for a while)
     const reachedOnly = {}; // wish key -> level we stopped at (too risky to go on) – delivered as is
     let graceSince = Date.now(); // start of the current 24 h grace budget window
-    let bankSnapshot = null; // { at, items: [{ pack, index, name, level }] }
+    // Kept across restarts (2026-11-20): on a Ponty round the merchant starts on another server
+    // and must not walk to the bank first. A snapshot older than 3 h is not trusted.
+    const BANK_KEY = "workshop_bank:" + character.name;
+    let bankSnapshot = (function () {
+        try { const s = get(BANK_KEY); return s && Date.now() - s.at < 3 * 60 * 60 * 1000 ? s : null; } catch (e) { return null; }
+    })(); // { at, items: [{ pack, index, name, level }] }
 
     // Delivered wishes are not fulfilled again for a while (survives restarts).
     // Storage is shared by every character in the client: keys carry the merchant's name.
@@ -386,6 +391,7 @@ module.exports = function createWorkshop(ctx) {
         // grows as things go in, so its list length undercounts the room.
         const capacity = packs.length * 42;
         bankSnapshot = { at: Date.now(), items: items, free: capacity - items.length };
+        try { set(BANK_KEY, bankSnapshot); } catch (e) { /* storage unavailable */ }
         return true;
     }
 
@@ -850,6 +856,23 @@ module.exports = function createWorkshop(ctx) {
             return (await compound(c[0], c[1], c[2], s, null, true)).chance;
         };
         let chance = await preview(bagIndex(scroll, 0));
+        // Cheapest scroll per step (scrollChoice, 2026-11-20): a higher one when it saves gold.
+        if (!(cfg.scrollChoice && cfg.scrollChoice.enabled === false)) {
+            const pick = cheaperScroll(name, level, true, chance);
+            if (pick) {
+                try {
+                    await ensureScroll(k, pick.scroll, 1);
+                    await goTo("newupgrade");
+                    const better = await preview(bagIndex(pick.scroll, 0));
+                    if (better > chance) {
+                        util.log("workshop", name + " +" + level + " -> +" + (level + 1) + ": " + pick.scroll + " " + pct(better) + " instead of " + pct(chance) +
+                            " (expected " + Math.round(pick.cost / 1000) + "k vs " + Math.round(pick.normalCost / 1000) + "k)", "white");
+                        scroll = pick.scroll;
+                        chance = better;
+                    }
+                } catch (e) { /* no budget for it: the normal scroll */ }
+            }
+        }
         if (chance < minChance) {
             const better = await strongerScroll(k, "cscroll", grade, minChance, preview);
             if (!better) throw { reason: name + " +" + level + " -> +" + (level + 1) + " only " + pct(chance) + " (need " + pct(minChance) + ")" };
@@ -979,9 +1002,11 @@ module.exports = function createWorkshop(ctx) {
         return !!(d && d.enabled && (d.names || []).includes(name) && G.dismantle && G.dismantle[name]);
     }
     // Units we hold (bag + last bank snapshot).
-    function ownedCount(name) {
-        const bag = character.items.reduce(function (s, i) { return i && i.name === name ? s + (i.q || 1) : s; }, 0);
-        const bank = bankSnapshot ? bankSnapshot.items.reduce(function (s, b) { return b.name === name ? s + (b.q || 1) : s; }, 0) : 0;
+    // level (optional): only copies at exactly that level, and only unlocked ones in the bag.
+    function ownedCount(name, level) {
+        const at = function (l) { return level === undefined || (l || 0) === level; };
+        const bag = character.items.reduce(function (s, i) { return i && i.name === name && at(i.level) && (level === undefined || !i.l) ? s + (i.q || 1) : s; }, 0);
+        const bank = bankSnapshot ? bankSnapshot.items.reduce(function (s, b) { return b.name === name && at(b.level) ? s + (b.q || 1) : s; }, 0) : 0;
         return bag + bank;
     }
     // A bag item or bank entry we may dismantle now.
@@ -1254,6 +1279,25 @@ module.exports = function createWorkshop(ctx) {
 
     // Without open wishes: combine spare accessories/books up to autoUpTo.
     // Keeps the bank tidy (3 -> 1) and prepares stronger copies for later.
+    // Items sold into players' buy orders by level (market.sellTo, player decision 2026-11-20 -
+    // Vitality earrings: +0 sold while someone pays, else compounded to +2 for stock): a level
+    // with its own rule is held while a buyer at minPrice was seen in the last demandHours
+    // (merchant: dmpx_sell_demand), and nothing goes past the highest level we sell. Levels in
+    // between (+1) are compounded on.
+    function heldForBuyers(name, level) {
+        const rules = ((((config.market || {}).sellTo || {}).items) || []).filter(function (r) { return r.item === name; });
+        if (!rules.length) return false;
+        const top = Math.max.apply(null, rules.map(function (r) { return r.level || 0; }));
+        if (level >= top) return true;
+        const rule = rules.find(function (r) { return (r.level || 0) === level; });
+        if (!rule) return false;
+        let seen = {};
+        try { seen = get("dmpx_sell_demand") || {}; } catch (e) { /* storage unavailable */ }
+        const last = seen[name + ":" + level] || seen._since;
+        if (!last) return true; // no scan yet: hold
+        return Date.now() - last < (rule.demandHours || 3) * 60 * 60 * 1000;
+    }
+
     async function autoCompound() {
         if (!cfg.compound.auto) return false;
         const counts = {};
@@ -1271,7 +1315,10 @@ module.exports = function createWorkshop(ctx) {
         // compounding, e.g. DEX belts +2 (ranger, Knife Belt for the rogue) - with keep 2 the
         // first try at +3 needs five spare copies.
         const keep = cfg.compound.keep || {};
-        const id = Object.keys(counts).find(function (x) { return counts[x] - (keep[x] || 0) >= 3 && !(blockedUntil["auto:" + x] > now); });
+        const id = Object.keys(counts).find(function (x) {
+            const p = x.split(":");
+            return counts[x] - (keep[x] || 0) >= 3 && !(blockedUntil["auto:" + x] > now) && !heldForBuyers(p[0], Number(p[1]));
+        });
         if (!id) return false;
         const parts = id.split(":");
         const k = "auto:" + id;
@@ -1765,17 +1812,14 @@ module.exports = function createWorkshop(ctx) {
             const replaceable = opts && opts.replaceable !== undefined ? opts.replaceable : !!sellerOf(w.name);
             const minChance = opts && opts.minChance !== undefined ? opts.minChance : minChanceFor(item, replaceable, 1);
             let scroll = "scroll" + grade;
-            // Weapons nobody sells, still normal grade (e.g. Lolipop Maces): from the step to
-            // risk.higherScrollFrom on, the next scroll grade – x1.2 + 1 point for 40k instead of
-            // burning copies we can't buy again (player decision 2026-11-17). A scroll two grades
-            // higher adds nothing more (server.js).
+            // Fixed High-scroll levels only with scrollChoice off (player decisions 2026-11-17/20);
+            // otherwise the cheapest scroll per step is chosen after the preview below.
+            const choose = !(cfg.scrollChoice && cfg.scrollChoice.enabled === false);
             const hs = cfg.risk.higherScrollFrom;
-            if (hs && grade === 0 && level + 1 >= hs && !sellerOf(w.name) && G.items[w.name].type === "weapon") scroll = "scroll1";
-            // Shop gear and armor (Wanderer pieces) from +5 -> +6 on: the High scroll too - fewer
-            // copies burnt, the stages are reached faster (player decision 2026-11-20).
+            if (!choose && hs && grade === 0 && level + 1 >= hs && !sellerOf(w.name) && G.items[w.name].type === "weapon") scroll = "scroll1";
             const gs = cfg.risk.gearHighScrollFrom;
             const armor = ["helmet", "chest", "pants", "shoes", "gloves"].includes(G.items[w.name].type);
-            if (gs && grade === 0 && level >= gs && (sellerOf(w.name) || armor)) scroll = "scroll1";
+            if (!choose && gs && grade === 0 && level >= gs && (sellerOf(w.name) || armor)) scroll = "scroll1";
             await ensureScroll(k, scroll, w.level - level);
             await goTo("newupgrade");
             // Buying and walking can reorder the bag: re-locate the working copy.
@@ -1788,6 +1832,22 @@ module.exports = function createWorkshop(ctx) {
             };
             const preview = async function (s) { return (await upgrade(locate(), s, null, true)).chance; };
             let chance = await preview(bagIndex(scroll, 0));
+            if (choose) {
+                const pick = cheaperScroll(w.name, level, false, chance);
+                if (pick) {
+                    try {
+                        await ensureScroll(k, pick.scroll, 1);
+                        await goTo("newupgrade");
+                        const better = await preview(bagIndex(pick.scroll, 0));
+                        if (better > chance) {
+                            util.log("workshop", w.name + " +" + level + " -> +" + (level + 1) + ": " + pick.scroll + " " + pct(better) + " instead of " + pct(chance) +
+                                " (expected " + Math.round(pick.cost / 1000) + "k vs " + Math.round(pick.normalCost / 1000) + "k)", "white");
+                            scroll = pick.scroll;
+                            chance = better;
+                        }
+                    } catch (e) { /* no budget for it: the normal scroll */ }
+                }
+            }
             if (chance < minChance) {
                 // Spare upgrades use normal scrolls only – rare scrolls and grace are kept for wishes.
                 const spare = !!(opts && opts.spare);
@@ -2541,19 +2601,113 @@ module.exports = function createWorkshop(ctx) {
     function gradeAt(name, level) {
         try { return item_grade({ name: name, level: level }); } catch (e) { return 0; }
     }
+
+    // ---- scroll choice (player decision 2026-11-20, Earthiverse idea #3) -------------------
+    // Per step the scroll with the lowest expected gold to the next level:
+    //   (scroll price + (1 - chance) x what the lost copies are worth) / chance.
+    // Chances from the server's own formulas (node/server.js, upgrade/compound, no offerings):
+    //   upgrade:  base = G.upgrades[igrade][new]; a higher-grade scroll gives base x 1.2 + 0.01,
+    //             capped at min(base + 0.36, base x 3) (normal: min(base + 0.24, base x 2)).
+    //   compound: base = G.compounds[igrade][new]; higher: base x 1.1 + 0.001, capped at
+    //             min(base x (3 + 0.6h), base + 0.2 + 0.05h), h = grades above (normal: min(base x 3, base + 0.2)).
+    //   igrade = the item's grade at +0 (def.igrade); compounds from +3 on use the grade at level - 2.
+    // The grace term adds the same to every scroll: taken from the real preview of the normal one.
+    // Replaces the fixed High-scroll levels (risk.higherScrollFrom / gearHighScrollFrom): for shop gear
+    // the normal scroll is cheaper up to +7 (helmet to +8: 1.7M instead of 3.8M with High from +5).
+    function tableGrade(name, level, compound) {
+        return compound && level >= 3 ? gradeAt(name, level - 2) : gradeAt(name, 0);
+    }
+    function baseChance(name, level, compound) {
+        const t = (compound ? G.compounds : G.upgrades)[tableGrade(name, level, compound)] || {};
+        return t[level + 1] || 0;
+    }
+    // name +level -> +level+1 with a scroll of grade sg; extra: the grace term (0 when unknown).
+    function chanceWith(name, level, compound, sg, extra) {
+        const b = baseChance(name, level, compound);
+        const h = sg - gradeAt(name, level);
+        if (h < 0 || !b) return 0;
+        if (compound) {
+            const p = (h > 0 ? b * 1.1 + 0.001 : b) + (extra || 0);
+            return Math.min(1, p, b * (3 + (h > 0 ? h * 0.6 : 0)), b + 0.2 + (h > 0 ? h * 0.05 : 0));
+        }
+        const p = (h > 0 ? b * 1.2 + 0.01 : b) + (extra || 0);
+        return h > 0 ? Math.min(1, p, b + 0.36, b * 3) : Math.min(1, p, b + 0.24, b * 2);
+    }
+    // What a copy of name +level is worth to us when a step fails: a sellTo price for that level
+    // (we would sell it for that), else built up from its base with the cheapest scrolls. Base (+0):
+    // sellTo price, NPC price, drop hours x team gold/h (dropCosts), else scrollChoice.unknownValue.
+    function copyValue(name, level, memo) {
+        memo = memo || {};
+        if (memo[level] !== undefined) return memo[level];
+        const def = G.items[name];
+        const rule = ((((config.market || {}).sellTo || {}).items) || []).find(function (r) { return r.item === name && (r.level || 0) === level; });
+        let v;
+        if (rule) v = rule.minPrice;
+        else if (level <= 0) {
+            // Not in a shop: the larger of its drop hours at the team's gold/h and its game value x
+            // valueFactor (Ponty sells such copies at about that: Wanderer's Gloves 6.8k -> ~24k).
+            const t = dropTimes[name], h = dropCosts[name], sc = cfg.scrollChoice || {};
+            const drop = t && typeof h === "number" ? t / 3600 * h : null;
+            const resale = def.g ? def.g * (sc.valueFactor || 3) : null;
+            v = sellerOf(name) ? (def.g || 0) : (drop !== null || resale !== null) ? Math.max(drop || 0, resale || 0) : sc.unknownValue || 1000000;
+        } else {
+            const below = copyValue(name, level - 1, memo);
+            const s = bestScroll(name, level - 1, !!def.compound, 0, below);
+            v = def.compound ? s.cost : below + s.cost; // compound: s.cost already holds the three copies
+        }
+        memo[level] = v;
+        return v;
+    }
+    // Cheapest scroll for name +level -> +level+1. normalChance: the real preview of the normal
+    // scroll (null: formula only); lostValue: what one failure costs in copies (default copyValue).
+    // Returns { scroll, grade, p, cost } - cost = expected gold for one copy of the next level
+    // (compounds: including the three copies used up).
+    function bestScroll(name, level, compound, normalChance, lostValue) {
+        const prefix = compound ? "cscroll" : "scroll";
+        const g = gradeAt(name, level);
+        const value = lostValue !== undefined ? lostValue : copyValue(name, level);
+        const pNormal = chanceWith(name, level, compound, g, 0);
+        // The preview's surplus over the plain formula is the grace term (same for every scroll).
+        const extra = typeof normalChance === "number" && normalChance > 0 ? Math.max(0, normalChance - pNormal) : 0;
+        const maxG = (cfg.risk && cfg.risk.maxScrollGrade) || 2;
+        let best = null;
+        for (let sg = g; sg <= maxG; sg++) {
+            if (!G.items[prefix + sg]) continue;
+            const p = sg === g && typeof normalChance === "number" && normalChance > 0 ? normalChance : chanceWith(name, level, compound, sg, extra);
+            if (!(p > 0)) continue;
+            const price = scrollPrice(prefix, sg);
+            const cost = compound ? (price + 3 * value) / p : (price + (1 - p) * value) / p;
+            if (!best || cost < best.cost) best = { scroll: prefix + sg, grade: sg, p: p, cost: cost };
+            if (cfg.scrollChoice && cfg.scrollChoice.enabled === false) break; // off: always the normal scroll
+        }
+        return best || { scroll: prefix + g, grade: g, p: pNormal, cost: Infinity };
+    }
+    // A higher scroll than the normal one pays off for this step: { scroll, p, cost, normalCost } or null.
+    function cheaperScroll(name, level, compound, normalChance) {
+        const g = gradeAt(name, level);
+        const value = copyValue(name, level);
+        const best = bestScroll(name, level, compound, normalChance, value);
+        if (best.grade <= g) return null;
+        const pn = normalChance;
+        const price = scrollPrice(compound ? "cscroll" : "scroll", g);
+        const normalCost = compound ? (price + 3 * value) / pn : (price + (1 - pn) * value) / pn;
+        return { scroll: best.scroll, p: best.p, cost: best.cost, normalCost: normalCost };
+    }
     // Expected cost of one copy at name +level from the copies we hold (bag and bank).
     function compoundCost(name, level) {
         const stock = unlockedCopies(name);
         const count = function (l) { return stock.filter(function (x) { return x === l; }).length; };
         if (stock.some(function (x) { return x >= level; })) return { gold: 0, copies: 0 };
         let need = 1, gold = 0;
+        const memo = {};
         for (let l = level; l >= 1; l--) {
             const deficit = Math.max(0, need - count(l));
             if (!deficit) return { gold: gold, copies: 0 };
-            const g = gradeAt(name, l - 1);
-            const p = (G.compounds[g] || {})[l] || 0.05;
+            // The scroll the workshop would choose, chance from the server's formula (2026-11-20).
+            const s = bestScroll(name, l - 1, true, null, copyValue(name, l - 1, memo));
+            const p = s.p || 0.05;
             const attempts = deficit / p;
-            gold += attempts * scrollPrice("cscroll", g);
+            gold += attempts * (G.items[s.scroll] ? G.items[s.scroll].g || 0 : 0);
             need = 3 * attempts;
         }
         return { gold: gold, copies: Math.max(0, need - count(0)) };
@@ -2563,10 +2717,15 @@ module.exports = function createWorkshop(ctx) {
         if (all.some(function (x) { return x >= level; })) return { gold: 0, copies: 0, crafts: 0 };
         const stock = all.filter(function (x) { return x < level; });
         const start = stock.length ? Math.max.apply(null, stock) : 0;
-        const q = function (l) { return ((G.upgrades[gradeAt(name, l - 1)] || {})[l]) || 0.05; };
+        // Each step with the scroll the workshop would choose, chances from the server's formula
+        // (2026-11-20: was always the normal scroll and the table of the current grade - +8 at 14 %
+        // instead of 15 %; the server takes the item's grade at +0).
+        const memo = {}, plan = {};
+        const step = function (l) { return plan[l] || (plan[l] = bestScroll(name, l - 1, false, null, copyValue(name, l - 1, memo))); };
+        const q = function (l) { return step(l).p || 0.05; };
         const chain = function (a) {
             let gold = 0, reach = 1;
-            for (let l = a + 1; l <= level; l++) { gold += reach * scrollPrice("scroll", gradeAt(name, l - 1)); reach *= q(l); }
+            for (let l = a + 1; l <= level; l++) { gold += reach * (G.items[step(l).scroll] ? G.items[step(l).scroll].g || 0 : 0); reach *= q(l); }
             return { gold: gold, p: reach };
         };
         const first = chain(start), fresh = chain(0);
@@ -2858,10 +3017,13 @@ module.exports = function createWorkshop(ctx) {
         });
         return out.slice(0, wo.max || 8);
     }
-    async function shopPonty() {
+    // force: a Ponty round visit (merchantRole.pontyRound) - no timer, and it reports what it saw.
+    let lastPontyVisit = null; // { items, bought }
+    async function shopPonty(force) {
         const pc = (config.market && config.market.ponty) || {};
-        if (!pc.enabled || Date.now() < nextPontyAt || character.esize < 3 || !bankSnapshot) return false;
+        if (!pc.enabled || (!force && Date.now() < nextPontyAt) || character.esize < 3 || !bankSnapshot) return false;
         nextPontyAt = Date.now() + (pc.everyMs || 20 * 60 * 1000);
+        lastPontyVisit = { items: 0, bought: 0 };
         const wants = pontyWants();
         // Finds are reported even with an empty pot (player wants to see what would be worth it).
         if ((!Object.keys(wants).length || !canSpend(GOALS, 1)) && !pc.reportFinds) return false;
@@ -2959,7 +3121,74 @@ module.exports = function createWorkshop(ctx) {
         }
         const dear = Object.keys(tooDear);
         if (dear.length) util.log("workshop", "Ponty, not in the gear pot (" + Math.round(goalBudget().allowed / 1000) + "k): " + dear.map(function (n) { return n + " " + tooDear[n] + "k"; }).join(", "), "white");
+        lastPontyVisit = { items: list.length, bought: bought };
         return bought > 0;
+    }
+
+    // ---- other players' stands (player decision 2026-11-20) ----------------------------
+    // What the merchant would buy at Ponty, offered on a player's stand anywhere: the same
+    // rules (wishes and gear goals: a better copy or a useful base, at most maxShareOfOwn of our
+    // own cost and maxShareOfPot of the gear pot; finds: gain per gold at least our best own
+    // upgrade), at the seller's price. Finds that would need a main-stat scroll are left out
+    // (no stop at the upgrade NPC on a trip). chars: the game's merchant list. Best first.
+    function playerOffers(chars) {
+        const pc = (config.market && config.market.ponty) || {};
+        if (!pc.enabled || !bankSnapshot) return [];
+        const wants = pontyWants(), counts = pontyCounts();
+        const allowed = goalBudget().allowed;
+        const out = [];
+        // Price check across the market (player decision 2026-11-20): never pay more for a level
+        // than some stand asks for a higher level of the same item - an INT Ring +2 went for 5.3M,
+        // three minutes before a +3 for 3.8M.
+        const offered = {}; // name -> [{ level, price }] of every open sell listing
+        (chars || []).forEach(function (c) {
+            if (!c || !c.slots || !c.stand) return;
+            Object.keys(c.slots).forEach(function (s) {
+                const it = c.slots[s];
+                if (!it || it.b || !(it.price > 0) || it.giveaway || it.want) return;
+                (offered[it.name] = offered[it.name] || []).push({ level: it.level || 0, price: it.price });
+            });
+        });
+        const higherCheaper = function (name, lvl, price) {
+            return (offered[name] || []).some(function (o) { return o.level > lvl && o.price <= price; });
+        };
+        (chars || []).forEach(function (c) {
+            if (!c || !c.slots || !c.stand || c.name === character.name) return; // stand closed: away
+            Object.keys(c.slots).forEach(function (s) {
+                const it = c.slots[s];
+                if (!it || it.b || !(it.price > 0) || it.giveaway || it.want || it.p === "glitched" || !G.items[it.name]) return;
+                const lvl = it.level || 0, price = it.price;
+                if (price > character.gold || higherCheaper(it.name, lvl, price)) return;
+                if (wants.hasOwnProperty(it.name)) {
+                    const levels = allCopyLevels(it.name);
+                    if (sellerOf(it.name)) {
+                        if (lvl <= levels.reduce(function (m, l) { return Math.max(m, l); }, -1)) return;
+                    } else if (!wantsAsBase(it.name, lvl, wants[it.name], counts[it.name] || 1, levels)) return;
+                    if (pc.maxShareOfPot && price > allowed * pc.maxShareOfPot) return;
+                    const own = ownCost(it.name, lvl);
+                    if (price > own * (pc.maxShareOfOwn || 1) || !canSpend(GOALS, price)) return;
+                    out.push({ char: c, slot: s, name: it.name, level: lvl, price: price, kind: "wish", own: isFinite(own) ? Math.round(own) : null, score: isFinite(own) ? price / own : 1 });
+                    return;
+                }
+                if (!pc.buyFinds || !(bestPerGold > 0)) return;
+                Object.keys(fighterValues).forEach(function (f) {
+                    const b = fighterValues[f].base || {};
+                    if (G.items[it.name].stat && it.stat_type !== b.stat) return; // would need a stat scroll
+                    const g = gainFor(f, it);
+                    if (!(g > (pc.findMinGain || 0.5)) || g / price < bestPerGold) return;
+                    if (price > allowed * (pc.maxShareOfPot || 1) || !canSpend(GOALS, price)) return;
+                    out.push({ char: c, slot: s, name: it.name, level: lvl, price: price, kind: "find", fighter: f, gain: Math.round(g * 100) / 100, score: 2 - Math.min(1, g / price / bestPerGold / 10) });
+                });
+            });
+        });
+        // Wishes before finds; within each, the best deal (lowest share of our own cost) first.
+        return out.sort(function (a, b) { return (a.kind === "wish" ? 0 : 1) - (b.kind === "wish" ? 0 : 1) || a.score - b.score; });
+    }
+    // Book a purchase from a player's stand: the gear pot pays, the list of buys notes it.
+    function bookPlayerBuy(o) {
+        pay(GOALS, o.price);
+        noteBought({ kind: "player " + o.kind, item: o.name + " +" + o.level, price: o.price, seller: o.seller, server: o.server, fighter: o.fighter || null, own: o.own || null, gain: o.gain || null });
+        if (o.kind === "find" && o.fighter) earmark(o.fighter, o.name, o.level, null);
     }
 
     // ---- one per character ----------------------------------------------------
@@ -3418,6 +3647,14 @@ module.exports = function createWorkshop(ctx) {
         wishBuyOrders: wishBuyOrders,
         bookWishFill: bookWishFill,
         dropBasis: function () { return dropBasis; },
+        playerOffers: playerOffers,
+        bookPlayerBuy: bookPlayerBuy,
+        // Ponty round (merchantRole.pontyRound): one visit now; { items, bought } or null.
+        pontyVisit: async function () {
+            lastPontyVisit = null;
+            await shopPonty(true);
+            return lastPontyVisit;
+        },
         needsCopy: needsCopy,
         // Units of an item we hold (bag + last bank snapshot), e.g. for the stand's buy orders.
         ownedCount: ownedCount,

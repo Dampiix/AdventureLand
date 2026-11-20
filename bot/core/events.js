@@ -46,6 +46,46 @@ module.exports = function createEvents(ctx) {
         nextSearchAt[name] = Date.now() + (nonstop ? (cfg.farmBossEveryMs || 60 * 1000) : cfg.searchEveryMs);
         try { set(SEARCH_KEY, nextSearchAt); } catch (e) { /* storage unavailable */ }
     }
+    // Respawn-aware searching (player decision 2026-11-20, idea from earthiverse's bot): after a
+    // kill we watched, a boss that respawns slowly is searched again only when it can be back -
+    // at kill + respawn x respawnFactor (the game's long respawns come up to 28 % early). Jr
+    // (7.2 h) and Green Jr (14.4 h) were searched every 30 min for hours. Never sooner than
+    // searchEveryMs; the Phoenix (32 s) and anything not seen dying keep the normal timer.
+    // The kill comes from the game's "death" message; the listener lives on the game page and
+    // is swapped on each load (like the hit log).
+    const PAGE = parent;
+    try {
+        if (PAGE.__dmpxDeathFn) PAGE.socket.off("death", PAGE.__dmpxDeathFn);
+        PAGE.__dmpxDeaths = PAGE.__dmpxDeaths || {};
+        PAGE.__dmpxDeathFn = function (d) {
+            try {
+                if (!d || !d.id) return;
+                const now = Date.now();
+                PAGE.__dmpxDeaths[d.id] = now;
+                Object.keys(PAGE.__dmpxDeaths).forEach(function (id) { if (now - PAGE.__dmpxDeaths[id] > 10 * 60 * 1000) delete PAGE.__dmpxDeaths[id]; });
+            } catch (e) { /* bookkeeping only */ }
+        };
+        PAGE.socket.on("death", PAGE.__dmpxDeathFn);
+    } catch (e) { /* no socket */ }
+    function killedAt(id) {
+        if (!id) return 0;
+        const e = parent.entities && parent.entities[id];
+        if (e && e.dead) return Date.now();
+        return (PAGE.__dmpxDeaths && PAGE.__dmpxDeaths[id]) || 0;
+    }
+    function respawnLater(name, killAt) {
+        const resp = (G.monsters[name] && G.monsters[name].respawn) || 0;
+        if (resp <= 200) {
+            util.log("event", name + " killed - back to farming", "green");
+            searchLater(name);
+            return;
+        }
+        const back = killAt + resp * 1000 * (cfg.respawnFactor || 0.72);
+        nextSearchAt[name] = Math.max(back, Date.now() + cfg.searchEveryMs);
+        try { set(SEARCH_KEY, nextSearchAt); } catch (e) { /* storage unavailable */ }
+        const h = (nextSearchAt[name] - Date.now()) / 3600000;
+        util.log("event", name + " killed - next search in " + (h >= 1 ? h.toFixed(1) + " h" : Math.round(h * 60) + " min") + " (respawn " + Math.round(resp / 60) + " min)", "green");
+    }
     let lastJoinTry = 0;
     let joined = null;         // leader: { name, map } once we stand on the event map
     let joining = null;        // leader: { name, from, at } while a join() is on its way
@@ -231,12 +271,60 @@ module.exports = function createEvents(ctx) {
         return !!ctx.teamWaitAt && Date.now() - ctx.teamWaitAt < 1500;
     }
 
+    // Any target boss in sight ends a search at once (player decision 2026-11-20): the search
+    // only looked for its own boss - a Phoenix met on the way to Dracul's spot, or Dracul next
+    // to the Phoenix in the cave, was walked past. Returns the visible boss's name or null.
+    function visibleBoss() {
+        return (cfg.search || []).find(function (n) {
+            return (get_nearest_monster({ type: n }) || memberSighting(n)) && policy(n) === "always";
+        }) || null;
+    }
+    let searchAbort = null; // name of the boss in sight that stopped the running search
+
+    // Boss sightings shared by the members (player decision 2026-11-20): warrior and ranger saw
+    // the Phoenix and walked to it, the priest (leader) did not see it and stood waiting for them
+    // until it came into his own sight. Members report a target boss in their sight every 2 s;
+    // the leader engages it like one he sees himself and walks to the reported spot.
+    const sightings = {};      // leader: boss -> { id, map, x, y, from, at }
+    let lastSightingSent = 0;
+    ctx.comms.on("bosssight", function (data, from) {
+        if (!leads || !data || !data.name || !(cfg.search || []).includes(data.name)) return;
+        if (!sightings[data.name] || Date.now() - sightings[data.name].at > 30 * 1000) {
+            util.log("event", data.name + " seen by " + from + " (" + data.map + ")", "green");
+        }
+        sightings[data.name] = { id: data.id, map: data.map, x: data.x, y: data.y, from: from, at: Date.now() };
+    });
+    function reportSightings() {
+        if (leads || Date.now() - lastSightingSent < 2000) return;
+        (cfg.search || []).some(function (name) {
+            const m = get_nearest_monster({ type: name });
+            if (!m) return false;
+            lastSightingSent = Date.now();
+            ctx.comms.send(config.leader, "bosssight", { name: name, id: m.id, map: character.map, x: Math.round(m.x), y: Math.round(m.y) });
+            return true;
+        });
+    }
+    // A member's fresh sighting (10 s) of a boss that is not known dead, or null.
+    function memberSighting(name) {
+        const s = sightings[name];
+        if (!s || Date.now() - s.at > 10 * 1000 || killedAt(s.id)) return null;
+        return s;
+    }
     async function searchBoss(name) {
         searching = true;
+        searchAbort = null;
+        // Ends the search when a boss came into sight (tick() saw it and stopped the walk).
+        const aborted = function () {
+            if (!searchAbort) return false;
+            util.log("event", searchAbort + " in sight - " + (searchAbort === name ? "found" : "search for " + name + " paused"), "green");
+            if (searchAbort === name) searchLater(name); // found: the next search counts from now
+            return true;
+        };
         try {
             util.log("event", "searching " + name, "yellow");
             const spots = spawnSpots(name);
             for (let si = 0; si < spots.length; si++) {
+                if (aborted()) return;
                 const spot = spots[si];
                 util.status("searching " + name + " (" + spot.map + ")", "yellow");
                 // Every spawn area in the log, so a skipped one shows up (2026-11-17).
@@ -253,6 +341,7 @@ module.exports = function createEvents(ctx) {
                         reached = true;
                     } catch (e) {
                         const reason = util.errReason(e);
+                        if (aborted()) return; // a boss came into sight: fight it first
                         // Stopped by the leader's wait for the team (player decision 2026-11-20): no
                         // failed try - wait along, then walk on to the same spot. A Jr. search ended
                         // "not found" after three such stops without ever reaching his spot. Bounded
@@ -268,8 +357,10 @@ module.exports = function createEvents(ctx) {
                         break;
                     }
                 }
+                if (aborted()) return;
                 if (!reached) continue;
                 await sleep(cfg.searchSpotMs);
+                if (aborted()) return;
                 if (get_nearest_monster({ type: name })) {
                     boss = { name: name, seenAt: Date.now() };
                     searchLater(name); // next search counts from now (survives a restart)
@@ -305,17 +396,26 @@ module.exports = function createEvents(ctx) {
 
         // Roaming bosses: engaged while visible (or seen in the last 30 s).
         (cfg.search || []).forEach(function (name) {
-            if (policy(name) === "always" && get_nearest_monster({ type: name })) {
+            const ok = policy(name) === "always";
+            const seen = ok ? get_nearest_monster({ type: name }) : null;
+            const told = ok && !seen ? memberSighting(name) : null;
+            if (seen || told) {
                 // Engaged: the next search is due searchEveryMs from now (stored), so a
                 // restart right after the kill does not send us searching at once.
                 if (!boss || boss.name !== name) searchLater(name);
-                boss = { name: name, seenAt: Date.now() };
+                boss = seen
+                    ? { name: name, seenAt: Date.now(), id: seen.id }
+                    : { name: name, seenAt: told.at, id: told.id, dest: { map: told.map, x: told.x, y: told.y } };
             }
         });
-        if (boss && Date.now() - boss.seenAt < 30 * 1000) return { name: boss.name, monster: boss.name, dest: boss.name };
+        if (boss && Date.now() - boss.seenAt < 30 * 1000 && !killedAt(boss.id)) return { name: boss.name, monster: boss.name, dest: boss.dest || boss.name, sighted: true };
         if (boss) {
-            util.log("event", boss.name + " gone - back to farming", "white");
-            searchLater(boss.name);
+            const killed = killedAt(boss.id);
+            if (killed) respawnLater(boss.name, killed);
+            else {
+                util.log("event", boss.name + " gone - back to farming", "white");
+                searchLater(boss.name);
+            }
             boss = null;
         }
         return null;
@@ -326,7 +426,18 @@ module.exports = function createEvents(ctx) {
         if (!cfg.enabled) return "ok";
         shareStats();
         watchBossDeaths();
-        if (searching) return "busy";
+        reportSightings();
+        if (searching) {
+            // A target boss in sight (the searched one or another): stop the walk, fight it.
+            if (leads && !searchAbort) {
+                const seen = visibleBoss();
+                if (seen) {
+                    searchAbort = seen;
+                    try { stop(); } catch (e) { /* not walking */ }
+                }
+            }
+            return "busy";
+        }
 
         if (!leads) {
             // Members join the leader's event (an event map can't be walked into).
@@ -390,6 +501,10 @@ module.exports = function createEvents(ctx) {
     return {
         tick: tick,
         current: function () { return current; },
+        // A roaming boss is in sight (ours or a member's): the leader goes to it, no team wait.
+        // Checked live: the team wait runs before tick(), so `current` stays stale while waiting
+        // (2026-11-20: the priest waited 45 s for the warrior with the Phoenix reported).
+        engaging: function () { return !!(current && current.sighted) || (leads && !!visibleBoss()); },
         teamStats: teamStats, // leader: own stats + fresh member reports
     };
 };

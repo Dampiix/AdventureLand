@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.159.0",
+    version: "1.169.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -70,6 +70,32 @@ module.exports = {
             { item: "leather",       price:  120000, keep: 0 }, // a player buys at 100k
             { item: "snakefang",     price: 3500000, keep: 0 }, // a player buys at 3M
         ],
+        // Selling into other players' buy orders on any server (player decision 2026-11-20): every
+        // scanEveryMs the game's merchant list is checked; a buy order at minPrice or more for
+        // everything above "keep" (bag + bank) starts a trip to that stand (server hop if needed).
+        // buyFromPlayers (player decision 2026-11-20): with the same scan, what Ponty would buy
+        // (wishes, gear goals, finds - market.ponty rules) is bought from players' stands too.
+        sellTo: {
+            enabled: true,
+            scanEveryMs: 5 * 60 * 1000,
+            // Items without a known own cost (drops) are capped by the pot share only - an orange
+            // Lolipop +0 went for 1M; fine for an endgame piece (player decision 2026-11-20), so the
+            // pot share went from 0.5 to 0.2 (market.ponty) instead of a price rule.
+            buyFromPlayers: true,
+            items: [
+                // Market check on aldata (player decision 2026-11-20): Monster Tokens down to 700k (more
+                // buyers: Ploob 900k, EadroSell 700k), Fun Tokens added (bids 1-1.5M, nothing in the Fun
+                // Token shop is worth it for us). Void Thread and Bat Wings are kept: the rogue's Knife
+                // Belt (Fan of Knives) needs them.
+                { item: "monstertoken", minPrice: 700000, keep: 20 },
+                { item: "funtoken", minPrice: 1000000, keep: 0 },
+                // Vitality earrings by level (player decision 2026-11-20; Phoenix drop, 12 %): +0 sold while
+                // a buyer pays 500k+; without one for demandHours the workshop compounds them (+1 in
+                // between is never sold) up to +2, the highest level here - stock for +2 buyers (10-15M).
+                { item: "vitearring", level: 0, minPrice: 500000, keep: 0, demandHours: 3 },
+                { item: "vitearring", level: 2, minPrice: 8000000, keep: 0 },
+            ],
+        },
         // Shopping pot (player decision 2026-11-18): a share of the merchant's net income over
         // the last 24 h for buying wished items from Ponty / other players (server tour, not
         // built yet). It only fills for now; nothing spends it. Other pots for comparison:
@@ -88,7 +114,7 @@ module.exports = {
         // spot's (guide `net`, never below 0) - and a filled order is paid from the gear pot.
         // priceShare 1.2 (player decision 2026-11-20): a bought copy saves the waiting time, worth
         // 20 % on top of our own cost - the same rule as Ponty's maxShareOfOwn.
-        wishOrders: { enabled: true, priceShare: 1.2, maxShareOfPot: 0.5, minPrice: 1000, max: 8 },
+        wishOrders: { enabled: true, priceShare: 1.2, maxShareOfPot: 0.2, minPrice: 1000, max: 8 }, // pot share 0.5 -> 0.2 (2026-11-20)
         // Ponty (player request 2026-11-19, fresh account): every everyMs the merchant checks his
         // listings and buys what a fighter wishes or a gear goal needs - better than our best copy
         // and at most maxShareOfOwn of what making it ourselves would cost. From the shopping pot.
@@ -99,7 +125,9 @@ module.exports = {
         // 2026-11-19): the best one worth it is bought as well (pot share, main-stat scroll, delivered).
         // Wished drops no NPC sells (lollipops, drop rings): lower levels are bought as bases to
         // upgrade - up to the wish count, or the copies a compound still lacks (2026-11-19).
-        ponty: { enabled: true, everyMs: 20 * 60 * 1000, maxShareOfOwn: 1.2, maxShareOfPot: 0.5, reportFinds: true, buyFinds: true, findMinGain: 0.5 },
+        // maxShareOfPot 0.2 since 2026-11-20 (player decision, was 0.5): a bad buy never takes more
+        // than a fifth of the gear pot - this rule also caps buys from players' stands.
+        ponty: { enabled: true, everyMs: 20 * 60 * 1000, maxShareOfOwn: 1.2, maxShareOfPot: 0.2, reportFinds: true, buyFinds: true, findMinGain: 0.5 },
     },
 
     // Dismantle drops (player decision 2026-11-17): instead of upgrading them, the merchant
@@ -180,6 +208,12 @@ module.exports = {
         townMinDistance: 600, // ...but only from farther than this from the map's center (the route search counts Town as one step)
     },
 
+    // Member watchdog (player decision 2026-11-20, main.js): every bot writes a heartbeat after each
+    // loop step; the client hosting a bot window restarts it after silentMs without one (or when the
+    // window is gone) - at most one restart per gapMs, maxPerHour, then it gives up with a red log.
+    // A member stopped on purpose comes back too: switch this off (or stop the leader first).
+    watchdog: { enabled: true, silentMs: 2 * 60 * 1000, checkEveryMs: 15 * 1000, gapMs: 10 * 60 * 1000, maxPerHour: 3 },
+
     // Client display only (no effect headless).
     ui: {
         hideGoldLogs: true,   // drop the game's "123 gold" loot lines from the log
@@ -218,6 +252,9 @@ module.exports = {
         // comes back ~32 s after its death at a random one of its 5 spots; Dracul (1080)
         // after 13-22 min.
         searchEveryMs: 30 * 60 * 1000,
+        // After a kill we saw, a slow boss (respawn > 200 s) is searched again only at
+        // kill + respawn x respawnFactor (long respawns come up to 28 % early; 2026-11-20).
+        respawnFactor: 0.72,
         // Bosses hunted nonstop: searched again after farmBossEveryMs (player option
         // 2026-11-16; Phoenix: weapons and earrings, about half the XP/h of crocs).
         farmBosses: [],                 // ["phoenix"] = nonstop Phoenix hunt; off for the Agitate test at the crocs (2026-11-18)
@@ -451,7 +488,12 @@ module.exports = {
             mpReserveRatio: 0.2,
             // Taunt a monster off an ally that is below allyHpBelow, or that hits for at
             // least hitRatio of the ally's max HP per hit ("harder targets").
-            taunt: { enabled: true, allyHpBelow: 0.8, hitRatio: 0.05 },
+            // Also always (2026-11-20): bosses (cooperative, events.search, or max HP >= bossHp) and
+            // anything on our healer - a kiting priest walked the Phoenix around the map.
+            // walkFirst (2026-11-20): walk up to the monster (within range + closeBy), then taunt - from
+            // afar only when the ally is below urgentHpBelow or the monster returns damage to melee.
+            taunt: { enabled: true, allyHpBelow: 0.8, hitRatio: 0.05, bosses: true, bossHp: 20000, offHealer: true,
+                walkFirst: true, closeBy: 25, urgentHpBelow: 0.5 },
             agitateFrom: 3,                 // Agitate (lvl 68) when this many monsters are on allies
             cleaveFrom: 3,                  // Cleave (lvl 52, axe/scythe) with this many monsters around
             stompFrom: 2,                   // Stomp (lvl 52, basher) with this many attackers
@@ -798,6 +840,13 @@ module.exports = {
             gearHighScrollFrom: 5,
             buyStrongerScrolls: true, // only within budgetPerWish; owned/banked ones are used first
         },
+        // Cheapest scroll per step (player decision 2026-11-20, Earthiverse idea #3): expected gold =
+        // (scroll + (1 - chance) x value of the lost copies) / chance, chances from the server's
+        // formulas. Replaces higherScrollFrom / gearHighScrollFrom above (used only with enabled: false):
+        // shop gear takes the normal scroll up to +7 (helmet to +8: ~1.7M instead of ~3.8M), valuable
+        // copies (drops, earrings at their sell price) get the higher one where it saves gold.
+        // A +0 copy no shop sells: max(drop hours x team gold/h, game value x valueFactor); unknownValue without either.
+        scrollChoice: { enabled: true, valueFactor: 3, unknownValue: 1000000 },
         // Gold per wish (base item + scrolls, failures included): shop gear vs token/drop
         // items (player decision 2026-11-16: room for Rare scrolls, 1.6M each).
         budgetPerWish: {
@@ -1053,7 +1102,8 @@ module.exports = {
             // except the HP/VIT ones no class or guide wants (approved 2026-11-16; any
             // level: compounding them first loses gold on average). Worn copies stay.
             { name: "hpamulet", maxLevel: 10 },
-            { name: "vitearring", maxLevel: 10 },
+            // vitearring off the list 2026-11-20 (player decision): players bid up to 1M for +0 and
+            // 10-15M for +2 (NPC: a few 10k). Kept until selling to players by level is decided.
             { name: "vitring", maxLevel: 10 },  // STR beats VIT for the warrior too (player decision 2026-11-16)
             { name: "hpbelt", maxLevel: 10 },   // stat belts replace them (2026-11-19); a worn copy stays
             { name: "helmet", maxLevel: 3 },
@@ -1087,6 +1137,22 @@ module.exports = {
         // non-merchant player in reach (2 % chance of a copy of what they loot). Ours is renewed
         // below refreshBelowMs; strangers' "strong" mluck (their own merchant's) is left alone.
         mluck: { enabled: true, strangers: true, refreshBelowMs: 30 * 60 * 1000, mpReserve: 100 },
+        // Ponty round over other servers (player decision 2026-11-20): at full local hours every
+        // everyHours (0 = off, e.g. 3 -> 0, 3, 6, ... o'clock) and once at testAt, the merchant
+        // serves every fighter, banks, then visits Ponty on each server (wishes and finds, the
+        // usual price and pot rules) and comes home. The hop is done by the client hosting the
+        // merchant's bot window (main.js hop watcher).
+        pontyRound: {
+            enabled: true,
+            home: ["EU", "III"],
+            // Every server, the PvP ones too (player decision 2026-11-20: worth the risk of being
+            // attacked there). The home server is skipped automatically.
+            servers: [["EU", "I"], ["EU", "II"], ["EU", "IV"], ["US", "I"], ["US", "II"], ["US", "III"], ["US", "IV"], ["US", "V"], ["ASIA", "I"], ["ASIA", "II"],
+                ["EU", "PVP"], ["US", "PVP"]],
+            everyHours: 3,                     // 0, 3, 6, ... o'clock local time (player decision 2026-11-20)
+            testAt: null,                      // one extra round at this ISO time (the first test ran 2026-11-20 16:47Z)
+            prepMaxMs: 8 * 60 * 1000, hopTimeoutMs: 2 * 60 * 1000,
+        },
         // Skill ingredients go to the class that uses them on every delivery.
         classItems: { priest: ["essenceoflife"], ranger: ["poison"] },
         // Bank: when the bag runs low on space, everything that is neither sold

@@ -1,0 +1,109 @@
+{
+  "account": "viz",
+  "taken": "2026-11-20T18:54:56Z",
+  "note": "Day one complete: 24 h after the start of the fresh Viz account (first gold booking 2026-11-19T18:56Z). Bot v1.166.0. Compare with 2026-11-19-2231-viz-night-start.json (first night) and 2026-11-20-1708-viz-afternoon.json. Day one brought: party farming with the gear plan, Ponty rounds over all 12 servers, buying from and selling to other players' stands, chest opener, cooldown-timed strikes, boss sightings shared, walk-then-taunt.",
+  "botVersion": "1.166.0",
+  "characters": {
+    "VizPri": {
+      "class": "priest", "role": "leader", "level": 53, "xp": 640824, "max_xp": 11000000, "gold": 42055, "map": "halloween",
+      "stats": { "hp": 2964, "mp": 3330, "attack": 458, "armor": 70, "resistance": 219, "int": 178, "vit": 31, "frequency": 0.82, "speed": 57, "goldm": 1.15, "luckm": 1.52, "xpm": 1.26 },
+      "worn": { "mainhand": "staff+8", "offhand": "wbook0+1", "helmet": "wcap+8:int", "chest": "coat+8:int", "pants": "pants+8:int", "shoes": "shoes+8:int", "gloves": "gloves+7:int", "ring1": "intring+3", "ring2": "intring+2", "earring1": "intearring+1", "earring2": "intearring+1", "amulet": "intamulet+1", "belt": "hpbelt+0", "orb": "orbg+1" },
+      "bag": ["tracker", "mpot1 x134", "hpot1 x287", "intamulet+0"]
+    },
+    "VizWar": {
+      "class": "warrior", "level": 54, "xp": 7956109, "max_xp": 13000000, "gold": 37576, "map": "halloween",
+      "stats": { "hp": 6103, "mp": 700, "attack": 889, "armor": 243, "resistance": 67, "str": 171, "vit": 32, "frequency": 0.88, "speed": 68, "goldm": 1.15, "luckm": 1.52, "xpm": 1.26 },
+      "worn": { "mainhand": "blade+8", "offhand": "blade+8", "helmet": "helmet+7:str", "chest": "coat+7:str", "pants": "pants+7:str", "shoes": "shoes+7:str", "gloves": "gloves+7:str", "ring1": "strring+2", "ring2": "strring+3", "earring1": "strearring+2", "earring2": "strearring+2", "amulet": "stramulet+1", "belt": "strbelt+1", "orb": "orbg+0", "cape": "cape+0:str" },
+      "bag": ["tracker", "mpot0 x293", "ringsj+2", "hpot1 x282", "blade+7"]
+    },
+    "VizRng": {
+      "class": "ranger", "level": 53, "xp": 8163311, "max_xp": 11000000, "gold": 32610, "map": "halloween",
+      "stats": { "hp": 2427, "mp": 870, "attack": 602, "armor": 92, "resistance": 151, "dex": 162, "vit": 22, "frequency": 0.99, "speed": 62, "goldm": 1.15, "luckm": 1.52, "xpm": 1.26 },
+      "worn": { "mainhand": "bow+7", "offhand": "quiver+6", "helmet": "helmet+7:dex", "chest": "tshirt1+3", "pants": "pants+7:dex", "shoes": "shoes+7:dex", "gloves": "gloves+7:dex", "ring1": "ringsj+2", "ring2": "dexring+3", "earring1": "dexearring+1", "earring2": "dexearring+1", "amulet": "dexamulet+1", "belt": "hpbelt+0", "orb": "orbg+1" },
+      "bag": ["wbreeches+0", "mpot0 x162", "tracker", "hpot1 x300", "dexamulet+0"]
+    },
+    "VizMerch": {
+      "class": "merchant", "level": 49, "xp": 3773669, "max_xp": 4700000, "gold": 51428399, "map": "main",
+      "bag": ["mpot0 x575", "hpot1 x830", "mpot1 x290", "stand0", "stormfeather x8",
+        "intring+1", "intring+0", "dexring+1", "strring+0 x2", "intearring+1", "strearring+1 x2", "strearring+0", "dexearring+0",
+        "stramulet+1", "stramulet+0", "dexamulet+1", "dexamulet+0", "intamulet+0 x2", "strbelt+1", "strbelt+0 x2",
+        "wgloves+0 x3", "wshoes+0 x3", "quiver+0"],
+      "standBuyOrders": ["essenceoffire x10 @140k", "quiver+7 @3.1M", "ololipop+0 x2 @150k", "gslime x99 @60", "frogt x10 @10", "glolipop+0 x4 @80k", "offeringp x2 @350k", "crossbow+0 @400k", "wshoes+8 @1.5M", "wgloves+8 @1.5M", "helmet+8 @2.1M", "spores x20 @360", "gloves+8 @2.2M", "beewings x27 @75"]
+    }
+  },
+  "bank": {
+    "gold": 1000, "freeSlots": 55, "seenAt": "2026-11-20T18:50:10Z",
+    "items": { "stormfeather": 321, "crabclaw": 300, "monstertoken": 205, "beewings": 129, "gslime": 24, "marketparcel": 22, "gem0": 7, "seashell": 8, "ascale": 6, "candycane": 5, "embercore": 3, "cscale": 3, "bwing": 3, "carrot": 3, "gem1": 2, "bfur": 2, "frostcore": 1, "mistletoe": 1, "elixirvit0": 1, "rfangs": 1, "frogt": 1, "voidthread": 1 },
+    "gear": ["t2bow+3", "wbook0+0", "coat+6:str", "helmet+6:dex", "shoes+5:dex", "pants+5:dex", "gloves+5:dex"]
+  },
+  "goldFlow24h": {
+    "note": "Merchant gold booked by the workshop since the first booking (2026-11-19T18:56Z). 'in' includes the player's hand sales of Monster Tokens (~42M on day one evening, 49M in the morning) and the bot's token sales (30M).",
+    "in": 134660659, "out": 82624108, "last4h": { "in": 32153308, "out": 39009320 }
+  },
+  "playerTrades": {
+    "note": "Selling to and buying from other players' stands started 2026-11-20 ~17:20Z (v1.160+).",
+    "sold": [
+      { "at": "17:32Z", "server": "ASIA II", "buyer": "Rocky", "item": "monstertoken", "q": 5, "price": 1000000 },
+      { "at": "18:42Z", "server": "ASIA II", "buyer": "Rocky", "item": "monstertoken", "q": 5, "price": 1000000 },
+      { "at": "18:47Z", "server": "US I", "buyer": "CrownMerch", "item": "funtoken", "q": 20, "price": 1000000 }
+    ],
+    "soldTotal": 30000000,
+    "bought": [
+      { "at": "17:23Z", "server": "US II", "item": "strring+2", "price": 388800 },
+      { "at": "17:26Z", "server": "ASIA II", "item": "ololipop+0", "price": 1000000 },
+      { "at": "17:35Z", "server": "US V", "item": "orbg+1", "price": 390000 },
+      { "at": "17:37Z", "server": "ASIA II", "item": "intring+2", "price": 5317312 },
+      { "at": "17:38Z", "server": "US V", "item": "dexring+3", "price": 3761609 },
+      { "at": "17:40Z", "server": "US I", "item": "intring+3", "price": 3838377 },
+      { "at": "17:41Z", "server": "EU II", "item": "strbelt+0", "price": 1000000 },
+      { "at": "17:42Z", "server": "EU II", "item": "strbelt+1", "price": 3000000 },
+      { "at": "17:44Z", "server": "EU I", "item": "strearring+2", "price": 1259525 },
+      { "at": "17:57Z", "server": "EU IV", "item": "glolipop+0", "price": 1000000 },
+      { "at": "18:02Z", "server": "EU I", "item": "glolipop+0", "price": 84000 },
+      { "at": "18:03Z", "server": "US III", "item": "ololipop+0", "price": 1000000 },
+      { "at": "18:05Z", "server": "EU II", "item": "intamulet+0", "price": 1000000 },
+      { "at": "18:10Z", "server": "US II", "item": "dexamulet+1", "price": 162720 },
+      { "at": "18:11Z", "server": "US V", "item": "orbg+1", "price": 390000 },
+      { "at": "18:23Z", "server": "ASIA I", "item": "ololipop+0", "price": 1000000 },
+      { "at": "18:48Z", "server": "US I", "item": "strring+3", "price": 3838377 },
+      { "at": "18:49Z", "server": "EU II", "item": "strbelt+1", "price": 3000000 }
+    ],
+    "boughtTotal": 31430720
+  },
+  "pontyBuys": [
+    { "at": "2026-11-19T21:20Z", "item": "helmet+7", "price": 119832 },
+    { "at": "2026-11-19T21:20Z", "item": "bow+7", "price": 562200 },
+    { "at": "2026-11-19T21:20Z", "item": "staff+7", "price": 437784 },
+    { "at": "2026-11-19T21:20Z", "item": "shoes+7", "price": 427416 },
+    { "at": "2026-11-20T03:24Z", "item": "strbelt+0", "price": 60000 },
+    { "at": "2026-11-20T03:24Z", "item": "intamulet+0", "price": 36000 },
+    { "at": "2026-11-20T03:24Z", "item": "stramulet+0", "price": 36000 },
+    { "at": "2026-11-20T07:09Z", "item": "t2bow+3", "price": 213600 },
+    { "at": "2026-11-20T07:30Z", "item": "bow+7", "price": 562200 },
+    { "at": "2026-11-20T12:35Z", "item": "tshirt1+3", "price": 120144 },
+    { "at": "2026-11-20T16:50Z", "item": "quiver+6", "price": 399480 },
+    { "at": "2026-11-20T16:50Z", "item": "glolipop+0", "price": 19200 },
+    { "at": "2026-11-20T16:50Z", "item": "strring+0", "price": 28800 },
+    { "at": "2026-11-20T17:02Z", "item": "quiver+5", "price": 198200 }
+  ],
+  "buyOrdersFilled": [
+    { "at": "2026-11-20T07:04Z", "item": "intring+2", "price": 34000 },
+    { "at": "2026-11-20T07:24Z", "item": "cape+0", "price": 4200000 },
+    { "at": "2026-11-20T08:38Z", "item": "stramulet+2", "price": 41000 }
+  ],
+  "progressSinceNightStart": {
+    "from": "2026-11-19-2231-viz-night-start.json (2026-11-19T21:31Z, 2.5 h after the start)",
+    "levels": { "VizPri": "? -> 53", "VizWar": "? -> 54", "VizRng": "? -> 53", "levelsMorning0248Z": { "VizPri": 45, "VizWar": 47, "VizRng": 46 } },
+    "VizPri": { "mainhand": "staff+7 -> staff+8", "offhand": "- -> wbook0+1", "helmet": "helmet+2 -> wcap+8", "chest": "coat+3 -> coat+8", "pants": "pants+3 -> pants+8", "shoes": "shoes+0 -> shoes+8", "gloves": "gloves+3 -> gloves+7", "rings": "ringsj+0 x2 -> intring+3, intring+2", "earrings": "- -> intearring+1 x2", "amulet": "- -> intamulet+1", "orb": "- -> orbg+1" },
+    "VizWar": { "mainhand": "blade+3 -> blade+8", "offhand": "blade+1 -> blade+8", "helmet": "helmet+1 -> helmet+7", "chest": "coat+1 -> coat+7", "pants": "pants+0 -> pants+7", "shoes": "shoes+0 -> shoes+7", "gloves": "gloves+1 -> gloves+7", "rings": "ringsj+0 -> strring+3, strring+2", "earrings": "- -> strearring+2 x2", "amulet": "hpamulet+0 -> stramulet+1", "belt": "hpbelt+0 -> strbelt+1", "orb": "- -> orbg+0", "cape": "- -> cape+0" },
+    "VizRng": { "mainhand": "bow+3 -> bow+7", "offhand": "- -> quiver+6", "helmet": "helmet+1 -> helmet+7", "chest": "coat+0 -> tshirt1+3", "pants": "- -> pants+7", "shoes": "wshoes+0 -> shoes+7", "gloves": "gloves+0 -> gloves+7", "rings": "- -> ringsj+2, dexring+3", "earrings": "- -> dexearring+1 x2", "amulet": "- -> dexamulet+1", "orb": "- -> orbg+1" },
+    "merchantGold": "40644079 -> 51428399 (after ~31M of player purchases and the workshop's upgrades)",
+    "monsterTokensBank": "6 -> 205 (plus 49 sold by hand in the morning and 10 by the bot; the ~42M hand sale was before the night start)"
+  },
+  "nextSteps": [
+    "Ranger bow to +8 (last shop weapon below +8)",
+    "Team armor to +7, then everyone to +8; then the priest's Wanderer set",
+    "Vitality earrings kept since v1.165.1 (players pay up to 1M for +0, 10-15M for +2) - selling by level to be decided",
+    "Cave Amber (bids 5-6.5M, 8 % from the cave_* monsters) - to be looked into"
+  ]
+}
