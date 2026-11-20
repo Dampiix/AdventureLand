@@ -88,10 +88,30 @@ module.exports = function createWorkshop(ctx) {
     const fighterValues = {};
     // Kept across restarts: without them every wish needing drops sorts as "unknown" for 15 min.
     const dropTimes = (function () { try { return get("dmpx_drop_times") || {}; } catch (e) { return {}; } })();
+    // Team gold per hour given up while farming each drop (leader's guide, player decision
+    // 2026-11-20): ownCost values drop hours with it instead of our whole gold/hour.
+    // v1.150.0: measured team gold only; the old key held costs from the guide calibration.
+    const COSTS_KEY = "dmpx_drop_costs_v2";
+    const dropCosts = (function () { try { return get(COSTS_KEY) || {}; } catch (e) { return {}; } })();
+    let dropBasis = null; // { monster, goldH } - the leader's normal spot
+    const costAsk = {}; // items ownCost had no drop cost for (asked with the next value report)
     comms.on("droptimes", function (data, from) {
         if (from !== config.leader) return;
         Object.assign(dropTimes, data.times || {});
         try { set("dmpx_drop_times", dropTimes); } catch (e) { /* storage unavailable */ }
+        if (!data.basis) {
+            // The leader's normal spot is not measured: no costs, so no wish orders on guesses.
+            Object.keys(dropCosts).forEach(function (n) { delete dropCosts[n]; });
+            try { set(COSTS_KEY, dropCosts); } catch (e) { /* storage unavailable */ }
+            dropBasis = null;
+            return;
+        }
+        if (data.costs) {
+            Object.assign(dropCosts, data.costs);
+            Object.keys(data.costs).forEach(function (n) { delete costAsk[n]; });
+            try { set(COSTS_KEY, dropCosts); } catch (e) { /* storage unavailable */ }
+        }
+        dropBasis = data.basis;
     });
     comms.on("wishes", function (data, from) {
         if (data.value) fighterValues[from] = Object.assign({ at: Date.now() }, data.value);
@@ -109,7 +129,14 @@ module.exports = function createWorkshop(ctx) {
 
     // Guide wishes plus fixed wishes from config.workshop.wishes, minus recent deliveries.
     function wishList(fighter) {
-        const list = (wishes[fighter] || []).slice();
+        // Weapon wishes only of the types our gear plan names for the class (plus worn ones):
+        // the guide wished a Ghastly Battle Axe +5 for the dual-wielding warrior and a 1M buy
+        // order went up (player decision 2026-11-20: plans change through our list, not the guide).
+        const used = usedWeaponTypes(fighter, fighterClass(fighter));
+        const list = (wishes[fighter] || []).filter(function (w) {
+            const def = G.items[w.name];
+            return !used || !def || def.type !== "weapon" || !!used[def.wtype];
+        });
         ((cfg.wishes || {})[fighter] || []).forEach(function (w) {
             if (G.items[w.name] && !list.some(function (x) { return x.name === w.name && x.level >= w.level; })) list.push(w);
         });
@@ -1856,6 +1883,17 @@ module.exports = function createWorkshop(ctx) {
         const low = Math.min.apply(null, levels);
         return stages.find(function (s) { return low < s; }) || null;
     }
+    // The whole team reaches a stage before anyone goes on to the next (player decision
+    // 2026-11-20): the priest was nearly all +8 while warrior and ranger still wore +5 pieces,
+    // because the fighters are worked on in team order. The lowest stage any fighter is on.
+    function teamStage() {
+        let low = null;
+        config.team.fighters.forEach(function (f) {
+            const s = armorStage(f);
+            if (s !== null && (low === null || s < low)) low = s;
+        });
+        return low;
+    }
     function finalStage() {
         const g = cfg.gearGoals;
         return g.stages && g.stages.length ? Math.max.apply(null, g.stages) : g.upTo;
@@ -1867,10 +1905,12 @@ module.exports = function createWorkshop(ctx) {
     function goalNeedsAll() {
         const g = cfg.gearGoals;
         const list = [];
+        const team = teamStage();
         config.team.fighters.forEach(function (f) {
             const eq = worn[f];
             if (!eq) return;
-            const stage = armorStage(f);
+            const own = armorStage(f);
+            const stage = own === null ? null : Math.min(own, team); // team-wide stages (2026-11-20)
             // A drop weapon in hand (e.g. a Phoenix weapon): the class's shop weapon at
             // upTo may beat it – build that, the fighter switches, and the drop weapon is
             // then upgraded until it wins again (betterWeapons). Player idea 2026-11-15.
@@ -2071,7 +2111,9 @@ module.exports = function createWorkshop(ctx) {
         const takenIdx = new Set(assigned.map(function (a) { return a.index; }));
         // Weapons first (player request 2026-11-15): the risky spare weapons when grace
         // allows (else they wait 30 min), then the worn shop weapons, armor only after that.
-        function rank(n) { return n.weapon ? 0 : n.slot === "mainhand" ? 1 : 2; }
+        // The offhand weapon (dual wield) is a weapon too: it ranked with the armor and the
+        // warrior's Blade +5 waited behind four armor pieces (player decision 2026-11-20).
+        function rank(n) { return n.weapon ? 0 : n.slot === "mainhand" || n.slot === "offhand" ? 1 : 2; }
         const open = needs.filter(function (n) { return !assigned.some(function (a) { return a.need === n; }); })
             .sort(function (a, b) { return rank(a) - rank(b); });
         if (!open.length || character.esize < 3) return false;
@@ -2607,11 +2649,18 @@ module.exports = function createWorkshop(ctx) {
                 (items[n.name] = items[n.name] || []).push({ gain: r.gain, goldH: Math.round(r.goldH * 100) / 100, copies: Math.round(n.copies * 10) / 10, wish: r.item + " " + r.fighter });
             });
         });
-        const xpTeam = Object.keys(fighterValues).reduce(function (s, f) { const v = fighterValues[f].xpPower; return s + (typeof v === "number" ? v : 0); }, 0);
-        if (config.leader) comms.send(config.leader, "values", { xpTeam: Math.round(xpTeam * 100) / 100, items: items });
+        // A fighter without an XP rate yet (its first 10 min after a restart) makes the team's XP
+        // value unknown (null), not smaller: counted as 0 it let every drop spot beat the XP spot
+        // after each reload (2026-11-20).
+        const team = (config.team && config.team.fighters) || [];
+        const xpKnown = team.length > 0 && team.every(function (f) { return fighterValues[f] && typeof fighterValues[f].xpPower === "number"; });
+        const xpTeam = xpKnown ? team.reduce(function (s, f) { return s + fighterValues[f].xpPower; }, 0) : null;
+        if (config.leader) comms.send(config.leader, "values", { xpTeam: xpTeam === null ? null : Math.round(xpTeam * 100) / 100, items: items });
         // Ask the leader for the farm times we still lack (answered with "droptimes").
         const ask = [];
         rows.forEach(function (r) { r.unknown.forEach(function (n) { if (!ask.includes(n)) ask.push(n); }); });
+        // ... and the drop costs ownCost lacks (buy orders, Ponty limits).
+        Object.keys(costAsk).forEach(function (n) { if (!ask.includes(n) && G.items[n]) ask.push(n); });
         if (ask.length && config.leader) comms.send(config.leader, "timesfor", { list: ask });
         const goldOnly = rows.filter(function (r) { return r.farmH === 0 && !r.unknown.length && r.gold > 0 && r.gain > 0; });
         const perGold = goldOnly.reduce(function (m, r) { return Math.max(m, r.gain / r.gold); }, 0);
@@ -2638,12 +2687,31 @@ module.exports = function createWorkshop(ctx) {
     let bestPerGold = 0; // % power per gold of our best gold-only upgrade (value report)
     // % more power for fighter f if item (assumed with f's main-stat scroll when it takes one)
     // replaces the weakest worn piece of its slot type; null when f can't use it.
+    // Weapon types a fighter really uses (player decision 2026-11-20): the ones its class's gear
+    // plan names (config.gearPlan.classes, every mode and hand) plus what it wears now. The game
+    // lets a warrior hold a bow, so two bows from Ponty were bought "for" the dual-wielding
+    // warrior (776k, 2026-11-20). null: no plan for the class - no limit.
+    function usedWeaponTypes(f, cls) {
+        const pc = config.gearPlan && config.gearPlan.classes && config.gearPlan.classes[cls];
+        if (!pc || !pc.modes) return null;
+        const out = {};
+        const add = function (name) { const d = name && G.items[name]; if (d && d.type === "weapon" && d.wtype) out[d.wtype] = true; };
+        Object.keys(pc.modes).forEach(function (m) {
+            ["mainhand", "offhand"].forEach(function (s) { (pc.modes[m][s] || []).forEach(function (e) { add(Array.isArray(e) ? e[0] : e); }); });
+        });
+        ["mainhand", "offhand"].forEach(function (s) { const w = (worn[f] || {})[s]; if (w) add(w.name); });
+        return Object.keys(out).length ? out : null;
+    }
     function gainFor(f, item) {
         const v = fighterValues[f], b = v && v.base, def = G.items[item.name];
         if (!b || !def || Date.now() - v.at > 60 * 60 * 1000) return null;
         const cls = fighterClass(f);
         if (def.class && !def.class.includes(cls)) return null;
         if (def.type === "weapon" && !util.weaponPower(item.name, item.level || 0, cls)) return null;
+        if (def.type === "weapon") {
+            const used = usedWeaponTypes(f, cls);
+            if (used && !used[def.wtype]) return null;
+        }
         const slots = SLOTS_BY_TYPE[def.type] || [];
         if (!slots.length) return null;
         const props = function (it) {
@@ -2655,6 +2723,13 @@ module.exports = function createWorkshop(ctx) {
         };
         const parts = function (p) { return { stat: p[b.stat] || 0, atk: p.attack || 0, freq: (p.frequency || 0) / 100 + (p.dex || 0) / 640 + (p.int || 0) / 1575 }; };
         const pn = parts(props(item));
+        // A two-handed weapon takes the offhand too (player decision 2026-11-20): it is weighed
+        // against both hands together, an offhand weapon's attack at 0.7 as below.
+        if (def.type === "weapon" && util.isDoublehand(item.name, cls)) {
+            const pm = parts(props((worn[f] || {}).mainhand)), po = parts(props((worn[f] || {}).offhand));
+            const g2 = (pn.stat - pm.stat - po.stat) / b.mainVal + (pn.atk - pm.atk - po.atk * 0.7) / Math.max(5, b.atk) + (pn.freq - pm.freq - po.freq) / b.freq;
+            return g2 * 100;
+        }
         let best = null;
         slots.forEach(function (s) {
             const pw = parts(props((worn[f] || {})[s]));
@@ -2725,15 +2800,30 @@ module.exports = function createWorkshop(ctx) {
         const below = levels.filter(function (l) { return l < target; });
         return below.length > 0 && lvl > Math.min.apply(null, below);
     }
-    // Gold our own way to name +level would cost (Infinity: needs drops we can't time).
+    // Gold our own way to name +level would cost (Infinity: needs drops we can't time or price).
+    // Drop hours count at the opportunity cost (player decision 2026-11-20): the team gold per
+    // hour we give up on the drop spot against the spot we really farm (leader, dropCosts) -
+    // 0 when the drop spot pays as well. Was our whole gold/hour of the last 24 h, which a
+    // 45M token sale inflated to ~2M/h (orbg buy order at 9.9M).
     function ownCost(name, level) {
         const def = G.items[name];
         const c = def.compound ? compoundCost(name, level) : upgradeCost(name, level);
         let gold = c.gold;
-        const gb = goalBudget();
-        const gph = gb.hours >= 1 && gb.earned > 0 ? gb.earned / gb.hours : 0;
-        if (c.copies > 0.01) gold += dropTimes[name] && gph ? c.copies * dropTimes[name] / 3600 * gph : Infinity;
+        if (c.copies > 0.01) {
+            const t = dropTimes[name], h = dropCosts[name];
+            if (t && typeof h === "number") gold += c.copies * t / 3600 * h;
+            else { costAsk[name] = true; gold = Infinity; }
+        }
         return gold;
+    }
+    // A filled wish buy order (player decision 2026-11-20): paid from the gear pot like a Ponty
+    // purchase. Before, the gold just left the stand and counted as consumables, so the gear
+    // pot never saw it.
+    function bookWishFill(name, level, price, n) {
+        const total = price * (n || 1);
+        pay(GOALS, total);
+        util.log("workshop", "bought " + (n > 1 ? n + "x " : "") + name + " +" + level + " via buy order for " + Math.round(total / 1000) + "k (gear pot)", "green");
+        noteBought({ kind: "order", item: name + " +" + level, price: total, q: n || 1 });
     }
     // Paid from the gear pot (gearGoals budget) since 2026-11-19 (player decision): buying replaces
     // building, so both come out of one pot; at most ponty.maxShareOfPot of it per purchase.
@@ -3321,6 +3411,8 @@ module.exports = function createWorkshop(ctx) {
         isOwnWish: isOwnWish,
         shoppingBudget: shoppingBudget,
         wishBuyOrders: wishBuyOrders,
+        bookWishFill: bookWishFill,
+        dropBasis: function () { return dropBasis; },
         needsCopy: needsCopy,
         // Units of an item we hold (bag + last bank snapshot), e.g. for the stand's buy orders.
         ownedCount: ownedCount,

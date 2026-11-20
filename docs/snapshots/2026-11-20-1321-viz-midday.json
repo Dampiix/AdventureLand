@@ -1,0 +1,29 @@
+{
+  "account": "viz",
+  "taken": "2026-11-20T12:21:35Z",
+  "note": "4.4 h after 2026-11-20-0858-viz-morning-run.json (bot v1.148.0 -> v1.153.0: drop costs from measured team gold only, measured only while the team farms together, offhand weapon ranked with the mainhand, gear stages team-wide).",
+  "merchant": { "gold": 59140656, "level": 47, "monstertokenBag": 0 },
+  "bank": { "gold": 1000, "monstertoken": 132, "beewings": 160, "spores": 0, "stormfeather": 210, "crabclaw": 300, "seashell": 28, "marketparcel": 16, "gslime": 22, "funtoken": 20, "candycane": 5, "mistletoe": 1, "carrot": 3, "ascale": 6, "bwing": 3, "cscale": 3, "embercore": 3, "frostcore": 1, "gem0": 4, "bfur": 2, "frogt": 1,
+    "gear": ["bow+3", "bow+7", "t2bow+3", "helmet+1", "helmet+5:dex", "wbook0+0", "ringsj+1 x2"] },
+  "xp": {
+    "taken": "2026-11-20T12:21:35Z",
+    "VizPri": { "level": 51, "xp": 1866190, "max_xp": 7200000 },
+    "VizWar": { "level": 52, "xp": 8329255, "max_xp": 9000000 },
+    "VizRng": { "level": 51, "xp": 5979490, "max_xp": 7200000 },
+    "VizMerch": { "level": 47, "xp": 3034775, "max_xp": 3100000 }
+  },
+  "xpPerHourSinceMorningRun": { "VizPri": 2580000, "VizWar": 3780000, "VizRng": 2660000 },
+  "goldFlowSinceMorningRun": { "in": 2642153, "bookedIncome": 2119452, "out": 4127540, "gearPot": 4182400 },
+  "goldFlowSinceDayStart": { "in": 5859259, "bookedIncome": 4760527, "out": 14362233, "gearPot": 14239200 },
+  "purchases": [
+    { "at": "08:38Z", "kind": "buy order (booked)", "item": "stramulet+2", "price": 41000, "doubt": "no stramulet+2 anywhere; the merchant compounded and delivered a stramulet+1 at 08:38-08:39 - probably a false fill" }
+  ],
+  "merchantBag": ["intring+1", "intring+0", "dexring+1", "dexamulet+0", "dexearring+0", "intearring+0", "stramulet+0 x2", "strearring+1 x2", "ringsj+0 x2", "wcap+0 x2", "hpot1 x900", "mpot0 x600", "mpot1 x300"],
+  "standBuyOrders": ["essenceoffire x10 @140k", "ololipop x2 @150k", "glolipop x4 @80k", "offeringp x2 @350k", "crossbow @400k", "gslime x99 @60", "frogt x10 @10", "spores x20 @360", "beewings x27 @75"],
+  "wishOrders": "none: the normal spot has no measured team gold yet (v1.150.0 rule)",
+  "worn": {
+    "VizPri": { "ring1": "ringsj+2", "ring2": "ringsj+2", "earring1": "intearring+1", "earring2": "intearring+1", "belt": "hpbelt+0", "mainhand": "staff+8", "offhand": "wbook0+1", "helmet": "wcap+8:int", "chest": "coat+8:int", "pants": "pants+8:int", "shoes": "shoes+8:int", "gloves": "gloves+7:int", "amulet": "intamulet+0" },
+    "VizRng": { "ring1": "ringsj+1", "ring2": "ringsj+1", "earring1": "dexearring+1", "earring2": "dexearring+1", "belt": "hpbelt+0", "mainhand": "bow+7", "helmet": "helmet+6:dex", "chest": "coat+5:dex", "pants": "pants+5:dex", "shoes": "shoes+5:dex", "gloves": "gloves+5:dex", "amulet": "dexamulet+0", "orb": "orbg+0" },
+    "VizWar": { "ring1": "ringsj+2", "ring2": "ringsj+2", "earring1": "strearring+1", "earring2": "strearring+1", "belt": "strbelt+0", "mainhand": "blade+7", "offhand": "blade+7", "helmet": "helmet+7:str", "chest": "coat+5:str", "pants": "pants+5:str", "shoes": "shoes+5:str", "gloves": "gloves+6:str", "amulet": "stramulet+1", "cape": "cape+0:str" }
+  }
+}

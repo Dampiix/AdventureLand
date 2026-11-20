@@ -728,6 +728,14 @@ module.exports = function createFighter(ctx, cls) {
     // members farming on their own (damage return) and dead ones are not waited for; after
     // party.waitMaxMs we go on anyway (a stuck member must not stop the team).
     let teamWaitSince = 0;
+    // The wait's "wait VizRng" stayed on screen after it ended: walks that run on their own (the
+    // boss search) set their status only once per spot (2026-11-20).
+    let waitShown = false;
+    function endWaitStatus() {
+        if (!waitShown) return;
+        waitShown = false;
+        util.status("walking on", "white");
+    }
     function waitForTeam() {
         const pc = config.party || {};
         if (!party.enabled || !party.isLeader || !pc.waitForTeam) return false;
@@ -737,7 +745,7 @@ module.exports = function createFighter(ctx, cls) {
         const members = party.memberNames();
         if (Object.values(parent.entities || {}).some(function (e) {
             return e && e.type === "monster" && !e.dead && e.target && (e.target === character.name || members.includes(e.target));
-        })) return false;
+        })) { endWaitStatus(); return false; }
         const fighters = (config.team && config.team.fighters) || [];
         const far = party.memberNames().filter(function (n) {
             if (n === character.name || !fighters.includes(n)) return false;
@@ -747,7 +755,7 @@ module.exports = function createFighter(ctx, cls) {
             if (p && p.rip) return false;
             return !p || util.distanceTo(p) > (pc.waitDistance || 500);
         });
-        if (!far.length) { teamWaitSince = 0; return false; }
+        if (!far.length) { teamWaitSince = 0; endWaitStatus(); return false; }
         const now = Date.now();
         if (!teamWaitSince) {
             teamWaitSince = now;
@@ -759,9 +767,12 @@ module.exports = function createFighter(ctx, cls) {
         if (waited > max + (pc.waitAgainMs || 60000)) {
             teamWaitSince = now;
             util.log("party", "waiting for " + far.join(", ") + " again", "white");
-        } else if (waited > max) return false;
+        } else if (waited > max) { endWaitStatus(); return false; }
+        // Marked for the boss search: a walk stopped by this wait is no failed try (2026-11-20).
+        ctx.teamWaitAt = now;
         if (is_moving(character)) { stoppedOnPurpose = true; stop(); }
         util.status("waiting for " + far.join(", "), "yellow");
+        waitShown = true;
         return true;
     }
 

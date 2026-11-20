@@ -1,0 +1,30 @@
+{
+  "account": "viz",
+  "taken": "2026-11-20T07:58:07Z",
+  "note": "4.5 h after 2026-11-20-0426-viz-day-start.json (bot v1.146.0 -> v1.148.0: wish buy orders on again, priced by drop opportunity cost x1.2, fills paid from the gear pot).",
+  "merchant": { "gold": 60729132, "level": 47, "monstertokenBag": 6 },
+  "bank": { "gold": 1000, "monstertoken": 68, "beewings": 104, "spores": 20, "stormfeather": 189, "crabclaw": 300, "seashell": 28, "marketparcel": 12, "gslime": 13, "ascale": 6, "bwing": 3, "cscale": 3, "embercore": 3, "frostcore": 1, "gem0": 3, "bfur": 2,
+    "gear": ["blade+3", "bow+3", "bow+7", "t2bow+3", "helmet+1", "wbook0+0", "coat+4:dex", "gloves+4:dex", "ringsj+1"] },
+  "xp": {
+    "taken": "2026-11-20T07:58:07Z",
+    "VizPri": { "level": 49, "xp": 1037182, "max_xp": 4700000 },
+    "VizWar": { "level": 50, "xp": 4751564, "max_xp": 5800000 },
+    "VizRng": { "level": 50, "xp": 105526, "max_xp": 5800000 },
+    "VizMerch": { "level": 47, "xp": 3019275, "max_xp": 3100000 }
+  },
+  "goldFlowSinceDayStart": { "in": 3197595, "fromFighters": 2641075, "out": 10117373, "gearPot": 9776800, "ladder": 280000 },
+  "purchases": [
+    { "at": "07:04Z", "kind": "buy order", "item": "intring+2", "price": 34000 },
+    { "at": "07:09Z", "kind": "Ponty find", "item": "t2bow+3", "price": 213600, "for": "VizWar" },
+    { "at": "07:24Z", "kind": "buy order", "item": "cape+0", "price": 4200000 },
+    { "at": "07:30Z", "kind": "Ponty find", "item": "bow+7", "price": 562200, "for": "VizWar" }
+  ],
+  "merchantBag": ["intring+1", "dexring+1", "intearring+0", "shoes+4:dex", "strearring+1", "strearring+0", "stramulet+0 x2", "ringsj+1", "intring+0", "wshoes+0 x3", "wgloves+0", "wcap+0", "beewings x10", "monstertoken x6", "hpot1 x900", "mpot0 x600", "mpot1 x300", "scroll0 x2", "scroll1"],
+  "standBuyOrders": ["essenceoffire x10 @140k", "ololipop x2 @150k", "glolipop x4 @80k", "offeringp x2 @350k", "crossbow @400k", "gslime x99 @60", "frogt x10 @10", "spores x20 @360", "beewings x27 @75",
+    "wish: pants+8 @3.2M", "wish: strring+2 @34k", "wish: dexring+2 @28k", "wish: intring+2 @28k", "wish: dexamulet+1 @7.8k", "wish: intamulet+1 @7.8k", "wish: orbg+1 @6.5k"],
+  "worn": {
+    "VizPri": { "ring1": "ringsj+2", "ring2": "ringsj+2", "earring1": "intearring+1", "earring2": "intearring+1", "belt": "hpbelt+0", "mainhand": "staff+8", "offhand": "wbook0+1", "helmet": "wcap+8:int", "chest": "coat+8:int", "pants": "pants+7:int", "shoes": "shoes+7:int", "gloves": "gloves+7:int", "amulet": "intamulet+0" },
+    "VizRng": { "ring1": "ringsj+1", "ring2": "ringsj+1", "earring1": "dexearring+1", "earring2": "dexearring+1", "belt": "hpbelt+0", "mainhand": "bow+7", "helmet": "helmet+6:dex", "chest": "coat+5:dex", "pants": "pants+5:dex", "shoes": "shoes+5:dex", "gloves": "gloves+5:dex", "amulet": "dexamulet+0", "orb": "orbg+0" },
+    "VizWar": { "ring1": "ringsj+2", "ring2": "ringsj+1", "earring1": "strearring+1", "earring2": "strearring+1", "belt": "strbelt+0", "mainhand": "blade+7", "offhand": "blade+5", "helmet": "helmet+7:str", "chest": "coat+5:str", "pants": "pants+5:str", "shoes": "shoes+5:str", "gloves": "gloves+5:str", "amulet": "stramulet+0", "cape": "cape+0:str" }
+  }
+}

@@ -192,22 +192,183 @@ module.exports = function createDrops(ctx) {
         nextCheckAt = 0;
     });
 
+    // ---- drop cost (player decision 2026-11-20) ----------------------------------
+    // What an hour of farming a drop costs us: the team's gold per hour on the spot we really
+    // farm minus the gold per hour on the drop spot (never below 0) - the gold we give up, not
+    // our whole income (the old rule took gold/hour from a 24 h window that held a 45M token
+    // sale and priced buy orders far above the market). The merchant prices buy orders and
+    // Ponty limits with it.
+    function partySize() {
+        const team = (config.team && config.team.fighters) || [];
+        const n = team.filter(function (f) { return f === character.name || (ctx.party && ctx.party.inParty && ctx.party.inParty(f)); }).length;
+        return Math.max(1, n);
+    }
+    // Team gold per second on a guide route. The guide's `net` is the leader's own net gold per
+    // second (loot gold minus potions): measured in the party (proven) it is one share of the
+    // party's gold; estimated it is the leader alone, so it is scaled to the team's kill speed.
+    // Its estimates are far off (2026-11-20: armadillo 8/s estimated vs 52-71/s measured, croc
+    // 0.3 vs 86), and its measurements restart with every reload - our own come first.
+    function teamGold(r) {
+        if (!r || typeof r.net !== "number" || !isFinite(r.net)) return null;
+        if (r.proven) return r.net * partySize();
+        const tc = teamCycle(r);
+        return tc && r.cycle > 0 ? r.net * r.cycle / tc : r.net;
+    }
+
+    // ---- own gold per spot (player decision 2026-11-20) -------------------------
+    // Every fighter counts the loot gold it gets (fighters sell nothing; handovers only lower
+    // the gold) and the time spent per farm target - normal, drop and hunt spots, not events.
+    // A moving window of sgCfg.windowH hours, kept across restarts. Members send their
+    // rates to the leader, which adds them up: the team's real gold per hour on a spot, however
+    // the game splits the party's gold.
+    // The game splits every kill's gold over the party by share, and one account's fighters
+    // share equally - wherever they stand. So a fighter's gold is a third of the team's only
+    // while all of them farm the same spot; apart, each one's number mixes in the others' kills
+    // (2026-11-20: the warrior's 140/s at iceroamer). Only those together-phases are counted
+    // (player decision 2026-11-20, v1.151.0): all team fighters in the party, on our map and
+    // instance, within sgCfg.togetherRange of us (live positions where we see them).
+    const sgCfg = cfg.spotGold || {};
+    function teamTogether() {
+        const team = (config.team && config.team.fighters) || [];
+        if (team.length < 2) return true;
+        let p = null;
+        try { p = get_party() || {}; } catch (e) { return false; }
+        const range = sgCfg.togetherRange || 500;
+        return team.every(function (n) {
+            if (n === character.name) return true;
+            if (!p[n]) return false; // not in the party: its gold is not shared with us
+            // Live positions of the fighters we see; the party list's lag up to several
+            // hundred px (2026-11-20: the priest's own entry was 360 px off).
+            let e = null;
+            try { e = parent.entities[n] || null; } catch (err) { e = null; }
+            if (!e) {
+                e = p[n];
+                if (e.map !== character.map || (e.in && e.in !== character.in)) return false;
+            }
+            return Math.hypot((e.x || 0) - character.x, (e.y || 0) - character.y) <= range;
+        });
+    }
+    const SPOT_KEY = "dmpx_spot_gold_v2:" + character.name; // v2: the mixed numbers before v1.151.0 are dropped
+    const spotGold = (function () { try { return get(SPOT_KEY) || {}; } catch (e) { return {}; } })(); // monster -> { gold, sec }
+    let lastGold = character.gold, lastTick = Date.now(), lastSpotSave = 0, lastSpotSend = 0;
+    const memberRates = {}; // fighter -> { at, rates: { monster: gold/s } }
+    function ownRates() {
+        const out = {};
+        Object.keys(spotGold).forEach(function (m) {
+            const e = spotGold[m];
+            if (e && e.sec >= (sgCfg.minMinutes || 10) * 60) out[m] = e.gold / e.sec;
+        });
+        return out;
+    }
+    function measure() {
+        const now = Date.now();
+        const dt = (now - lastTick) / 1000;
+        const delta = character.gold - lastGold;
+        lastTick = now;
+        lastGold = character.gold;
+        if (!(dt > 0) || dt > 10) return; // paused or lagging: no guess
+        const f = ctx.targeting && ctx.targeting.farmNow ? ctx.targeting.farmNow() : null;
+        // Hunts count (v1.151.0): a monster's gold is the same whatever sent us there, and the
+        // members got the leader's hunt target without its source and counted it anyway.
+        if (character.rip || !f || !f.monster || f.any || /^event/.test(f.source || "")) return;
+        if (!teamTogether()) return;
+        const e = spotGold[f.monster] = spotGold[f.monster] || { gold: 0, sec: 0 };
+        e.sec += dt;
+        if (delta > 0) e.gold += delta;
+        const win = (sgCfg.windowH || 3) * 3600;
+        if (e.sec > win) { e.gold *= win / e.sec; e.sec = win; }
+        if (now - lastSpotSave > 60 * 1000) {
+            lastSpotSave = now;
+            try { set(SPOT_KEY, spotGold); } catch (err) { /* storage unavailable */ }
+        }
+        if (!leads && config.leader && now - lastSpotSend > 60 * 1000) {
+            lastSpotSend = now;
+            comms.send(config.leader, "spotgold", { rates: ownRates() });
+        }
+    }
+    if (sgCfg.enabled !== false) setInterval(function () { try { measure(); } catch (e) { /* measuring only */ } }, 1000);
+    comms.on("spotgold", function (data, from) {
+        if (!leads || !data || !data.rates || !((config.team && config.team.fighters) || []).includes(from)) return;
+        memberRates[from] = { at: Date.now(), rates: data.rates };
+    });
+    // Team gold per second on a monster from our own numbers, or null when nobody measured it.
+    // Fighters in the party without a number for it count as the average of those with one.
+    function measuredTeam(monster) {
+        const list = [];
+        const own = ownRates()[monster];
+        if (typeof own === "number") list.push(own);
+        Object.keys(memberRates).forEach(function (n) {
+            const r = memberRates[n];
+            if (Date.now() - r.at > 5 * 60 * 1000 || !(ctx.party && ctx.party.inParty && ctx.party.inParty(n))) return;
+            if (typeof r.rates[monster] === "number") list.push(r.rates[monster]);
+        });
+        if (!list.length) return null;
+        const sum = list.reduce(function (s, x) { return s + x; }, 0);
+        return sum / list.length * Math.max(partySize(), list.length);
+    }
+    // Only our own numbers count (player decision 2026-11-20, v1.150.0): the guide's estimates
+    // were off by 10x on one spot and 500x on another, so no factor fixes them. A drop spot
+    // nobody measured counts as 0 gold - the full normal-spot gold is given up (upper bound,
+    // the pot caps keep it safe). Without a measured normal spot there is no basis at all.
+    let normalSpot = null; // { monster, map } - the last farm target that was no drop, event or hunt
+    function noteNormalSpot() {
+        const f = ctx.targeting && ctx.targeting.farmNow ? ctx.targeting.farmNow() : null;
+        if (!f || !f.monster || f.any || /^(drop|event|hunt)/.test(f.source || "")) return;
+        normalSpot = { monster: f.monster, map: f.map || null };
+    }
+    // { goldH, monster, at(monster) } for this pass, or null while the normal spot (the last
+    // farm target that was no drop, event or hunt) has no measured team gold yet.
+    function goldBasis() {
+        noteNormalSpot();
+        if (!normalSpot) return null;
+        const g = measuredTeam(normalSpot.monster);
+        if (g === null) return null;
+        return { goldH: Math.round(g * 3600), monster: normalSpot.monster, at: measuredTeam };
+    }
+    // Team gold per hour lost while farming route r instead of the normal spot.
+    function costPerHour(basis, r) {
+        if (!basis || !r) return null;
+        const g = basis.at(r.monster);
+        return Math.max(0, basis.goldH - Math.round((g === null ? 0 : g) * 3600));
+    }
+    let lastBasisLog = 0, basisWasNull = false;
+    function logBasis(basis) {
+        if (!basis) {
+            if (!basisWasNull && normalSpot) util.log("drops", "drop cost basis: " + normalSpot.monster + " not measured yet - no drop costs, no wish orders", "white");
+            basisWasNull = true;
+            return;
+        }
+        if (!basisWasNull && Date.now() - lastBasisLog < 30 * 60 * 1000) return;
+        basisWasNull = false;
+        lastBasisLog = Date.now();
+        util.log("drops", "drop cost basis: " + basis.monster + " ~" + Math.round(basis.goldH / 1000) + "k gold/h for the team (measured; unmeasured drop spots count as 0 gold)", "white");
+    }
+    function basisInfo(basis) { return basis ? { monster: basis.monster, goldH: basis.goldH } : null; }
+
     // Value report (stage 1): the merchant asks for per-copy farm times of the items its wishes
     // need, whether or not we farm for drops. One guide query per item, cached for 30 min.
-    const timeCache = {}; // name -> { at, perCopy }
+    const timeCache = {}; // name -> { at, perCopy, costH }
     comms.on("timesfor", function (data, from) {
         if (from !== config.merchant || !leads) return;
-        const times = {};
+        const times = {}, costs = {};
+        const basis = goldBasis();
         (data.list || []).slice(0, 15).forEach(function (name) {
             if (!G.items[name]) return;
             const c = timeCache[name];
-            if (c && Date.now() - c.at < 30 * 60 * 1000) { if (c.perCopy) times[name] = c.perCopy; return; }
+            if (c && Date.now() - c.at < 30 * 60 * 1000 && (c.costH !== null || !basis)) {
+                if (c.perCopy) times[name] = c.perCopy;
+                if (c.perCopy && c.costH !== null) costs[name] = c.costH;
+                return;
+            }
             const cands = routeFor({ name: name, copies: 1 }) || [];
             const best = cands[0] && isFinite(cands[0].perCopy) ? Math.round(cands[0].perCopy) : null;
-            timeCache[name] = { at: Date.now(), perCopy: best };
+            const costH = best ? costPerHour(basis, cands[0]) : null;
+            timeCache[name] = { at: Date.now(), perCopy: best, costH: costH };
             if (best) times[name] = best;
+            if (best && costH !== null) costs[name] = costH;
         });
-        comms.send(config.merchant, "droptimes", { times: times });
+        logBasis(basis);
+        comms.send(config.merchant, "droptimes", { times: times, costs: costs, basis: basisInfo(basis) });
     });
 
     function check() {
@@ -218,6 +379,8 @@ module.exports = function createDrops(ctx) {
         const limit = cfg.maxHoursPerCopy * 3600;
         const found = [];
         const times = {}; // item -> seconds per copy on its best safe route (value report)
+        const costs = {}; // item -> team gold per hour given up on that route (buy-order prices)
+        const basis = goldBasis();
         const list = needs.slice();
         if (cfg.byValue && values && values.items) Object.keys(values.items).forEach(function (n) {
             if (!G.items[n] || list.some(function (x) { return x.name === n; })) return;
@@ -227,7 +390,11 @@ module.exports = function createDrops(ctx) {
         list.forEach(function (need) {
             const cands = routeFor(need);
             const r = cands[0];
-            if (r && isFinite(r.perCopy)) times[need.name] = Math.round(r.perCopy);
+            if (r && isFinite(r.perCopy)) {
+                times[need.name] = Math.round(r.perCopy);
+                const ch = costPerHour(basis, r);
+                if (ch !== null) costs[need.name] = ch;
+            }
             if (!r) {
                 if (Date.now() - (slowLogged[need.name] || 0) < 60 * 60 * 1000) return;
                 slowLogged[need.name] = Date.now();
@@ -251,7 +418,8 @@ module.exports = function createDrops(ctx) {
         // to the crabs (quickest kills, a third of the XP) instead of the crocs (2026-11-17).
         // Crowded spots are skipped by target(), so the next one follows.
         routes = found.sort(function (a, b) { return (b.xp || 0) - (a.xp || 0) || a.perCopy - b.perCopy; });
-        if (config.merchant && Object.keys(times).length) comms.send(config.merchant, "droptimes", { times: times });
+        logBasis(basis);
+        if (config.merchant && Object.keys(times).length) comms.send(config.merchant, "droptimes", { times: times, costs: costs, basis: basisInfo(basis) });
     }
 
     function hours(seconds) {
@@ -313,6 +481,13 @@ module.exports = function createDrops(ctx) {
         // STR rings at 3.3 h per copy).
         if (cfg.byValue && !(values && Date.now() - valuesAt < 60 * 60 * 1000)) { lastPick = ""; return null; }
         if (cfg.byValue && values && Date.now() - valuesAt < 60 * 60 * 1000) {
+            // The team's XP value unknown (a fighter restarted < 10 min ago): the XP spot, as
+            // without values - counted as 0 it let every drop spot win (2026-11-20).
+            if (typeof values.xpTeam !== "number" || !(values.xpTeam > 0)) {
+                if (lastPick) util.log("drops", "XP value unknown (restart) - back to the XP spot", "white");
+                lastPick = "";
+                return null;
+            }
             const vp = valuePick(isCrowded);
             if (!vp) {
                 if (lastPick) util.log("drops", "back to the XP spot (worth more now)", "white");

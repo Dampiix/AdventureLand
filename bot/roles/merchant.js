@@ -80,16 +80,64 @@ module.exports = function createMerchant(ctx) {
     // Every walk goes through util.walk, which closes the stand first (speed 10 with it open).
     let nextOrdersAt = 0;
     const missingSince = {}; // item -> first time a buy-order shortage was seen
+    // Listed wish buy orders (player decision 2026-11-20: a fill is paid from the gear pot).
+    // trade slot -> { name, level, price, q } as the server listed it; a slot whose quantity
+    // drops (or that empties) without us taking it down was sold to.
+    const watched = {};
+    let wishKeys = {}; // "name|level" of the current wish orders
+    // A fill only counts when the bought copy shows up in our bag (2026-11-20, v1.154.0): right
+    // after the stand reopened, the trade slots were not back yet, and stramulet +2 (41k) and
+    // intring +2 (34k) were booked as bought - neither ever arrived.
+    let standSince = 0; // when the stand was last seen opening
+    const pendingFills = []; // { name, level, price, n, base, until }
+    function bagCount(name, level) {
+        let n = 0;
+        character.items.forEach(function (i) { if (i && i.name === name && (i.level || 0) === level) n += i.q || 1; });
+        return n;
+    }
+    function checkFills() {
+        const now = Date.now();
+        if (!standSince || now - standSince < 5000) return; // trade slots still coming back
+        Object.keys(watched).forEach(function (s) {
+            const w = watched[s];
+            const it = character.slots[s];
+            const same = it && it.b && it.name === w.name && (it.level || 0) === w.level && it.price === w.price;
+            const left = same ? (it.q || 1) : 0;
+            if (left >= w.q) { w.bag = bagCount(w.name, w.level); return; }
+            const n = w.q - left;
+            if (left) w.q = left; else delete watched[s];
+            pendingFills.push({ name: w.name, level: w.level, price: w.price, n: n, base: w.bag, until: now + 15000 });
+        });
+        for (let i = pendingFills.length - 1; i >= 0; i--) {
+            const p = pendingFills[i];
+            if (bagCount(p.name, p.level) >= p.base + p.n) {
+                pendingFills.splice(i, 1);
+                workshop.bookWishFill(p.name, p.level, p.price, p.n);
+            } else if (now > p.until) {
+                pendingFills.splice(i, 1);
+                util.log("merchant", "wish order " + p.name + " +" + p.level + " left the stand without the item - not booked", "white");
+            }
+        }
+        // Listings the server confirmed (they carry a price; our claim right after listing doesn't).
+        Object.keys(character.slots || {}).forEach(function (s) {
+            const it = character.slots[s];
+            if (!/^trade\d+$/.test(s) || watched[s] || !it || !it.b || !it.price) return;
+            if (wishKeys[it.name + "|" + (it.level || 0)]) watched[s] = { name: it.name, level: it.level || 0, price: it.price, q: it.q || 1, bag: bagCount(it.name, it.level || 0) };
+        });
+    }
     // Open the stand at home and keep the buy orders listed (exact name and level).
     function keepStand() {
         if (!useStand() || !atHome()) return;
         if (!character.stand) {
+            standSince = 0;
             try {
                 util.openStand(standIndex());
             } catch (e) { util.log("merchant", "opening the stand failed: " + util.errReason(e), "orange"); }
             nextOrdersAt = Date.now() + 2000; // let the trade slots appear first
             return;
         }
+        if (!standSince) standSince = Date.now();
+        if (workshop.bookWishFill) checkFills();
         if (Date.now() < nextOrdersAt) return;
         // Orders count bag + bank: right after a restart the bank is not read yet, and a
         // buy order for 4 green Lolipops went up with 26 of them in the bank (2026-11-17).
@@ -103,7 +151,10 @@ module.exports = function createMerchant(ctx) {
         const market = config.market || {};
         const lvlText = function (name, level) { return G.items[name].upgrade || G.items[name].compound ? " +" + level : ""; };
         // Configured orders plus orders for what the fighters wish (market.wishOrders, 2026-11-19).
-        const buys = (market.buy || []).concat(workshop.wishBuyOrders ? workshop.wishBuyOrders() : []);
+        const wishOrders = workshop.wishBuyOrders ? workshop.wishBuyOrders() : [];
+        const buys = (market.buy || []).concat(wishOrders);
+        wishKeys = {};
+        wishOrders.forEach(function (o) { wishKeys[o.item + "|" + (o.level || 0)] = true; });
         const stillNeeded = function (o) {
             return o.dynamic ? workshop.needsCopy(o.item, o.level || 0) : (o.want || 1) - workshop.ownedCount(o.item) > 0;
         };
@@ -120,6 +171,7 @@ module.exports = function createMerchant(ctx) {
             const o = buys.find(function (b) { return b.item === it.name && (b.level || 0) === (it.level || 0); });
             const needed = o && stillNeeded(o);
             if (needed && samePrice(o, it.price)) return;
+            delete watched[s]; // taken down by us, not sold to
             parent.socket.emit("unequip", { slot: s });
             const why = !o ? "not on the list"
                 : !needed ? "we hold " + workshop.ownedCount(o.item) + " of " + (o.want || 1)

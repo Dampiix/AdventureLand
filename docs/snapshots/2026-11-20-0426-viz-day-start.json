@@ -1,0 +1,26 @@
+{
+  "account": "viz",
+  "taken": "2026-11-20T03:25:58Z",
+  "note": "Start of the day run (bot v1.146.0; wish buy orders off since v1.144.1). The player sold 49 Monster Tokens by hand just before (49M). Compare with 2026-11-20-0248-viz-morning.json.",
+  "merchant": { "gold": 67649630, "level": 47, "monstertokenBag": 0 },
+  "bank": { "gold": 1000, "monstertoken": 29, "beewings": 43, "spores": 20, "stormfeather": 65, "crabclaw": 300, "seashell": 28, "marketparcel": 7, "gslime": 9, "ascale": 4, "bwing": 2 },
+  "tokenSales": [
+    { "when": "2026-11-19 evening", "buyer": "Rocky", "q": 45, "gold": 45000000 },
+    { "when": "2026-11-20 morning", "buyer": "Rocky", "q": 49, "gold": 49000000 }
+  ],
+  "levels": { "VizPri": 46, "VizWar": 48, "VizRng": 47 },
+  "xp": {
+    "taken": "2026-11-20T03:27:31Z",
+    "VizPri": { "level": 46, "xp": 814664, "max_xp": 2500000 },
+    "VizWar": { "level": 48, "xp": 588475, "max_xp": 3800000 },
+    "VizRng": { "level": 47, "xp": 930820, "max_xp": 3100000 },
+    "VizMerch": { "level": 47, "xp": 2450675, "max_xp": 3100000 }
+  },
+  "merchantBag": ["wshoes+0 x2", "ringsj+1 x2", "ringsj+0 x2", "wgloves+0", "intring+0 x2", "dexring+0", "strbelt+0", "intamulet+0", "strearring+1", "stramulet+0", "stormfeather x19", "hpot1 x900", "mpot0 x411", "mpot1 x300", "scroll0 x3"],
+  "standBuyOrders": ["essenceoffire x10 @140k", "ololipop x2 @150k", "glolipop x4 @80k", "offeringp x2 @350k", "crossbow @400k", "gslime x99 @60", "frogt x10 @10", "spores x20 @360", "beewings x27 @75"],
+  "worn": {
+    "VizPri": { "ring1": "ringsj+1", "ring2": "ringsj+1", "earring1": "intearring+0", "earring2": "vitearring+0", "belt": "hpbelt+0", "mainhand": "staff+8", "offhand": "wbook0+0", "helmet": "wcap+8:int", "chest": "coat+8:int", "pants": "pants+7:int", "shoes": "shoes+7:int", "gloves": "gloves+7:int", "amulet": "hpamulet+0" },
+    "VizRng": { "ring1": "ringsj+1", "ring2": "ringsj+1", "earring1": "dexearring+0", "earring2": "dexearring+0", "belt": "hpbelt+0", "mainhand": "bow+7", "helmet": "helmet+4:dex", "chest": "coat+3:dex", "pants": "pants+3:dex", "shoes": "shoes+3:dex", "gloves": "gloves+4:dex", "amulet": "dexamulet+0", "orb": "orbg+0" },
+    "VizWar": { "ring1": "ringsj+1", "ring2": "ringsj+1", "earring1": "strearring+0", "earring2": "vitearring+0", "belt": "hpbelt+0", "mainhand": "blade+7", "offhand": "blade+5", "helmet": "helmet+7:str", "chest": "coat+3:str", "pants": "pants+3:str", "shoes": "shoes+3:str", "gloves": "gloves+4:str", "amulet": "stramulet+0" }
+  }
+}

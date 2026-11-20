@@ -76,7 +76,6 @@ function errReason(e) {
 const SHORT = [
     [/ \([^)]*\)/g, ""],                     // details in brackets
     [/\bDampiixMerch\b/g, "Merch"], [/\bDmpxPriest\b/g, "Pri"], [/\bDmpxRanger\b/g, "Rng"], [/\bDmpx(\w+)/g, "$1"],
-    [/ for [A-Z]\w*$/, ""],                     // "... for Pri"
     [/^dead - a priest is reviving me$/, "dead: revive"],
     [/^dead - waiting to respawn$/, "dead: respawn"],
     [/^searching /, "? "],                // "? booboo" (player request 2026-11-18)
@@ -91,6 +90,9 @@ const SHORT = [
     [/^following /, "follow "],
     [/^waiting near /, "near "],
     [/^waiting for /, "wait "],
+    // "... for Pri" - after the waiting rules: first, it cut "waiting for VizWar" down to
+    // "waiting" and the leader's team wait showed no name (2026-11-20).
+    [/ for [A-Z]\w*$/, ""],
     [/^buying potions$/, "buy pots"],
     [/^going to town$/, "> town"],
     [/^delivering to /, "give "],

@@ -226,6 +226,11 @@ module.exports = function createEvents(ctx) {
         return spots;
     }
 
+    // The leader's wait for the team (fighter.waitForTeam) is going on: marked every waiting tick.
+    function teamWaiting() {
+        return !!ctx.teamWaitAt && Date.now() - ctx.teamWaitAt < 1500;
+    }
+
     async function searchBoss(name) {
         searching = true;
         try {
@@ -240,13 +245,25 @@ module.exports = function createEvents(ctx) {
                 // still) is no reason to skip a spawn area: walk on to the same spot again.
                 // Dracul's first area was skipped that way (2026-11-17).
                 let reached = false;
-                for (let attempt = 0; attempt < 3 && !reached; attempt++) {
+                let attempt = 0;
+                const walkStart = Date.now();
+                while (attempt < 3 && !reached) {
                     try {
                         await smart_move(spot);
                         reached = true;
                     } catch (e) {
                         const reason = util.errReason(e);
-                        if (/interrupt|stop/i.test(reason) && attempt < 2) { await sleep(1500); continue; }
+                        // Stopped by the leader's wait for the team (player decision 2026-11-20): no
+                        // failed try - wait along, then walk on to the same spot. A Jr. search ended
+                        // "not found" after three such stops without ever reaching his spot. Bounded
+                        // by the wait's own limit (party.waitMaxMs) and 5 min per spot.
+                        if (teamWaiting() && Date.now() - walkStart < 5 * 60 * 1000) {
+                            while (teamWaiting()) await sleep(500);
+                            util.status("searching " + name + " (" + spot.map + ")", "yellow"); // the wait's status is over
+                            continue;
+                        }
+                        attempt++;
+                        if (/interrupt|stop/i.test(reason) && attempt < 3) { await sleep(1500); continue; }
                         util.log("event", "can't reach " + spot.map + " (" + reason + ") - next spot", "orange");
                         break;
                     }

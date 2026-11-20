@@ -1,5 +1,5 @@
 // =====================================================================
-// bot_config – everything you are expected to tweak lives here.
+// bot_config â€“ everything you are expected to tweak lives here.
 //
 // To run a different team (e.g. brand-new level-1 characters) only the
 // `team` block needs to change. Classes come from character.ctype, so any
@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.145.0",
+    version: "1.155.2",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -83,8 +83,12 @@ module.exports = {
         // hold such a copy. Keeps the stand open for Merrit's parcels with orders worth filling.
         // OFF since 2026-11-20 (player decision): ownCost valued drop hours with gold/hour from a
         // 24 h window holding the 45M token sale - orbg +0 went for 9.9M, ringsj +1 for 6.3M.
-        // Stays off until the price rule is settled.
-        wishOrders: { enabled: false, priceShare: 1, maxShareOfPot: 0.5, minPrice: 1000, max: 8 },
+        // ON again since 2026-11-20 (v1.147.0, player decision) with the new price rule: drop hours
+        // count at the opportunity cost - team gold/hour on the spot we really farm minus the drop
+        // spot's (guide `net`, never below 0) - and a filled order is paid from the gear pot.
+        // priceShare 1.2 (player decision 2026-11-20): a bought copy saves the waiting time, worth
+        // 20 % on top of our own cost - the same rule as Ponty's maxShareOfOwn.
+        wishOrders: { enabled: true, priceShare: 1.2, maxShareOfPot: 0.5, minPrice: 1000, max: 8 },
         // Ponty (player request 2026-11-19, fresh account): every everyMs the merchant checks his
         // listings and buys what a fighter wishes or a gear goal needs - better than our best copy
         // and at most maxShareOfOwn of what making it ourselves would cost. From the shopping pot.
@@ -190,15 +194,15 @@ module.exports = {
             // cooperative: never taken from another player who fights it.
             mvampire: "always",
             // Jr. (Spooky Town; player request 2026-11-17): drops the orange Lolipop Mace (+24 STR,
-            // explosion splash) on every kill – a warrior weapon for the Agitate mode. 3,200 HP,
+            // explosion splash) on every kill â€“ a warrior weapon for the Agitate mode. 3,200 HP,
             // 80% evasion, weak magical hits, cooperative; respawns after ~5-9 h.
             jr: "always",
-            // Green Jr. (Spooky Forest): the green Lolipop Mace (+24 DEX) on every kill – no loss
+            // Green Jr. (Spooky Forest): the green Lolipop Mace (+24 DEX) on every kill â€“ no loss
             // against the fireblades (no stat either), a stand-in until two orange ones are done.
             greenjr: "always",
             crabxx: "never", franky: "never", icegolem: "never",
             horseman: "never", abtesting: "never",
-            graveyard: "always",          // Halloween: zombies/ghouls in Spooky Town's graveyard – Bones (2026-11-16)
+            graveyard: "always",          // Halloween: zombies/ghouls in Spooky Town's graveyard â€“ Bones (2026-11-16)
         },
         // "always" only applies once every fighter has reached this level
         minLevel: { phoenix: 40, goobrawl: 20, snowman: 10, graveyard: 40, mvampire: 50, jr: 40, greenjr: 40 },
@@ -254,13 +258,20 @@ module.exports = {
         reportMs: 5 * 60 * 1000,    // merchant reports shortages this often
         // Extra stock to collect even without a wish: { name, copies } (bag + bank, any level)
         // Armor Boxes for the Rugged step (2026-11-16): below 50 in stock the team farms
-        // their best source – Irradiated Goo (gems -> 21 % box) – if it is safe and fast enough.
+        // their best source â€“ Irradiated Goo (gems -> 21 % box) â€“ if it is safe and fast enough.
         want: [{ name: "armorbox", copies: 50 }],
         // Stage 3 (player decision 2026-11-19): with no fixed farm target the leader weighs drop
         // spots against the XP spot by power per hour (merchant's wish values); switching to
         // another spot needs valueSwitch times the value of the current choice.
         byValue: true,
         valueSwitch: 1.2,
+        // Own gold per spot (player decision 2026-11-20): every fighter measures its loot gold per
+        // farm target over a moving window of windowH hours (used after minMinutes); the leader
+        // adds the fighters up for the drop costs that price buy orders. Only our own numbers
+        // count (v1.150.0): unmeasured drop spots are 0 gold, an unmeasured normal spot gives no
+        // costs at all. Counted only while all fighters farm together, within togetherRange px
+        // (v1.151.0) - the party's gold is split over all of them wherever they stand.
+        spotGold: { enabled: true, windowH: 3, minMinutes: 10, togetherRange: 500 },
     },
 
     targeting: {
@@ -273,19 +284,19 @@ module.exports = {
         farm: null, // a list (2026-11-19): the first one not too strong/crowded; null = the guide picks
         fallback: "goo",          // used when the progression guide has no answer
         // Farm only where every fighter's own guide calls the spot safe; routes the guide
-        // only offers as a careful trial count once proven – by the guide's own fights, or
+        // only offers as a careful trial count once proven â€“ by the guide's own fights, or
         // by 15 min of team farming there without a death (remembered across restarts).
         avoidTrial: true,
         // Melee classes never hit monsters returning this much damage (dreturn in %, porcupine
-        // 4800 = 48x back – one hit kills a warrior; armadillo 30 is fine). Ranged ones farm them.
-        // Lowered to 20 (2026-11-16): armadillos (30 %) nearly killed the solo warrior – his
+        // 4800 = 48x back â€“ one hit kills a warrior; armadillo 30 is fine). Ranged ones farm them.
+        // Lowered to 20 (2026-11-16): armadillos (30 %) nearly killed the solo warrior â€“ his
         // dual-wield hits and Cleave on several of them came back faster than potions heal.
         melee: { classes: ["warrior", "paladin", "rogue"], maxDreturn: 20 },
         // The current farm spot is left only when a member's "unsafe" lasts this long
         // (verdicts near the edge flip back and forth); a death there counts at once.
         objectionGraceMs: 5 * 60 * 1000,
         // Team model (on since 2026-11-16, a test with the warrior as tank): a spot
-        // counts as safe when the party can take it together – the tank survives tankHits
+        // counts as safe when the party can take it together â€“ the tank survives tankHits
         // volleys of `pull` monsters (pullAggressive for monsters that attack on sight),
         // the priests' healing covers that damage x healCover, everyone else survives
         // otherHits hits until the tank's Taunt pulls the monster. Spots are then ranked by
@@ -297,7 +308,7 @@ module.exports = {
             tankHits: 6, otherHits: 3, healCover: 1.5,
             pull: 2, pullAggressive: 3,
             pullLone: 2,                   // monsters pulled one at a time (isolation): one plus a possible add
-            // Aggressive monsters whose spawn area per monster is below this (px²) come as a
+            // Aggressive monsters whose spawn area per monster is below this (pxÂ²) come as a
             // whole pack (vampire rats: 5 in 150x195 wiped the team, 2026-11-16).
             denseArea: 15000,
             abilities: [],                 // monster abilities we accept (others: the guide decides)
@@ -307,7 +318,7 @@ module.exports = {
             fightHpUse: 0.5,
         },
         // Monsters that join a fight (aggro: they hit whoever passes close by; rage: they then
-        // stay on that player and chase him – game source) are only pulled when no other free
+        // stay on that player and chase him â€“ game source) are only pulled when no other free
         // such monster stands within radius of the target, of where we will stand or of the
         // way there. Walking into the middle of the White Wolf pack (rage 1) wiped the team
         // (2026-11-17); one at a time they are fine. Without rage a monster only lands a hit
@@ -375,7 +386,7 @@ module.exports = {
         // fighter walks out towards the target whatever the speed or HP (slow ones are left behind).
         passThrough: { enabled: true, minHp: 0.5, speedShare: 0.8, spotRadius: 400, leaveAfterMs: 60 * 1000 },
         withHealer: { potionHpBelow: 0.6, potionWhenMissing: false, fastLossPerSec: 0.06 },
-        // MP: drink as soon as this share of an MP potion is missing – solo and in the party
+        // MP: drink as soon as this share of an MP potion is missing â€“ solo and in the party
         // (player decision 2026-11-17: "Mana kann ruhig immer voll sein", potions are cheap).
         mpTopUp: 0.5,
         // Below this HP an HP potion always comes first; above it MP comes first once MP is
@@ -403,7 +414,7 @@ module.exports = {
             partyHealDanger: 0.35,          // ...or one member is below this
             useCurse: true, mpReserveRatio: 0.4,
             useRevive: true,                // revive fallen members (consumes an Essence of Life)
-            // Absorb Sins (lvl 55): emergency only – a member below `below` with monsters on it
+            // Absorb Sins (lvl 55): emergency only â€“ a member below `below` with monsters on it
             // and no warrior/paladin within Taunt range of it; only while we are above selfAbove.
             absorb: { enabled: true, below: 0.35, selfAbove: 0.6 },
             // Dark Blessing (lvl 70): +25% party damage for 8 s on targets needing sturdyHits+
@@ -436,7 +447,7 @@ module.exports = {
             sturdyHits: 4,                  // War Cry (lvl 70) on targets needing this many hits
             hardShell: { enabled: true, below: 0.45 }, // lvl 60, against physical hits
             useCharge: true,                           // +30 speed whenever we walk (on cooldown)
-            // Dash: the server accepts a point at most 50 px away (game source) – a 120 MP hop,
+            // Dash: the server accepts a point at most 50 px away (game source) â€“ a 120 MP hop,
             // no gap closer. Off since 2026-11-16 (the old 150 px jumps always failed).
             dash: { enabled: false, from: 120, max: 45, everyMs: 2000 },
             // Agitate pack mode (solo, lvl 68; test since 2026-11-18): with minPack free monsters
@@ -553,7 +564,7 @@ module.exports = {
         // Rings and earrings to +3 (player decision 2026-11-17): +2 first, then +3 for both
         // slots of each (+3 needs ~91 copies at +0 per piece - Phoenix earrings, Winterland rings).
         // Rings (player decision 2026-11-16): two stat rings +2 in the class's main stat
-        // (+6) replace the Rings of Small Joys +2 (+3 STR/INT/DEX, +15 resistance) – at +0/+1
+        // (+6) replace the Rings of Small Joys +2 (+3 STR/INT/DEX, +15 resistance) â€“ at +0/+1
         // they are no better. Delivered only complete (+2), worn over a Ring of Joy right away
         // (anytime: no wait for the shop gear). Copies: Winterland map drop (statring table).
         // The wish chains themselves live in gearPlan.wishes (below) since 2026-11-19.
@@ -683,6 +694,8 @@ module.exports = {
         elixirs: { off: true, note: "Not used for now (player decision 2026-11-19).", options: [{ item: "pumpkinspice", for: "physical" }, { item: "elixirluck", for: "priest" }] },
         // Weapons per class (documentation; the bot follows workshop.betterWeapons and the
         // weapon ladder workshop.bruteForce). Left to right = better.
+        // Since 2026-11-20 the weapon types named here (plus the worn ones) are the only ones a
+        // Ponty find is rated for - no bows for the dual-wielding warrior.
         classes: {
             warrior: {
                 modes: {
@@ -805,12 +818,12 @@ module.exports = {
         // risked; items nobody wears are left alone.
         // hoardAt (2026-11-16): spares are not risked beyond this level; +7 copies are kept.
         // incomeShare (player decision 2026-11-17): the ladder's own pot, a share of the last
-        // 24 h of income – it scales with the account and is not stopped by the gear goals.
+        // 24 h of income â€“ it scales with the account and is not stopped by the gear goals.
         // Dagger of the Dead joins the ladder (gear plan 2026-11-19); craft: a +0 spare is crafted
         // from Bones when none is left. Note: it is rare grade from +6 (scroll2, 1.6M per try).
         bruteForce: { names: ["fireblade", "firebow", "firestaff", "daggerofthedead"], craft: ["daggerofthedead"], maxLevel: 9, hoardAt: 7, incomeShare: 0.25 },
         // Box armor (player decision 2026-11-17): while a fighter wishes any Rugged piece,
-        // every spare copy from the armor boxes is upgraded towards upTo at once – failures
+        // every spare copy from the armor boxes is upgraded towards upTo at once â€“ failures
         // free bank slots and the next chain pieces are ready early (the bank has ~19 free
         // slots; a new pack costs 75M).
         // Once a piece is worn (or held) at upTo and nobody wishes it, new copies are sold.
@@ -822,7 +835,7 @@ module.exports = {
         // Drop weapons (player decision 2026-11-15): a Phoenix weapon we hold that beats a
         // fighter's worn weapon goes to that fighter; if none does yet, the best copy is
         // upgraded to the first level that would (at most maxLevel). A failure only costs
-        // a drop – the fighter keeps its shop weapon. Gear-goal budget, normal scrolls.
+        // a drop â€“ the fighter keeps its shop weapon. Gear-goal budget, normal scrolls.
         betterWeapons: {
             enabled: true,
             names: ["fireblade", "firestaff", "firebow", "concordmace", "maceofthedead", "staffofthedead", "bowofthedead",
@@ -836,7 +849,7 @@ module.exports = {
             // Gear plan (player decision 2026-11-19): Bones go to Daggers of the Dead for the rogue.
             craft: ["daggerofthedead"], // was ["maceofthedead", "staffofthedead", "bowofthedead"]
             // Bought with tokens when we hold none (player decision 2026-11-16: the Concord
-            // Mace first – a paladin's mace beats the fireblade +7 already at +4).
+            // Mace first â€“ a paladin's mace beats the fireblade +7 already at +4).
             buy: [], // concordmace paused 2026-11-16 (no paladin; shop +9 first)
             // Token weapons are not cheap to lose: each step needs this chance.
             minChance: {},   // no floors since 2026-11-19 (was concordmace 0.5)
@@ -857,7 +870,7 @@ module.exports = {
         gearGoals: {
             enabled: true,
             // Since 2026-11-15 (player request): don't let armor and weapons wait while the guide
-            // works on accessories – worn shop armor and shop weapons go to +7 (the end of the
+            // works on accessories â€“ worn shop armor and shop weapons go to +7 (the end of the
             // guide's lessons) in parallel, with the class's main stat. Weapons come first,
             // armor follows once no weapon step is open (player request 2026-11-15).
             fromLevel: 0,
@@ -869,6 +882,8 @@ module.exports = {
             // +3 main stat. Guide estimate per piece from scratch: +8 ~170 copies / 1.1M,
             // +9 ~2400 copies / 17M, +10 ~100,000 copies / 770M. Capped at +8 (player
             // decision 2026-11-16: 170 -> 2400 copies is too steep; armor boxes / Rugged next).
+            // Since 2026-11-20 (player decision) the stages are team-wide: every fighter's shop gear
+            // reaches +7 before anyone goes on to +8.
             stages: [7, 8], // shop weapons run through the stages too (player decision 2026-11-19)
             everyMs: 3 * 60 * 1000,   // one gear-goal step this often even while wishes are open
             // offhand: a second shop weapon (dual wield) goes to upTo too, so a fresh warrior
@@ -892,7 +907,7 @@ module.exports = {
                 extra: { amount: 30000000, until: "2026-11-17T21:00:00Z" },
                 // One-time fresh start of every pot (gear goals, weapon ladder, grace): from this
                 // time on, spending and gold samples before it are ignored, so no pot starts in
-                // the minus – the income since then fills them again. May lie in the future;
+                // the minus â€“ the income since then fills them again. May lie in the future;
                 // once 24 h have passed it has no effect any more. null = none.
                 resetAt: "2026-11-17T21:00:00Z", // player decision 2026-11-17: fresh start at 22:00 German time
             },
@@ -964,7 +979,7 @@ module.exports = {
             // Buy and sell orders: config.market at the top.
         },
         // Potion stock: potions.target per fighter using a size (at most stockPerPotion),
-        // only built while we have stockFromGold – below that, gold goes to equipment
+        // only built while we have stockFromGold â€“ below that, gold goes to equipment
         // first and deliveries buy just what is needed.
         stockPerPotion: 1000,
         stockFromGold: 100000,
@@ -984,7 +999,7 @@ module.exports = {
             maxLevel: 0,
             exceptTypes: ["pot", "uscroll", "cscroll", "pscroll", "offering", "stand", "elixir", "booster", "tome", "qubics"],
         },
-        // Phoenix and event weapons are never on this list – they can't be bought again.
+        // Phoenix and event weapons are never on this list â€“ they can't be bought again.
         sellList: [
             // junk drops. Craft ingredients (spores, crab claws, frog tongues, ascale,
             // bear fur, white eggs, carrots, vit scrolls) are kept since the
@@ -994,14 +1009,14 @@ module.exports = {
             // Wanderer's set: sold only when no fighter can use the copy (workshop.equivalentWanted).
             "wcap", "wshoes", "wattire", "wbreeches", "wgloves",
             // +0 weapons (approved 2026-11-15). Phoenix weapons (fireblade, firestaff,
-            // firebow) are never sold – player decision 2026-11-15.
+            // firebow) are never sold â€“ player decision 2026-11-15.
             // "dagger" kept since 2026-11-19 (player decision: no investment, but not sold either)
             "snowball",
-            // V1 upgraded short swords to +4 – no longer needed (approved 2026-11-15)
+            // V1 upgraded short swords to +4 â€“ no longer needed (approved 2026-11-15)
             // Short Swords are no longer sold (2026-11-19): the base of the Sword of the Dead.
             // the Paladin's old starter gear (approved 2026-11-15).
             // Accessories (rings, belts, amulets, earrings) and books are NOT sold:
-            // they are compound/upgrade material the progression guide asks for –
+            // they are compound/upgrade material the progression guide asks for â€“
             // except the HP/VIT ones no class or guide wants (approved 2026-11-16; any
             // level: compounding them first loses gold on average). Worn copies stay.
             { name: "hpamulet", maxLevel: 10 },
