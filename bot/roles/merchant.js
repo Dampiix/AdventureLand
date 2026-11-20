@@ -650,6 +650,7 @@ module.exports = function createMerchant(ctx) {
                     await bank_retrieve(pack, i);
                     util.log("merchant", "took " + items[i].name + " from the bank for the stand", "green");
                 } catch (e) { /* next time */ }
+                if (workshop.refreshBank) workshop.refreshBank(); // the next surplus check must not count it twice
             }
         }
         return taken;
@@ -786,7 +787,15 @@ module.exports = function createMerchant(ctx) {
     // near the stand and when the buyer still has the gold (trade_sell: distance, buyer_gold).
     const stc = (config.market && config.market.sellTo) || {};
     const TRIP_KEY = "dmpx_trade_trip:" + character.name;
-    let nextSellScanAt = Date.now() + 60 * 1000;
+    // The next scan time survives a hop (review 2026-11-20): the 5-min wait after a buyer or seller
+    // was away from its stand was set on the far server and lost on the way home - with a stale
+    // merchant list the merchant hopped there and back every few minutes.
+    const NEXT_SCAN_KEY = "dmpx_trade_next:" + character.name;
+    let nextSellScanAt = Math.max(Date.now() + 60 * 1000, (function () { try { return get(NEXT_SCAN_KEY) || 0; } catch (e) { return 0; } })());
+    function scanAgainIn(ms) {
+        nextSellScanAt = Date.now() + ms;
+        try { set(NEXT_SCAN_KEY, nextSellScanAt); } catch (e) { /* storage unavailable */ }
+    }
     function readTrip() { try { return get(TRIP_KEY) || null; } catch (e) { return null; } }
     function saveTrip(t) { try { set(TRIP_KEY, t || null); } catch (e) { /* storage unavailable */ } }
     async function pullMerchants() {
@@ -872,6 +881,12 @@ module.exports = function createMerchant(ctx) {
         if (!demand._since) demand._since = Date.now(); // tracking started: nothing seen before counts as unknown
         try { set(DEMAND_KEY, demand); } catch (e) { /* storage unavailable */ }
     }
+    // The largest single unlocked stack of name +level in the bag.
+    function biggestStack(name, level) {
+        return character.items.reduce(function (m, i) {
+            return i && i.name === name && (i.level || 0) === level && !i.l ? Math.max(m, i.q || 1) : m;
+        }, 0);
+    }
     // Usable copies of name at exactly level in the bag (the server sells unlocked ones only).
     function countAt(name, level) {
         return character.items.reduce(function (s, i) {
@@ -885,7 +900,7 @@ module.exports = function createMerchant(ctx) {
         let t = readTrip();
         if (!t) {
             if (here !== home || readRound() || Date.now() < nextSellScanAt) return false;
-            nextSellScanAt = Date.now() + (stc.scanEveryMs || 5 * 60 * 1000);
+            scanAgainIn((stc.scanEveryMs || 5 * 60 * 1000));
             let chars = [];
             try { chars = await pullMerchants(); } catch (e) { util.log("merchant", "merchant list: " + util.errReason(e), "orange"); return false; }
             // Selling first (gold in), then the best offer to buy.
@@ -909,7 +924,11 @@ module.exports = function createMerchant(ctx) {
         if (t.phase === "fetch") {
             // The surplus into the bag (bank first); then off to the buyer.
             const lvl = d.level || 0;
-            if (countAt(d.item, lvl) < d.q && await util.walkToBank()) {
+            // Always through the bank: a fresh read there is the only reliable count - the scan's
+            // surplus came from a snapshot that may still list what is already in the bag (review
+            // 2026-11-20: the kept tokens could go).
+            if (await util.walkToBank()) {
+                if (workshop.refreshBank) workshop.refreshBank();
                 for (const pack of Object.keys(character.bank || {})) {
                     if (!/^items\d+$/.test(pack)) continue;
                     const list = character.bank[pack] || [];
@@ -918,7 +937,10 @@ module.exports = function createMerchant(ctx) {
                         if (list[i] && list[i].name === d.item && (list[i].level || 0) === lvl) { try { await bank_retrieve(pack, i); } catch (e) { /* next one */ } }
                     }
                 }
-            }
+                if (workshop.refreshBank) workshop.refreshBank();
+                const rule = (stc.items || []).find(function (x) { return x.item === d.item && (x.level || 0) === lvl; }) || {};
+                d.q = Math.min(d.q, workshop.ownedCount(d.item, lvl) - (rule.keep || 0));
+            } else d.q = 0; // no fresh count: not this time
             d.q = Math.min(d.q, countAt(d.item, lvl));
             if (d.q <= 0) { util.log("merchant", "no " + d.item + " to sell after all", "orange"); saveTrip(null); return false; }
             t.phase = d.server === here ? "sell" : "travel";
@@ -943,7 +965,7 @@ module.exports = function createMerchant(ctx) {
             if (seller) markFailed(offerKey(d.seller, d.item, d.level), true);
             if (!seller) {
                 util.log("merchant", d.seller + " not at the stand - no purchase, trying again later", "orange");
-                nextSellScanAt = Date.now() + (stc.scanEveryMs || 5 * 60 * 1000);
+                scanAgainIn((stc.scanEveryMs || 5 * 60 * 1000));
             } else {
                 // The listed slot, or the same item elsewhere on the stand - never dearer than planned.
                 const ok = function (s) { const it = seller.slots && seller.slots[s]; return it && !it.b && it.name === d.item && (it.level || 0) === d.level && it.price <= d.price; };
@@ -960,7 +982,7 @@ module.exports = function createMerchant(ctx) {
                     } catch (e) { util.log("merchant", "buying from " + d.seller + ": " + util.errReason(e), "orange"); }
                 }
             }
-            if (seller) nextSellScanAt = Date.now() + 30 * 1000; // more offers may wait: look again soon
+            if (seller) scanAgainIn(30 * 1000); // more offers may wait: look again soon
             t.phase = here === home ? "done" : "home";
             t.at = Date.now();
             saveTrip(t.phase === "done" ? null : t);
@@ -972,7 +994,10 @@ module.exports = function createMerchant(ctx) {
             try { await util.walk({ map: d.map, x: d.x, y: d.y }); } catch (e) { /* checked below */ }
             const buyer = await waitForPlayer(d.buyer);
             let sold = 0, goldShort = false;
-            if (!buyer) util.log("merchant", d.buyer + " not at the stand - no sale, trying again later", "orange");
+            if (!buyer) {
+                util.log("merchant", d.buyer + " not at the stand - no sale, trying again later", "orange");
+                scanAgainIn(stc.scanEveryMs || 5 * 60 * 1000);
+            }
             else {
                 const lvl = d.level || 0;
                 const rule = (stc.items || []).find(function (x) { return x.item === d.item && (x.level || 0) === lvl; }) || {};
@@ -995,7 +1020,8 @@ module.exports = function createMerchant(ctx) {
                         const b = get_player(d.buyer);
                         const cur = b && b.slots && b.slots[slot];
                         if (!cur || !cur.b || cur.name !== d.item || (cur.level || 0) !== lvl || cur.price < (rule.minPrice || d.price)) break;
-                        const c = stacks ? Math.min(chunk, remaining, cur.q || 1, countAt(d.item, lvl)) : Math.min(1, countAt(d.item, lvl));
+                        // The server sells from ONE bag stack holding the whole amount (review 2026-11-20).
+                        const c = stacks ? Math.min(chunk, remaining, cur.q || 1, biggestStack(d.item, lvl)) : Math.min(1, countAt(d.item, lvl));
                         if (c <= 0) break;
                         try {
                             await trade_sell(b, slot, c);

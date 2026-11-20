@@ -2630,8 +2630,10 @@ module.exports = function createWorkshop(ctx) {
             const p = (h > 0 ? b * 1.1 + 0.001 : b) + (extra || 0);
             return Math.min(1, p, b * (3 + (h > 0 ? h * 0.6 : 0)), b + 0.2 + (h > 0 ? h * 0.05 : 0));
         }
-        const p = (h > 0 ? b * 1.2 + 0.01 : b) + (extra || 0);
-        return h > 0 ? Math.min(1, p, b + 0.36, b * 3) : Math.min(1, p, b + 0.24, b * 2);
+        // The server gives the higher-scroll bonus only up to the step to +10 (new_level <= 10).
+        const high = h > 0 && level + 1 <= 10;
+        const p = (high ? b * 1.2 + 0.01 : b) + (extra || 0);
+        return high ? Math.min(1, p, b + 0.36, b * 3) : Math.min(1, p, b + 0.24, b * 2);
     }
     // What a copy of name +level is worth to us when a step fails: a sellTo price for that level
     // (we would sell it for that), else built up from its base with the cheapest scrolls. Base (+0):
@@ -3668,6 +3670,10 @@ module.exports = function createWorkshop(ctx) {
         // Units of an item we hold (bag + last bank snapshot), e.g. for the stand's buy orders.
         ownedCount: ownedCount,
         bankKnown: function () { return !!bankSnapshot; },
+        // Re-read the bank (only while inside it) after the merchant took things out itself: the
+        // snapshot counted them twice for up to bankScanEveryMs - bag and "bank" (review 2026-11-20:
+        // the 20 kept Monster Tokens could be sold).
+        refreshBank: function () { return readBank(); },
         // A copy waiting to be dismantled stays in the bag (unless dismantling is paused).
         waitsForDismantle: function (item) {
             return (blockedUntil._dismantle || 0) <= Date.now() && isDismantleCopy(item);

@@ -177,9 +177,16 @@ function startBot() {
 // Stop a bot window this client hosts and open it again on server `to` ("EU III"): the game's own
 // start_character_runner markup (js/functions.js) with that server in the address. Used by the
 // merchant's server hop and the member watchdog. False when `to` is not "REGION ID".
+// One reopen per window at a time (review 2026-11-20): the watchdog and the hop watcher's
+// "bring home" could both reopen the merchant within the 6 s gap.
+const reopening = {};
 async function reopenRunner(name, to) {
     const parts = String(to || "").split(" ");
-    if (parts.length !== 2) return false;
+    if (parts.length !== 2 || reopening[name]) return false;
+    reopening[name] = true;
+    try { return await reopenRunnerNow(name, parts); } finally { delete reopening[name]; }
+}
+async function reopenRunnerNow(name, parts) {
     const rid = "ichar" + name.toLowerCase();
     try { parent.stop_character_runner(name); } catch (e) { /* not running */ }
     await sleep(6000); // the old session has to end before the new one logs in
@@ -224,6 +231,7 @@ function startWatchdog() {
             const watch = mine.concat(Object.keys(hosted).filter(function (n) { return !mine.includes(n); }));
             for (const n of watch) {
                 const beat = get("dmpx_beat:" + n) || {};
+                if (reopening[n]) continue; // a hop or restart of it is under way
                 const hasWindow = !!parent.document.getElementById("ichar" + n.toLowerCase());
                 const list = (restarts[n] || []).filter(function (t) { return now - t < 60 * 60 * 1000; });
                 restarts[n] = list;
@@ -241,7 +249,9 @@ function startWatchdog() {
                     gaveUp[n] = true;
                     continue;
                 }
-                const to = beat.server || (parent.server_region + " " + parent.server_identifier);
+                // Fighters join this (the leader's) server; the merchant goes back where it was (a hop).
+                const here = parent.server_region + " " + parent.server_identifier;
+                const to = mine.includes(n) ? here : (beat.server || here);
                 BOT_UTIL.log("bot", "watchdog: " + n + (hasWindow ? " silent for " + Math.round((now - since) / 60000) + " min" : " window gone") + " - restarting on " + to, "orange");
                 list.push(now);
                 gaveUp[n] = false;
@@ -277,7 +287,10 @@ function startHopWatcher() {
             const req = get(HOP_KEY);
             const st = get(ROUND_KEY);
             const trip = get(TRIP_KEY);
-            const away = (st && st.phase !== "prep" && st.beat) ? st : (trip && trip.phase !== "fetch" && trip.beat ? trip : null);
+            // A sell trip on the home server is no away trip (review 2026-11-20: a long walk there
+            // got it restarted and cleared).
+            const tripAway = trip && trip.phase !== "fetch" && trip.beat && !(trip.deal && trip.deal.server === home);
+            const away = (st && st.phase !== "prep" && st.beat) ? st : (tripAway ? trip : null);
             if (away && Date.now() - away.beat > 6 * 60 * 1000 && !(req && !req.done)) {
                 hopping = true;
                 BOT_UTIL.log("bot", merch + " silent for 6 min on its " + (away === st ? "Ponty round" : "sell trip") + " - bringing it home", "orange");
