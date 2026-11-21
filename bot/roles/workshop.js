@@ -568,7 +568,10 @@ module.exports = function createWorkshop(ctx) {
             saveIncome();
             util.log("workshop", "budget reset: every pot starts from 0 now", "yellow");
         }
-        if (!income.flow.length) return { allowed: 0, earned: 0, spent: 0, hours: 0, gross: 0, fighters: 0, consumables: 0 };
+        // Right after a reset nothing is booked yet: a player-granted extra counts already (2026-11-20:
+        // the 20M extra waited for the first gold change).
+        const extraNow = b.extra && b.extra.amount && Date.now() < Date.parse(b.extra.until) ? b.extra.amount : 0;
+        if (!income.flow.length) return { allowed: extraNow, earned: 0, spent: 0, hours: 0, gross: 0, fighters: 0, consumables: 0 };
         const since = Date.now() - DAY;
         const flow = income.flow.filter(function (x) { return x.t >= since; });
         const gross = flow.reduce(function (sum, x) { return sum + x.in; }, 0);
@@ -596,7 +599,10 @@ module.exports = function createWorkshop(ctx) {
         const share = (cfg.bruteForce && cfg.bruteForce.incomeShare) || 0;
         const spentLadder = income.spends.reduce(function (sum, s) { return s.k === LADDER ? sum + s.a : sum; }, 0);
         const earned = goalBudget().earned;
-        return { allowed: Math.max(0, earned * share - spentLadder), earned: earned, spent: spentLadder };
+        // A player-granted extra (bruteForce.extra: { amount, until }), like the gear pot's.
+        const ex = cfg.bruteForce && cfg.bruteForce.extra;
+        const extra = ex && ex.amount && Date.now() < Date.parse(ex.until) ? ex.amount : 0;
+        return { allowed: Math.max(0, earned * share + extra - spentLadder), earned: earned, spent: spentLadder };
     }
 
     // Shopping pot (player decision 2026-11-18): config.market.shopping.incomeShare of the last

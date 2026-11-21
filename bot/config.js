@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.171.3",
+    version: "1.171.6",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -915,7 +915,10 @@ module.exports = {
         // 24 h of income â€“ it scales with the account and is not stopped by the gear goals.
         // Dagger of the Dead joins the ladder (gear plan 2026-11-19); craft: a +0 spare is crafted
         // from Bones when none is left. Note: it is rare grade from +6 (scroll2, 1.6M per try).
-        bruteForce: { names: ["fireblade", "firebow", "firestaff", "daggerofthedead"], craft: ["daggerofthedead"], maxLevel: 9, hoardAt: 7, incomeShare: 0.25 },
+        // extra (player decision 2026-11-20 ~22:20 German time): 5M for 12 h on top of the income share - the
+        // ladder pot also pays the essence goals (fire weapons +7) and was empty after the reset.
+        bruteForce: { names: ["fireblade", "firebow", "firestaff", "daggerofthedead"], craft: ["daggerofthedead"], maxLevel: 9, hoardAt: 7, incomeShare: 0.25,
+            extra: { amount: 5000000, until: "2026-11-21T09:22:00Z" } },
         // Box armor (player decision 2026-11-17): while a fighter wishes any Rugged piece,
         // every spare copy from the armor boxes is upgraded towards upTo at once â€“ failures
         // free bank slots and the next chain pieces are ready early (the bank has ~19 free
@@ -998,12 +1001,14 @@ module.exports = {
                 // spending, so the total grows: 30M until 2026-11-18 00:23 UTC.
                 // Ends with the reset at 22:00 German time (player decision 2026-11-17), so the reset
                 // does not hand out a fresh 30M.
-                extra: { amount: 30000000, until: "2026-11-17T21:00:00Z" },
+                // Player decision 2026-11-20 ~22:15 German time: pots reset (gear spending of the evening
+                // - stand purchases from other players - had pushed the gear pot below 0) and 20M extra for 12 h.
+                extra: { amount: 20000000, until: "2026-11-21T09:17:00Z" },
                 // One-time fresh start of every pot (gear goals, weapon ladder, grace): from this
                 // time on, spending and gold samples before it are ignored, so no pot starts in
                 // the minus â€“ the income since then fills them again. May lie in the future;
                 // once 24 h have passed it has no effect any more. null = none.
-                resetAt: "2026-11-17T21:00:00Z", // player decision 2026-11-17: fresh start at 22:00 German time
+                resetAt: "2026-11-20T21:17:00Z", // player decision 2026-11-20: fresh start (was 2026-11-17T21:00Z)
             },
         },
         // Fixed wishes on top of the guide's. Items without a shop are bought with tokens

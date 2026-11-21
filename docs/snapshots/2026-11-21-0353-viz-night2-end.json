@@ -1,0 +1,53 @@
+{
+  "account": "viz",
+  "taken": "2026-11-21T02:53:15Z",
+  "note": "End of the second night (bot v1.171.6). Compare with 2026-11-20-2227-viz-night2-start.json (21:27Z). The PC crashed at 23:32Z (bluescreen 0x116 VIDEO_TDR_FAILURE, Nvidia driver) and rebooted at 00:00Z; the game was started again by hand later, so the bots ran ~2 h before the crash plus the time since the restart.",
+  "botVersion": "1.171.6",
+  "characters": {
+    "VizPri": {
+      "level": 54, "xp": 8828863, "max_xp": 13000000, "gold": 80641, "map": "main",
+      "stats": { "hp": 2966, "mp": 3525, "attack": 482, "armor": 70, "resistance": 223, "frequency": 0.83, "goldm": 1.05, "luckm": 1.42, "xpm": 1.16 },
+      "worn": { "mainhand": "staff+8", "offhand": "wbook0+1", "helmet": "wcap+8:int", "chest": "coat+8:int", "pants": "pants+8:int", "shoes": "shoes+8:int", "gloves": "gloves+7:int", "ring1": "intring+3", "ring2": "intring+2", "earring1": "intearring+2", "earring2": "intearring+1", "amulet": "intamulet+2", "belt": "intbelt+0", "orb": "orbg+1" },
+      "bag": ["tracker", "mpot1 x220", "hpot1 x300"]
+    },
+    "VizWar": {
+      "level": 56, "xp": 1184843, "max_xp": 20000000, "gold": 23782, "map": "winterland",
+      "stats": { "hp": 6449, "mp": 750, "attack": 910, "armor": 244, "resistance": 68, "frequency": 0.89, "goldm": 1.05, "luckm": 1.42, "xpm": 1.16 },
+      "worn": { "mainhand": "blade+8", "offhand": "blade+8", "helmet": "helmet+7:str", "chest": "coat+7:str", "pants": "pants+7:str", "shoes": "shoes+7:str", "gloves": "gloves+7:str", "ring1": "strring+2", "ring2": "strring+3", "earring1": "strearring+2", "earring2": "strearring+2", "amulet": "stramulet+1", "belt": "strbelt+1", "orb": "orbg+0", "cape": "cape+0:str" },
+      "bag": ["tracker", "mpot0 x297", "hpot1 x280"]
+    },
+    "VizRng": {
+      "level": 55, "xp": 4935293, "max_xp": 16000000, "gold": 96351, "map": "desertland",
+      "stats": { "hp": 2521, "mp": 920, "attack": 642, "armor": 93, "resistance": 152, "frequency": 1.02, "goldm": 1.05, "luckm": 1.42, "xpm": 1.16 },
+      "worn": { "mainhand": "bow+7", "offhand": "quiver+6", "helmet": "helmet+7:dex", "chest": "tshirt1+3", "pants": "pants+7:dex", "shoes": "shoes+7:dex", "gloves": "gloves+7:dex", "ring1": "ringsj+2", "ring2": "dexring+3", "earring1": "dexearring+2", "earring2": "dexearring+1", "amulet": "dexamulet+2", "belt": "dexbelt+0", "orb": "orbg+1" },
+      "bag": ["mpot0 x157", "tracker", "hpot1 x300"]
+    },
+    "VizMerch": {
+      "level": 51, "xp": 1326214, "max_xp": 7200000, "gold": 102192000, "freeBagSlots": 11,
+      "bag": ["mpot0 x433", "hpot1 x630", "mpot1 x300", "stand0", "monstertoken x167", "marketparcel",
+        "intring+1", "intring+0", "dexring+1", "strring+1", "intearring+1", "intearring+0", "strearring+2", "strearring+1", "strearring+0", "intamulet+2", "stramulet+1", "dexamulet+1",
+        "strbelt+1 x2", "strbelt+0", "dexbelt+0", "wgloves+0 x4", "wshoes+0 x2", "wbreeches+0 x2"],
+      "stand": ["BUY essenceoffire x10 @140k", "BUY wshoes+8 @4.1M", "BUY ololipop+0 x2 @150k", "BUY gslime x99 @60", "BUY frogt x8 @10", "BUY glolipop+0 x4 @80k", "BUY offeringp x2 @350k", "BUY crossbow+0 @400k", "BUY wgloves+8 @2.2M", "BUY helmet+8 @2M", "BUY wbreeches+8 @2.2M", "BUY spores x20 @360", "BUY quiver+7 @2.7M", "BUY wattire+8 @2.2M", "BUY beewings x27 @75", "SELL monstertoken x20 @1M"]
+    }
+  },
+  "bank": {
+    "gold": 1000, "freeSlots": 31, "of": 84, "seenAt": "2026-11-21T02:47:53Z",
+    "items": { "stormfeather": 562, "crabclaw": 300, "beewings": 191, "marketparcel": 27, "gslime": 25, "seashell": 14, "candycane": 13, "gem0": 12, "cscale": 12, "ascale": 10, "carrot": 8, "embercore": 4, "verdantspore": 4, "frogt": 3, "bfur": 3, "bwing": 3, "gem1": 2, "mistletoe": 2, "rfangs": 2, "gloomfeather": 2, "elixirvit0": 1, "frostcore": 1, "voidthread": 1 },
+    "gear": ["wshoes+0 x4", "wbreeches+0 x3", "wgloves+0 x3", "wcap+0 x2", "wattire+0", "intamulet+0 x2", "dexamulet+0 x2", "dexamulet+1", "dexearring+1", "dexearring+0", "intearring+0", "strearring+1", "vitearring+0", "wbook0+0", "t2bow+3", "coat+6:str", "helmet+6:dex", "shoes+5:dex", "pants+5:dex", "gloves+5:dex"]
+  },
+  "monsterTokens": { "merchantBag": 167, "atStand": 20, "fighters": 0, "total": 187, "note": "219 at night start; 35 sold to Rocky - so only 3 new ones (hunts only at the top 5 XP spots since v1.171.0)" },
+  "gold": { "merchant": 102192000, "fighters": 200774, "bank": 1000, "total": 102393774, "nightStart": 59767725 },
+  "sinceNightStart": {
+    "flow": { "in": 50726247, "out": 8360100 },
+    "sold": ["2026-11-20 22:07Z 20 Monster Tokens to Rocky (ASIA II) 20M", "2026-11-20 22:49Z 15 Monster Tokens to Rocky (ASIA II) 15M", "2026-11-21 02:37Z Vitality Earring +2 to buffett (EU III) 15M"],
+    "bought": ["2026-11-20 22:47Z intamulet+2 via buy order 3.4M", "2026-11-20 23:02Z glolipop+0 at Ponty 19k", "2026-11-21 02:34Z glolipop+0 at Ponty 19k", "intbelt+0 via buy order (3.3M order gone, the priest wears it)"],
+    "pontyRounds": ["2026-11-20 23:04Z: 12 servers, 1 bought", "2026-11-21 02:36Z: 12 servers, 1 bought"],
+    "gear": {
+      "VizPri": ["intearring+1 -> +2", "intamulet+1 -> +2", "hpbelt+0 -> intbelt+0"],
+      "VizRng": ["dexearring+1 -> +2", "dexamulet+1 -> +2"],
+      "VizWar": []
+    },
+    "levels": { "VizPri": "53 -> 54", "VizWar": "55 -> 56", "VizRng": "54 -> 55", "VizMerch": "50 -> 51" },
+    "xpPerHourLast26Min": { "VizPri": "~6.6M", "VizWar": "~5.9M", "VizRng": "~5.1M", "note": "at the XP spots (yesterday afternoon 3.4-4.3M/h)" }
+  }
+}

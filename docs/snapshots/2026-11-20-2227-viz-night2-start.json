@@ -1,0 +1,47 @@
+{
+  "account": "viz",
+  "taken": "2026-11-20T21:27:33Z",
+  "note": "Start of the second night (bot v1.171.6). Since the day-one snapshot (18:55Z): hunts only at the team's top 5 XP spots, banking when the bag is full, trade scans every 20 min, review fixes. Pots reset at 21:17Z with 20M extra for the gear pot and 5M for the ladder pot (until ~09:20Z). The team farms snakes for amulets right now (drop value 0.72%/h vs 0.45%/h XP spot). Compare in the morning: levels, gear, gold, tokens, what the merchant bought and sold.",
+  "botVersion": "1.171.6",
+  "characters": {
+    "VizPri": {
+      "level": 53, "xp": 8114858, "max_xp": 11000000, "gold": 33290,
+      "stats": { "hp": 2964, "mp": 3345, "attack": 458, "armor": 70, "resistance": 219, "frequency": 0.82, "goldm": 1.05, "luckm": 1.42, "xpm": 1.16 },
+      "worn": { "mainhand": "staff+8", "offhand": "wbook0+1", "helmet": "wcap+8:int", "chest": "coat+8:int", "pants": "pants+8:int", "shoes": "shoes+8:int", "gloves": "gloves+7:int", "ring1": "intring+3", "ring2": "intring+2", "earring1": "intearring+1", "earring2": "intearring+1", "amulet": "intamulet+1", "belt": "hpbelt+0", "orb": "orbg+1" },
+      "bag": ["tracker", "mpot1 x261", "hpot1 x296", "stormfeather x6", "intamulet+0", "strearring+0", "hpbelt+0", "gem0", "vitearring+0 x2", "fireblade+0"]
+    },
+    "VizWar": {
+      "level": 55, "xp": 4603753, "max_xp": 16000000, "gold": 34209,
+      "stats": { "hp": 6288, "mp": 720, "attack": 897, "armor": 243, "resistance": 67, "frequency": 0.88, "goldm": 1.05, "luckm": 1.42, "xpm": 1.16 },
+      "worn": { "mainhand": "blade+8", "offhand": "blade+8", "helmet": "helmet+7:str", "chest": "coat+7:str", "pants": "pants+7:str", "shoes": "shoes+7:str", "gloves": "gloves+7:str", "ring1": "strring+2", "ring2": "strring+3", "earring1": "strearring+2", "earring2": "strearring+2", "amulet": "stramulet+1", "belt": "strbelt+1", "orb": "orbg+0", "cape": "cape+0:str" },
+      "bag": ["tracker", "mpot0 x278", "hpot1 x227", "dexearring+0", "hpbelt+0", "vitscroll x8", "strearring+0", "stormfeather x23", "vitearring+0", "hpamulet+0", "ringsj+0 x2", "monstertoken x2", "wshoes+0", "intearring+0", "wcap+0", "firestaff+0", "beewings", "dexamulet+0", "wgloves+0"]
+    },
+    "VizRng": {
+      "level": 54, "xp": 6348372, "max_xp": 13000000, "gold": 38584,
+      "stats": { "hp": 2340, "mp": 905, "attack": 620, "armor": 92, "resistance": 152, "frequency": 1.01, "goldm": 1.05, "luckm": 1.42, "xpm": 1.16 },
+      "worn": { "mainhand": "bow+7", "offhand": "quiver+6", "helmet": "helmet+7:dex", "chest": "tshirt1+3", "pants": "pants+7:dex", "shoes": "shoes+7:dex", "gloves": "gloves+7:dex", "ring1": "ringsj+2", "ring2": "dexring+3", "earring1": "dexearring+1", "earring2": "dexearring+1", "amulet": "dexamulet+1", "belt": "dexbelt+0", "orb": "orbg+1" },
+      "bag": ["vitscroll", "mpot0 x126", "tracker", "hpot1 x282", "stormfeather"]
+    },
+    "VizMerch": {
+      "level": 50, "xp": 262014, "max_xp": 5800000, "gold": 59660642, "freeBagSlots": 14,
+      "bag": ["mpot0 x211", "hpot1 x793", "mpot1 x292", "stand0", "monstertoken x197", "marketparcel", "scroll0 x2", "scroll1",
+        "intring+1", "intring+0", "dexring+1", "strring+1", "intearring+1 x2", "dexearring+1", "strearring+2", "intamulet+1", "intamulet+0", "stramulet+1", "dexamulet+2",
+        "strbelt+1", "strbelt+0", "wgloves+0 x3", "wshoes+0 x2", "wbreeches+0"],
+      "stand": ["BUY essenceoffire x10 @140k", "BUY intamulet+2 @34k", "BUY ololipop+0 x2 @150k", "BUY gslime x99 @60", "BUY frogt x10 @10", "BUY glolipop+0 x4 @80k", "BUY offeringp x2 @350k", "BUY crossbow+0 @400k", "BUY intbelt+0 @3.3M", "BUY stramulet+2 @34k", "BUY wbreeches+8 @2.2M", "BUY spores x20 @360", "BUY quiver+7 @2.7M", "BUY wattire+8 @2.2M", "BUY beewings x27 @75", "SELL monstertoken x20 @1M"]
+    }
+  },
+  "bank": {
+    "gold": 1000, "freeSlots": 44, "of": 84, "seenAt": "2026-11-20T21:21:52Z",
+    "items": { "stormfeather": 415, "crabclaw": 300, "beewings": 188, "gslime": 25, "marketparcel": 24, "seashell": 12, "ascale": 10, "gem0": 9, "candycane": 5, "cscale": 4, "verdantspore": 4, "embercore": 3, "bwing": 3, "carrot": 3, "gem1": 2, "bfur": 2, "gloomfeather": 2, "wshoes+0": 2, "frogt": 1, "mistletoe": 1, "elixirvit0": 1, "frostcore": 1, "rfangs": 1, "voidthread": 1, "vitearring+0": 1 },
+    "gear": ["wcap+0", "wattire+0", "wgloves+0", "wshoes+0 x2", "intamulet+0", "stramulet+0", "strbelt+0", "dexearring+0", "vitearring+0", "wbook0+0", "t2bow+3", "coat+6:str", "helmet+6:dex", "shoes+5:dex", "pants+5:dex", "gloves+5:dex"]
+  },
+  "monsterTokens": { "merchantBag": 197, "atStand": 20, "fighters": 2, "total": 219, "note": "205 at the day-one snapshot (18:55Z); 9 sold since (Rocky, 1M each) - so 23 new tokens in 2.5 h" },
+  "gold": { "merchant": 59660642, "fighters": 106083, "bank": 1000, "total": 59767725, "dayOneSnapshot": 51428399 },
+  "pots": { "resetAt": "2026-11-20T21:17Z", "gearGoals": "~20.0M (20M extra until 2026-11-21T09:17Z)", "ladder": "~4.9M (5M extra until 2026-11-21T09:22Z)", "incomeShareGear": 0.7, "incomeShareLadder": 0.25 },
+  "since1855": {
+    "levels": { "VizPri": "53 -> 53 (+7.5M XP)", "VizWar": "54 -> 55", "VizRng": "53 -> 54" },
+    "gear": { "VizRng": "hpbelt+0 -> dexbelt+0 (bought 47k at a stand)" },
+    "playerTrades": ["20:06 dexbelt+0 47k (Merchery, EU I)", "20:19 ololipop+0 237k (Merchery, EU I)", "19:55 + 20:25 sold 9 Monster Tokens to Rocky (ASIA II) at 1M"],
+    "watch": "goldm/luckm/xpm are each 0.10 lower than at 18:55Z (1.15/1.52/1.26 then) - a buff ran out"
+  }
+}
