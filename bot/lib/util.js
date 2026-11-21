@@ -33,6 +33,7 @@ function combatStats() {
         attack: c.attack || 0, heal: c.heal || 0, frequency: c.frequency || 1,
         armor: c.armor || 0, resistance: c.resistance || 0,
         apiercing: c.apiercing || 0, rpiercing: c.rpiercing || 0,
+        range: c.range || 0, speed: c.speed || 0, // kiting in the boss check (2026-11-21)
         damage_type: c.damage_type || ((G.classes && G.classes[c.ctype]) || {}).damage_type || "physical",
     };
 }
@@ -135,7 +136,8 @@ function log(tag, text, color) {
 // Decision journal (player request 2026-11-21): why and when the team changes its spot. The
 // game log keeps ~200 lines without times; this keeps the last 400 decisions with a timestamp
 // per character in the storage ("dmpx_journal:<name>": [[ms, text], ...]).
-const JOURNAL_TAGS = ["target", "drops", "hunt", "event", "party", "cavalry"];
+// "dps" (2026-11-21): the damage meter's 5-minute lines (team damage/s, kills) for the measurement hours.
+const JOURNAL_TAGS = ["target", "drops", "hunt", "event", "party", "cavalry", "dps"];
 let journalBuf = null;
 function journal(text) {
     try {
@@ -308,7 +310,22 @@ function weaponPower(name, level, ctype) {
     if (!def || def.type !== "weapon" || (def.class && !def.class.includes(ctype))) return 0;
     const mod = (cls.mainhand || {})[def.wtype] || (cls.doublehand || {})[def.wtype];
     if (!mod) return 0;
-    return weaponAttack(name, level || 0) * (1 + (mod.output || 0) / 100) * (1 + (mod.frequency || 0) / 100);
+    // The priest's attack is its heal, and a heal never procs burn (player decision 2026-11-21).
+    return weaponAttack(name, level || 0) * (1 + (mod.output || 0) / 100) * (1 + (mod.frequency || 0) / 100) * (ctype === "priest" ? 1 : burnFactor(name, level || 0));
+}
+// Burn (Phoenix fire weapons; node/server.js, checked 2026-11-21): a hit procs it with attr0 % chance;
+// the target then burns for ~intensity per second for 5 s (a tick of intensity/5 every 210 ms) with
+// intensity = that hit's damage - about 4.8x the hit on top, armor ignored. BURN_VALUE takes 80 % of
+// that (overlapping procs, targets that die early). Fireblade +7: 5.1 % -> x1.19.
+const BURN_VALUE = 3.8;
+function burnFactor(name, level) {
+    const def = G.items[name];
+    if (!def || def.ability !== "burn") return 1;
+    let chance = 0;
+    try {
+        if (typeof calculate_item_properties === "function") chance = (calculate_item_properties({ name: name, level: level }) || {}).attr0 || 0;
+    } catch (e) { /* no estimate */ }
+    return 1 + chance / 100 * BURN_VALUE;
 }
 
 function isDoublehand(name, ctype) {
@@ -321,6 +338,36 @@ function isDoublehand(name, ctype) {
 // for the leader alone: `seconds` is its kill time, `cycle` adds waiting for
 // respawns. The team kills `speedup` times as fast, but never faster than the spot
 // respawns. null without a usable route.
+// Waypoint before a smart_move (config.travel.via, 2026-11-21): { spookytown: "halloween" } - a map
+// reached through a dangerous one is walked to via a safe map (the Vampire Rats in level1 killed the
+// ranger twice on its way to Spooky Town). Resolves at once when no waypoint applies.
+function viaFirst(dest) {
+    const cfg = typeof BOT_CONFIG !== "undefined" && BOT_CONFIG ? BOT_CONFIG : {};
+    const via = (cfg.travel && cfg.travel.via) || {};
+    const map = dest && typeof dest === "object" ? dest.map : null;
+    const v = map && via[map];
+    if (!v || character.map === map || character.map === v) return Promise.resolve();
+    return smart_move({ map: v });
+}
+
+// Kiting in the farm checks (player decision 2026-11-21): a monster we can keep at bay - its sprint
+// (charge, scaled by how much faster this grown one is) below combat.kite.farmSpeedRatio of our speed,
+// its range + farmRangeMargin below ours, no special abilities - still hits now and then: its damage
+// counts with combat.kite.farmRisk (a residual risk, never 0). Returns that factor, or 1.
+// me: { speed, range } (our character or a member's stats).
+function kiteRisk(def, live, me) {
+    const cfg = typeof BOT_CONFIG !== "undefined" && BOT_CONFIG ? BOT_CONFIG : {};
+    const k = (cfg.combat && cfg.combat.kite) || {};
+    if (!k.enabled || !k.farmRisk || !def || !me || !me.speed || !me.range) return 1;
+    if (def.abilities && Object.keys(def.abilities).length) return 1;
+    const grow = live && live.speed && def.speed ? Math.max(1, live.speed / def.speed) : 1;
+    const sprint = (def.charge || def.speed || 0) * grow;
+    const reach = (live && live.range) || def.range || 0;
+    if (sprint >= me.speed * (k.farmSpeedRatio || 0.9)) return 1;
+    if (reach + (k.farmRangeMargin || 50) >= me.range) return 1;
+    return k.farmRisk;
+}
+
 function teamCycle(route, speedup) {
     if (!route || !(route.cycle > 0)) return null;
     const kill = (route.seconds > 0 ? route.seconds : route.cycle) + 1.5;
@@ -348,17 +395,86 @@ function heartbeat() {
     lastBeatAt = now;
     try {
         const server = typeof parent !== "undefined" && parent.server_region ? parent.server_region + " " + parent.server_identifier : null;
-        set("dmpx_beat:" + character.name, { at: now, server: server });
+        // hp: for the priest's Party Heal on members out of its sight (2026-11-21).
+        set("dmpx_beat:" + character.name, { at: now, server: server, hp: character.max_hp ? Math.round(character.hp / character.max_hp * 100) / 100 : 1, rip: !!character.rip });
     } catch (e) { /* storage unavailable */ }
 }
 
+// The team's home server, e.g. "EU IV" (player request 2026-11-21: not hard-coded - the team was
+// moved to another server by hand and the merchant would have hopped straight back to EU III):
+// where the leader runs, from its last heartbeat (any age - a leader restart must not send the
+// merchant to the configured server), else merchantRole.pontyRound.home.
+function teamServer(config) {
+    try {
+        const b = get("dmpx_beat:" + config.leader);
+        if (b && b.server) return b.server;
+    } catch (e) { /* storage unavailable */ }
+    const pr = (config.merchantRole && config.merchantRole.pontyRound) || {};
+    return (pr.home || ["EU", "III"]).join(" ");
+}
+
+// ---- fear and incoming damage (after earthiverse's attack.ts / avoid_death.ts, player decision
+// 2026-11-21) ----------------------------------------------------------------------------------
+// Fear (server): more attackers of one damage type than our courage for it (courage, mcourage,
+// pcourage) cut our attack to 60/40/20 %.
+function courageOf(type) {
+    const c = type === "pure" ? character.pcourage : type === "magical" ? character.mcourage : character.courage;
+    return typeof c === "number" ? c : Infinity;
+}
+function damageTypeOf(e) {
+    return ((G.monsters[e.mtype] || {}).damage_type) || "physical";
+}
+function attackersOnMe() {
+    return Object.values(parent.entities || {}).filter(function (e) {
+        return e && e.type === "monster" && !e.dead && e.target === character.name;
+    });
+}
+// How many more attackers of this damage type we can take before fear sets in.
+function fearRoom(type, extra) {
+    const n = attackersOnMe().filter(function (e) { return damageTypeOf(e) === type; }).length + (extra || 0);
+    return courageOf(type) - n;
+}
+// A free monster we are about to pull would scare us (no room left for its damage type).
+function wouldScare(e) {
+    return !!e && !e.target && fearRoom(damageTypeOf(e)) <= 0;
+}
+// The damage the attackers on us can deal in their next hit: each one within its range + speed
+// hits for its maximum, times (1 + 0.2 per attacker of its type beyond our courage). onlyType:
+// count only that damage type (Hard Shell: physical).
+function incomingDamage(onlyType) {
+    const near = attackersOnMe().filter(function (e) {
+        const d = G.monsters[e.mtype] || {};
+        const reach = (e.range || d.range || 20) + (e.speed || d.speed || 0);
+        return distanceTo(e) <= reach;
+    });
+    const count = {};
+    near.forEach(function (e) { const t = damageTypeOf(e); count[t] = (count[t] || 0) + 1; });
+    return near.reduce(function (sum, e) {
+        const t = damageTypeOf(e);
+        if (onlyType && t !== onlyType) return sum;
+        const d = G.monsters[e.mtype] || {};
+        const def = t === "physical" ? (character.armor || 0) - (d.apiercing || 0)
+            : t === "magical" ? (character.resistance || 0) - (d.rpiercing || 0) : 0;
+        const hit = (e.attack || d.attack || 0) * 1.1 * (t === "pure" ? 1 : damageMultiplier(def));
+        return sum + hit * (1 + 0.2 * Math.max(0, count[t] - courageOf(t)));
+    }, 0);
+}
+
 module.exports = {
+    courageOf: courageOf,
+    fearRoom: fearRoom,
+    wouldScare: wouldScare,
+    incomingDamage: incomingDamage,
+    damageTypeOf: damageTypeOf,
+    teamServer: teamServer,
     heartbeat: heartbeat,
     journal: journal,
     tooSpiky: tooSpiky,
     teamCycle: teamCycle,
     deriveTeam: deriveTeam,
     weaponPower: weaponPower,
+    viaFirst: viaFirst,
+    kiteRisk: kiteRisk,
     isDoublehand: isDoublehand,
     potionNames: potionNames,
     goldAmount: goldAmount,

@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.177.1",
+    version: "1.200.1",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -42,7 +42,12 @@ module.exports = {
     // zero - no bank, no gold - to see how the bot progresses on its own. Only one account is
     // played at a time.
     otherTeams: [
-        { name: "viz", leader: "VizPri", fighters: ["VizPri", "VizWar", "VizRng"], solo: [], merchant: "VizMerch", farm: {} },
+        // Solo 2026-11-21 (evening, player decision): the warrior alone with Lone Wolf x Welcome Back,
+        // Daisy hunts off, boss searches stay. Party again: leader "VizPri", phase "party", hunts on.
+        // Party again 2026-11-21 (late evening, player): the team clears the grown CGoos (level 26) in the
+        // arena (targeting.farm "cgoo"), then the warrior goes solo again.
+        // Solo again 2026-11-21 (night): the warrior alone with Lone Wolf (no fixed farm target).
+        { name: "viz", leader: "VizWar", fighters: ["VizPri", "VizWar", "VizRng"], solo: [], merchant: "VizMerch", farm: {} },
     ],
 
     // Market stand (player decision 2026-11-17): what the merchant buys and sells at his stand.
@@ -145,41 +150,64 @@ module.exports = {
     dismantle: {
         enabled: true,
         // of-the-Dead weapons into Bones (player decision 2026-11-19) - except the Sword of the Dead:
-        // its base (Short Sword) only comes from weapon boxes, so it can't be rebuilt.
+        // its base (Short Sword) only comes from weapon boxes, so it can't be rebuilt. The Staff of the Dead
+        // stays too since 2026-11-21: the priest's end goal (bases from Ponty).
         names: ["fireblade", "firestaff", "firebow",
-            "maceofthedead", "staffofthedead", "bowofthedead", "daggerofthedead", "pmaceofthedead", "spearofthedead"],
+            "maceofthedead", "bowofthedead", "daggerofthedead", "staffofthedead"], // Spear and Hand of the Dead stay since 2026-11-21 (worth more sold than as Bones)
+        // Staff of the Dead (2026-11-21): +0 copies once no weapon list wants them, or while its Bones wait for a
+        // higher list priority - like fire weapons and essence. The Sword of the Dead stays off this list: its
+        // Short Sword is rare, so held copies are always upgraded and never turned into Bones.
         maxLevel: 0, // +1 and higher copies stay (they would only give one essence as well)
     },
 
-    // Essence goals (player decision 2026-11-18): weapons crafted from the dismantled material
-    // (e.g. Essence of Fire + shop weapon + 20k at Leo) and pushed up the normal upgrade ladder,
-    // one copy at a time, until the goal is reached - then no further essence is touched.
-    //   auto:  for every team fighter, the best weapon its class can wield that is crafted from
-    //          `material`, at `upTo`; a goal when it beats the worn weapon (a second one for a
-    //          weapon in the offhand). Delivered like a wish once done.
-    //   extra: more goals on top, { item, level, count } - e.g. a spare to keep or sell.
-    // A copy we already hold (a drop) is the base before a new one is crafted, and copies an
-    // open goal needs are not dismantled. Normal scrolls only; the weapon ladder's budget pays.
-    essenceGoals: {
+    // Material goals (player decision 2026-11-22; were the essence goals of 2026-11-18): weapons crafted from a
+    // dismantled material - Essence of Fire (fire weapon + shop weapon + 20k at Leo) and Bones (Of-the-Dead
+    // weapon + its base + fee) - and pushed up the upgrade ladder, one copy at a time, until the goal level.
+    // One set of rules for every material (workshop materialGoals):
+    //   goals:   every material item of a fighter's weapon list (gearPlan.weapons) that beats the worn weapon;
+    //            priority = its place from the back of the list, the lowest number first; the others wait -
+    //            nothing crafted for them, their +0 copies dismantled into material (unless the item is not
+    //            on dismantle.names: then held copies are still upgraded). Buying is never held back.
+    //   deliver: "better" - the best copy that beats the weaker worn weapon; upgrades go step by step to the
+    //            first level that does (the replaced weapon comes back as a base); "goal" - at the goal level.
+    //   budget:  "ladder" - the weapon ladder's pot (borrowFrom: the gear goals' pot while they are idle);
+    //            "goals" - the gear goals' pot.
+    //   upTo:    goal level (else gearPlan.weaponCaps); buyCopies: Ponty / player stands buy copies of its
+    //            items as bases (listWants); sources + sourceMaxPrice: +0 items Ponty buys to dismantle into
+    //            the material while a goal wants bases; rareBases: { item: max price } - craft bases no shop
+    //            sells, bought while material waits for one; extra: more goals { item, level, count }.
+    // Spear (2 Bones) and Hand of the Dead (Bones) are too dear as sources: never bought for Bones, not
+    // dismantled (dismantle.names). skip: never planned (Firestars need Throwing Stars, 2026-11-18).
+    materialGoals: {
         enabled: true,
-        material: "essenceoffire",
         auto: true,
-        upTo: 7,
-        reserve: 0,          // essences that always stay in the bank
-        maxPerGoal: null, skip: ["firestars"], // skip: never planned automatically (Firestars need Throwing Stars, 2026-11-18)    // null = no limit: a goal is a goal (player decision 2026-11-18)
-        // When the weapon ladder's pot is empty, pay from the gear goals' pot - but only while
-        // the gear goals have nothing open themselves (player decision 2026-11-18). null = never.
-        borrowFrom: "goals",
-        extra: [],
+        reserve: 0,            // material units that always stay in the bank
+        maxPerGoal: null,      // null = no limit: a goal is a goal (player decision 2026-11-18)
+        borrowFrom: "goals",   // "ladder" materials may borrow from the idle gear goals' pot (2026-11-18)
+        skip: ["firestars"],
+        materials: {
+            // deliver "better" for both (player decision 2026-11-22): always the best copy we have is worn.
+            essenceoffire: { upTo: 7, budget: "ladder", deliver: "better", buyCopies: false, extra: [] },
+            mbones: {
+                upTo: 7, budget: "goals", deliver: "better", buyCopies: true,
+                sources: ["maceofthedead", "staffofthedead", "bowofthedead", "daggerofthedead"], // not the Sword of the Dead: kept, never Bones
+                sourceMaxPrice: 300000,
+                rareBases: { sword: 150000 }, // Short Sword, the Sword of the Dead's base (no shop sells it)
+            },
+        },
     },
+
+    // Waypoints (2026-11-21): to reach the key map, walk to the value map first - main -> level1 -> spookytown
+    // led the ranger through the Vampire Rats (aggro 1, 9,200 HP) twice in a row.
+    travel: { via: { spookytown: "halloween" } },
 
     // "solo":  only the leader fights (Lone Wolf bonus); the merchant still supports it.
     // "party": all fighters form a party around the leader.
-    phase: "party",
+    phase: "solo", // 2026-11-21 night: VizWar solo again (party in between for the CGoo clearing)
 
     party: {
         followDistance: 80,   // members idle within this distance of the leader
-        leash: 300,           // members drop everything and catch up beyond this
+        leash: 300,           // only the warrior's Agitate keeps to this around the leader (follow/kite leash removed 2026-11-21)
         broadcastMs: 2000,    // leader shares position/target this often
         inviteEveryMs: 10000, // leader re-invites a missing member this often
         // Leader waits while a fighter is farther than waitDistance px (or out of sight), at most
@@ -255,9 +283,9 @@ module.exports = {
         },
         // "always" only applies once every fighter has reached this level
         minLevel: { phoenix: 40, goobrawl: 20, snowman: 10, graveyard: 40, mvampire: 50, jr: 40, greenjr: 40 },
-        // Only the Phoenix is searched (player decision 2026-11-21: in one hour two rounds for Mvampire,
-        // Jr. and Green Jr. took 14.6 min - 23 % of the time - without a find). The others are still
-        // fought when one is met (engage).
+        // The whole team searches only the Phoenix (player decision 2026-11-21: in one hour two team rounds
+        // for Mvampire, Jr. and Green Jr. took 14.6 min - 23 % of the time - without a find). The others
+        // are searched by one runner (runner below) and fought when one is met (engage).
         search: ["phoenix"],
         engage: ["mvampire", "jr", "greenjr"],
         // Parallel search (player decision 2026-11-21): the leader splits the spawn areas between the
@@ -272,13 +300,40 @@ module.exports = {
         // the walk costs farm time). Respawn times (game source): the Phoenix (respawn 32)
         // comes back ~32 s after its death at a random one of its 5 spots; Dracul (1080)
         // after 13-22 min.
-        searchEveryMs: 30 * 60 * 1000,
+        // 20 min (player decision 2026-11-21, a compromise: 30 min gave 1 Phoenix an hour; the 15-min hour
+        // showed ~4 min per search with the whole team).
+        searchEveryMs: 20 * 60 * 1000,
+        // One runner per boss (player decision 2026-11-21): Dracul, Jr. and Green Jr. are searched by one
+        // fighter alone while the others farm on. Who: the fastest ranged fighter, else the fastest melee
+        // that is no tank, else a tank only while a second one stays - never the leader or a healer
+        // (events.runnerCandidate; with our team the ranger).
+        // bosses: search interval per boss (Jr. 7.2 h and Green Jr. 14.4 h respawn - mostly killed by
+        // others already; Dracul 18 min). solo: the runner kills these alone (3-4k HP, weak hits); the
+        // others (Dracul: 240k HP) are reported and held until the team is there (holdFor). maxMs: the
+        // leader gives up on a runner that never reports back; killMs: longest solo fight.
+        runner: {
+            enabled: true,
+            bosses: { mvampire: 20 * 60 * 1000, jr: 60 * 60 * 1000, greenjr: 60 * 60 * 1000 },
+            // Player decision 2026-11-21 (EU IV, grown bosses): no solo kills - Jr. and Green Jr. are held for
+            // the team like Dracul (holdFor). Was ["jr", "greenjr"].
+            solo: [],
+            maxMs: 8 * 60 * 1000,
+            killMs: 3 * 60 * 1000,
+            // Nonstop mode (player decision 2026-11-21): a boss on farmBosses is hunted by the runner alone,
+            // lap after lap, without calling the team - only while the boss check says the runner can beat it
+            // alone (else the team searches it as usual); a runner death pauses it (boss.pauseAfterDeathMs).
+            nonstopKillMs: 15 * 60 * 1000, // longest solo fight
+            nonstopMaxMs: 20 * 60 * 1000,  // one lap plus a fight; the leader gives up after this
+        },
+        // Held for the team even with holdForTeam off: Dracul stays in its area, and alone he is too strong.
+        // Jr. and Green Jr. too (player decision 2026-11-21) - unless someone fights it already.
+        holdFor: ["mvampire", "jr", "greenjr"],
         // After a kill we saw, a slow boss (respawn > 200 s) is searched again only at
         // kill + respawn x respawnFactor (long respawns come up to 28 % early; 2026-11-20).
         respawnFactor: 0.72,
         // Bosses hunted nonstop: searched again after farmBossEveryMs (player option
         // 2026-11-16; Phoenix: weapons and earrings, about half the XP/h of crocs).
-        farmBosses: [],                 // ["phoenix"] = nonstop Phoenix hunt; off for the Agitate test at the crocs (2026-11-18)
+        farmBosses: [],                 // ["phoenix"] = nonstop Phoenix hunt by the runner alone; off again 2026-11-21 (the ranger is slower than the Phoenix charge, back to team searches)
         // 10 s (player decision 2026-11-17): in the old 60 s the warrior seldom even reached his
         // farm spot; now he goes straight back on the round after a kill or an empty search.
         farmBossEveryMs: 10 * 1000,
@@ -298,7 +353,7 @@ module.exports = {
 
     // Monster Hunts (Daisy). Unsafe hunts are left to expire.
     hunts: {
-        enabled: true, // on again 2026-11-19 (player, Viz start; was off for the dino test / mummy night)
+        enabled: false, // off 2026-11-21 evening for the warrior's solo run (player); on again 2026-11-19 (Viz start)
         minLevel: 20,                    // only once every fighter has this level (Daisy ignores our level)
         allow: [],                       // always hunt these, even if the guide calls them unsafe
         deny: [],                        // never hunt these
@@ -349,7 +404,8 @@ module.exports = {
         // No fixed target since 2026-11-19 (player decision): the bot decides (guide XP spot or a
         // drop spot worth more). Set a monster or a list here only to test or for a drop outside
         // the wish list. (Overnight 2026-11-19 it was ["mummy", "booboo", "stoneworm"].)
-        farm: null, // a list (2026-11-19): the first one not too strong/crowded; null = the guide picks
+        // 2026-11-21 (late evening, player): "cgoo" - the team clears the grown CGoos in the arena; back to null after.
+        farm: null, // a list (2026-11-19): the first one not too strong/crowded; null = the guide picks (cgoo 2026-11-21 late evening, back to null after the clearing)
         fallback: "goo",          // used when the progression guide has no answer
         // Rare monsters attacked first when in sight (player decision 2026-11-20): golden bat
         // (24k HP, attack 50, gold), cutebee (300 HP, 99.9 avoidance), tiny pinky (5.6k HP, attack
@@ -380,6 +436,7 @@ module.exports = {
             tankClasses: ["warrior", "paladin"],
             tankHits: 6, otherHits: 3, healCover: 1.5,
             pull: 2, pullAggressive: 3,
+            pullPassive: 1,                // aggro and rage below isolation.minAggro/minRage: one at a time (2026-11-21)
             pullLone: 2,                   // monsters pulled one at a time (isolation): one plus a possible add
             // Aggressive monsters whose spawn area per monster is below this (pxÂ²) come as a
             // whole pack (vampire rats: 5 in 150x195 wiped the team, 2026-11-16).
@@ -426,7 +483,9 @@ module.exports = {
         occupiedBy: 1, occupiedRadius: 300, occupiedAfterMs: 20000, occupiedForMs: 60 * 60 * 1000, occupiedFreeMs: 30 * 1000,
         // Shared, not taken (player decision 2026-11-21): another player on the spot is fine while we had a
         // target at least stayIfBusy of the last shareWindowMs on it (judged after shareMinMs on the spot).
-        stayIfBusy: 0.9, shareWindowMs: 2 * 60 * 1000, shareMinMs: 60 * 1000,
+        // 0.9 -> 0.75 (player decision 2026-11-21, evening): the melee warrior fought nonstop at the CGoos
+        // next to another player's three bots and still left the spot as taken. Walking stays idle.
+        stayIfBusy: 0.75, shareWindowMs: 2 * 60 * 1000, shareMinMs: 60 * 1000,
         crowdedMaxMs: 6 * 60 * 60 * 1000, // doubled each time the same spot is crowded again within a day
     },
 
@@ -437,17 +496,33 @@ module.exports = {
     // Cavalry resets that one instead. Then back to the farm list.
     cavalry: { enabled: true, emergencyHpBelow: 0.35, emergencyOnMe: 1, reset: true, resetFromLevel: 5, resetMinCount: 2,
         targets: [], planStayMs: 100 * 1000, planMaxMs: 10 * 60 * 1000,
-        foreignClear: 420, planMinCount: 5 }, // planMinCount: a plan call waits for this many of the kind in reach (or all in sight) // no reset/nuke call with another kind of level-3+ monster this close (the fairy, 2026-11-19)
+        foreignClear: 420, planMinCount: 5, resetPackMin: 5 }, // resetPackMin (2026-11-21): a reset waits for this many grown ones in reach (or all in sight), walking towards them // planMinCount: a plan call waits for this many of the kind in reach (or all in sight) // no reset/nuke call with another kind of level-3+ monster this close (the fairy, 2026-11-19)
 
     combat: {
-        // Kiting (solo and in a party - there within the leash, towards a tank class; player
-        // decisions 2026-11-18): a fighter with more range than a monster
-        // (margin px) that is also faster steps `step` px back when that monster would reach it
-        // before it dies - not for ones that die in time. Away from the pack and from free
-        // monsters (avoidRadius). The warrior never qualifies (range 38).
-        kite: { enabled: true, margin: 30, step: 60, everyMs: 600, avoidRadius: 120 },
+        // Kiting (fighter.kiteStep, after earthiverse's KiteMoveStrategy, player decision 2026-11-21): a
+        // fighter that outranges an attacker on it (by margin px) and is about as fast (its charge speed
+        // up to maxSpeedRatio x ours) stands on a circle around it - radius: its charge speed + its range +
+        // extra px, at most our range - rangeSlack - keeping the angle it stands at, and only moves while
+        // inside that circle (less slack px). Re-planned every everyMs; points near free monsters
+        // (avoidRadius) are avoided. The warrior never qualifies (range 38).
+        // maxSpeedRatio 0.99 (2026-11-21): only monsters slower than us - a Phoenix charging at 65 vs our 64 can't be
+        // outrun, the ranger only dragged it through the cave. anchorRadius: boss kiting stays this close to
+        // the middle of the boss's spawn area.
+        // farmRisk/farmSpeedRatio/farmRangeMargin (player decision 2026-11-21): in the farm checks a kiteable monster
+        // (util.kiteRisk) hits with farmRisk of its damage - a residual risk, never 0.
+        kite: { enabled: true, margin: 30, extra: 50, rangeSlack: 10, slack: 15, maxSpeedRatio: 0.99, anchorRadius: 280, everyMs: 250, avoidRadius: 120,
+            farmRisk: 0.25, farmSpeedRatio: 0.9, farmRangeMargin: 50 },
         potionHpBelow: 0.8,      // below this: an HP potion on every cooldown (player decision 2026-11-16, was 0.45)
-        potionMpBelow: 0.3,
+        // 0.5 since 2026-11-21 (player decision): below it MP comes before the HP top-up (HP above half).
+        // At 0.3 the solo warrior's own attacks (11 MP each, ~10 MP/s) drained him while every potion
+        // went to HP (< 80 % all fight long at the CGoos) - he rested after almost every fight.
+        potionMpBelow: 0.5,
+        // MP before the HP top-up (below potionMpBelow, or once a whole MP potion fits) only above this
+        // HP - between the rest line (recover.hpBelow 0.5) and potionHpBelow (player decision 2026-11-21).
+        mpFirstAboveHp: 0.65,
+        // Test 2026-11-21 (player): an HP potion whenever a whole one fits, MP only in the gaps (mpFirstAboveHp
+        // is then ignored). Solo only - with a healer near potionWhenMissing is off. false = the rules above.
+        hpWhenFits: true,
         // Otherwise drink as soon as a whole potion's worth is missing (HP before MP), i.e.
         // on every cooldown in a long fight (player request 2026-11-16).
         potionWhenMissing: true,
@@ -488,6 +563,7 @@ module.exports = {
             healBelow: 0.75, selfHealBelow: 0.6,
             partyHealBelow: 0.65,           // Party Heal when 2+ members are below this...
             partyHealDanger: 0.35,          // ...or one member is below this
+            partyHealOne: 0.5,              // ...or any member (also out of sight, from its heartbeat) is below this (earthiverse, 2026-11-21)
             useCurse: true, mpReserveRatio: 0.4,
             useRevive: true,                // revive fallen members (consumes an Essence of Life)
             // Absorb Sins (lvl 55): emergency only â€“ a member below `below` with monsters on it
@@ -526,11 +602,19 @@ module.exports = {
             cleaveFrom: 3,                  // Cleave (lvl 52, axe/scythe) with this many monsters around
             stompFrom: 2,                   // Stomp (lvl 52, basher) with this many attackers
             sturdyHits: 4,                  // War Cry (lvl 70) on targets needing this many hits
-            hardShell: { enabled: true, below: 0.45 }, // lvl 60, against physical hits
+            hardShell: { enabled: true, factor: 3 }, // lvl 60: when the predicted next physical hits x factor reach our HP (2026-11-21)
             useCharge: true,                           // +30 speed whenever we walk (on cooldown)
             // Dash: the server accepts a point at most 50 px away (game source) â€“ a 120 MP hop,
             // no gap closer. Off since 2026-11-16 (the old 150 px jumps always failed).
-            dash: { enabled: false, from: 120, max: 45, everyMs: 2000 },
+            // Combat dash only (player decision 2026-11-21): towards our target or the hit member, from
+            // "from" px, up to "max" px, above minMpRatio MP, one per everyMs; a failure pauses it pauseMs.
+            // Off again 2026-11-21 evening (player, for now).
+            dash: { enabled: false, from: 80, max: 49, minMpRatio: 0.5, everyMs: 1000, pauseMs: 10000 },
+            // Sword swap (player decision 2026-11-21): once fire blades are worn, the best `count` Swords of the
+            // Dead stay in the bag and go on for targets that fall in maxHits hits (burn needs ~5 s and never
+            // procs on the killing hit); longer fights, bosses and events bring the fire blades back. holdMs:
+            // how long the swords stay on after the last quick target.
+            swordSwap: { enabled: true, names: ["swordofthedead"], count: 2, maxHits: 5, holdMs: 60 * 1000 },
             // Agitate pack mode (solo, lvl 68; test since 2026-11-18): with minPack free monsters
             // within Agitate range he puts on his splash weapons (explosion, e.g. Lolipop Maces),
             // casts War Cry + Agitate, steps kiteStep px away so the pack follows from one side,
@@ -725,10 +809,27 @@ module.exports = {
                 if (w.carry) e.carry = true;
                 if (w.count) e.count = w.count;
                 if (w.insteadOf) e.insteadOf = w.insteadOf;
+                if (w.slots) e.slots = w.slots;
                 return e;
             });
         },
         caps: { armor: 8, weapon: 9, shopWeapon: 8, lateHint: 10 },
+        // Weapon lists per class (player decision 2026-11-21): items only, worst to best. The merchant goes from
+        // the BACK: the last item we hold a copy of (any level) is upgraded, step by step, as long as a step
+        // beats the fighter's weaker worn weapon (util.weaponPower: burn counts, but not for the priest) -
+        // each better copy is delivered. Nothing to work on (no copy, no budget, below the worn one even at its
+        // cap): one item further to the front. The shop weapon at the front is the gear goals' job. Fire weapons
+        // are made from essence (materialGoals): their priority is their place from the back (1 = last item),
+        // lower numbers first. Ponty buys bases for every item that would beat the worn weapon.
+        weapons: {
+            warrior: ["blade", "swordofthedead", "fireblade"],
+            priest: ["staff", "firestaff", "staffofthedead"],
+            ranger: ["bow", "firebow"],
+            rogue: ["stinger", "daggerofthedead"],
+        },
+        // Highest level the list items are upgraded to (per item, else default).
+        weaponCaps: { default: 7 },
+        // Bones and essence: see materialGoals (2026-11-22).
         // Shop armor per slot: gear goals (workshop.gearGoals) push the worn piece to caps.armor
         // with the main-stat scroll - no wish needed.
         shop: { helmet: "helmet", chest: "coat", pants: "pants", shoes: "shoes", gloves: "gloves" },
@@ -772,6 +873,7 @@ module.exports = {
             { slot: "gloves", item: "wgloves", to: 8, replace: true, for: "priest", how: "Ponty / craft" },
             { slot: "shoes", item: "wshoes", to: 8, replace: true, for: "priest", how: "Ponty / craft",
                 alts: [{ item: "wingedboots", how: "craft: Shoes + 20 Magical Feathers" }] },
+            // Weapons: see gearPlan.weapons (item lists per class, 2026-11-21) - no stepped chains here any more.
             // Warrior Agitate mode: two orange Lolipop Maces carried in the bag; green ones stand in.
             { slot: "mainhand", item: "ololipop", to: 7, carry: true, count: 2, for: "warrior", how: "drop: Jr." },
             { slot: "mainhand", item: "glolipop", to: 7, carry: true, count: 2, insteadOf: "ololipop", for: "warrior", how: "drop: Green Jr." },
@@ -798,11 +900,11 @@ module.exports = {
         classes: {
             warrior: {
                 modes: {
-                    single: { mainhand: [["blade", 8], ["fireblade", 9]], offhand: [["blade", 8], ["fireblade", 9]] },
+                    single: { mainhand: [["blade", 8], ["swordofthedead", 7], ["fireblade", 9]], offhand: [["blade", 8], ["swordofthedead", 7], ["fireblade", 9]] },
                     aoe: { mainhand: [["glolipop", 7], ["ololipop", 7], ["vhammer", null, "found"]], offhand: [["glolipop", 7], ["ololipop", 7]],
                         note: "Missing Vampiric Hammer: a second Lolipop. Missing orange Lolipop: the green one." },
                 },
-                rules: ["Tank armor: Rugged set +7 replaces the shop pieces (2026-11-16).", "HP belt only while no STR belt is there.", "Stays on Fiery Blades - no Swords of the Dead (2026-11-19)."],
+                rules: ["Tank armor: Rugged set +7 replaces the shop pieces (2026-11-16).", "HP belt only while no STR belt is there.", "Swords of the Dead +5/+6/+7 as steps until the Fiery Blades +7 (2026-11-21; was: no Swords of the Dead, 2026-11-19)."],
             },
             ranger: {
                 modes: {
@@ -812,7 +914,7 @@ module.exports = {
             },
             priest: {
                 modes: {
-                    single: { mainhand: [["staff", 8], ["firestaff", 9], ["lmace", null, "found"]], offhand: [["wbook0", 2], ["wshield", 6], ["mshield", null, "found"]],
+                    single: { mainhand: [["staff", 8], ["staffofthedead", 7], ["lmace", null, "found"]], offhand: [["wbook0", 2], ["wshield", 6], ["mshield", null, "found"]],
                         note: "Offhand: Book or Wooden Shield - the valuation decides." },
                 },
             },
@@ -896,6 +998,11 @@ module.exports = {
         // every open wish plus the fighters' XP value - no decisions are made from it yet.
         // orderWishes (stage 2, player decision 2026-11-19): open wishes are worked on by value.
         valueReport: { enabled: true, everyMs: 15 * 60 * 1000, top: 6, orderWishes: true },
+        // Ponty / player stands (player decision 2026-11-21): base copies of a wished drop or craft are
+        // bought until the chances of the copies we hold to reach the wished level add up to
+        // baseTargetPieces finished pieces (a +6 counts its ~25 %, a +0 its ~5 %) - at most maxBaseCopies.
+        baseTargetPieces: 1,
+        maxBaseCopies: 20,
         redeliverAfterMs: 6 * 60 * 60 * 1000, // don't fulfil the same wish for a fighter again within 6 h
         // Grace farming (approved 2026-11-15): before a compound/rare item is risked at a
         // level whose chance is too low, cheap shop items are failed at that level to raise
@@ -983,6 +1090,10 @@ module.exports = {
         // Since 2026-11-19 (player decision, fresh account): 20 % of the highest merchant gold of the
         // last 24 h, at most 5M (was a fixed 5M - nothing was ever spent on a new account).
         keepGold: { share: 0.2, max: 5000000 },
+        // Bonus wishes (no measurable gain, e.g. the priest's Wanderer set): one unit of work every everyMs
+        // while other wishes are open - they used to wait for a moment when everything else was blocked
+        // (player decision 2026-11-21).
+        bonusWishes: { everyMs: 3 * 60 * 1000 },
         gearGoals: {
             enabled: true,
             // Since 2026-11-15 (player request): don't let armor and weapons wait while the guide
@@ -1180,12 +1291,14 @@ module.exports = {
         // merchant's bot window (main.js hop watcher).
         pontyRound: {
             enabled: true,
+            // Home = the server the leader runs on (util.teamServer, 2026-11-21); this one only
+            // until the leader's first heartbeat is stored.
             home: ["EU", "III"],
             // Every server, the PvP ones too (player decision 2026-11-20: worth the risk of being
             // attacked there). The home server is skipped automatically.
-            servers: [["EU", "I"], ["EU", "II"], ["EU", "IV"], ["US", "I"], ["US", "II"], ["US", "III"], ["US", "IV"], ["US", "V"], ["ASIA", "I"], ["ASIA", "II"],
+            servers: [["EU", "I"], ["EU", "II"], ["EU", "III"], ["EU", "IV"], ["US", "I"], ["US", "II"], ["US", "III"], ["US", "IV"], ["US", "V"], ["ASIA", "I"], ["ASIA", "II"],
                 ["EU", "PVP"], ["US", "PVP"]],
-            everyHours: 3,                     // 0, 3, 6, ... o'clock local time (player decision 2026-11-20)
+            everyHours: 1,                     // every full hour local time (player decision 2026-11-21: a round takes ~5 min; was 3)
             testAt: null,                      // one extra round at this ISO time (the first test ran 2026-11-20 16:47Z)
             prepMaxMs: 8 * 60 * 1000, hopTimeoutMs: 2 * 60 * 1000,
         },

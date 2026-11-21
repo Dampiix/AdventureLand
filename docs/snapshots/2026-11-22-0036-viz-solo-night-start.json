@@ -1,0 +1,44 @@
+{
+  "account": "viz",
+  "taken": "2026-11-21T23:36:06Z",
+  "note": "Start of the solo night (warrior solo since 2026-11-21 18:43Z at level 61). Only VizWar and VizMerch run; VizPri and VizRng are offline (their gear below is the merchant's cached copy). Goal by the morning: VizWar level 68+, then the whole party for the rest of Welcome Back. Merchant v1.200.1 tonight: material goals (essence + bones) deliver the strongest copy over all materials that beats the weaker worn weapon, upgrades step by step. Compare in the morning: warrior level/XP, gear deliveries, gold, what the merchant bought and upgraded.",
+  "botVersion": { "VizWar": "1.199.0", "VizMerch": "1.200.1" },
+  "characters": {
+    "VizWar": {
+      "level": 65, "xp": 19056137, "max_xp": 120000000, "gold": 242022, "map": "level2s", "server": "EU IV",
+      "stats": { "hp": 7842, "mp": 990, "attack": 1292, "armor": 406, "resistance": 230, "frequency": 0.97, "goldm": 1.05, "luckm": 1.17, "xpm": 2 },
+      "conditions": { "encouragement_lonewolf": true, "encouragement_returning": "8453 min left (~2026-11-27 20:30Z)", "mluck": "58 min", "halloween0": "2264 min" },
+      "worn": { "mainhand": "swordofthedead+6", "offhand": "swordofthedead+5", "helmet": "helmet1+7:str", "chest": "coat+8:str", "pants": "pants1+7:str", "shoes": "shoes1+7:str", "gloves": "gloves1+7:str", "ring1": "strring+2", "ring2": "strring+3", "earring1": "strearring+3", "earring2": "strearring+3", "amulet": "stramulet+4", "belt": "strbelt+2", "orb": "orbg+1", "cape": "cape+0:str" },
+      "bag": ["tracker", "mpot1 x296", "hpot1 x241", "glolipop+7", "ololipop+7", "mpot0 x294", "gem1 x3"]
+    },
+    "VizPri": {
+      "offline": true, "source": "merchant's worn cache (last report before going offline)",
+      "worn": { "mainhand": "staffofthedead+6", "offhand": "wbook0+1", "helmet": "wcap+8:int", "chest": "wattire+8:int", "pants": "pants+8:int", "shoes": "wshoes+8:int", "gloves": "gloves+7:int", "ring1": "intring+3", "ring2": "intring+2", "earring1": "intearring+2", "earring2": "intearring+2", "amulet": "intamulet+2", "belt": "intbelt+2", "orb": "orbg+1" },
+      "waiting": "gloves+8:int in the merchant's bag (the warrior's old gloves, re-scrolled to INT) - handed over when the priest is back online"
+    },
+    "VizRng": {
+      "offline": true, "source": "merchant's worn cache",
+      "worn": { "mainhand": "firebow+7", "offhand": "quiver+7", "helmet": "helmet+7:dex", "chest": "tshirt1+3", "pants": "pants+7:dex", "shoes": "shoes+7:dex", "gloves": "gloves+7:dex", "ring1": "ringsj+2", "ring2": "dexring+3", "earring1": "dexearring+2", "earring2": "dexearring+2", "amulet": "dexamulet+3", "belt": "dexbelt+2", "orb": "orbg+1" },
+      "inProgress": "wcap for the helmet slot (log 'wcap is now +6' shortly before; not in bag or bank at snapshot time - check in the morning), wshoes+5 in the merchant's bag"
+    },
+    "VizMerch": {
+      "level": 54, "xp": 2409546, "max_xp": 13000000, "gold": 179807585, "map": "main", "freeBagSlots": 12,
+      "bag": ["mpot0 x300", "hpot1 x300", "mpot1 x396", "stand0", "scroll0", "essenceoffire x2", "gloves+8:int", "wshoes+5", "blade+0",
+        "intring+1", "intring+0", "dexring+1", "strring+1", "intearring+2 x2", "intearring+1", "intearring+0", "dexearring+2", "dexearring+1", "strearring+2 x2", "strearring+0",
+        "intamulet+2 x2", "dexamulet+2 x2", "intbelt+2", "intbelt+1", "intbelt+0", "strbelt+2"],
+      "stand": "closed at snapshot time (no trade slots)"
+    }
+  },
+  "bank": {
+    "gold": 1000, "freeSlots": 9, "of": 84, "seenAt": "2026-11-21T23:36:12Z (account snapshot, freshness unverified)",
+    "items": { "stormfeather": 1222, "crabclaw": 300, "gem1": 271, "beewings": 193, "marketparcel": 47, "gem0": 27, "gslime": 25, "seashell": 20, "monstertoken": 20, "candycane": 16, "cscale": 14, "embercore": 13, "ascale": 10, "pstem": 10, "carrot": 9, "voidthread": 7, "candy0": 6, "candy1": 6, "rfangs": 4, "verdantspore": 4, "shadowstone": 4, "frogt": 3, "bfur": 3, "bwing": 3, "mistletoe": 2, "gloomfeather": 2, "forscroll": 2, "elixirvit0": 1, "frostcore": 1, "cryptkey": 1, "ijx": 1 },
+    "gear": ["wcap+0 x7", "mcape+0 x5", "blade+8 x2", "bow+8", "staff+8", "coat+8:int", "shoes+8:int", "shoes+8:str", "helmet+8:str", "pants+8:str", "quiver+6", "t2bow+3", "stramulet+3", "stramulet+0", "dexamulet+1", "dexamulet+0", "intamulet+0", "dexbelt+2", "dexbelt+0 x2", "strbelt+0 x2", "vitearring+0 x3", "strearring+0 x2", "dexearring+0", "intearring+0", "orbg+0", "wbook0+0", "ololipop+0 x2"]
+  },
+  "gold": { "merchant": 179807585, "VizWar": 242022, "bank": 1000, "offlineFighters": "not read (VizPri/VizRng offline)", "night2End": 102393774 },
+  "sinceSoloStart": {
+    "soloStart": "2026-11-21 18:43Z VizWar level 61, 32.1M / 57M XP, map level2s",
+    "levels": { "VizWar": "61 -> 65" },
+    "measured": ["18:43-19:42Z: 65.9M XP (67M/h)", "19:42-21:03Z: 79.6M XP (59M/h)"],
+    "toLevel68": "410.9M XP (100.9M left on 65 + 140M for 66 + 170M for 67) - about 7 h at 60M/h, i.e. ~06:30Z / 07:30 local"
+  }
+}

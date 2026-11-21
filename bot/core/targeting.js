@@ -250,9 +250,12 @@ module.exports = function createTargeting(ctx) {
         // (pullLone) – a level-12 White Wolf failed "5.1 volleys of 3" though we never pull
         // three (2026-11-17). Dense packs still count whole.
         const lonePull = icfg.enabled && joinsFights(m) && !(opts && opts.pull);
+        // Passive monsters (aggro and rage below the isolation limits) come one at a time (2026-11-21: the
+        // level-26 CGoos, aggro 0.1, failed as "2 at once" by 1 % and the team skipped them all).
+        const passive = (m.aggro || 0) < (icfg.minAggro || 0.3) && (m.rage || 0) < (icfg.minRage || 0.3);
         const pull = opts && opts.pull ? opts.pull : (m.aggro || 0) >= 1
             ? Math.max(lonePull ? (ts.pullLone || 2) : (ts.pullAggressive || 3), densePack(monster))
-            : (ts.pull || 2);
+            : passive ? (ts.pullPassive || 1) : (ts.pull || 2);
         const volley = hitOn(tank) * pull;
         // Healing per second from the party: every fighter with a heal stat (a priest today;
         // no class names - player request 2026-11-17).
@@ -304,6 +307,11 @@ module.exports = function createTargeting(ctx) {
         if (!e || (e.level || 1) < (lcfg.fromLevel || 2)) return true;
         const def = G.monsters[e.mtype];
         if (!def || def.cooperative) return true;
+        // Bosses are judged by the events boss check with their real level (player decision
+        // 2026-11-21): this farm check took a level-8 Dracul for a pack of 2-3 ("VizWar would lose
+        // 157636 HP over ~1343 s") while the boss check rightly said 738 damage/s vs 1158 healing/s.
+        // Who may open alone is targeting.holdBoss (events.soloOk).
+        if (bossList().includes(e.mtype)) return true;
         const now = Date.now();
         const c = liveChecked[e.id];
         if (c && c.level === e.level && now - c.at < 30 * 1000) return c.ok;
@@ -326,11 +334,13 @@ module.exports = function createTargeting(ctx) {
         };
         // Members (and solo fighters) pulling their own target: we must survive ownHits of its
         // real hits ourselves (the warrior shrugs off a level-7 CGoo, a priest may not).
+        // Kiteable for us (util.kiteRisk): its hits count with the residual risk only (2026-11-21).
+        const kite = util.kiteRisk(def, e, { speed: character.speed, range: character.range });
         const ownCheck = function () {
             const me = util.combatStats();
             const d = def.damage_type === "physical" ? (me.armor || 0) - (def.apiercing || 0)
                 : def.damage_type === "magical" ? (me.resistance || 0) - (def.rpiercing || 0) : 0;
-            const hits = me.max_hp / Math.max(1, (e.attack || def.attack || 0) * 1.1 * util.damageMultiplier(d));
+            const hits = me.max_hp / Math.max(1, (e.attack || def.attack || 0) * 1.1 * util.damageMultiplier(d) * kite);
             return hits >= (lcfg.ownHits || 6) ? { ok: true } : { ok: false, why: "I survive " + hits.toFixed(1) + " of its hits (need " + (lcfg.ownHits || 6) + ")" };
         };
         // Alone (no party): the fight must be survivable over its whole length – the
@@ -345,7 +355,7 @@ module.exports = function createTargeting(ctx) {
             const d = def.damage_type === "physical" ? (me.armor || 0) - (def.apiercing || 0)
                 : def.damage_type === "magical" ? (me.resistance || 0) - (def.rpiercing || 0) : 0;
             const pull = (def.aggro || 0) >= 1 ? Math.max(1, densePack(e.mtype)) : 1;
-            const incoming = (e.attack || def.attack || 0) * 1.1 * util.damageMultiplier(d) * (e.frequency || def.frequency || 1) * pull;
+            const incoming = (e.attack || def.attack || 0) * 1.1 * util.damageMultiplier(d) * (e.frequency || def.frequency || 1) * pull * kite;
             let sustain = potionHps();
             if (me.ctype === "priest") sustain += (me.heal || me.attack || 0) * (me.frequency || 1) * 0.5; // half its actions heal
             const myDef = me.damage_type === "physical" ? (def.armor || 0) - (me.apiercing || 0) : (def.resistance || 0) - (me.rpiercing || 0);
@@ -468,6 +478,7 @@ module.exports = function createTargeting(ctx) {
         sharedLogged = "";
         occupiedUntil[spotKey(s)] = Date.now() + (cfg.occupiedForMs || 20 * 60 * 1000);
         util.log("target", "spot " + s.map + " " + s.x + "," + s.y + " is taken by " + others.map(function (e) { return e.name; }).join(", ") +
+            (cfg.stayIfBusy ? " (we had a target " + Math.round(busy.share * 100) + "% of " + Math.round(busy.ms / 1000) + " s, need " + Math.round(cfg.stayIfBusy * 100) + "%)" : "") +
             " - another one for " + Math.round((cfg.occupiedForMs || 20 * 60 * 1000) / 60000) + " min", "orange");
         // Every spot of our farm target taken (2026-11-18: squigtoads have a single spot, bots on
         // it, the rogue stood there on "find"): skip the monster like a crowded one, pick again.
@@ -831,6 +842,23 @@ module.exports = function createTargeting(ctx) {
     // The team's XP ranking - the same list the farm pick walks (guide routes by XP/s, every
     // monster the team may take), crowded spots not left out. Monster names, best first; null
     // while the guide has no routes. Cached 60 s. For hunts.xpTop (player decision 2026-11-20).
+    // Routes we can walk to (2026-11-21): the guide also lists monsters that only live in an instance
+    // (a4 = Orlok in the crypt) - the leader picked it after the squigtoads were taken on EU IV, and
+    // every route to "a4" failed ("Unrecognized location").
+    const walkableSeen = {}; // monster -> it spawns on a map outside instances
+    function walkable(r) {
+        if (r.map) {
+            const m = G.maps[r.map];
+            if (!m || m.instance || m.ignore) return false;
+        }
+        if (walkableSeen[r.monster] === undefined) {
+            walkableSeen[r.monster] = Object.keys(G.maps).some(function (k) {
+                const m = G.maps[k];
+                return !m.instance && !m.ignore && (m.monsters || []).some(function (p) { return p.type === r.monster; });
+            });
+        }
+        return walkableSeen[r.monster];
+    }
     let rankCache = null;
     function teamXpRanking() {
         if (rankCache && Date.now() - rankCache.at < 60 * 1000) return rankCache.list;
@@ -841,7 +869,7 @@ module.exports = function createTargeting(ctx) {
         const model = teamModelOn();
         const seen = {};
         const list = advice.routes
-            .filter(function (r) { return r && G.monsters[r.monster] && (model || r.safe) && !lastingObjector(r.monster, own); })
+            .filter(function (r) { return r && G.monsters[r.monster] && walkable(r) && (model || r.safe) && !lastingObjector(r.monster, own); })
             .sort(function (a, b) { return calcXp(b) - calcXp(a); })
             .filter(function (r) { if (seen[r.monster]) return false; seen[r.monster] = true; return true; })
             .map(function (r) { return r.monster; });
@@ -861,7 +889,7 @@ module.exports = function createTargeting(ctx) {
             if (teamModelOn() && Array.isArray(advice.routes)) {
                 const seen = {};
                 const teamList = advice.routes
-                    .filter(function (r) { return r && G.monsters[r.monster] && !lastingObjector(r.monster, own); })
+                    .filter(function (r) { return r && G.monsters[r.monster] && walkable(r) && !lastingObjector(r.monster, own); })
                     .sort(function (a, b) { return calcXp(b) - calcXp(a); })
                     .filter(function (r) { if (seen[r.monster]) return false; seen[r.monster] = true; return true; })
                     .map(function (r) { return { monster: r.monster, map: r.map, source: "guide, team model" }; });
@@ -878,7 +906,7 @@ module.exports = function createTargeting(ctx) {
             // XP - a level-71 warrior on his own got goo, irritated goo and poisio.
             const seenRaw = {};
             const ranked = Array.isArray(advice.routes) ? advice.routes
-                .filter(function (r) { return r && r.safe && G.monsters[r.monster]; })
+                .filter(function (r) { return r && r.safe && G.monsters[r.monster] && walkable(r); })
                 .sort(function (a, b) { return calcXp(b) - calcXp(a); })
                 .filter(function (r) { if (seenRaw[r.monster]) return false; seenRaw[r.monster] = true; return true; })
                 .slice(0, 3)
@@ -899,7 +927,7 @@ module.exports = function createTargeting(ctx) {
                 // None of the top three is safe for everyone: best other safe route.
                 const seen = {};
                 list = advice.routes
-                    .filter(function (r) { return r && r.safe && G.monsters[r.monster] && !objector(r.monster, own); })
+                    .filter(function (r) { return r && r.safe && G.monsters[r.monster] && walkable(r) && !objector(r.monster, own); })
                     .sort(function (a, b) { return calcXp(b) - calcXp(a); })
                     .filter(function (r) { if (seen[r.monster]) return false; seen[r.monster] = true; return true; })
                     .slice(0, 3)
@@ -908,7 +936,7 @@ module.exports = function createTargeting(ctx) {
             if (Array.isArray(advice.routes)) {
                 const seen = {};
                 spare = advice.routes
-                    .filter(function (r) { return r && r.safe && G.monsters[r.monster] && !objector(r.monster, own); })
+                    .filter(function (r) { return r && r.safe && G.monsters[r.monster] && walkable(r) && !objector(r.monster, own); })
                     .sort(function (a, b) { return calcXp(b) - calcXp(a); })
                     .filter(function (r) { if (seen[r.monster]) return false; seen[r.monster] = true; return true; })
                     .map(function (r) { return { monster: r.monster, map: r.map, source: "guide, next free spot" }; });
@@ -1185,6 +1213,10 @@ module.exports = function createTargeting(ctx) {
         // the warrior (98 attack) needed 4 hits for a bee (300 HP) and only assisted while the
         // ranger took his own - a bee hits him for 1 % of his HP (2026-11-19).
         if (s.harmlessRatio && def.attack <= character.max_hp * s.harmlessRatio) return true;
+        // Kiteable for us (ranger, priest): its hits count with the residual kite risk, and how long the
+        // kill takes doesn't matter (2026-11-21: giant scorpions, speed 24, range 32, for the ranger).
+        const risk = util.kiteRisk(def, null, { speed: character.speed, range: character.range });
+        if (risk < 1) return def.attack * risk <= character.max_hp * s.maxDamageRatio;
         return def.hp <= character.attack * s.maxHits && def.attack <= character.max_hp * s.maxDamageRatio;
     }
 
@@ -1331,17 +1363,32 @@ module.exports = function createTargeting(ctx) {
         return fighters.every(function (n) {
             if (n !== character.name && !party.inParty(n)) return true; // not with us (offline)
             const f = n === character.name ? character : get_player(n);
-            if (!f || f.rip) return n !== character.name ? false : true;
+            // A dead member is not waited for (2026-11-21: the warrior died at the level-8 Phoenix).
+            if (f && f.rip) return true;
+            if (!f) return n === character.name;
             const q = util.xy(f);
             return Math.hypot(q.x - p.x, q.y - p.y) <= r;
         });
     }
     let holdLogged = 0;
+    // holdForTeam for every boss, or only for events.holdFor (Dracul: a runner finds him alone, 2026-11-21).
+    function holdsFor(mtype) {
+        const ev = config.events || {};
+        return ev.holdForTeam !== false || (ev.holdFor || []).includes(mtype);
+    }
+    // Too strong for us alone at its real level (events.soloOk, player decision 2026-11-21): held
+    // like an events.holdFor boss until the team is there - not when it is on one of us already.
+    function tooStrongAlone(t) {
+        if (!t || !party.enabled || !bossList().includes(t.mtype) || !ctx.events || !ctx.events.soloOk) return false;
+        if (t.target && isOurs(t.target)) return false;
+        return !ctx.events.soloOk(t);
+    }
     function holdBoss(t) {
-        if (!t || (config.events && config.events.holdForTeam === false) || !party.enabled) return false;
-        if (t.target || !bossList().includes(t.mtype)) return false;
+        if (!t || !party.enabled) return false;
+        const strong = tooStrongAlone(t);
+        if (!strong && (!holdsFor(t.mtype) || t.target || !bossList().includes(t.mtype))) return false;
         if (teamAt(t)) return false;
-        if (Date.now() - holdLogged > 60 * 1000) { holdLogged = Date.now(); util.log("target", t.mtype + " not engaged yet - holding until the team is here", "white"); }
+        if (Date.now() - holdLogged > 60 * 1000) { holdLogged = Date.now(); util.log("target", t.mtype + (strong ? " too strong for me alone" : " not engaged yet") + " - holding until the team is here", "white"); }
         util.status("holding at " + t.mtype, "yellow");
         return true;
     }
@@ -1352,10 +1399,22 @@ module.exports = function createTargeting(ctx) {
         });
     }
     function holdBossQuiet(t) {
-        return !!t && party.enabled && !(config.events && config.events.holdForTeam === false) && !t.target && bossList().includes(t.mtype) && !teamAt(t);
+        return !!t && party.enabled && !teamAt(t) && (tooStrongAlone(t) || (holdsFor(t.mtype) && !t.target && bossList().includes(t.mtype)));
     }
+    // Fear guard (earthiverse's courage check, player decision 2026-11-21): no new free monster while
+    // the attackers of its damage type on us already reach our courage for it - fear would cut our
+    // attack to 60/40/20 %. Monsters already on us or a member are fought as usual.
+    let fearLogged = 0;
     function pick(farmTarget) {
         const t = pickInner(farmTarget);
+        if (t && util.wouldScare(t)) {
+            if (Date.now() - fearLogged > 60 * 1000) {
+                fearLogged = Date.now();
+                util.log("target", "not pulling " + t.mtype + ": " + util.damageTypeOf(t) + " attackers on me reach my courage (" + util.courageOf(util.damageTypeOf(t)) + ")", "white");
+            }
+            util.status("fear: waiting with " + t.mtype, "white");
+            return null;
+        }
         return t && holdBoss(t) ? null : t;
     }
     function pickInner(farmTarget) {
@@ -1396,14 +1455,19 @@ module.exports = function createTargeting(ctx) {
         }
 
         if (party.isMember && !party.detached()) {
-            const lead = party.leaderInfo();
-            // Easy farm targets (e.g. goos for a hunt): everyone fights its own monster,
-            // as long as it stays close to the leader.
-            const own = lead && lead.farm && isEasy(lead.farm) ? nearestSafe(lead.farm) : null;
-            if (own) {
-                const p = util.xy(own);
-                if (Math.hypot(p.x - lead.x, p.y - lead.y) <= config.party.leash * 0.8) return own;
+            // The event's boss in our own sight: take it without waiting for the leader's target
+            // (player decision 2026-11-21: anyone may open on a boss alone). The warrior found the
+            // Phoenix twice and only attacked once the priest saw it - members only assisted the
+            // leader's target. Held bosses (events.holdFor) are still held by pick().
+            if (farmTarget && farmTarget.monster && String(farmTarget.source || "").indexOf("event ") === 0) {
+                const boss = get_nearest_monster({ type: farmTarget.monster });
+                if (isValid(boss)) return boss;
             }
+            const lead = party.leaderInfo();
+            // Easy farm targets (e.g. goos for a hunt): everyone fights its own monster - our nearest
+            // one, no leash to the leader any more (player decision 2026-11-21).
+            const own = lead && lead.farm && isEasy(lead.farm) ? nearestSafe(lead.farm) : null;
+            if (own) return own;
             // Otherwise only assist the leader, never pull new monsters –
             // and never wander off to a farm spot of our own.
             const assist = lead && lead.target ? get_monster(lead.target) : null;

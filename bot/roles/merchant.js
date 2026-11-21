@@ -595,7 +595,8 @@ module.exports = function createMerchant(ctx) {
     }
 
     // Walk into the bank and store what we can. Returns the number of stacks stored.
-    async function bankTrip() {
+    // storeOnly: only store (mid Ponty round) - no junk or stand items taken out into the bag.
+    async function bankTrip(storeOnly) {
         util.status("banking", "yellow");
         // smart_move can end outside the bank (interrupted by another move, e.g. a pickup
         // call): then every store fails with not_in_bank – try again on the next round.
@@ -625,7 +626,7 @@ module.exports = function createMerchant(ctx) {
         }
         util.log("merchant", "banked " + stored + " stacks" + (full ? " - bank is full, a new pack is needed" : ""), full ? "orange" : "green");
         if (stored && workshop.refreshBank) workshop.refreshBank(); // the workshop counts the bank from its snapshot
-        await takeSellablesFromBank();
+        if (!storeOnly) await takeSellablesFromBank();
         return stored;
     }
 
@@ -691,7 +692,7 @@ module.exports = function createMerchant(ctx) {
     const HOP_KEY = "dmpx_hop_request:" + character.name;
     const LAST_KEY = "dmpx_ponty_round_last:" + character.name;
     function hereName() { return parent.server_region + " " + parent.server_identifier; }
-    function homeName() { return (prc.home || ["EU", "III"]).join(" "); }
+    function homeName() { return util.teamServer(config); } // where the leader runs (2026-11-21)
     function readRound() { try { return get(ROUND_KEY) || null; } catch (e) { return null; } }
     function saveRound(st) { try { if (st) set(ROUND_KEY, st); else set(ROUND_KEY, null); } catch (e) { /* storage unavailable */ } }
     function requestHop(to) {
@@ -704,6 +705,14 @@ module.exports = function createMerchant(ctx) {
         let last = null;
         try { last = get(LAST_KEY); } catch (e) { /* storage unavailable */ }
         const now = new Date();
+        // /ponty chat command (2026-11-21): a requested round right away (requests older than 10 min drop).
+        let force = 0;
+        try { force = get("dmpx_ponty_force") || 0; } catch (e) { /* storage unavailable */ }
+        if (force) {
+            try { set("dmpx_ponty_force", 0); } catch (e) { /* storage unavailable */ }
+            // In the first half hour it counts as this hour's round (no second round right after it).
+            if (Date.now() - force < 10 * 60 * 1000) return now.getMinutes() < 30 ? now.toDateString() + " " + now.getHours() : "manual:" + force;
+        }
         const testAt = prc.testAt ? Date.parse(prc.testAt) : NaN;
         if (isFinite(testAt) && now >= testAt && last !== "test:" + prc.testAt) return "test:" + prc.testAt;
         const every = prc.everyHours || 0; // 0: only testAt
@@ -754,8 +763,20 @@ module.exports = function createMerchant(ctx) {
                     try { const p = typeof close_stand === "function" ? close_stand() : parent.close_merchant(); if (p && p.catch) p.catch(function () {}); } catch (e) { /* closed by walking */ }
                 }
                 util.status("Ponty on " + here, "yellow");
+                // Bag full mid-round (player decision 2026-11-21): bank on this server (the bank is the
+                // account's) before the visit when it runs tight, and after a visit the bag cut short -
+                // then Ponty again, up to pontyRound.bankRetries times.
+                if (character.esize < (m.bank.whenFreeBelow || 6)) await bankTrip(true);
                 let seen = null;
                 try { seen = await workshop.pontyVisit(); } catch (e) { util.log("merchant", "Ponty on " + here + ": " + util.errReason(e), "orange"); }
+                for (let n = 0; seen && seen.full && n < (prc.bankRetries || 2); n++) {
+                    util.log("merchant", "Ponty on " + here + ": bag full after " + seen.bought + " - banking and back", "yellow");
+                    if (!(await bankTrip(true))) break; // nothing fit in the bank
+                    let again = null;
+                    try { again = await workshop.pontyVisit(); } catch (e) { util.log("merchant", "Ponty on " + here + ": " + util.errReason(e), "orange"); }
+                    if (!again) break;
+                    seen = { items: again.items, bought: seen.bought + again.bought, full: again.full };
+                }
                 st.visits.push({ server: here, at: Date.now(), items: seen ? seen.items : null, bought: seen ? seen.bought : 0 });
                 util.log("merchant", "Ponty on " + here + ": " + (seen ? seen.items + " items, bought " + seen.bought : "no visit"), "white");
                 st.target = st.queue.length ? st.queue.shift() : home;

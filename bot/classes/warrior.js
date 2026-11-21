@@ -79,26 +79,38 @@ module.exports = function createWarrior(ctx) {
     // Dash: a short jump towards a point ([x, y]). It has no cooldown, so we space the
     // jumps ourselves (dash.everyMs) – otherwise every tick jumps and drains the MP.
     // A failure pauses it instead of retrying every tick.
+    // Combat dash (player decision 2026-11-21, earthiverse's useWarriorDash): only when we go for a
+    // monster in a fight - our target, or the member it hits (the priest pulled it, we meet it there
+    // and taunt it off) - never on a route (fighter.travel passes no target). The server jumps at
+    // most 50 px (farther fails and the MP is gone) at speed 500 and finds a safe landing spot itself
+    // (also at 80 % / 60 % of the way) - ~0.5 s saved per jump at our speed. The jump lands short of
+    // the monster (range x 0.8), only above minMpRatio MP (the reserve for Taunt and Cleave stays),
+    // one per everyMs (the server's dash state lasts 1 s). After it lands we walk on at once - the
+    // old dash stood still after the hop because no move followed in the same tick.
     let dashPausedUntil = 0;
     let lastDash = 0;
     function tryDash(target) {
         const d = c.dash || {};
-        if (!d.enabled || Date.now() < dashPausedUntil || Date.now() - lastDash < (d.everyMs || 2000)) return false;
-        if (!util.canCast("dash")) return false;
-        if (mpLeftAfter("dash") < reserve()) return false;
+        if (!d.enabled || !target || Date.now() < dashPausedUntil || Date.now() - lastDash < (d.everyMs || 1000)) return false;
+        if (character.s && character.s.dash) return false;
+        if (typeof smart !== "undefined" && smart.moving) return false; // routes: Charge only
+        if (!util.canCast("dash") || util.mpRatio() < (d.minMpRatio || 0.5) || mpLeftAfter("dash") < reserve()) return false;
         const dist = util.distanceTo(target);
-        if (dist < (d.from || 120)) return false;
+        if (dist < (d.from || 80)) return false;
         const p = util.xy(target);
-        // The server takes a point at most 50 px away (game source: farther fails as
-        // "dash_failed" and the MP is gone) – a hop over an obstacle, not a gap closer.
-        const step = Math.min(d.max || 45, 48, dist - (character.range || 20) * 0.7);
+        const step = Math.min(d.max || 49, dist - (character.range || 20) * 0.8);
         if (step < 20) return false;
         const k = step / dist;
         const to = [character.real_x + (p.x - character.real_x) * k, character.real_y + (p.y - character.real_y) * k];
         lastDash = Date.now();
-        use_skill("dash", to).catch(function (e) {
-            dashPausedUntil = Date.now() + 60 * 1000;
-            util.log("warrior", "dash failed: " + util.errReason(e) + " - pausing it for a minute", "orange");
+        use_skill("dash", to).then(function () {
+            // Landed (~0.1 s): on towards the monster right away.
+            setTimeout(function () {
+                try { const q = util.xy(target); if (!target.dead) move(q.x, q.y); } catch (e) { /* gone */ }
+            }, 150);
+        }).catch(function (e) {
+            dashPausedUntil = Date.now() + (d.pauseMs || 10 * 1000);
+            util.log("warrior", "dash failed: " + util.errReason(e) + " - pausing it for " + Math.round((d.pauseMs || 10000) / 1000) + " s", "orange");
         });
         return true;
     }
@@ -894,6 +906,71 @@ module.exports = function createWarrior(ctx) {
         return true;
     }
 
+    // ---- sword swap (player decision 2026-11-21) ---------------------------------------------
+    // Fire blades are the end goal (burn), but burn needs ~5 s and never procs on the killing hit: on
+    // a target that falls in classes.warrior.swordSwap.maxHits hits the carried Swords of the Dead
+    // (more attack, 10 STR) go on, held like the Agitate maces; a target that takes longer (and every
+    // boss / event target) brings the fire blades back. Only once fire blades are worn - before that
+    // the swords are our usual weapons anyway.
+    const sw = c.swordSwap || {};
+    let swordsOn = false, swordBusy = false, swordLogAt = 0;
+    function isBurn(i) { return !!(i && G.items[i.name] && G.items[i.name].ability === "burn"); }
+    function quickSwords() {
+        const names = sw.names || ["swordofthedead"];
+        return character.items.map(function (it, num) { return { it: it, num: num }; }).filter(function (x) {
+            return x.it && names.includes(x.it.name) && util.weaponPower(x.it.name, 0, character.ctype) > 0;
+        }).sort(function (a, b) { return (b.it.level || 0) - (a.it.level || 0); });
+    }
+    function hitsToKill(t) {
+        let mult = 1;
+        try { mult = damage_multiplier((t.armor || 0) - (character.apiercing || 0)); } catch (e) { /* 1 */ }
+        return (t.max_hp || t.hp || 1) / Math.max(1, (character.attack || 1) * mult);
+    }
+    async function putOn(list, why) {
+        swordBusy = true;
+        try {
+            if (list[0]) await equip(list[0].num, "mainhand");
+            const rest = quickSwords();
+            const off = character.slots && character.slots.offhand;
+            if (rest[0] && (!off || G.items[off.name].type === "weapon")) await equip(rest[0].num, "offhand");
+            util.log("warrior", why + ": " + ["mainhand", "offhand"].map(function (s) {
+                const i = character.slots[s]; return i ? i.name + " +" + (i.level || 0) : "-";
+            }).join(", "), "yellow");
+        } catch (e) {
+            util.log("warrior", "sword swap: " + util.errReason(e), "orange");
+        } finally {
+            swordBusy = false;
+        }
+    }
+    function swordSwap() {
+        if (!sw.enabled || swordBusy || pack.busy || wearingSplash() || character.rip) return;
+        const t = get_targeted_monster();
+        if (!t || t.dead || t.type !== "monster") return;
+        const def = G.monsters[t.mtype] || {};
+        const longFight = !!(ctx.events && ctx.events.current()) || def.cooperative || hitsToKill(t) > (sw.maxHits || 5);
+        const main = character.slots && character.slots.mainhand;
+        if (!longFight) {
+            if (isBurn(main)) {
+                const list = quickSwords();
+                if (!list.length) return;
+                ctx.gear.holdWeapons(sw.holdMs || 60 * 1000); // records the fire blades as our usual weapons first
+                swordsOn = true;
+                putOn(list, "swords on (" + t.mtype + " falls in ~" + Math.ceil(hitsToKill(t)) + " hits)");
+            } else if (swordsOn) {
+                ctx.gear.holdWeapons(sw.holdMs || 60 * 1000); // still quick targets: keep the swords
+            }
+            return;
+        }
+        if (swordsOn && !isBurn(main)) {
+            swordsOn = false;
+            ctx.gear.holdWeapons(0); // the equip pass puts the stronger (burn-rated) fire blades back
+            if (Date.now() - swordLogAt > 10 * 1000) {
+                swordLogAt = Date.now();
+                util.log("warrior", "fire blades back (" + t.mtype + ": ~" + Math.ceil(hitsToKill(t)) + " hits" + (def.cooperative ? ", boss" : "") + ")", "yellow");
+            }
+        }
+    }
+
     function tryCharge() {
         if (!c.useCharge || !util.canCast("charge") || (character.s && character.s.charging)) return;
         use_skill("charge").catch(function () {});
@@ -906,6 +983,7 @@ module.exports = function createWarrior(ctx) {
         // boss searches and Daisy trips too (player request 2026-11-16).
         always: function () {
             if (c.useCharge && is_moving(character)) tryCharge();
+            swordSwap();
         },
 
         // Called once by the fighter when we die (the class ticks pause while dead - the check
@@ -922,9 +1000,12 @@ module.exports = function createWarrior(ctx) {
         },
 
         survive: function () {
+            // Hard Shell on predicted damage (earthiverse, player decision 2026-11-21): when the next
+            // physical hits of everything on us, x factor, reach our HP - earlier against big hitters,
+            // never for weak ones (was: below 45 % HP with any physical attacker within 200 px).
             const h = c.hardShell || {};
-            if (h.enabled && util.hpRatio() < (h.below || 0.45) && util.canCast("hardshell") &&
-                around(200, true).some(function (m) { return (G.monsters[m.mtype] || {}).damage_type === "physical"; })) {
+            if (h.enabled && util.canCast("hardshell") &&
+                util.incomingDamage("physical") * (h.factor || 3) >= character.hp) {
                 use_skill("hardshell").catch(function () {});
                 util.log("warrior", "Hard Shell", "yellow");
             }

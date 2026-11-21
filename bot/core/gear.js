@@ -122,6 +122,7 @@ module.exports = function createGear(ctx) {
             steps.count = (e && e.count) || 1; // carried copies wanted (e.g. two maces for dual wield)
             steps.insteadOf = (e && e.insteadOf) || null; // stand-in for this carried item's missing copies
             steps.alts = (e && e.alts) || []; // alternatives: while one is worn, this chain pauses (gear plan)
+            steps.slots = (e && e.slots) || null; // slots the chain fills (both hands for the dual-wielding warrior)
             return steps;
         }).filter(function (steps) { return steps.length; });
     }
@@ -136,7 +137,9 @@ module.exports = function createGear(ctx) {
             const s = steps[i];
             if (s.name !== item.name) continue;
             if ((item.level || 0) >= (s.level || 0)) { best = i + 1; continue; }
-            return Math.max(best, i);
+            // Reached an earlier step of its name: that is where it stands (2026-11-21: the priest's chain
+            // Staff of the Dead +6 -> firestaff +7 -> Staff of the Dead +7 - a +6 counted as far as a firestaff +7).
+            return best >= 0 ? best : i;
         }
         return best;
     }
@@ -222,7 +225,7 @@ module.exports = function createGear(ctx) {
                 if (cw && !have.some(function (x) { return x.name === cw.name; })) list.push(cw);
                 return;
             }
-            const slots = SLOTS_BY_TYPE[G.items[steps[0].name].type] || [];
+            const slots = steps.slots || SLOTS_BY_TYPE[G.items[steps[0].name].type] || [];
             // A worn alternative (e.g. a Loaded Die over the class orb) pauses the chain (gear plan).
             if (steps.alts.length && slots.some(function (s) { const w = character.slots && character.slots[s]; return w && steps.alts.includes(w.name); })) return;
             // The least advanced slot of this type (an empty one first); a slot holding
@@ -257,7 +260,7 @@ module.exports = function createGear(ctx) {
             const steps = item && chainOf(item.name);
             if (!steps || steps.carry || (steps.replace && !reachedStep(steps, item))) continue;
             const mine = chainProgress(steps, item);
-            const slot = (SLOTS_BY_TYPE[G.items[item.name].type] || []).find(function (s) {
+            const slot = (steps.slots || SLOTS_BY_TYPE[G.items[item.name].type] || []).find(function (s) {
                 if (slotOk && !slotOk(s)) return false;
                 const worn = character.slots && character.slots[s];
                 if (!worn || steps.alts.includes(worn.name)) return false; // a worn alternative stays
@@ -720,7 +723,21 @@ module.exports = function createGear(ctx) {
         }
         return false;
     }
+    // Swords carried for the warrior's sword swap (classes.warrior.swordSwap, 2026-11-21): while fire blades
+    // are our usual weapons, the best two copies of swordSwap.names (worn or in the bag) stay with us.
+    function swapSword(item) {
+        const sw = ((config.classes || {})[character.ctype] || {}).swordSwap;
+        if (!sw || !sw.enabled || !(sw.names || ["swordofthedead"]).includes(item.name)) return false;
+        const slots = character.slots || {};
+        const usual = (usualWeapons && usualWeapons.mainhand) || slots.mainhand;
+        if (!usual || !G.items[usual.name] || G.items[usual.name].ability !== "burn") return false;
+        const names = sw.names || ["swordofthedead"];
+        const all = character.items.concat([slots.mainhand, slots.offhand]).filter(function (i) { return i && names.includes(i.name); });
+        const better = all.filter(function (i) { return i !== item && (i.level || 0) > (item.level || 0); }).length;
+        return better < (sw.count || 2);
+    }
     function isReserved(item) {
+        if (swapSword(item)) return true;
         if (pairPart(item)) return true; // half of a weapon pair that beats our two-hander
         if (wishes.some(function (w) { return w.name === item.name && (item.level || 0) >= w.level; })) return true;
         const carried = chainOf(item.name);

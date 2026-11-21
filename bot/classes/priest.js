@@ -49,11 +49,24 @@ module.exports = function createPriest(ctx) {
         return true;
     }
 
+    // A member out of our sight below partyHealOne, from its heartbeat (fresh within 15 s) - Party
+    // Heal reaches the whole party wherever it is (earthiverse, player decision 2026-11-21).
+    function farMemberLow() {
+        if (!ctx.party.enabled) return null;
+        return ctx.party.memberNames().find(function (n) {
+            if (n === character.name || get_player(n)) return false;
+            let b = null;
+            try { b = get("dmpx_beat:" + n); } catch (e) { /* storage unavailable */ }
+            return !!b && Date.now() - b.at < 15000 && !b.rip && typeof b.hp === "number" && b.hp < (c.partyHealOne || 0.5);
+        }) || null;
+    }
     function tryPartyHeal(hurt) {
         if (!util.canCast("partyheal")) return false;
         const wounded = hurt.filter(function (m) { return m.ratio < c.partyHealBelow; }).length;
         const danger = hurt.length && hurt[0].ratio < c.partyHealDanger;
-        if (wounded < 2 && !(danger && ctx.party.enabled)) return false;
+        // One member below partyHealOne is enough (party only: solo the normal heal does it).
+        const oneLow = ctx.party.enabled && (hurt.some(function (m) { return m.entity !== character && m.ratio < (c.partyHealOne || 0.5); }) || !!farMemberLow());
+        if (wounded < 2 && !(danger && ctx.party.enabled) && !oneLow) return false;
         use_skill("partyheal").catch(function () {});
         return true;
     }

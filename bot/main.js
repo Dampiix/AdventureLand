@@ -47,6 +47,38 @@ function startTeam() {
     });
 }
 
+// Chat commands for the player (player request 2026-11-21), typed in the leader's chat:
+//   /phoenix, /jr, /greenjr, /mvampire (also /phönix, /vampir, /dracul, /gjr) - search that boss now (lifts a pause)
+//   /search <boss>               - the same for another watched boss (mvampire, jr, greenjr)
+// The game hands every command it doesn't know to handle_command(command, args) of the running
+// CODE ("Command not found. You can add a handle_command function..."); -1 = not ours.
+// 1.182.3-1.182.5 wrapped the game's say() instead - a wrapper from an earlier code load stopped
+// working after a reload, so that wrapper is taken out again here.
+function installChatCommands(ctx) {
+    try {
+        const page = parent;
+        if (page.__dmpxSayOriginal) page.say = page.__dmpxSayOriginal;
+        delete page.__dmpxChatCmd;
+    } catch (e) { /* nothing to undo */ }
+    // The commands themselves live in handle_command (below); it reads the bot's context from here.
+    // 2026-11-21 (evening): this used to replace window.handle_command with a boss-only version, which
+    // dropped /pickup, /agitate, /dps and /safety ("command not found").
+    BOT_CMD_CTX = ctx;
+}
+var BOT_CMD_CTX = null;
+// Every boss by its own name (/phoenix, /jr, /greenjr, /mvampire) plus a few short or German
+// names (player request 2026-11-21); /search <boss> as before. true when handled.
+const BOSS_ALIASES = { "phönix": "phoenix", phonix: "phoenix", vampire: "mvampire", vampir: "mvampire", dracul: "mvampire", gjr: "greenjr" };
+function bossCommand(c, args) {
+    const a = (Array.isArray(args) ? args.join(" ") : String(args || "")).trim().toLowerCase();
+    const name = c === "search" ? (BOSS_ALIASES[a] || a || "phoenix") : (BOSS_ALIASES[c] || c);
+    if (!G.monsters[name]) return false;
+    const ev = BOT_CMD_CTX && BOT_CMD_CTX.events;
+    const r = ev && ev.searchNow ? ev.searchNow(name) : "not ready";
+    try { parent.add_chat("", "[bot] " + r, "#9be36d"); } catch (e) { /* chat only */ }
+    return true;
+}
+
 // The game logs every gold pickup ("123 gold") and every kill ("X killed a Bee").
 // It has no switch for that, so in the client a filter in front of its log function
 // drops those lines (config.ui.hideGoldLogs / hideKillLogs). Installed once per
@@ -142,6 +174,7 @@ function startBot() {
         botParty = ctx.party;
         ctx.hunts = require_code("bot_hunts")(ctx);
         ctx.events = require_code("bot_events")(ctx);
+        installChatCommands(ctx);
         ctx.drops = require_code("bot_drops")(ctx);
         const classSlot = BOT_CLASS_SLOTS[character.ctype];
         const cls = classSlot ? require_code(classSlot)(ctx) : noClassModule();
@@ -156,6 +189,10 @@ function startBot() {
     BOT_UTIL.log("bot", "v" + BOT_CONFIG.version + " " + character.name + " as " + me.role + " (phase: " + BOT_CONFIG.phase + ")", "green");
     botRunner.start();
 
+    // Our server into the storage before the team starts (2026-11-21): the merchant takes the
+    // leader's last heartbeat as its home (util.teamServer) - started together with the leader
+    // after a move to another server, it would have read the old server and hopped back.
+    BOT_UTIL.heartbeat();
     if (character.name === BOT_CONFIG.leader) startTeam();
     // A solo fighter (team.solo) brings the merchant along (2026-11-18: the rogue alone had no merchant
     // after its window was closed); already running is fine.
@@ -272,8 +309,7 @@ function startHopWatcher() {
     hopWatcherOn = true;
     const rid = "ichar" + merch.toLowerCase();
     const HOP_KEY = "dmpx_hop_request:" + merch, ROUND_KEY = "dmpx_ponty_round:" + merch, TRIP_KEY = "dmpx_trade_trip:" + merch;
-    const pr = (BOT_CONFIG.merchantRole && BOT_CONFIG.merchantRole.pontyRound) || {};
-    const home = (pr.home || ["EU", "III"]).join(" ");
+    let home =BOT_UTIL.teamServer(BOT_CONFIG); // where the leader runs, read again each check (2026-11-21)
     let hosting = false, handled = null, hopping = false;
     async function hopTo(to) {
         if (!(await reopenRunner(merch, to))) return;
@@ -282,6 +318,7 @@ function startHopWatcher() {
     setInterval(async function () {
         if (hopping) return;
         try {
+            home = BOT_UTIL.teamServer(BOT_CONFIG);
             if (parent.document.getElementById(rid)) hosting = true;
             if (!hosting) return;
             const req = get(HOP_KEY);
@@ -321,6 +358,14 @@ function on_party_invite(name) {
 // Chat commands typed in this character's client, e.g. "/pickup".
 // Returning -1 lets the game handle unknown commands as usual.
 function handle_command(command, args) {
+    command = String(command || "").toLowerCase();
+    // /ponty (player request 2026-11-21): the merchant starts a Ponty round on its next check, from
+    // any of our windows (shared storage; the merchant's round reads and clears the flag).
+    if (command === "ponty" || command === "ponti") {
+        try { set("dmpx_ponty_force", Date.now()); } catch (e) { /* storage unavailable */ }
+        try { parent.add_chat("", "[bot] Ponty round requested - the merchant starts it on its next check", "#9be36d"); } catch (e) { /* chat only */ }
+        return true;
+    }
     if (command === "pickup" && botSupply) {
         botSupply.requestNow();
         return true;
@@ -347,6 +392,7 @@ function handle_command(command, args) {
         botTargeting.safetyReport(Array.isArray(args) ? args.join(" ") : (args || ""));
         return true;
     }
+    if (bossCommand(command, args)) return true;
     return -1;
 }
 

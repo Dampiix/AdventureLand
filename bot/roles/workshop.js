@@ -275,12 +275,16 @@ module.exports = function createWorkshop(ctx) {
         return it.stat_type !== w.stat && !statReserved(it.stat_type, it.name, fighter);
     }
 
+    // The copy a wish gets: the BEST that fits (player decision 2026-11-21) - weapons, chain pieces and
+    // jewelry alike: a fighter wearing a +1 ring and wishing +2 gets our +3 at once instead of the +2 now and
+    // the +3 on the next round (two Swords of the Dead +5/+6, a Staff of the Dead +6/+7 ...). Was: the
+    // lowest that fits. The wish level only stops further upgrading once a copy reaches it.
     function wishIndex(w, level) {
         let best = -1;
         character.items.forEach(function (item, i) {
             if (!item || item.name !== w.name || (item.level || 0) < level) return;
             if (w.stat && item.stat_type !== w.stat) return;
-            if (best === -1 || (item.level || 0) < (character.items[best].level || 0)) best = i;
+            if (best === -1 || (item.level || 0) > (character.items[best].level || 0)) best = i;
         });
         return best;
     }
@@ -1019,11 +1023,14 @@ module.exports = function createWorkshop(ctx) {
     function isDismantleCopy(item) {
         if (!item || !dismantleOn(item.name) || item.l || item.p) return false;
         if ((item.level || 0) > (config.dismantle.maxLevel || 0)) return false;
-        if (isReserved(item) || isOwnWish(item.name)) return false;
-        // An open essence goal wants this weapon: the drop is its next base copy.
-        if (openEssenceGoals().some(function (g) { return g.name === item.name; })) return false;
+        // A material goal waiting for a higher priority: its +0 copies become material even though a wish or
+        // a weapon list wants them (material goals, 2026-11-22).
+        const deferred = materialDeferred(item.name);
+        if (!deferred && (isReserved(item) || isOwnWish(item.name))) return false;
+        // A material goal wants this item: the copy is its next base.
+        if (materialProtects(item.name)) return false;
         // betterWeapons readies a copy of it for a fighter: those copies are needed.
-        if (weaponPlans().some(function (p) { return p.name === item.name; })) return false;
+        if (!deferred && weaponPlans().some(function (p) { return p.name === item.name; })) return false;
         // Bought on purpose (config.market.buy): copies up to "want" stay.
         const order = ((config.market || {}).buy || []).find(function (o) { return o.item === item.name; });
         if (order && ownedCount(item.name) <= (order.want || 0)) return false;
@@ -1063,34 +1070,29 @@ module.exports = function createWorkshop(ctx) {
         return true;
     }
 
-    // ---- essence goals (config.essenceGoals) ----------------------------------
+    // ---- material goals (config.materialGoals, player decision 2026-11-22) -------------------------
     //
-    // Weapons made from the dismantled material (player decision 2026-11-18). Auto goals
-    // follow the team: per fighter the best material weapon its class can wield at upTo,
-    // when that beats the worn weapon (offhand only for dual wield). Extra goals come from
-    // the config. One craft-and-upgrade run per round: a held copy below the goal (e.g. a
-    // drop) is the base, else one is crafted; a failure starts over with the next copy,
-    // a success ends the goal and no further material is touched.
-    const ESSENCE_KEY = "workshop_essence_used:" + character.name;
-    const essenceUsed = (function () {
-        try { return get(ESSENCE_KEY) || {}; } catch (e) { return {}; }
-    })();
-    function saveEssenceUsed() {
-        try { set(ESSENCE_KEY, essenceUsed); } catch (e) { /* storage unavailable */ }
-    }
-    function essenceOn() {
-        const e = config.essenceGoals;
-        return !!(e && e.enabled && e.material && G.items[e.material]);
-    }
-    // Upgradeable weapons whose recipe uses the material (read from G.craft).
-    function essenceWeapons() {
-        const mat = config.essenceGoals.material;
-        return Object.keys(G.craft || {}).filter(function (name) {
-            const def = G.items[name], r = G.craft[name];
-            return def && def.type === "weapon" && def.upgrade && r &&
-                (r.items || []).some(function (it) { return it[1] === mat; });
-        });
-    }
+    // One set of rules for every material a weapon is crafted from - Essence of Fire (fire weapons) and
+    // Bones (Of-the-Dead weapons); a new material is one more entry in config.materialGoals.materials.
+    // Was: the essence goals (2026-11-18) plus Bones rules spread over the weapon planner (2026-11-21).
+    //   goals:    per fighter and weapon hand, every material item of its class's weapon list
+    //             (gearPlan.weapons) that beats the worn weapon at its goal level; priority = its place
+    //             from the back of the list (1 = last item). Fighters without a list: the best material
+    //             item that beats the worn weapon (priority 1). Plus the material's config extras.
+    //   order:    the lowest priority number first; higher ones wait (deferred): nothing is crafted for
+    //             them, and their +0 copies are dismantled into material - unless the item is not on
+    //             config.dismantle.names (e.g. the Sword of the Dead: its Short Sword is rare), then held
+    //             copies are still upgraded. Buying is never held back.
+    //   work:     one craft-and-upgrade run per round: a held copy below the goal is the base, else one is
+    //             crafted from the material (+ its shop base); a failure starts over with the next copy.
+    //   deliver:  "better" - the best copy that beats the fighter's weaker worn weapon, and upgrades go step
+    //             by step to the first level that does (the replaced weapon comes back as the next base);
+    //             "goal" - straight to the goal level, delivered there (the fire weapons before 2026-11-22).
+    //   buying:   sources (+0 items that dismantle into the material) up to sourceMaxPrice while a goal
+    //             still wants bases, rare bases (no shop sells them) up to their price while material
+    //             waits for one.
+    const MG = config.materialGoals || {};
+    function mgOn() { return !!MG.enabled; }
     // A fighter's class: sent with its wishes, else the account's character list (offline).
     function fighterClass(f) {
         if (classes[f]) return classes[f];
@@ -1099,72 +1101,281 @@ module.exports = function createWorkshop(ctx) {
             return c && G.classes[c.type] ? c.type : null;
         } catch (e) { return null; }
     }
-    // [{ fighter, slot, name, level }]: the material weapon that would beat a worn weapon.
-    function autoEssenceNeeds() {
-        const eg = config.essenceGoals;
-        if (!eg.auto) return [];
-        // essenceGoals.skip: weapons never planned automatically (Firestars, 2026-11-18: each try
-        // needs Throwing Stars, which no shop sells - ~7.7M each from weapon boxes).
-        const names = essenceWeapons().filter(function (n) { return !(eg.skip || []).includes(n); });
-        const needs = [];
-        config.team.fighters.forEach(function (f) {
-            const cls = fighterClass(f);
-            const eq = worn[f];
-            if (!cls || !eq) return;
-            ["mainhand", "offhand"].forEach(function (slot) {
-                const w = eq[slot];
-                // Offhand: only a second weapon (dual wield) - shields, books and quivers stay.
-                if (slot === "offhand" && !(w && G.items[w.name] && G.items[w.name].type === "weapon")) return;
-                let best = null, bestPower = 0;
-                names.forEach(function (name) {
-                    if (slot === "mainhand") {
-                        if (!util.weaponPower(name, 0, cls)) return;
-                        if (util.isDoublehand(name, cls) && eq.offhand) return;
-                    } else if (!(G.classes[cls].offhand || {})[G.items[name].wtype]) return;
-                    const p = util.weaponPower(name, eg.upTo, cls);
-                    if (p > bestPower) { best = name; bestPower = p; }
+    function onDismantleList(name) { return ((config.dismantle || {}).names || []).includes(name); }
+    const materials = {};
+    function makeMaterial(mat) {
+        const mc = (MG.materials || {})[mat] || {};
+        // Upgradeable weapons whose recipe uses the material (read from G.craft), minus MG.skip.
+        function items() {
+            return Object.keys(G.craft || {}).filter(function (name) {
+                const def = G.items[name], r = G.craft[name];
+                return def && def.type === "weapon" && def.upgrade && r && !(MG.skip || []).includes(name) &&
+                    (r.items || []).some(function (it) { return it[1] === mat; });
+            });
+        }
+        function goalLevel(name) { return typeof mc.upTo === "number" ? mc.upTo : weaponCap(name); }
+        const USED_KEY = mat === "essenceoffire" ? "workshop_essence_used:" + character.name : "workshop_material_used:" + mat + ":" + character.name;
+        const used = (function () { try { return get(USED_KEY) || {}; } catch (e) { return {}; } })();
+        function saveUsed() { try { set(USED_KEY, used); } catch (e) { /* storage unavailable */ } }
+        const keyPrefix = mat === "essenceoffire" ? "_essence" : "_mat_" + mat;
+        function goalKey(g) { return key(keyPrefix, { name: g.name, level: g.level }); }
+
+        // [{ fighter, slot, name, level, prio }]
+        function needs() {
+            if (MG.auto === false) return [];
+            const names = items();
+            const out = [];
+            config.team.fighters.forEach(function (f) {
+                const cls = fighterClass(f);
+                const eq = worn[f];
+                if (!cls || !eq) return;
+                const list = ((config.gearPlan && config.gearPlan.weapons) || {})[cls] || null;
+                ["mainhand", "offhand"].forEach(function (slot) {
+                    const w = eq[slot];
+                    // Offhand: only a second weapon (dual wield) - shields, books and quivers stay.
+                    if (slot === "offhand" && !(w && G.items[w.name] && G.items[w.name].type === "weapon")) return;
+                    const wornPowerHere = w ? util.weaponPower(w.name, w.level || 0, cls) : 0;
+                    if (list) {
+                        list.forEach(function (name, i) {
+                            if (!names.includes(name)) return;
+                            if (slot === "mainhand" ? !util.weaponPower(name, 0, cls) : !(G.classes[cls].offhand || {})[G.items[name].wtype]) return;
+                            if (util.weaponPower(name, goalLevel(name), cls) <= wornPowerHere) return; // what we wear is as good already
+                            out.push({ fighter: f, slot: slot, name: name, level: goalLevel(name), prio: list.length - i });
+                        });
+                        return;
+                    }
+                    let best = null, bestPower = 0;
+                    names.forEach(function (name) {
+                        if (slot === "mainhand") {
+                            if (!util.weaponPower(name, 0, cls)) return;
+                            if (util.isDoublehand(name, cls) && eq.offhand) return;
+                        } else if (!(G.classes[cls].offhand || {})[G.items[name].wtype]) return;
+                        const p = util.weaponPower(name, goalLevel(name), cls);
+                        if (p > bestPower) { best = name; bestPower = p; }
+                    });
+                    if (best && bestPower > wornPowerHere) out.push({ fighter: f, slot: slot, name: best, level: goalLevel(best), prio: 1 });
                 });
-                if (!best) return;
-                const wornPowerHere = w ? util.weaponPower(w.name, w.level || 0, cls) : 0;
-                if (bestPower > wornPowerHere) needs.push({ fighter: f, slot: slot, name: best, level: eg.upTo });
+            });
+            return out;
+        }
+        // { all, open, deferred, keepWorking }: all = goals still lacking copies; open = the lowest priority
+        // number among them (worked on, crafted for); deferred = names of the waiting ones (their +0 copies
+        // become material when they are on the dismantle list); keepWorking = waiting goals whose held
+        // copies are still upgraded (not on the dismantle list). Cached for 5 s (isDismantleCopy asks per item).
+        let stateAt = 0, state = null;
+        function goalState() {
+            if (state && Date.now() - stateAt < 5000) return state;
+            const want = {};
+            const add = function (name, level, count, fighter, prio) {
+                const k = name + "|" + level;
+                const g = want[k] = want[k] || { name: name, level: level, count: 0, fighters: [], prio: prio || 1 };
+                g.count += count;
+                g.prio = Math.min(g.prio, prio || 1);
+                if (fighter) g.fighters.push(fighter);
+            };
+            needs().forEach(function (n) { add(n.name, n.level, 1, n.fighter, n.prio); });
+            (mc.extra || []).forEach(function (x) { if (x && G.items[x.item]) add(x.item, x.level || 0, x.count || 1, null, 1); });
+            const all = Object.keys(want).map(function (k) { return want[k]; }).filter(function (g) {
+                return unlockedCopies(g.name).filter(function (l) { return l >= g.level; }).length < g.count;
+            });
+            const top = all.reduce(function (m, g) { return Math.min(m, g.prio); }, Infinity);
+            const open = all.filter(function (g) { return g.prio === top; });
+            const deferred = all.filter(function (g) { return g.prio > top; }).map(function (g) { return g.name; })
+                .filter(function (n) { return !open.some(function (g) { return g.name === n; }); });
+            const keepWorking = all.filter(function (g) { return deferred.includes(g.name) && !onDismantleList(g.name); });
+            state = { all: all, open: open, deferred: deferred, keepWorking: keepWorking };
+            stateAt = Date.now();
+            return state;
+        }
+        function forget() { state = null; }
+        function deferred(name) { return goalState().deferred.includes(name); }
+        // Copies of this item must not be dismantled: an open goal wants it, or a waiting one that keeps
+        // its copies (not on the dismantle list).
+        function protects(name) {
+            const s = goalState();
+            return s.open.some(function (g) { return g.name === name; }) || s.keepWorking.some(function (g) { return g.name === name; });
+        }
+        // Material we have or will have: in stock, plus +0 sources waiting to be dismantled.
+        function ahead() {
+            const goalNames = goalState().all.map(function (g) { return g.name; });
+            let n = ownedCount(mat);
+            (mc.sources || []).forEach(function (src) {
+                if (goalNames.includes(src) || !onDismantleList(src)) return; // kept as it is
+                n += unlockedCopies(src).filter(function (l) { return l === 0; }).length;
+            });
+            return n;
+        }
+        // A Ponty offer worth buying for this material: "source" / "base" / null (it at price).
+        function wantsOffer(it, price) {
+            if ((it.level || 0) !== 0) return null;
+            const goals = goalState().all;
+            if (!goals.length) return null;
+            if ((mc.sources || []).includes(it.name) && price <= (mc.sourceMaxPrice || 0)) {
+                const zeros = []; for (let i = ahead(); i > 0; i--) zeros.push(0);
+                if (goals.some(function (g) { return wantsAsBase(g.name, 0, g.level, g.count, unlockedCopies(g.name).concat(zeros)); })) return "source";
+            }
+            const rare = (mc.rareBases || {})[it.name];
+            if (rare && price <= rare && goals.some(function (g) {
+                return ((G.craft[g.name] || {}).items || []).some(function (x) { return x[1] === it.name; });
+            }) && ingredientCount(it.name, 0) < ahead()) return "base";
+            return null;
+        }
+        // Every ingredient no shop sells is in stock (the material, a rare base): a +0 copy can be crafted.
+        function craftable(name) {
+            const r = G.craft[name];
+            if (!r || !crafterOf(name)) return false;
+            return r.items.every(function (x) { return ((x[2] || 0) === 0 && sellerOf(x[1])) || ingredientCount(x[1], x[2] || 0) >= x[0]; });
+        }
+        function budgetKey() { return mc.budget === "ladder" ? ladderOrGoals() : GOALS; }
+        function deliver() {
+            // "better" materials are delivered together in deliverMaterialGoals (strongest copy of all of them).
+            if (mc.deliver === "better") return;
+            needs().forEach(function (n) {
+                if (earmarks[n.fighter + "|" + n.name]) return;
+                const levels = unlockedCopies(n.name).filter(function (l) { return l >= n.level; });
+                if (!levels.length) return;
+                const level = Math.max.apply(null, levels);
+                earmark(n.fighter, n.name, level);
+                util.log("workshop", n.name + " +" + level + " goes to " + n.fighter + " (" + mat + " goal)", "yellow");
+            });
+        }
+        // "better" materials go step by step (player decision 2026-11-22): the first level (up to the goal)
+        // at which a copy beats the weakest worn weapon among the goal's fighters - delivered there, the
+        // replaced weapon comes back as a base, and the next run aims one step higher. "goal": the goal level.
+        function stepLevel(g) {
+            if (mc.deliver !== "better") return g.level;
+            const margin = 1 + ((cfg.betterWeapons || {}).margin || 0);
+            let step = g.level;
+            needs().forEach(function (n) {
+                if (n.name !== g.name) return;
+                const cls = classes[n.fighter] || fighterClass(n.fighter);
+                const bar = weakerHand(n.fighter).power * margin;
+                for (let l = 0; l < step; l++) {
+                    if (util.weaponPower(g.name, l, cls) > bar) { step = l; break; }
+                }
+            });
+            return step;
+        }
+        // One craft-and-upgrade run. Returns true when something was done.
+        async function work() {
+            const limit = typeof MG.maxPerGoal === "number" ? MG.maxPerGoal : null; // null = no limit
+            const now = Date.now();
+            const s = goalState();
+            const list = s.open.map(function (g) { return { g: g, craft: true }; })
+                .concat(s.keepWorking.map(function (g) { return { g: g, craft: false }; }));
+            for (const x of list) {
+                const g = x.g;
+                const k = goalKey(g);
+                if ((blockedUntil[k] || 0) > now) continue;
+                const spent = used[k] || 0;
+                if (limit !== null && spent >= limit) continue;
+                const step = stepLevel(g);
+                // A copy at the step already: it waits for delivery (deliver), nothing to upgrade now.
+                if (totalCopies(g.name, function (l) { return l >= step; }) > 0 && step < g.level) continue;
+                const hasBase = totalCopies(g.name, function (l) { return l < step; }) > 0;
+                if (!hasBase && (!x.craft || ownedCount(mat) <= (MG.reserve || 0) || !craftable(g.name))) continue; // nothing to work with
+                if (character.esize < 4) return false;
+                const before = ownedCount(mat);
+                util.status(mat + " goal: " + g.name + " +" + step + (step < g.level ? " (on the way to +" + g.level + ")" : ""), "orange");
+                try {
+                    // Normal scroll choice, any chance: every copy is one attempt (player decision 2026-11-18).
+                    await develop(keyPrefix, { name: g.name, level: step }, { budgetKey: budgetKey(), replaceable: true, spare: true, minChance: 0, noCraft: !x.craft });
+                    forget(); // copies changed: the goals are read fresh
+                } catch (e) {
+                    const reason = util.errReason(e);
+                    util.log("workshop", mat + " goal " + g.name + " +" + g.level + ": " + reason, "orange");
+                    // A full bag or an empty pot clears soon: again in a few minutes, not after an hour.
+                    const soon = /space|bag full|budget|gold/.test(reason);
+                    blockedUntil[k] = Date.now() + (soon ? (cfg.retryAfterBudgetMs || 10 * 60 * 1000) : pauseAfter(k, reason));
+                }
+                const spentHere = before - ownedCount(mat);
+                if (spentHere > 0) used[k] = spent + spentHere;
+                if (!goalState().all.some(function (o) { return o.name === g.name && o.level === g.level; })) {
+                    util.log("workshop", mat + " goal reached: " + g.name + " +" + g.level + " after " + (used[k] || 0) + "x " + mat, "green");
+                    delete used[k];
+                }
+                saveUsed();
+                return true;
+            }
+            return false;
+        }
+        function report() {
+            const goals = goalState().all;
+            if (!goals.length) return "";
+            return " | " + mat + " goals: " + goals.map(function (g) {
+                return g.name + "+" + g.level + " p" + g.prio + (g.fighters.length ? " " + g.fighters.join("/") : "") + " (" + (used[goalKey(g)] || 0) + " used)";
+            }).join(", ") + ", " + ownedCount(mat) + " left";
+        }
+        // "better": every held copy that beats the fighter's weaker worn weapon, with its power.
+        function candidates() {
+            if (mc.deliver !== "better") return [];
+            const bw = cfg.betterWeapons || {};
+            const out = [], seen = {};
+            needs().forEach(function (n) {
+                const f = n.fighter, k = f + "|" + n.name;
+                if (seen[k]) return;
+                seen[k] = true;
+                const hand = weakerHand(f), cls = classes[f] || fighterClass(f);
+                const bar = hand.power * (1 + (bw.margin || 0));
+                unlockedCopies(n.name).forEach(function (l) {
+                    const p = util.weaponPower(n.name, l, cls);
+                    if (p > bar) out.push({ fighter: f, name: n.name, level: l, power: p, slot: hand.slot, mat: mat });
+                });
+            });
+            return out;
+        }
+        return { mat: mat, items: items, goalState: goalState, deferred: deferred, protects: protects, wantsOffer: wantsOffer, stepLevel: stepLevel, candidates: candidates,
+            deliver: deliver, work: work, report: report, forget: forget, buysCopies: !!mc.buyCopies };
+    }
+    function allMaterials() {
+        if (!mgOn()) return [];
+        return Object.keys(MG.materials || {}).filter(function (m) { return G.items[m]; }).map(function (m) {
+            return materials[m] = materials[m] || makeMaterial(m);
+        });
+    }
+    // Every weapon made from a material (any of them).
+    function materialItems() {
+        return allMaterials().reduce(function (acc, m) { return acc.concat(m.items()); }, []);
+    }
+    // Made from a material whose copies are not bought as bases (fire weapons: essence only).
+    function materialOnlyItems() {
+        return allMaterials().filter(function (m) { return !m.buysCopies; }).reduce(function (acc, m) { return acc.concat(m.items()); }, []);
+    }
+    function materialDeferred(name) { return allMaterials().some(function (m) { return m.deferred(name); }); }
+    function materialProtects(name) { return allMaterials().some(function (m) { return m.protects(name); }); }
+    function materialOffer(it, price) {
+        for (const m of allMaterials()) { const r = m.wantsOffer(it, price); if (r) return { kind: r, mat: m.mat }; }
+        return null;
+    }
+    // "goal" materials deliver on their own; "better" ones together: per fighter the strongest held copy
+    // of all materials that beats the weaker worn weapon (a sword +6 wins over a fireblade +3 even though
+    // the fire goal comes first), one weapon at a time.
+    function deliverMaterialGoals() {
+        const ms = allMaterials();
+        ms.forEach(function (m) { m.deliver(); });
+        const best = {};
+        ms.forEach(function (m) {
+            m.candidates().forEach(function (c) {
+                if (!best[c.fighter] || c.power > best[c.fighter].power) best[c.fighter] = c;
             });
         });
-        return needs;
-    }
-    // Goals still open: [{ name, level, count, fighters }] - auto needs and config extras,
-    // minus the finished copies we hold.
-    function openEssenceGoals() {
-        if (!essenceOn()) return [];
-        const want = {};
-        const add = function (name, level, count, fighter) {
-            const k = name + "|" + level;
-            const g = want[k] = want[k] || { name: name, level: level, count: 0, fighters: [] };
-            g.count += count;
-            if (fighter) g.fighters.push(fighter);
-        };
-        autoEssenceNeeds().forEach(function (n) { add(n.name, n.level, 1, n.fighter); });
-        (config.essenceGoals.extra || []).forEach(function (x) {
-            if (x && G.items[x.item]) add(x.item, x.level || 0, x.count || 1, null);
-        });
-        return Object.keys(want).map(function (k) { return want[k]; }).filter(function (g) {
-            return unlockedCopies(g.name).filter(function (l) { return l >= g.level; }).length < g.count;
+        Object.keys(best).forEach(function (f) {
+            const c = best[f];
+            if (earmarks[f + "|" + c.name]) return;
+            if (activeEarmarks().some(function (e) { return e.fighter === f && G.items[e.name] && G.items[e.name].type === "weapon"; })) return;
+            if (Date.now() - (filledAt[f + "|weapon"] || 0) < 10 * 60 * 1000) return;
+            earmark(f, c.name, c.level);
+            util.log("workshop", c.name + " +" + c.level + " goes to " + f + " (" + c.slot + ", " + c.mat + " goal: strongest copy that beats the worn weapon)", "yellow");
         });
     }
-    // A finished copy for an auto goal is earmarked for its fighter (delivered like a wish).
-    function deliverEssenceGoals() {
-        if (!essenceOn()) return;
-        autoEssenceNeeds().forEach(function (n) {
-            if (earmarks[n.fighter + "|" + n.name]) return;
-            const levels = unlockedCopies(n.name).filter(function (l) { return l >= n.level; });
-            if (!levels.length) return;
-            const level = Math.max.apply(null, levels);
-            earmark(n.fighter, n.name, level);
-            util.log("workshop", n.name + " +" + level + " goes to " + n.fighter + " (essence goal)", "yellow");
-        });
+    async function workOnMaterialGoals() {
+        for (const m of allMaterials()) { if (await m.work()) return true; }
+        return false;
     }
-    // The pot an essence run pays from: the weapon ladder's, or - when that is empty and
-    // essenceGoals.borrowFrom is "goals" - the gear goals' pot while every gear goal is done
-    // or has its finished copy waiting for delivery (their money would only lie idle).
+    function materialReport() { return allMaterials().map(function (m) { return m.report(); }).join(""); }
+    // The pot a "ladder" material run pays from: the weapon ladder's, or - when that is empty and
+    // materialGoals.borrowFrom is "goals" - the gear goals' pot while every gear goal is done or has its
+    // finished copy waiting for delivery (their money would only lie idle).
     function gearGoalsIdle() {
         if (!goalsOn()) return true;
         const needs = goalNeedsAll();
@@ -1172,64 +1383,14 @@ module.exports = function createWorkshop(ctx) {
         return needs.every(function (n) { return assigned.some(function (a) { return a.need === n; }); });
     }
     let lastBorrowLog = 0;
-    function essenceBudgetKey() {
-        if (config.essenceGoals.borrowFrom !== "goals" || ladderBudget().allowed >= 250000) return LADDER;
+    function ladderOrGoals() {
+        if (MG.borrowFrom !== "goals" || ladderBudget().allowed >= 250000) return LADDER;
         if (!gearGoalsIdle() || goalBudget().allowed < 250000) return LADDER;
         if (Date.now() - lastBorrowLog > 30 * 60 * 1000) {
             lastBorrowLog = Date.now();
-            util.log("workshop", "essence goals pay from the gear goals' pot (ladder pot empty, gear goals idle)", "yellow");
+            util.log("workshop", "material goals pay from the gear goals' pot (ladder pot empty, gear goals idle)", "yellow");
         }
         return GOALS;
-    }
-
-    // One craft-and-upgrade run for the first open goal. Returns true when something was done.
-    async function workOnEssenceGoals() {
-        if (!essenceOn()) return false;
-        const eg = config.essenceGoals;
-        const limit = typeof eg.maxPerGoal === "number" ? eg.maxPerGoal : null; // null = no limit
-        const now = Date.now();
-        for (const g of openEssenceGoals()) {
-            const k = key("_essence", { name: g.name, level: g.level });
-            if ((blockedUntil[k] || 0) > now) continue;
-            const used = essenceUsed[k] || 0;
-            if (limit !== null && used >= limit) continue;
-            const hasBase = totalCopies(g.name, function (l) { return l < g.level; }) > 0;
-            if (!hasBase && ownedCount(eg.material) <= (eg.reserve || 0)) continue; // keep the reserve
-            if (character.esize < 4) return false;
-            const before = ownedCount(eg.material);
-            util.status("essence goal: " + g.name + " +" + g.level, "orange");
-            try {
-                // Normal scrolls only, any chance: every copy is one attempt (player decision).
-                await develop("_essence", { name: g.name, level: g.level }, { budgetKey: essenceBudgetKey(), replaceable: true, spare: true, minChance: 0 });
-            } catch (e) {
-                const reason = util.errReason(e);
-                util.log("workshop", "essence goal " + g.name + " +" + g.level + ": " + reason, "orange");
-                // A full bag (a handover just filled it) or an empty ladder pot clears soon:
-                // try again in a few minutes, not after an hour (2026-11-18: buy_cant_space).
-                const soon = /space|bag full|budget|gold/.test(reason);
-                blockedUntil[k] = Date.now() + (soon ? (cfg.retryAfterBudgetMs || 10 * 60 * 1000) : pauseAfter(k, reason));
-            }
-            const spentHere = before - ownedCount(eg.material);
-            if (spentHere > 0) essenceUsed[k] = used + spentHere;
-            const stillOpen = openEssenceGoals().some(function (o) { return o.name === g.name && o.level === g.level; });
-            if (!stillOpen) {
-                util.log("workshop", "essence goal reached: " + g.name + " +" + g.level + " after " + (essenceUsed[k] || 0) + "x " + eg.material, "green");
-                delete essenceUsed[k];
-            }
-            saveEssenceUsed();
-            return true;
-        }
-        return false;
-    }
-    function essenceReport() {
-        if (!essenceOn()) return "";
-        const goals = openEssenceGoals();
-        if (!goals.length) return "";
-        return " | essence goals: " + goals.map(function (g) {
-            const used = essenceUsed[key("_essence", { name: g.name, level: g.level })] || 0;
-            return g.name + "+" + g.level + (g.fighters.length ? " " + g.fighters.map(function (f) { return f.replace(/^Dmpx/, ""); }).join("/") : "") +
-                " (" + used + " used)";
-        }).join(", ") + ", " + ownedCount(config.essenceGoals.material) + " left";
     }
 
     function unlockedCopies(name) {
@@ -2469,11 +2630,67 @@ module.exports = function createWorkshop(ctx) {
 
     // { fighter, name, need } per drop weapon we hold: the fighter it helps most and the
     // first level (<= maxLevel) at which it beats that fighter's worn weapon.
+    // Weapon lists (config.gearPlan.weapons, player decision 2026-11-21): per fighter one plan - from the
+    // back of its class list, the first item we can work on: we hold a copy (any level, not blocked) that
+    // beats the fighter's weaker worn weapon at some level up to its cap. A fire weapon (essence goals)
+    // whose essence goal is being worked on ends the search there; deferred or none: on to the front.
+    // The shop weapon at the front is left to the gear goals.
+    function weaponCap(name) {
+        const caps = (config.gearPlan && config.gearPlan.weaponCaps) || {};
+        return caps[name] !== undefined ? caps[name] : (caps.default !== undefined ? caps.default : 7);
+    }
+    // The fighter's weaker weapon hand: { slot, power } (dual wield: the offhand when it is weaker).
+    function weakerHand(f) {
+        const eq = worn[f] || {}, cls = classes[f];
+        const pw = function (i) { return i ? util.weaponPower(i.name, i.level || 0, cls) : 0; };
+        const off = eq.offhand;
+        const dual = off && G.items[off.name] && G.items[off.name].type === "weapon";
+        if (dual && pw(off) < pw(eq.mainhand)) return { slot: "offhand", power: pw(off) };
+        return { slot: "mainhand", power: pw(eq.mainhand) };
+    }
+    function listPlans() {
+        const lists = (config.gearPlan && config.gearPlan.weapons) || {};
+        const bw = cfg.betterWeapons || {};
+        const material = materialItems(); // the material goals' items (fire, Of-the-Dead)
+        const plans = [];
+        const now = Date.now();
+        config.team.fighters.forEach(function (f) {
+            const list = lists[classes[f]];
+            if (!list || !worn[f]) return;
+            const hand = weakerHand(f);
+            const bar = hand.power * (1 + (bw.margin || 0));
+            for (let i = list.length - 1; i >= 0; i--) {
+                const name = list[i];
+                if (!G.items[name] || sellerOf(name) || !canWield(f, name)) continue; // shop weapon: gear goals
+                if (material.includes(name)) {
+                    // Made from a material: the material goals craft, upgrade and deliver it - the planner
+                    // goes on to the next item (2026-11-22).
+                    continue;
+                }
+                let need = -1;
+                for (let level = 0; level <= weaponCap(name); level++) {
+                    if (util.weaponPower(name, level, classes[f]) > bar) { need = level; break; }
+                }
+                if (need < 0) continue; // even at its cap no better than what we wear
+                const craftable = (bw.craft || []).includes(name) && !!crafterOf(name);
+                if (!unlockedCopies(name).length && !craftable) continue; // nothing to work with (Ponty buys bases)
+                if ((blockedUntil[key("_better", { name: name, level: need })] || 0) > now) continue; // budget, failures
+                plans.push({ fighter: f, name: name, need: need, slot: hand.slot });
+                return;
+            }
+        });
+        return plans;
+    }
     function weaponPlans() {
         const bw = cfg.betterWeapons;
         if (!bw || !bw.enabled) return [];
-        const plans = [];
+        const lists = (config.gearPlan && config.gearPlan.weapons) || {};
+        const plans = listPlans();
         (bw.names || []).forEach(function (name) {
+            // Classes with a weapon list are planned by it (listPlans); the names only for the others.
+            if (config.team.fighters.every(function (f) { return !classes[f] || lists[classes[f]]; })) return;
+            // A material goal waiting for a higher priority (material goals, 2026-11-22).
+            if (materialDeferred(name)) return;
             // Names on bw.buy (e.g. the Concord Mace) are bought with tokens when we hold none.
             const buyable = (bw.buy || []).includes(name) && !!tokenOffer(name);
             // Names on bw.craft (the "of the Dead" weapons) are crafted when we hold none – the
@@ -2482,7 +2699,7 @@ module.exports = function createWorkshop(ctx) {
             if (!G.items[name] || (!unlockedCopies(name).length && !buyable && !craftable)) return;
             let plan = null;
             config.team.fighters.forEach(function (f) {
-                if (!worn[f] || !canWield(f, name)) return;
+                if (!worn[f] || !canWield(f, name) || lists[classes[f]]) return;
                 const m = worn[f].mainhand;
                 // Already in the main hand: dual wield classes get a second copy for the offhand
                 // (gear plan 2026-11-19: two Daggers of the Dead for the rogue, swords/maces for
@@ -2720,8 +2937,9 @@ module.exports = function createWorkshop(ctx) {
         }
         return { gold: gold, copies: Math.max(0, need - count(0)) };
     }
-    function upgradeCost(name, level) {
-        const all = unlockedCopies(name);
+    // fromScratch: as if we held no copy (expected base copies for the whole way).
+    function upgradeCost(name, level, fromScratch) {
+        const all = fromScratch ? [] : unlockedCopies(name);
         if (all.some(function (x) { return x >= level; })) return { gold: 0, copies: 0, crafts: 0 };
         const stock = all.filter(function (x) { return x < level; });
         const start = stock.length ? Math.max.apply(null, stock) : 0;
@@ -2783,12 +3001,17 @@ module.exports = function createWorkshop(ctx) {
     // Cached for a minute (openWishes runs several times per round).
     const valueCache = {};
     let valueGoldAt = 0, valueGold = null;
+    // What an hour of farming earns in gold: the fighters' handovers only (player decision
+    // 2026-11-21). The pots' income also counts trade sales (184 monster tokens and 3 vit earrings
+    // sold for 229M in 20 h), which made gold look 11x cheaper here (12M/h instead of ~1M/h).
+    function farmGoldPerHour(gb) {
+        return gb.hours >= 1 && gb.fighters > 0 ? gb.fighters / gb.hours : null;
+    }
     function cachedValue(f, w) {
         const now = Date.now();
         if (now - valueGoldAt > 60 * 1000) {
             valueGoldAt = now;
-            const gb = goalBudget();
-            valueGold = gb.hours >= 1 && gb.earned > 0 ? gb.earned / gb.hours : null;
+            valueGold = farmGoldPerHour(goalBudget());
         }
         const id = f + "|" + w.name + "|" + w.level + "|" + w.gain;
         const hit = valueCache[id];
@@ -2802,8 +3025,7 @@ module.exports = function createWorkshop(ctx) {
         const vr = cfg.valueReport;
         if (!vr || !vr.enabled || Date.now() < nextValueAt || !bankSnapshot) return;
         nextValueAt = Date.now() + (vr.everyMs || 15 * 60 * 1000);
-        const gb = goalBudget();
-        const goldPerHour = gb.hours >= 1 && gb.earned > 0 ? gb.earned / gb.hours : null;
+        const goldPerHour = farmGoldPerHour(goalBudget());
         const rows = [];
         fighters().forEach(function (f) {
             wishList(f).forEach(function (w) {
@@ -2840,7 +3062,7 @@ module.exports = function createWorkshop(ctx) {
         const goldPower = goldPerHour && perGold ? Math.round(perGold * goldPerHour * 100) / 100 : null;
         const xp = Object.keys(fighterValues).map(function (f) { const v = fighterValues[f]; return f + " " + (v.xpPower === null || v.xpPower === undefined ? "?" : v.xpPower) + "%/h"; }).join(", ");
         const k = function (x) { return x >= 1e6 ? (x / 1e6).toFixed(1) + "M" : Math.round(x / 1000) + "k"; };
-        util.log("value", "XP " + (xp || "?") + " | gold " + (goldPerHour ? k(goldPerHour) + "/h" : "?") + " = " + (goldPower === null ? "?" : goldPower + "%/h"), "white");
+        util.log("value", "XP " + (xp || "?") + " | farm gold " + (goldPerHour ? k(goldPerHour) + "/h" : "?") + " = " + (goldPower === null ? "?" : goldPower + "%/h"), "white");
         rows.slice(0, vr.top || 6).forEach(function (r) {
             util.log("value", r.item + " " + r.fighter + ": " + (r.gain >= 0 ? "+" : "") + r.gain + "% for " + (r.unknown.length ? "? (no farm time: " + r.unknown.join(", ") + ")" : r.hours + " h") +
                 " (" + k(r.gold) + (r.copies ? ", " + r.copies + " copies" : "") + ")" + (r.value === null ? "" : " -> " + r.value + "%/h"), "white");
@@ -2932,11 +3154,33 @@ module.exports = function createWorkshop(ctx) {
         });
         return best;
     }
+    // Weapon list items worth buying bases for (gearPlan.weapons, 2026-11-21): every non-shop, non-essence
+    // item of a fighter's list that beats its weaker worn weapon at the item's cap - { name, level, count }
+    // (count: the fighter's weapon hands).
+    function listWants() {
+        const lists = (config.gearPlan && config.gearPlan.weapons) || {};
+        const material = materialOnlyItems(); // fire weapons: made from essence, not bought as bases
+        const out = [];
+        config.team.fighters.forEach(function (f) {
+            const list = lists[classes[f]];
+            if (!list || !worn[f]) return;
+            const eq = worn[f];
+            const hands = eq.offhand && G.items[eq.offhand.name] && G.items[eq.offhand.name].type === "weapon" ? 2 : 1;
+            const bar = weakerHand(f).power;
+            list.forEach(function (name, i) {
+                if (!G.items[name] || sellerOf(name) || material.includes(name) || !canWield(f, name)) return;
+                if (util.weaponPower(name, weaponCap(name), classes[f]) <= bar) return;
+                out.push({ name: name, level: weaponCap(name), count: hands, prio: list.length - i });
+            });
+        });
+        return out;
+    }
     function pontyWants() {
         const wants = {};
         const add = function (name, level) { if (G.items[name]) wants[name] = Math.max(wants[name] || 0, level || 0); };
         fighters().forEach(function (f) { wishList(f).forEach(function (w) { add(w.name, w.level); }); });
         if (goalsOn()) goalNeedsAll().forEach(function (n) { add(n.name, n.level); });
+        listWants().forEach(function (x) { add(x.name, x.level); });
         return wants;
     }
     // Copies the wishes ask for, per item (wish count summed over the fighters; goals count one).
@@ -2944,11 +3188,15 @@ module.exports = function createWorkshop(ctx) {
         const counts = {};
         fighters().forEach(function (f) { wishList(f).forEach(function (w) { counts[w.name] = (counts[w.name] || 0) + (w.count || 1); }); });
         if (goalsOn()) goalNeedsAll().forEach(function (n) { counts[n.name] = Math.max(counts[n.name] || 0, 1); });
+        listWants().forEach(function (x) { counts[x.name] = Math.max(counts[x.name] || 0, x.count); });
         return counts;
     }
     // Levels of every copy we hold: worn by any fighter, in the bag or in the bank.
     function allCopyLevels(name) {
-        const levels = unlockedCopies(name);
+        return unlockedCopies(name).concat(wornLevelsOf(name));
+    }
+    function wornLevelsOf(name) {
+        const levels = [];
         Object.keys(worn).forEach(function (f) {
             Object.keys(worn[f] || {}).forEach(function (s) { const w = worn[f][s]; if (w && w.name === name) levels.push(w.level || 0); });
         });
@@ -2960,7 +3208,12 @@ module.exports = function createWorkshop(ctx) {
     //    target; with enough copies only one above our weakest copy below the target;
     //  - compound: while the target level still lacks copies (three of a level make the next),
     //    a copy that doesn't overshoot what is missing.
-    function wantsAsBase(name, lvl, target, count, levels) {
+    // stock: copies in the bag and bank (plus bought on this visit). Worn copies only count as finished
+    // pieces (at the target): they are not upgraded - a fighter only swaps them for a better one (player
+    // decision 2026-11-21: the warrior's worn Swords of the Dead +6/+5 counted as bases).
+    function wantsAsBase(name, lvl, target, count, stock) {
+        const wornLv = wornLevelsOf(name);
+        const levels = stock.concat(wornLv);
         if (lvl >= target) return lvl > levels.reduce(function (m, l) { return Math.max(m, l); }, -1);
         if (G.items[name].compound) {
             const owned = levels.reduce(function (sum, l) { return sum + Math.pow(3, Math.min(l, target)); }, 0);
@@ -2968,19 +3221,54 @@ module.exports = function createWorkshop(ctx) {
         }
         const done = levels.filter(function (l) { return l >= target; }).length;
         if (done >= count) return false;
-        if (levels.length < count) return true;
-        const below = levels.filter(function (l) { return l < target; });
-        return below.length > 0 && lvl > Math.min.apply(null, below);
+        if (stock.length < count - done) return true;
+        const below = stock.filter(function (l) { return l < target; });
+        if (below.length > 0 && lvl > Math.min.apply(null, below)) return true;
+        // Enough bases for the failed upgrades on the way (player decision 2026-11-21): the copies we hold
+        // count by their chance to reach the target (a +6 Rugged piece ~24-30 %, a +0 ~3-8 %), and we buy
+        // until those chances add up to workshop.baseTargetPieces finished pieces per missing one - at
+        // most workshop.maxBaseCopies copies (bank room). Was: every copy counted as one +0.
+        const expected = below.reduce(function (sum, l) { return sum + reachChance(name, l, target); }, 0);
+        return expected < (count - done) * (cfg.baseTargetPieces || 1) && below.length < (cfg.maxBaseCopies || 20);
+    }
+    // Chance that one copy of name +from gets to +target, with the scroll the workshop would choose per
+    // step (same choice as upgradeCost). Cached for a minute per name.
+    const reachCache = {};
+    function reachChance(name, from, target) {
+        let c = reachCache[name];
+        if (!c || Date.now() - c.at > 60 * 1000 || c.target !== target) {
+            const memo = {}, steps = {};
+            for (let l = 1; l <= target; l++) steps[l] = bestScroll(name, l - 1, false, null, copyValue(name, l - 1, memo)).p || 0.05;
+            c = reachCache[name] = { at: Date.now(), target: target, steps: steps };
+        }
+        let p = 1;
+        for (let l = from + 1; l <= target; l++) p *= c.steps[l];
+        return p;
     }
     // Gold our own way to name +level would cost (Infinity: needs drops we can't time or price).
     // Drop hours count at the opportunity cost (player decision 2026-11-20): the team gold per
     // hour we give up on the drop spot against the spot we really farm (leader, dropCosts) -
     // 0 when the drop spot pays as well. Was our whole gold/hour of the last 24 h, which a
     // 45M token sale inflated to ~2M/h (orbg buy order at 9.9M).
+    // Gold of one craft's ingredients (2026-11-21): an NPC sells it - its price; else our standing
+    // market.buy price; else unknown (Infinity). The craft cost alone was 0 for the Wanderer's set, so
+    // Ponty's +0 copies (8k-29k) were always "dearer than making it" and skipped without a word -
+    // making a Wanderer's Attire takes 100 slime + 200 crab claws (~78k at our buy prices).
+    function craftIngredientGold(name) {
+        const recipe = (G.craft[name] && G.craft[name].items) || [];
+        const orders = (config.market && config.market.buy) || [];
+        return recipe.reduce(function (sum, it) {
+            const q = it[0], n = it[1];
+            if (sellerOf(n)) return sum + q * (G.items[n].g || 0);
+            const o = orders.find(function (b) { return b.item === n && !(b.level > 0); });
+            return o ? sum + q * o.price : Infinity;
+        }, 0);
+    }
     function ownCost(name, level) {
         const def = G.items[name];
         const c = def.compound ? compoundCost(name, level) : upgradeCost(name, level);
         let gold = c.gold;
+        if (c.crafts > 0.01) gold += c.crafts * craftIngredientGold(name);
         if (c.copies > 0.01) {
             const t = dropTimes[name], h = dropCosts[name];
             if (t && typeof h === "number" && farmable(name)) gold += c.copies * t / 3600 * h;
@@ -3051,7 +3339,7 @@ module.exports = function createWorkshop(ctx) {
             util.log("workshop", "Ponty: " + util.errReason(e), "orange");
             return true;
         }
-        let bought = 0;
+        let bought = 0, bagFull = false;
         const tooDear = {}; // one log line per visit: "name +level" -> price
         // Finds outside the wish list (player decision 2026-11-19: reported only for now): a piece
         // that makes an active fighter stronger, rated by % power per gold against our best own
@@ -3107,13 +3395,31 @@ module.exports = function createWorkshop(ctx) {
         // Highest level first: of several bases on offer the best one is bought.
         const offers = list.slice().sort(function (a, b) { return ((b && b.level) || 0) - ((a && a.level) || 0); });
         for (const it of offers) {
+            if (it && !wants.hasOwnProperty(it.name) && it.p !== "glitched" && G.items[it.name]) {
+                let bp = 0;
+                try { bp = calculate_item_value(it) * (G.items[it.name].cash ? 3 : 2) * (it.q || 1); } catch (e) { bp = Infinity; }
+                const mo = materialOffer(it, bp);
+                if (mo && bp <= character.gold && canSpend(GOALS, bp) &&
+                    !(pc.maxShareOfPot && bp > goalBudget().allowed * pc.maxShareOfPot) && character.esize >= 2) {
+                    try {
+                        await buy_secondhand(it);
+                        pay(GOALS, bp);
+                        bought++;
+                        util.log("workshop", "bought " + it.name + " +0 at Ponty for " + Math.round(bp / 1000) + "k (" + (mo.kind === "base" ? "craft base for a " + mo.mat + " goal" : "becomes " + mo.mat) + ")", "green");
+                        noteBought({ kind: mo.kind === "base" ? "craft base" : mo.mat, item: it.name + " +0", price: bp });
+                    } catch (e) {
+                        util.log("workshop", "Ponty " + it.name + ": " + util.errReason(e), "orange");
+                    }
+                }
+                continue;
+            }
             if (!it || !wants.hasOwnProperty(it.name) || it.p === "glitched") continue;
             const lvl = it.level || 0;
             const levels = allCopyLevels(it.name).concat(boughtLevels[it.name] || []);
             if (sellerOf(it.name)) {
                 // Shop items: only a copy better than everything we hold (the +0 comes from the NPC).
                 if (lvl <= levels.reduce(function (m, l) { return Math.max(m, l); }, -1)) continue;
-            } else if (!wantsAsBase(it.name, lvl, wants[it.name], counts[it.name] || 1, levels)) continue;
+            } else if (!wantsAsBase(it.name, lvl, wants[it.name], counts[it.name] || 1, unlockedCopies(it.name).concat(boughtLevels[it.name] || []))) continue;
             let price = 0;
             try { price = calculate_item_value(it) * (G.items[it.name].cash ? 3 : 2) * (it.q || 1); } catch (e) { continue; }
             if (pc.maxPrice && price > pc.maxPrice) continue;
@@ -3124,7 +3430,7 @@ module.exports = function createWorkshop(ctx) {
                 tooDear[it.name + " +" + lvl] = Math.round(price / 1000);
                 continue;
             }
-            if (character.esize < 2) break;
+            if (character.esize < 2) { bagFull = true; break; }
             try {
                 await buy_secondhand(it);
                 pay(GOALS, price);
@@ -3138,7 +3444,8 @@ module.exports = function createWorkshop(ctx) {
         }
         const dear = Object.keys(tooDear);
         if (dear.length) util.log("workshop", "Ponty, not in the gear pot (" + Math.round(goalBudget().allowed / 1000) + "k): " + dear.map(function (n) { return n + " " + tooDear[n] + "k"; }).join(", "), "white");
-        lastPontyVisit = { items: list.length, bought: bought };
+        // full: the bag stopped the buying - the Ponty round banks and comes back (2026-11-21).
+        lastPontyVisit = { items: list.length, bought: bought, full: bagFull };
         return bought > 0;
     }
 
@@ -3180,7 +3487,7 @@ module.exports = function createWorkshop(ctx) {
                     const levels = allCopyLevels(it.name);
                     if (sellerOf(it.name)) {
                         if (lvl <= levels.reduce(function (m, l) { return Math.max(m, l); }, -1)) return;
-                    } else if (!wantsAsBase(it.name, lvl, wants[it.name], counts[it.name] || 1, levels)) return;
+                    } else if (!wantsAsBase(it.name, lvl, wants[it.name], counts[it.name] || 1, unlockedCopies(it.name))) return;
                     if (pc.maxShareOfPot && price > allowed * pc.maxShareOfPot) return;
                     const own = ownCost(it.name, lvl);
                     if (price > own * (pc.maxShareOfOwn || 1) || !canSpend(GOALS, price)) return;
@@ -3257,6 +3564,7 @@ module.exports = function createWorkshop(ctx) {
         fighters().forEach(function (fighter) {
             wishList(fighter).forEach(function (w, rank) {
                 if (blockedUntil[key(fighter, w)] > now) return;
+                if (materialDeferred(w.name)) return; // a material goal waiting for a higher priority (2026-11-21)
                 list.push({ fighter: fighter, wish: w, rank: rank });
             });
         });
@@ -3301,6 +3609,7 @@ module.exports = function createWorkshop(ctx) {
     // One unit of work. Returns the fighters that now have something waiting.
     const readySince = {}; // fighter -> since when something waits for it
     let lastGoalStep = 0;  // last gear-goal unit of work
+    let lastBonusStep = 0; // last unit of work on a bonus wish (no measurable gain, e.g. Wanderer's set)
     // Weapon ladder (config.workshop.bruteForce, player decision 2026-11-16): high-grade
     // drop weapons (fire weapons) can't be helped by grace (-1 on them), so spare copies
     // are tried right away with the normal scroll – but only one level above the WEAKEST
@@ -3512,7 +3821,7 @@ module.exports = function createWorkshop(ctx) {
         if (await shopPonty()) return; // Ponty: wished items cheaper than making them (market.ponty)
         fillEmptySlots();
         deliverBetterWeapons();
-        deliverEssenceGoals();
+        deliverMaterialGoals();
 
         // Earmarked items that ended up in the bank come out first; vanished ones are dropped.
         for (const e of activeEarmarks()) {
@@ -3556,8 +3865,8 @@ module.exports = function createWorkshop(ctx) {
         // Same for the fire weapon ladder: solo Phoenix kills bring ~2 weapons each, far more
         // than the 3-minute step could work through (player decision 2026-11-17).
         if (spareLadderCopies() >= 3 && await bruteForceSpares()) return;
-        // Essence goals (config.essenceGoals) every round as well, after the box armor copies.
-        if (await workOnEssenceGoals()) return;
+        // Material goals (config.materialGoals: essence, Bones) every round as well, after the box armor copies.
+        if (await workOnMaterialGoals()) return;
         // A tight bank comes first: every compound (3 -> 1) frees two slots, and the armor
         // boxes for the Rugged chain only open with 10 free (2026-11-17: 83 of 84 used).
         if (bankSnapshot && bankSnapshot.free < ((cfg.exchange || {}).onDemandBankFree || 10) && await autoCompound()) return;
@@ -3589,7 +3898,16 @@ module.exports = function createWorkshop(ctx) {
             if (await autoExchange()) return;
         }
 
-        const job = open[0];
+        // Bonus wishes (gain 0, e.g. the Wanderer's set: its luck bonus is not in the valuation) sort
+        // last and were only reached when everything else was blocked - the priest's Wanderer pieces
+        // never moved (player decision 2026-11-21): like the gear goals they get one unit of work every
+        // bonusWishes.everyMs while other wishes are open.
+        let job = open[0];
+        const bw = cfg.bonusWishes || {};
+        if (bw.everyMs && Date.now() - lastBonusStep >= bw.everyMs) {
+            const bonus = open.find(function (o) { const v = o.v || cachedValue(o.fighter, o.wish); return !!v && v.gain <= 0; });
+            if (bonus) { job = bonus; lastBonusStep = Date.now(); }
+        }
         lastServed[job.fighter] = Date.now();
         const k = key(job.fighter, job.wish);
         util.status("working on " + job.wish.name + " +" + job.wish.level, "orange");
@@ -3657,7 +3975,7 @@ module.exports = function createWorkshop(ctx) {
                 ", sales/other " + k(goalBudget().gross - goalBudget().fighters) + "; consumables " + k(goalBudget().consumables) +
                 "; gear spent " + k(goalBudget().spent) + ")" +
                 " | working on: " + (list.slice(0, 6).join(", ") || "nothing") + (list.length > 6 ? " ..." : "") +
-                essenceReport();
+                materialReport();
         },
         isOwnWish: isOwnWish,
         shoppingBudget: shoppingBudget,

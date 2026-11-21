@@ -314,5 +314,15 @@ module.exports = function createHunts(ctx) {
         return "ok";
     }
 
-    return { tick: tick, target: target };
+    // A boss fight came up (fighter.busyStep): stop a Daisy trip on its way. It goes again later
+    // (an interrupted trip has no cooldown).
+    function abort() {
+        if (!busy || talking || !smart.moving) return;
+        // Only our own walk to her - not the boss travel that may have replaced it already.
+        const d = daisyPos();
+        if (d && (smart.map !== "main" || Math.hypot((smart.x || 0) - d.x, (smart.y || 0) - d.y) > 150)) return;
+        try { stop("smart"); } catch (e) { /* nothing to stop */ }
+    }
+
+    return { tick: tick, target: target, abort: abort };
 };

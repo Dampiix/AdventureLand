@@ -128,6 +128,7 @@ module.exports = function createFighter(ctx, cls) {
         if (!deathReported) {
             deathReported = true;
             try { logDeathAnalysis(); } catch (e) { /* analysis only */ }
+            if (ctx.events && ctx.events.onOwnDeath) { try { ctx.events.onOwnDeath(); } catch (e) { /* report only */ } }
             if (cls.onDeath) { try { cls.onDeath(); } catch (e) { /* class hook only */ } }
             // Blame the killer, not the farm target: a death on the way (e.g. vampire rats at
             // the underground entrance on the way to the CGoos) must not close the farm spot.
@@ -203,9 +204,22 @@ module.exports = function createFighter(ctx, cls) {
         const secs = (now - first.t) / 1000;
         return secs > 0.5 ? Math.max(0, first.hp - character.hp) / secs / character.max_hp : 0;
     }
+    let lastDangerLog = 0;
     function handlePotions() {
         const loss = hpLossRate();
         if (is_on_cooldown("use_hp")) return;
+        // Emergency brake (after earthiverse's avoid_death, player decision 2026-11-21): when the next
+        // hits of everything on us (max damage, fear-scaled) reach our HP, an HP potion now - with a
+        // healer near too, and even while Town channels.
+        const danger = util.incomingDamage();
+        if (danger > 0 && danger >= character.hp * (config.combat.dangerShare || 1) && character.hp < character.max_hp) {
+            use_skill("use_hp").catch(function () {});
+            if (Date.now() - lastDangerLog > 30 * 1000) {
+                lastDangerLog = Date.now();
+                util.log("combat", "danger: next hits up to " + Math.round(danger) + " vs " + Math.round(character.hp) + " HP - potion", "orange");
+            }
+            return;
+        }
         // No potion while Town channels (it would cancel the teleport) - unless HP is critical.
         if (util.townChannel() && util.hpRatio() >= (config.combat.hpCriticalBelow || 0.3)) return;
         // With a healer potions are only an emergency - unless we lose HP fast: Jr. took the
@@ -218,8 +232,18 @@ module.exports = function createFighter(ctx, cls) {
         const hp = util.hpRatio(), mp = util.mpRatio();
         // Without MP there is no attack (and no skill): MP first unless HP is critical.
         const mpEmpty = character.mp < Math.max(1, character.mp_cost || 0) * 3;
+        // A whole MP potion fits (player decision 2026-11-21): MP before the HP top-up while HP is above
+        // combat.mpFirstAboveHp (65 %: well above the 50 % rest line) - the warrior's own attacks drain
+        // ~10 MP/s, one potion every ~30 s keeps him full.
+        const mpFits = mpMissing >= potionGives("mp");
+        const mpFirst = hp >= (c.mpFirstAboveHp !== undefined ? c.mpFirstAboveHp : 0.65);
+        // combat.hpWhenFits (player test 2026-11-21): an HP potion whenever a whole one fits, MP only in
+        // the gaps (or when MP is nearly empty) - the solo warrior still fell below the 50 % rest line.
+        // Off with a healer near (withHealer.potionWhenMissing false).
+        const hpFirst = c.hpWhenFits && c.potionWhenMissing && hpMissing >= potionGives("hp");
         if (hp < (c.hpCriticalBelow || 0.3)) use_skill("use_hp").catch(function () {});
-        else if (mpEmpty || (mp < c.potionMpBelow && hp >= 0.5)) use_skill("use_mp").catch(function () {});
+        else if (hpFirst && !mpEmpty) use_skill("use_hp").catch(function () {});
+        else if (mpEmpty || ((mp < c.potionMpBelow || mpFits) && (mpFirst || c.hpWhenFits))) use_skill("use_mp").catch(function () {});
         else if (hp < c.potionHpBelow) use_skill("use_hp").catch(function () {});
         else if (mp < c.potionMpBelow) use_skill("use_mp").catch(function () {});
         else if (c.potionWhenMissing && hpMissing >= potionGives("hp")) use_skill("use_hp").catch(function () {});
@@ -242,8 +266,33 @@ module.exports = function createFighter(ctx, cls) {
         stop();
     }
 
+    // A new goal while still walking to an old one turns us around (2026-11-21: the ranger found
+    // Dracul while the priest walked to the giant scorpions - it walked all the way there first and
+    // only then towards the cave, and the members followed its old goal).
+    let travelGoal = null;
+    function sameGoal(a, b) {
+        if (!a || !b) return false;
+        if (typeof a === "string" || typeof b === "string") return a === b;
+        return a.map === b.map && Math.hypot((a.x || 0) - (b.x || 0), (a.y || 0) - (b.y || 0)) < 150;
+    }
+    // Waypoints (config.travel.via, 2026-11-21): a map reached through a dangerous one goes via a safe map
+    // first - the ranger walked main -> level1 -> spookytown to search Jr. and the Vampire Rats there (aggro 1,
+    // 9,200 HP) killed it twice in a row.
+    function viaFor(destination) {
+        const via = ((config.travel || {}).via) || {};
+        const map = destination && typeof destination === "object" ? destination.map : null;
+        const v = map && via[map];
+        if (!v || character.map === map || character.map === v) return destination;
+        return { map: v };
+    }
     function travel(destination, label) {
+        destination = viaFor(destination);
         util.status(label, "yellow");
+        if (is_moving(character) && travelGoal && !sameGoal(travelGoal, destination) && typeof smart !== "undefined" && smart.moving) {
+            stoppedOnPurpose = true;
+            try { stop("smart"); } catch (e) { /* not walking */ }
+        }
+        travelGoal = destination;
         if (!is_moving(character)) {
             const id = Date.now();
             searchWalk = id;
@@ -252,11 +301,31 @@ module.exports = function createFighter(ctx, cls) {
             }).catch(function (e) {
                 if (searchWalk === id) searchWalk = 0;
                 if (stoppedOnPurpose) { stoppedOnPurpose = false; return; } // we stopped it for a target
-                util.log("move", "route to " + JSON.stringify(destination) + " failed: " + util.errReason(e), "red");
+                const why = util.errReason(e);
+                if (!/interrupt|stop/i.test(why)) markBadGoal(destination);
+                util.log("move", "route to " + JSON.stringify(destination) + " failed: " + why, "red");
             });
         } else if (cls.move) {
             cls.move(null); // e.g. Warrior Charge on the way
         }
+    }
+    // Meeting points without a path (2026-11-21): a boss's meeting point (where the finder stood) can
+    // lie on a spot the path search can't reach - priest and ranger got "Path not found!" again and
+    // again while the team met at a boss in the cave. Such a point is skipped for a minute; we walk
+    // to the boss's spawn instead (smart_move by monster name).
+    const badGoals = [];
+    function markBadGoal(d) {
+        if (d && typeof d === "object" && d.map) badGoals.push({ map: d.map, x: d.x, y: d.y, until: Date.now() + 60 * 1000 });
+    }
+    function isBadGoal(d) {
+        const now = Date.now();
+        for (let i = badGoals.length - 1; i >= 0; i--) if (badGoals[i].until < now) badGoals.splice(i, 1);
+        return !!d && typeof d === "object" && badGoals.some(function (b) { return b.map === d.map && Math.hypot(b.x - d.x, b.y - d.y) < 60; });
+    }
+    function goalFor(farm) {
+        if (farm.dest && !isBadGoal(farm.dest)) return farm.dest;
+        if (farm.dest) return farm.monster;
+        return targeting.spotFor(farm.monster, farm.map) || farm.monster;
     }
 
     // Solo recovery (config.combat.recover): after a fight that left us low, no new pull
@@ -318,38 +387,97 @@ module.exports = function createFighter(ctx, cls) {
 
     // Walk to a point; a new order only when standing or the point moved 40+ px.
     let moveDest = null;
+    // A path walk (xmove -> smart_move behind walls) is not restarted for a target that moved a bit:
+    // the priest stood 350 px from the Phoenix in the cave, smart_move searching a path, and a new
+    // order every tick for the moving Phoenix cut each search off - it never got going (2026-11-21).
     function moveTo(p) {
-        if (is_moving(character) && moveDest && Math.hypot(moveDest.x - p.x, moveDest.y - p.y) < 40) return;
+        const pathing = typeof smart !== "undefined" && smart.moving;
+        if ((is_moving(character) || pathing) && moveDest && Math.hypot(moveDest.x - p.x, moveDest.y - p.y) < (pathing ? 150 : 40)) return;
         moveDest = { x: p.x, y: p.y };
         quiet(xmove(p.x, p.y));
     }
 
-    // Kiting (config.combat.kite, solo; player decision 2026-11-18): a fighter that outranges
-    // and outruns a monster steps back when that monster would reach it before it dies - not
-    // for ones that die in time (1-2 hits). The step leads away from everything on us and from
-    // other free monsters. Attacks go on while walking.
+    // Kiting (config.combat.kite), after earthiverse's KiteMoveStrategy (player decision 2026-11-21):
+    // we stand on a circle around the monster at the kite distance - its charge speed + its range +
+    // extra px, at most our own range - and keep the angle we stand at. The point taken is the one on
+    // that circle closest to our current direction (turning left/right in small steps) with room 25 %
+    // farther out (no corners). Inside the circle we step out to it; at or beyond it we stay put - no
+    // pendulum next to a monster that stands still (2026-11-21: priest and ranger swung between two
+    // points). Only for attackers on us that we outrange and about outrun (charge counts), not for
+    // ones that die before they reach us. Attacks and heals go on while we walk.
     let lastKite = 0;
     let escape = null; // { x, y, until }: a way out of a corner we are walking
+    // The point on the circle of radius dist around entity, from our own angle, turning alternately
+    // left and right (40 steps over the half circle each way); ok filters points. direct: we can
+    // walk there in a straight line. null: nothing fits.
+    // nearest: instead of the first fitting point (smallest turn), the fitting point with the lowest
+    // nearest(x, y) - used to stay close to a boss's spawn area (anchor).
+    function orbitPoint(entity, dist, ok, nearest) {
+        const me = util.xy(character), e = util.xy(entity);
+        const base = Math.atan2(me.y - e.y, me.x - e.x);
+        let best = null, bestScore = Infinity;
+        for (let i = 1; i < 40; i++) {
+            const a = base + (i % 2 ? 1 : -1) * (Math.PI * ((i - (i % 2)) / 40));
+            const x = e.x + dist * Math.cos(a), y = e.y + dist * Math.sin(a);
+            const lx = e.x + dist * 1.25 * Math.cos(a), ly = e.y + dist * 1.25 * Math.sin(a);
+            if (!canMoveFrom(x, y, lx, ly)) continue; // not standable, or a wall right behind it
+            if (ok && !ok(x, y)) continue;
+            // Only points we reach in a straight line (2026-11-21: the ranger between a cactus and a
+            // wall got "Path not found!" again and again - a circle point inside the cactus went to
+            // smart_move). Behind an obstacle we take the next angle instead.
+            if (!canMoveFrom(me.x, me.y, x, y)) continue;
+            if (!nearest) return { x: x, y: y };
+            const sc = nearest(x, y);
+            if (sc < bestScore) { bestScore = sc; best = { x: x, y: y }; }
+        }
+        return best;
+    }
+    // Boss anchor (player decision 2026-11-21): kiting a boss stays within kite.anchorRadius of the
+    // middle of its spawn area on our map - the ranger kited the Phoenix through the whole cave and
+    // could have dragged it to another player (who joins in and cuts our share). Null for others.
+    function bossAnchor(m) {
+        const ev = config.events || {};
+        const def = G.monsters[m.mtype] || {};
+        if (!(ev.search || []).concat(ev.engage || []).includes(m.mtype) && !def.cooperative) return null;
+        const map = G.maps[character.map];
+        let best = null, bestD = Infinity;
+        ((map && map.monsters) || []).forEach(function (pack) {
+            if (pack.type !== m.mtype) return;
+            const boxes = pack.boundaries ? pack.boundaries.filter(function (b) { return b[0] === character.map; }).map(function (b) { return b.slice(1); }) : pack.boundary ? [pack.boundary] : [];
+            boxes.forEach(function (b) {
+                const c = { x: (b[0] + b[2]) / 2, y: (b[1] + b[3]) / 2 };
+                const d = Math.hypot(c.x - m.x, c.y - m.y);
+                if (d < bestD) { bestD = d; best = c; }
+            });
+        });
+        return best;
+    }
+    function goTo(p) {
+        // A direct step in the middle of a path walk: end the walk first (2026-11-21: the priest's
+        // spacing steps broke its path walk in the arena every second - "Lost the path..." spam).
+        if (typeof smart !== "undefined" && smart.moving) {
+            stoppedOnPurpose = true;
+            moveDest = null;
+            try { stop("smart"); } catch (e) { /* not walking */ }
+        }
+        quiet(move(p.x, p.y));
+    }
     function kiteStep(target) {
         const k = config.combat.kite;
         if (!k || !k.enabled) return false;
-        // In a party too (player decision 2026-11-18): only monsters on us count anyway, and not
-        // every team has a taunting tank. There the step prefers the way to a tank class and
-        // never leaves the leash around the leader.
-        const team = kiteTeam();
         const attackers = Object.values(parent.entities || {}).filter(function (e) {
             return e && e.type === "monster" && !e.dead && e.target === character.name;
         });
         if (!attackers.length) return false;
         const myRange = character.range || 0, mySpeed = character.speed || 0;
-        let threat = null, threatTime = Infinity;
+        let threat = null, threatDist = Infinity;
         for (const m of attackers) {
             const def = G.monsters[m.mtype] || {};
-            const mRange = m.range || def.range || 20, mSpeed = m.speed || def.speed || 0;
-            if (myRange < mRange + (k.margin || 30) || mSpeed >= mySpeed * 0.9) return false; // can't kite this one
+            // A charging monster rushes at its charge speed (2026-11-21: Jr. charges at 90).
+            const mRange = m.range || def.range || 20, mSpeed = Math.max(m.speed || def.speed || 0, def.charge || 0);
+            if (myRange < mRange + (k.margin || 30) || mSpeed > mySpeed * (k.maxSpeedRatio || 1.1)) return false; // can't kite this one
             let dist;
             try { dist = parent.distance(character, m); } catch (e) { dist = util.distanceTo(m); }
-            if (dist > mRange + (k.margin || 30)) continue; // still far enough
             // Would it reach us before it dies? The target dies after its HP / our damage per
             // second; any other attacker only after the target.
             const myDef = (def.armor || 0) - (character.apiercing || 0);
@@ -357,82 +485,55 @@ module.exports = function createFighter(ctx, cls) {
             const killSec = (m === target ? m.hp : m.hp + (target ? target.hp : 0)) / myDps;
             const reachSec = Math.max(0, dist - mRange) / Math.max(1, mSpeed);
             if (killSec <= reachSec) continue; // dies first
-            if (reachSec < threatTime) { threat = m; threatTime = reachSec; }
+            if (dist < threatDist) { threat = m; threatDist = dist; }
         }
         if (!threat) return false;
-        if (is_moving(character) && Date.now() - lastKite < (k.everyMs || 600)) return true;
+        const def = G.monsters[threat.mtype] || {};
+        const mRange = threat.range || def.range || 20;
+        const want = Math.min(myRange - (k.rangeSlack || 10), Math.max(threat.speed || def.speed || 0, def.charge || 0) + mRange + (k.extra || 50));
+        if (threatDist >= want - (k.slack || 15)) { util.status("kiting " + threat.mtype + " (in place)", "orange"); return true; }
+        if (is_moving(character) && Date.now() - lastKite < (k.everyMs || 250)) return true;
         const me = util.xy(character);
-        let cx = 0, cy = 0;
-        attackers.forEach(function (m) { const p = util.xy(m); cx += p.x; cy += p.y; });
-        cx /= attackers.length; cy /= attackers.length;
-        let dx = me.x - cx, dy = me.y - cy;
-        const len = Math.hypot(dx, dy) || 1;
-        dx /= len; dy /= len;
         const free = Object.values(parent.entities || {}).filter(function (e) {
             return e && e.type === "monster" && !e.dead && !e.target;
         }).map(util.xy);
-        const step = k.step || 60;
-        // Never out of our own range of the target (player rule 2026-11-19: the Viz ranger kited a
-        // long way off and could not shoot any more) - every step and every way out stays within it.
-        const aim = target ? util.xy(target) : util.xy(threat);
-        const inReach = function (x, y) { return Math.hypot(x - aim.x, y - aim.y) <= myRange * 0.95; };
-        let best = null, bestScore = -Infinity;
-        for (const turn of [0, 0.5, -0.5, 1, -1, 1.5, -1.5]) {
-            const ux = dx * Math.cos(turn) - dy * Math.sin(turn), uy = dx * Math.sin(turn) + dy * Math.cos(turn);
-            const x = me.x + ux * step, y = me.y + uy * step;
-            if (!can_move_to(x, y)) continue;
-            if (!inReach(x, y)) continue;
-            // Away from the pack, and not next to free monsters (they would join).
-            const crowd = free.filter(function (p) { return Math.hypot(p.x - x, p.y - y) < (k.avoidRadius || 120); }).length;
-            if (!team.allows(x, y)) continue;
-            const score = Math.hypot(x - cx, y - cy) - crowd * 100 - Math.abs(turn) * 10 + team.towardTank(me, x, y);
-            if (score > bestScore) { bestScore = score; best = { x: x, y: y }; }
-        }
-        if (!best) {
-            // Cornered (no straight step back is free): run to open ground instead of standing
-            // and tanking (player idea 2026-11-18) - a point 150-300 px away, far from the pack,
-            // with no free monster near, open in most directions (through the pack is fine).
-            // Keep walking a chosen way out for a few seconds: a new path every 0.6 s with the back
-            // to a wall gave "Lost the path..." again and again (Viz priest, 2026-11-19).
+        // Never out of our own range of the target (player rule 2026-11-19) and not next to free
+        // monsters (they would join) - the last one dropped if nothing else fits. No leash to the
+        // leader any more (player decision 2026-11-21): in a fight the distance to the leader does not
+        // matter - the priest comes into heal range by itself, low fighters go to the priest.
+        const aim = target && target !== threat ? util.xy(target) : null;
+        const okBase = function (x, y) { return !aim || Math.hypot(x - aim.x, y - aim.y) <= myRange * 0.95; };
+        const okFree = function (x, y) { return okBase(x, y) && !free.some(function (q) { return Math.hypot(q.x - x, q.y - y) < (k.avoidRadius || 120); }); };
+        const anchor = bossAnchor(threat);
+        const R = k.anchorRadius || 280;
+        const inAnchor = function (ok) { return function (x, y) { return ok(x, y) && (!anchor || Math.hypot(x - anchor.x, y - anchor.y) <= R); }; };
+        const toAnchor = anchor ? function (x, y) { return Math.hypot(x - anchor.x, y - anchor.y); } : null;
+        // Inside the anchor circle first; none there: the fitting point closest to the anchor.
+        const p = orbitPoint(threat, want, inAnchor(okFree)) || orbitPoint(threat, want, inAnchor(okBase)) ||
+            (anchor ? orbitPoint(threat, want, okBase, toAnchor) : orbitPoint(threat, want, okBase));
+        if (!p) {
+            // Cornered: run to open ground instead of standing and tanking (player idea 2026-11-18),
+            // keep walking a chosen way out for a few seconds (Viz priest, 2026-11-19).
             if (escape && Date.now() < escape.until && is_moving(character)) {
                 util.status("kiting " + threat.mtype + " - out of the corner", "orange");
                 return true;
             }
-            const esc = escapePoint(me, { x: cx, y: cy }, free, k, team);
-            if (!esc || !inReach(esc.x, esc.y)) return false; // nowhere to go within range: stand and fight
+            const esc = escapePoint(me, util.xy(threat), free, k);
+            if (!esc || (aim && Math.hypot(esc.x - aim.x, esc.y - aim.y) > myRange * 0.95)) return false; // nowhere to go: stand and fight
             lastKite = Date.now();
             escape = { x: esc.x, y: esc.y, until: Date.now() + 4000 };
-            // A straight line needs no path search (the search is what loses the path).
-            if (can_move_to(esc.x, esc.y)) quiet(move(esc.x, esc.y)); else quiet(xmove(esc.x, esc.y));
+            quiet(move(esc.x, esc.y));
             util.status("kiting " + threat.mtype + " - out of the corner", "orange");
             return true;
         }
-        lastKite = Date.now();
         escape = null;
-        quiet(move(best.x, best.y));
+        if (Math.hypot(p.x - me.x, p.y - me.y) < 10) return true;
+        lastKite = Date.now();
+        goTo(p);
         util.status("kiting " + threat.mtype, "orange");
         return true;
     }
-    // Party rules for kiting: points within the leash around the leader; a bonus for steps
-    // towards a tank class (config.targeting.teamSafety.tankClasses) that can take the monster.
-    function kiteTeam() {
-        const none = { allows: function () { return true; }, towardTank: function () { return 0; } };
-        if (!party.enabled) return none;
-        const lead = party.leaderInfo();
-        const leash = (config.party && config.party.leash) || 300;
-        const tanks = ((config.targeting.teamSafety || {}).tankClasses) || [];
-        let tank = null;
-        party.memberNames().forEach(function (n) {
-            if (n === character.name || tank) return;
-            const p = get_player(n);
-            if (p && !p.rip && tanks.includes(p.ctype)) tank = util.xy(p);
-        });
-        return {
-            allows: function (x, y) { return !lead || Math.hypot(x - lead.x, y - lead.y) <= leash * 0.9; },
-            towardTank: function (me, x, y) { return tank ? (Math.hypot(me.x - tank.x, me.y - tank.y) - Math.hypot(x - tank.x, y - tank.y)) * 0.8 : 0; },
-        };
-    }
-    function escapePoint(me, pack, free, k, team) {
+    function escapePoint(me, pack, free, k) {
 
         let best = null, bestScore = -Infinity;
         for (const r of [150, 220, 300]) {
@@ -442,13 +543,13 @@ module.exports = function createFighter(ctx, cls) {
                 // Through the pack is fine: monsters don't block the way, and they hit us anyway
                 // while we stand in reach (player note 2026-11-18). Only free ones are avoided.
                 if (free.some(function (p) { return Math.hypot(p.x - x, p.y - y) < (k.avoidRadius || 120); })) continue;
+                if (!canMoveFrom(me.x, me.y, x, y)) continue; // straight line only (no smart_move into walls)
                 let open = 0;
                 for (let j = 0; j < 8; j++) {
                     const b = j * Math.PI / 4;
                     if (canMoveFrom(x, y, x + Math.cos(b) * 60, y + Math.sin(b) * 60)) open++;
                 }
                 if (open < 4) continue; // another corner
-                if (team && !team.allows(x, y)) continue;
                 const score = Math.hypot(x - pack.x, y - pack.y) + open * 25 - r * 0.2;
                 if (score > bestScore) { bestScore = score; best = { x: x, y: y }; }
             }
@@ -460,11 +561,17 @@ module.exports = function createFighter(ctx, cls) {
     // the melee reach of the monsters around - priest, ranger and warrior stood on one spot at the
     // booboos and some went for the ranged ones. Monsters reaching farther than we shoot (booboos,
     // 420) can't be outranged: from those we keep party.spacing.gap px, so the tank in melee is the
-    // one closest to them. We stay in range of our target and on the leash.
+    // one closest to them. We stay in range of our target.
     let lastSpace = 0;
+    let spaceGoal = null; // { x, y, at }: the spacing point we are walking to
     function spacingStep(target) {
         const sp = (config.party && config.party.spacing) || {};
-        if (!sp.enabled || !party.enabled || is_moving(character) || Date.now() - lastSpace < (sp.everyMs || 700)) return false;
+        if (!sp.enabled || !party.enabled) return false;
+        // A chosen point is walked to the end (2026-11-21: re-planned every 0.8 s, priest and ranger
+        // swung left-right-left between the pompoms around the Phoenix).
+        if (spaceGoal && is_moving(character) && Date.now() - spaceGoal.at < (sp.holdGoalMs || 2500) &&
+            Math.hypot(character.x - spaceGoal.x, character.y - spaceGoal.y) > 10) return true;
+        if (is_moving(character) && Date.now() - lastSpace < (sp.everyMs || 700)) return false;
         const myRange = character.range || 0;
         const tanks = ((config.targeting.teamSafety || {}).tankClasses) || [];
         if (myRange < (sp.minOwnRange || 100) || tanks.includes(character.ctype)) return false;
@@ -473,29 +580,34 @@ module.exports = function createFighter(ctx, cls) {
         if (!tank) return false;
         const margin = sp.margin || 50;
         const reachOf = function (m) { return m.range || (G.monsters[m.mtype] || {}).range || 20; };
-        const keep = function (m) { const r = reachOf(m) + margin; return r < myRange ? r : Math.min(sp.gap || 130, myRange - 20); };
-        const close = Object.values(parent.entities || {}).filter(function (e) {
-            return e && e.type === "monster" && !e.dead && util.distanceTo(e) < keep(e);
+        // Never farther than we can shoot (2026-11-21): at most our range - 25 px.
+        const keep = function (m) { const r = reachOf(m) + margin; return r < myRange ? Math.min(r, myRange - 25) : Math.min(sp.gap || 130, myRange - 25); };
+        // The same circle as kiting (2026-11-21): around the closest monster we are too near to, from
+        // our own angle - we only move while inside its circle, so we don't swing back and forth.
+        // Every monster around counts, also free ones (player decision 2026-11-21: many have aggro and
+        // rage - walking into them would pull more than we can take). The pendulum between two of them
+        // is solved by a point clear of all at once and by walking a chosen point to the end.
+        const relevant = Object.values(parent.entities || {}).filter(function (e) {
+            return e && e.type === "monster" && !e.dead;
         });
-        if (!close.length) return false;
-        const me = util.xy(character);
-        const mid = close.reduce(function (a, e) { const p = util.xy(e); return { x: a.x + p.x / close.length, y: a.y + p.y / close.length }; }, { x: 0, y: 0 });
-        const team = kiteTeam();
+        let near = null, nearGap = Infinity;
+        relevant.forEach(function (e) {
+            const gap = util.distanceTo(e) - keep(e);
+            if (gap < -(sp.slack || 15) && gap < nearGap) { near = e; nearGap = gap; }
+        });
+        if (!near) { spaceGoal = null; return false; }
         const t = target ? util.xy(target) : null;
-        let best = null, bestScore = -Infinity;
-        for (let i = 0; i < 16; i++) {
-            const a = i * Math.PI / 8;
-            const x = me.x + Math.cos(a) * (sp.step || 80), y = me.y + Math.sin(a) * (sp.step || 80);
-            if (!canMoveFrom(me.x, me.y, x, y) || !team.allows(x, y)) continue;
-            if (t && Math.hypot(t.x - x, t.y - y) > myRange - 15) continue; // keep shooting
-            const clear = Math.min.apply(null, close.map(function (e) { const p = util.xy(e); return Math.hypot(p.x - x, p.y - y) - keep(e); }));
-            const score = clear + Math.hypot(x - mid.x, y - mid.y) * 0.3;
-            if (score > bestScore) { bestScore = score; best = { x: x, y: y }; }
-        }
-        if (!best) return false;
+        const inShot = function (x, y) { return !t || Math.hypot(t.x - x, t.y - y) <= myRange - 15; };
+        // A point clear of every relevant monster first, else clear of the nearest one.
+        const clearAll = function (x, y) {
+            return inShot(x, y) && relevant.every(function (e) { const q = util.xy(e); return Math.hypot(q.x - x, q.y - y) >= keep(e) - (sp.slack || 15); });
+        };
+        const p = orbitPoint(near, keep(near), clearAll) || orbitPoint(near, keep(near), inShot);
+        if (!p) return false;
         lastSpace = Date.now();
-        quiet(move(best.x, best.y));
-        util.status("keeping distance (" + close.length + " close)", "white");
+        spaceGoal = { x: p.x, y: p.y, at: Date.now() };
+        goTo(p);
+        util.status("keeping distance from " + near.mtype, "white");
         return true;
     }
     function canMoveFrom(x1, y1, x2, y2) {
@@ -503,6 +615,25 @@ module.exports = function createFighter(ctx, cls) {
             return !!parent.can_move({ map: character.map, x: x1, y: y1, going_x: x2, going_y: y2, base: character.base });
         } catch (e) { return true; }
     }
+
+    // Stacking guard (earthiverse's AvoidStackingStrategy, player request 2026-11-21): a hit on us
+    // that the server marks as "stacked" (we stand on top of another player) moves us up to 25 px
+    // aside - looks better, no game advantage. Not while we walk, at most every 250 ms. The listener
+    // lives on the game page and is swapped on each code load.
+    let lastUnstack = 0;
+    function unstack(data) {
+        if (!data || data.id !== character.id || !Array.isArray(data.stacked) || !data.stacked.includes(character.id)) return;
+        if (character.rip || is_moving(character) || Date.now() - lastUnstack < 250) return;
+        const x = character.x - 25 + Math.round(50 * Math.random()), y = character.y - 25 + Math.round(50 * Math.random());
+        if (!can_move_to(x, y)) return;
+        lastUnstack = Date.now();
+        quiet(move(x, y));
+    }
+    try {
+        if (parent.__dmpxUnstackFn) parent.socket.off("hit", parent.__dmpxUnstackFn);
+        parent.__dmpxUnstackFn = function (data) { try { unstack(data); } catch (e) { /* cosmetic only */ } };
+        parent.socket.on("hit", parent.__dmpxUnstackFn);
+    } catch (e) { /* no socket */ }
 
     let passing = null; // { until, dest } while we pass through attackers on the way
     // Leave a fight with another kind than the farm target (player request 2026-11-19): after
@@ -513,6 +644,9 @@ module.exports = function createFighter(ctx, cls) {
     function stuckOffTarget(farm, target) {
         const pt = config.combat.passThrough || {};
         if (!pt.leaveAfterMs || !farm || farm.any || !farm.monster || !target || target.mtype === farm.monster) { offSince = 0; return false; }
+        // Never out of a boss fight (player decision 2026-11-21: the team left Dracul at 5 % HP after
+        // 60 s "for the Phoenix" - which stood right next to them - and walked off to its spawn).
+        if (isBossType(target.mtype)) { offSince = 0; return false; }
         const now = Date.now();
         if (!offSince || now - offSeen > 5000) offSince = now;
         offSeen = now;
@@ -520,9 +654,14 @@ module.exports = function createFighter(ctx, cls) {
         if (now - leaveLogged > 60 * 1000) { leaveLogged = now; util.log("combat", "still fighting " + target.mtype + " after " + Math.round((now - offSince) / 1000) + " s - leaving for " + farm.monster, "yellow"); }
         return true;
     }
+    function isBossType(mtype) {
+        const ev = config.events || {};
+        const def = G.monsters[mtype] || {};
+        return (ev.search || []).concat(ev.engage || []).includes(mtype) || !!def.cooperative;
+    }
     function passThrough(farm, target) {
         const pt = config.combat.passThrough || {};
-        if (!pt.enabled || !farm || farm.any || !farm.monster || target.mtype === farm.monster) { offSince = 0; return false; }
+        if (!pt.enabled || !farm || farm.any || !farm.monster || target.mtype === farm.monster || isBossType(target.mtype)) { offSince = 0; return false; }
         if (stuckOffTarget(farm, target)) {
             const spot0 = targeting.spotFor(farm.monster, farm.map);
             return !(spot0 && spot0.map === character.map && util.distanceTo(spot0) < (pt.spotRadius || 400));
@@ -555,7 +694,7 @@ module.exports = function createFighter(ctx, cls) {
             lastTarget = null; // members see the leader travelling with no target: they follow, no fights
             passing = { until: Date.now() + 3000, dest: farm.dest || targeting.spotFor(farm.monster, farm.map) || farm.monster };
             util.status("passing " + target.mtype, "yellow");
-            travel(farm.dest || targeting.spotFor(farm.monster, farm.map) || farm.monster, "searching " + farm.monster);
+            travel(goalFor(farm), "searching " + farm.monster);
             return;
         }
         // Only time actually fighting counts for the crowded-spot check: running after a
@@ -563,12 +702,36 @@ module.exports = function createFighter(ctx, cls) {
         // A monster attacking one of us counts as work too, in our range or not: after the
         // warrior's Agitate the leader saw no free bee in its own range, called the spot crowded
         // and the party shuttled between bee spots (2026-11-18).
+        // Walking to a target stays idle (player decision 2026-11-21: a spot where we mostly walk for one
+        // kill a minute is no good spot); the shared-spot bar was lowered to 75 % instead.
         const busy = !!target && (is_in_range(target) || (target.target && (target.target === character.name || party.memberNames().includes(target.target))));
         targeting.reportSearch(busy);
         lastFarm = farm;
         lastTarget = target;
 
         if (!target) {
+            // A boss we hold for the team (not engaged yet) in sight but far off: close in to within
+            // the hold range - out of its reach - so the team can gather at it (2026-11-21: the
+            // meeting point was where the warrior first saw Dracul, 560 px away; the hold waits until
+            // everyone is within holdRange of the boss, so all three stood at the meeting point and
+            // waited for each other).
+            if (String(farm.source || "").indexOf("event ") === 0 && farm.monster) {
+                const boss = get_nearest_monster({ type: farm.monster });
+                const holdRange = (config.events && config.events.holdRange) || 350;
+                if (boss && !boss.dead && util.distanceTo(boss) > holdRange * 0.7) {
+                    const def = G.monsters[boss.mtype] || {};
+                    const keepOff = Math.max(holdRange * 0.55, (boss.range || def.range || 50) + 60);
+                    const me = util.xy(character), b = util.xy(boss);
+                    const d = Math.hypot(me.x - b.x, me.y - b.y) || 1;
+                    util.status("closing in on " + boss.mtype, "yellow");
+                    moveTo({ x: b.x + (me.x - b.x) / d * keepOff, y: b.y + (me.y - b.y) / d * keepOff });
+                    return;
+                }
+                // In sight and close enough: wait here. Travelling would mean smart_move("phoenix") -
+                // the game's nearest Phoenix SPAWN, a different one for each of us, away from the
+                // Phoenix next to us (2026-11-21).
+                if (boss && !boss.dead) { util.status("waiting at " + boss.mtype, "yellow"); return; }
+            }
             if (party.idleFollow()) return; // party member: stay with the leader
             if (farm.any) { util.status("waiting for monsters (" + farm.source + ")", "white"); return; }
             // A Cavalry plan walks right into the spot (the call needs the monsters within 320 px).
@@ -582,7 +745,7 @@ module.exports = function createFighter(ctx, cls) {
                 util.status((hold === "strong" ? "too strong: " : "waiting for a lone ") + farm.monster, "white");
                 return;
             }
-            travel(farm.dest || targeting.spotFor(farm.monster, farm.map) || farm.monster, "searching " + farm.monster);
+            travel(goalFor(farm), "searching " + farm.monster);
             return;
         }
 
@@ -618,6 +781,8 @@ module.exports = function createFighter(ctx, cls) {
             // the warrior waited next to him forever (2026-11-19) - from there we go for it.
             if (victim && !victim.rip && util.distanceTo(victim) > 80) {
                 util.status("moving to " + victimName, "orange");
+                // Warrior Dash towards the hit member (player decision 2026-11-21): there we taunt it off.
+                if (cls.move && cls.move(victim)) return;
                 moveTo(util.xy(victim));
                 return;
             }
@@ -679,6 +844,49 @@ module.exports = function createFighter(ctx, cls) {
             util.log("cavalry", "Cavalry refused: " + util.errReason(e), "orange");
         });
     }
+    // Reset/nuke guard (player decision 2026-11-21). At 09:14Z the Cavalry was called on 2 grown
+    // booboos (levels 19,10) while other players fought more of them in reach: the sentries hit
+    // every level-3+ monster within 320 px, those came for us, and the warrior and the ranger
+    // died within 11 s. So a reset or nuke call needs
+    //   - nothing in reach fought by players outside our team (it pulls their monsters on us and
+    //     takes their kills), and
+    //   - the team surviving everything the Cavalry would take at once: the same check as a pack
+    //     we farm (team model as leader, our own hits and sustain solo), per kind, with the
+    //     strongest one of the kind and the count in reach.
+    // Emergency calls are not checked: there the monsters are on us already.
+    // Returns null when the call is fine, else why not.
+    function cavalryBlock(list) {
+        const ours = function (n) { return n === character.name || party.inParty(n) || (config.team.fighters || []).includes(n); };
+        const fought = list.filter(function (e) { return e.target && !ours(e.target); });
+        if (fought.length) {
+            const who = fought.map(function (e) { return e.target; }).filter(function (n, i, a) { return a.indexOf(n) === i; });
+            return fought.length + " of them fought by " + who.join(", ");
+        }
+        const byType = {};
+        list.forEach(function (e) { (byType[e.mtype] = byType[e.mtype] || []).push(e); });
+        // Our own farm monster needs no HP check (player decision 2026-11-21): the sentries kill them,
+        // not we - the pack check blocked every reset of 4-9 level-26 CGoos in the arena while the
+        // warrior just stood there. The players check above and foreignClear stay.
+        const own = lastFarm && lastFarm.monster;
+        for (const type of Object.keys(byType)) {
+            if (type === own) continue;
+            const pack = byType[type];
+            const live = pack.slice().sort(function (a, b) { return (b.attack || 0) - (a.attack || 0); })[0];
+            const v = targeting.teamModelOn() ? targeting.teamVerdict(type, live, { pull: pack.length }) : targeting.packVerdict(live, pack.length);
+            if (!v.ok) return pack.length + "x " + type + " at once: " + (v.why || "unsafe");
+        }
+        return null;
+    }
+    let cavBlocked = { why: "", at: 0 };
+    function guardedCall(why, inReach) {
+        const block = cavalryBlock(inReach);
+        if (!block) return callCavalry(why);
+        // Logged when the reason changes, else every 5 min.
+        if (block !== cavBlocked.why || Date.now() - cavBlocked.at > 5 * 60 * 1000) {
+            cavBlocked = { why: block, at: Date.now() };
+            util.log("cavalry", "not calling the Cavalry (" + why + "): " + block, "orange");
+        }
+    }
     function cavalryTick() {
         const cv = config.cavalry || {};
         if (!cv.enabled || character.rip || !cavalryReady()) return;
@@ -713,15 +921,60 @@ module.exports = function createFighter(ctx, cls) {
             // Most of the pack in reach first (2026-11-19: the call came with 1 mummy in reach and the
             // Cavalry left after killing it): planMinCount of them, or all we see if fewer.
             const seen = all.filter(function (e) { return e && e.type === "monster" && !e.dead && e.mtype === lastFarm.monster && (e.level || 1) >= lvl; }).length;
-            if (these.length && these.length >= Math.min(cv.planMinCount || 5, seen)) callCavalry(src.slice(8) + " " + these.length + "x " + lastFarm.monster + " (levels " + these.map(function (e) { return e.level || 1; }).join(",") + ")");
+            if (these.length && these.length >= Math.min(cv.planMinCount || 5, seen)) guardedCall(src.slice(8) + " " + these.length + "x " + lastFarm.monster + " (levels " + these.map(function (e) { return e.level || 1; }).join(",") + ")", all.filter(grown));
             return;
         }
         if (!cv.reset) return;
-        const big = all.filter(function (e) { return grown(e) && e.mtype === lastFarm.monster && (e.level || 1) >= (cv.resetFromLevel || 5); });
-        if (big.length >= (cv.resetMinCount || 2)) {
-            callCavalry("reset " + big.length + "x " + lastFarm.monster + " (levels " + big.map(function (e) { return e.level || 1; }).join(",") + ")");
+        // At least resetPackMin grown ones in reach, or all we see if fewer (player decision 2026-11-21:
+        // a call with 3 of 27 level-26 CGoos in reach spent the ~70 min cooldown on three of them).
+        const bigAll = all.filter(function (e) {
+            return e && e.type === "monster" && !e.dead && e.mtype === lastFarm.monster && (e.level || 1) >= (cv.resetFromLevel || 5) &&
+                G.monsters[e.mtype] && !G.monsters[e.mtype].cooperative;
+        });
+        const big = bigAll.filter(function (e) { return util.distanceTo(e) <= reach; });
+        const want = Math.max(cv.resetMinCount || 2, Math.min(cv.resetPackMin || 5, bigAll.length));
+        const levels = function (l) { return l.map(function (e) { return e.level || 1; }).join(","); };
+        // Something on us already: the call goes out at once with what is in reach (they come anyway).
+        const onUs = all.some(function (e) { return e && e.type === "monster" && !e.dead && e.target === character.name; });
+        if (onUs && big.length >= (cv.resetMinCount || 2)) {
+            cavWalk = null;
+            guardedCall("reset " + big.length + "x " + lastFarm.monster + " (attacked, levels " + levels(big) + ")", all.filter(grown));
+            return;
         }
+        if (bigAll.length < want || onUs) { cavWalk = null; return; }
+        // The densest group (player decision 2026-11-21): the grown one with the most others within
+        // 80 % of the reach, and the middle of that group - we call from there, so the sentries take as
+        // many as possible (up to 24) instead of the first 5 at the group's edge.
+        let group = [];
+        bigAll.forEach(function (e) {
+            const p = util.xy(e);
+            const g = bigAll.filter(function (o) { const q = util.xy(o); return Math.hypot(q.x - p.x, q.y - p.y) <= reach * 0.8; });
+            if (g.length > group.length) group = g;
+        });
+        const mid = group.reduce(function (s, e) { const q = util.xy(e); return { x: s.x + q.x / group.length, y: s.y + q.y / group.length }; }, { x: 0, y: 0 });
+        const inGroup = group.filter(function (e) { return util.distanceTo(e) <= reach; }).length;
+        const atMid = util.distanceTo(mid) <= 40;
+        // Stuck on the way (wall, no path) for 3 s: call from here when enough are in reach.
+        const stuck = cavWalk && !is_moving(character) && Date.now() - cavWalk.at > 3000;
+        if (big.length >= want && (atMid || stuck || inGroup >= group.length || big.length >= 24)) {
+            cavWalk = null;
+            guardedCall("reset " + big.length + "x " + lastFarm.monster + " (levels " + levels(big) + ", group of " + group.length + ")", all.filter(grown));
+            return;
+        }
+        const sameMid = cavWalk && Math.hypot(cavWalk.x - mid.x, cavWalk.y - mid.y) <= 60;
+        if (!sameMid || (!is_moving(character) && !atMid)) {
+            cavWalk = { x: mid.x, y: mid.y, at: sameMid ? cavWalk.at : Date.now() }; // "at" survives re-sends (stuck check)
+            if (can_move_to(mid.x, mid.y)) move(mid.x, mid.y);
+            else smart_move({ map: character.map, x: mid.x, y: mid.y }).catch(function () {});
+            if (Date.now() - cavWalkLog > 60 * 1000) {
+                cavWalkLog = Date.now();
+                util.log("cavalry", "walking to the middle of the " + lastFarm.monster + " group for the Cavalry: " + group.length + " there, " + big.length + " in reach now", "yellow");
+            }
+        }
+        util.status("to the pack (Cavalry)", "yellow");
+        return true;
     }
+    let cavWalk = null, cavWalkLog = 0;
 
     // ---- strike loop (player decision 2026-11-20, idea from earthiverse's bot) ------
     // Attacks and heals fire the moment the cooldown ends instead of on the next 250 ms tick
@@ -745,6 +998,17 @@ module.exports = function createFighter(ctx, cls) {
             heal(p).then(function () { reduce_cooldown("attack", pingComp()); }).catch(function () {});
             return true;
         }
+        if (i.kind === "skill") {
+            // A skill on the attack cooldown (3shot/5shot share it): fired by the same loop, or the
+            // basic attack always took the cooldown first and 3-Shot only came now and then
+            // (2026-11-21, giant scorpions: 4-5 on the warrior, the ranger shot one arrow).
+            const ts = i.ids.map(function (id) { return parent.entities && parent.entities[id]; });
+            if (ts.some(function (t) { return !t || t.dead || !is_in_range(t, i.name); })) { strikeIntent = null; return false; }
+            if (character.mp < ((G.skills[i.name] && G.skills[i.name].mp) || 0)) { strikeIntent = null; return false; }
+            use_skill(i.name, ts).then(function () { reduce_cooldown("attack", pingComp()); }).catch(function () {});
+            strikeIntent = null;
+            return true;
+        }
         const t = parent.entities && parent.entities[i.id];
         if (!t || t.dead || !is_in_range(t)) return false;
         if (targeting.doomed && targeting.doomed(t)) return false; // the next tick picks another
@@ -757,6 +1021,12 @@ module.exports = function createFighter(ctx, cls) {
         attack: function (target, after) {
             if (!target) return;
             strikeIntent = { kind: "attack", id: target.id, at: Date.now(), after: after || null };
+            fire();
+        },
+        // A multi-target skill on the attack cooldown (ranger 3-Shot): replaces the basic attack.
+        skill: function (name, targets) {
+            if (!targets || !targets.length) return;
+            strikeIntent = { kind: "skill", name: name, ids: targets.map(function (t) { return t.id; }), at: Date.now() };
             fire();
         },
         heal: function (entity) {
@@ -785,6 +1055,9 @@ module.exports = function createFighter(ctx, cls) {
     // all fighting there because fights kept the team from leaving a spot.
     function defendInPlace() {
         if (character.rip) return;
+        // Waiting in place: still step away from what we can kite (2026-11-21) - not during a
+        // smart_move (travel, search), which the step would cut off again and again.
+        if (!(typeof smart !== "undefined" && smart.moving)) kiteStep(null);
         if (cls.supportInPlace && cls.supportInPlace()) return;
         const ours = [character.name].concat(party.enabled ? party.memberNames() : []);
         let best = null;
@@ -930,9 +1203,33 @@ module.exports = function createFighter(ctx, cls) {
         // Parallel boss search: the members walk their own areas (2026-11-21).
         if (ctx.events && ctx.events.splitSearching && ctx.events.splitSearching()) { teamWaitSince = 0; endWaitStatus(); return false; }
         const fighters = (config.team && config.team.fighters) || [];
+        const runner = ctx.events && ctx.events.runnerOut ? ctx.events.runnerOut() : null; // out on a boss search alone
+        // A member that went ahead and stands at our farm spot already is not waited for (2026-11-21:
+        // the priest waited in town for the warrior, who was at the giant scorpions long since).
+        let spot = null;
+        try { spot = lastFarm && lastFarm.monster && targeting.spotFor ? targeting.spotFor(lastFarm.monster, lastFarm.map) : null; } catch (e) { spot = null; }
+        const atSpot = function (info) {
+            return !!(spot && info && info.map === spot.map && typeof info.x === "number" &&
+                Math.hypot(info.x - spot.x, info.y - spot.y) <= (pc.waitDistance || 500));
+        };
+        // A member strong enough to pick its own targets here (targeting isEasy, from its own stats) farms on
+        // its own like a detached one - no waiting for it (player decision 2026-11-21: the warrior took his own
+        // CGoos far away and priest and ranger stood waiting for him).
+        const stats = ctx.events && ctx.events.teamStats ? ctx.events.teamStats() : [];
+        const ownTargets = function (n) {
+            const s = config.party.spread, def = lastFarm && lastFarm.monster && G.monsters[lastFarm.monster];
+            const st = stats.find(function (x) { return x && x.name === n; });
+            if (!s || !s.enabled || !def || def.cooperative || !st) return false;
+            if (s.harmlessRatio && def.attack <= st.max_hp * s.harmlessRatio) return true;
+            const risk = util.kiteRisk(def, null, { speed: st.speed, range: st.range }); // kiteable: residual risk (2026-11-21)
+            if (risk < 1) return def.attack * risk <= st.max_hp * s.maxDamageRatio;
+            return def.hp <= st.attack * s.maxHits && def.attack <= st.max_hp * s.maxDamageRatio;
+        };
         const far = party.memberNames().filter(function (n) {
-            if (n === character.name || !fighters.includes(n)) return false;
+            if (n === character.name || !fighters.includes(n) || n === runner) return false;
+            if (ownTargets(n)) return false;
             const info = (get_party() || {})[n] || {};
+            if (character.map !== (spot && spot.map) && atSpot(info)) return false; // ahead of us, at the spot
             if (lastFarm && lastFarm.monster && util.tooSpiky(config, lastFarm.monster, info.type)) return false; // farms on its own
             const p = get_player(n);
             if (p && p.rip) return false;
@@ -995,10 +1292,16 @@ module.exports = function createFighter(ctx, cls) {
         // so members never lose track (party.broadcast throttles itself).
         party.broadcast(lastFarm, lastTarget, ctx.events.current());
         ctx.gear.tick();
-        cavalryTick();
+        if (cavalryTick() === true) return; // walking to a grown pack for the Cavalry
         if (busyStep()) { defendInPlace(); return; }
-        if (toHealer()) return;
-        const covering = coverMembers();
+        // Kiting comes before healing and covering (2026-11-21): the priest alone with a Phoenix
+        // healed itself every tick (cls.support ends the tick) and never stepped back - the Phoenix
+        // stood 13 px off and hit it all along. Heals and attacks still fire while we walk; the
+        // kite step in handleCombat is throttled and does not move twice.
+        const aimed = get_targeted_monster();
+        const kited = kiteStep(aimed && !aimed.dead ? aimed : null);
+        if (!kited && toHealer()) return;
+        const covering = !kited && coverMembers();
         if (cls.support()) {
             // Healing while passing through: keep walking (a priest healing the warrior every tick
             // never got to travel on - 2026-11-19).
@@ -1014,8 +1317,21 @@ module.exports = function createFighter(ctx, cls) {
         if (waitForTeam()) return true;
         if (supply.tick() === "busy") return true;
         if (ctx.events.tick() === "busy") return true;
-        if (!ctx.events.current() && ctx.hunts.tick() === "busy") return true; // no Daisy trips during events
+        // No Daisy trips during events or a boss fight (a paused boss too, 2026-11-21); one on its
+        // way is stopped.
+        if (ctx.events.bossBusy()) ctx.hunts.abort();
+        else if (!ctx.events.current() && ctx.hunts.tick() === "busy") return true;
         const ev = ctx.events.current();
+        if (ev && ev.solo) return false; // runner fighting its solo boss away from the team (events runner)
+        // The event's boss in our own sight: fight it, no leash (player decision 2026-11-21: anyone
+        // may open on a boss alone, holdForTeam off). The warrior found a Phoenix in the cave at
+        // 11:54Z and only watched it until the ranger came - keepUp held it at the sighting point
+        // the leader travelled to while the Phoenix moved on. Held bosses (events.holdFor) stay
+        // held by targeting; a boss out of sight still means following as before.
+        if (ev && ev.monster && !character.rip) {
+            const b = get_nearest_monster({ type: ev.monster });
+            if (b && !b.dead) return false;
+        }
         if (party.keepUp(!!(ev && ev.join))) return true;
         if (party.leaderTravels && party.leaderTravels()) { party.idleFollow(); return true; } // no fights on the way
         return false;
@@ -1037,13 +1353,22 @@ module.exports = function createFighter(ctx, cls) {
             const hit = Object.values(parent.entities || {}).some(function (e) { return e && e.type === "monster" && !e.dead && e.target === n; });
             if (!hit) return;
             const d = util.distanceTo(p);
-            if (d > (character.range || 200) * 0.8 && (!worst || d > worst.d)) worst = { p: p, d: d };
+            if (d > (character.range || 200) * 0.95 && (!worst || d > worst.d)) worst = { p: p, d: d };
         });
         if (!worst) return false;
         util.status("covering " + worst.p.name, "yellow");
+        // Only into heal range (85 %), not onto the member (2026-11-21: the priest kited the
+        // Phoenix to 90 % of its range, walked onto the warrior next to it at 80 %, and so on).
+        // A straight line: walk to that point. Behind a wall: a path to the member itself (walkable),
+        // through moveTo, which does not restart a running path search every 0.7 s - the priest stood
+        // "covering" off the giant scorpion spot while each new order cut the search off (2026-11-21).
         if (Date.now() - coverMoveAt > 700) {
             coverMoveAt = Date.now();
-            try { xmove(worst.p.x, worst.p.y); } catch (e) { move(worst.p.x, worst.p.y); }
+            const me = util.xy(character), to = util.xy(worst.p);
+            const f = 1 - (character.range || 200) * 0.85 / Math.max(1, worst.d);
+            const x = me.x + (to.x - me.x) * f, y = me.y + (to.y - me.y) * f;
+            if (can_move_to(x, y)) { moveDest = { x: x, y: y }; quiet(move(x, y)); }
+            else moveTo(to);
         }
         return true;
     }

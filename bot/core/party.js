@@ -102,7 +102,11 @@ module.exports = function createParty(ctx) {
             const same = lastGoal && lastGoal.map === point.map && Math.hypot(lastGoal.x - point.x, lastGoal.y - point.y) < 100;
             if (same && is_moving(character)) return;
             lastGoal = { map: point.map, x: point.x, y: point.y };
-            smart_move({ map: point.map, x: point.x, y: point.y }).catch(function () {});
+            smart_move({ map: point.map, x: point.x, y: point.y }).catch(function (e) {
+                // No path to that meeting point (2026-11-21, the cave): skip it for a minute and
+                // follow the leader itself instead (travelDest).
+                if (!/interrupt|stop/i.test(util.errReason(e))) badDest = { map: point.map, x: point.x, y: point.y, until: Date.now() + 60 * 1000 };
+            });
             return;
         }
         lastGoal = null;
@@ -138,11 +142,17 @@ module.exports = function createParty(ctx) {
     }
 
     // The end of the leader's route while it travels (fresh broadcast), or null.
+    let badDest = null; // a leader's route end we found no path to (moveTowards)
     function travelDest(lead) {
-        return lead && lead.moving && lead.dest && lead.dest.map ? lead.dest : null;
+        const d = lead && lead.moving && lead.dest && lead.dest.map ? lead.dest : null;
+        if (d && badDest && Date.now() < badDest.until && badDest.map === d.map && Math.hypot(badDest.x - d.x, badDest.y - d.y) < 60) return null;
+        return d;
     }
 
-    // Members: hard leash. Returns true when we must move instead of fighting.
+    // Members: follow the leader to its map and ahead to the end of its route. Returns true when we
+    // must move instead of fighting. No distance leash on the same map any more (player decision
+    // 2026-11-21): we meet at the destination, and in a fight the distance to the leader only spoiled
+    // kiting - members without a target go back to the leader anyway (idleFollow).
     // `loose` (join events): on the leader's map we roam freely after our own targets.
     function keepUp(loose) {
         const lead = leaderInfo();
@@ -153,7 +163,7 @@ module.exports = function createParty(ctx) {
             if (character.map !== dest.map || util.distanceTo(dest) > cfg.followDistance) { moveTowards(dest, "going ahead to " + dest.map, true); return true; }
             return false;
         }
-        if (character.map !== lead.map || util.distanceTo(lead) > cfg.leash) {
+        if (character.map !== lead.map) {
             moveTowards(lead, "following " + leader);
             return true;
         }
