@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.171.6",
+    version: "1.177.1",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -185,6 +185,10 @@ module.exports = {
         // Leader waits while a fighter is farther than waitDistance px (or out of sight), at most
         // waitMaxMs per separation, and not while something attacks it (player request 2026-11-18).
         waitForTeam: true, waitDistance: 500, waitMaxMs: 45000, waitAgainMs: 60000,
+        // goToDest (player decision 2026-11-21, from earthiverse): the leader tells the members where its route
+        // ends; they walk there themselves and the leader waits only there, not at every door on the way.
+        // toHealerBelow: a member below this HP share walks into the priest's range.
+        goToDest: true, toHealerBelow: 0.5,
         // Chest opener (player decision 2026-11-20): a party chest's gold uses the opener's gold
         // multiplier, so the fighter with the highest gold bonus opens (fixed: a name to force one).
         // The others open only when it is dead, out of sight or farther than awayRange px from the
@@ -251,7 +255,19 @@ module.exports = {
         },
         // "always" only applies once every fighter has reached this level
         minLevel: { phoenix: 40, goobrawl: 20, snowman: 10, graveyard: 40, mvampire: 50, jr: 40, greenjr: 40 },
-        search: ["phoenix", "mvampire", "jr", "greenjr"], // on again 2026-11-19 (player, Viz start)
+        // Only the Phoenix is searched (player decision 2026-11-21: in one hour two rounds for Mvampire,
+        // Jr. and Green Jr. took 14.6 min - 23 % of the time - without a find). The others are still
+        // fought when one is met (engage).
+        search: ["phoenix"],
+        engage: ["mvampire", "jr", "greenjr"],
+        // Parallel search (player decision 2026-11-21): the leader splits the spawn areas between the
+        // fighters in the party; a find is reported and the team meets there (splitWaitMs: how long the
+        // leader waits for the others' areas). holdForTeam: nobody opens the fight on an unengaged boss
+        // until every fighter is within holdRange px of it - one already fighting is attacked at once.
+        // holdForTeam off again the same day (player decision 2026-11-21): an unengaged Phoenix moved on
+        // twice while the team gathered - whoever finds it attacks, the others join; each class has its
+        // own death safeguards.
+        splitSearch: true, splitWaitMs: 4 * 60 * 1000, holdForTeam: false, holdRange: 350,
         // Search again this long after a miss or a kill (player decision 2026-11-15: 30 min,
         // the walk costs farm time). Respawn times (game source): the Phoenix (respawn 32)
         // comes back ~32 s after its death at a random one of its 5 spots; Dracul (1080)
@@ -408,6 +424,9 @@ module.exports = {
         // A taken spot we stand on without another player's fighter for occupiedFreeMs is free
         // again (player decision 2026-11-20).
         occupiedBy: 1, occupiedRadius: 300, occupiedAfterMs: 20000, occupiedForMs: 60 * 60 * 1000, occupiedFreeMs: 30 * 1000,
+        // Shared, not taken (player decision 2026-11-21): another player on the spot is fine while we had a
+        // target at least stayIfBusy of the last shareWindowMs on it (judged after shareMinMs on the spot).
+        stayIfBusy: 0.9, shareWindowMs: 2 * 60 * 1000, shareMinMs: 60 * 1000,
         crowdedMaxMs: 6 * 60 * 60 * 1000, // doubled each time the same spot is crowded again within a day
     },
 

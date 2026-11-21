@@ -41,6 +41,13 @@ module.exports = function createEvents(ctx) {
     })();
     // Bosses on config.events.farmBosses are hunted nonstop: the next search comes after
     // farmBossEveryMs instead of searchEveryMs (the Phoenix respawns ~32 s after its death).
+    // Roaming bosses we fight when one is in sight (ours or a member's): the searched ones plus
+    // config.events.engage - not searched any more, still taken when met (player decision 2026-11-21).
+    function watched() {
+        const out = (cfg.search || []).slice();
+        (cfg.engage || []).forEach(function (n) { if (!out.includes(n)) out.push(n); });
+        return out;
+    }
     function searchLater(name) {
         const nonstop = (cfg.farmBosses || []).includes(name);
         nextSearchAt[name] = Date.now() + (nonstop ? (cfg.farmBossEveryMs || 60 * 1000) : cfg.searchEveryMs);
@@ -291,7 +298,7 @@ module.exports = function createEvents(ctx) {
     // only looked for its own boss - a Phoenix met on the way to Dracul's spot, or Dracul next
     // to the Phoenix in the cave, was walked past. Returns the visible boss's name or null.
     function visibleBoss() {
-        return (cfg.search || []).find(function (n) {
+        return watched().find(function (n) {
             return (get_nearest_monster({ type: n }) || memberSighting(n)) && policy(n) === "always";
         }) || null;
     }
@@ -304,7 +311,7 @@ module.exports = function createEvents(ctx) {
     const sightings = {};      // leader: boss -> { id, map, x, y, from, at }
     let lastSightingSent = 0;
     ctx.comms.on("bosssight", function (data, from) {
-        if (!leads || !data || !data.name || !(cfg.search || []).includes(data.name)) return;
+        if (!leads || !data || !data.name || !watched().includes(data.name)) return;
         if (!sightings[data.name] || Date.now() - sightings[data.name].at > 30 * 1000) {
             util.log("event", data.name + " seen by " + from + " (" + data.map + ")", "green");
         }
@@ -312,7 +319,7 @@ module.exports = function createEvents(ctx) {
     });
     function reportSightings() {
         if (leads || Date.now() - lastSightingSent < 2000) return;
-        (cfg.search || []).some(function (name) {
+        watched().some(function (name) {
             const m = get_nearest_monster({ type: name });
             if (!m) return false;
             lastSightingSent = Date.now();
@@ -326,6 +333,72 @@ module.exports = function createEvents(ctx) {
         if (!s || Date.now() - s.at > 10 * 1000 || killedAt(s.id)) return null;
         return s;
     }
+    // Parallel boss search (player decision 2026-11-21, from earthiverse): the leader splits the spawn
+    // areas between the fighters in the party (nearest first, in turns); each walks its own and
+    // reports a sighting (bosssight) - the team then meets there. Nobody opens the fight alone
+    // (targeting holds an unengaged boss until the team is there).
+    let split = null; // leader: { id, name, members, pending }
+    function splitAreas(name, spots) {
+        split = null;
+        const fighters = (config.team && config.team.fighters) || [];
+        const helpers = cfg.splitSearch === false || !party.enabled ? [] : fighters.filter(function (n) { return n !== character.name && party.inParty(n); });
+        if (!helpers.length || spots.length < 2) return spots;
+        const here = { x: character.real_x, y: character.real_y };
+        const order = spots.slice().sort(function (a, b) {
+            const da = a.map === character.map ? Math.hypot(a.x - here.x, a.y - here.y) : 1e6, db = b.map === character.map ? Math.hypot(b.x - here.x, b.y - here.y) : 1e6;
+            return da - db;
+        });
+        const who = [character.name].concat(helpers);
+        const jobs = {};
+        who.forEach(function (n) { jobs[n] = []; });
+        order.forEach(function (sp, i) { jobs[who[i % who.length]].push(sp); });
+        const id = Date.now() + ":" + name;
+        split = { id: id, name: name, members: helpers.filter(function (n) { return jobs[n].length; }), pending: [] };
+        split.members.forEach(function (n) { ctx.comms.send(n, "searchjob", { id: id, name: name, spots: jobs[n] }); });
+        split.pending = split.members.slice();
+        util.log("event", "split search: " + who.map(function (n) { return n + " " + jobs[n].length; }).join(", ") + " area(s)", "white");
+        return jobs[character.name];
+    }
+    ctx.comms.on("searchdone", function (data, from) {
+        if (split && data && data.id === split.id) split.pending = split.pending.filter(function (n) { return n !== from; });
+    });
+    // Members: walk the areas the leader gave us, stop on its "searchstop" or when we see the boss.
+    let job = null; // { id, name, spots, stop }
+    ctx.comms.on("searchjob", function (data, from) {
+        if (leads || from !== config.leader || !data || !Array.isArray(data.spots)) return;
+        if (job) job.stop = true;
+        job = { id: data.id, name: data.name, spots: data.spots, stop: false };
+        util.log("event", "searching " + data.name + " for the team: " + data.spots.map(function (s) { return s.map; }).join(", "), "yellow");
+        runJob(job);
+    });
+    ctx.comms.on("searchstop", function (data, from) {
+        if (from !== config.leader || !job || (data && data.id && data.id !== job.id)) return;
+        job.stop = true;
+        job = null;
+        try { stop(); } catch (e) { /* not walking */ }
+    });
+    async function runJob(j) {
+        try {
+            for (const spot of j.spots) {
+                if (j.stop) return;
+                util.status("searching " + j.name + " (" + spot.map + ")", "yellow");
+                for (let t = 0; t < 3 && !j.stop; t++) {
+                    try { await smart_move(spot); break; } catch (e) { if (get_nearest_monster({ type: j.name })) break; await sleep(1500); }
+                }
+                if (j.stop) return;
+                if (get_nearest_monster({ type: j.name })) break;
+                await sleep(cfg.searchSpotMs);
+                if (get_nearest_monster({ type: j.name })) break;
+            }
+            if (get_nearest_monster({ type: j.name })) util.log("event", j.name + " found - holding until the team is here", "green");
+        } catch (e) {
+            util.log("event", "search for " + j.name + " failed: " + util.errReason(e), "orange");
+        } finally {
+            if (!j.stop) ctx.comms.send(config.leader, "searchdone", { id: j.id });
+            if (job === j) job = null;
+        }
+    }
+
     async function searchBoss(name) {
         searching = true;
         searchAbort = null;
@@ -338,7 +411,8 @@ module.exports = function createEvents(ctx) {
         };
         try {
             util.log("event", "searching " + name, "yellow");
-            const spots = spawnSpots(name);
+            const all = spawnSpots(name);
+            const spots = splitAreas(name, all); // our own share when the team searches in parallel
             for (let si = 0; si < spots.length; si++) {
                 if (aborted()) return;
                 const spot = spots[si];
@@ -384,6 +458,15 @@ module.exports = function createEvents(ctx) {
                     return;
                 }
             }
+            // Parallel search: wait for the members' areas (they report searchdone) or a sighting.
+            if (split) {
+                const until = Date.now() + (cfg.splitWaitMs || 4 * 60 * 1000);
+                while (split.pending.length && Date.now() < until) {
+                    if (searchAbort || visibleBoss()) { searchAbort = searchAbort || visibleBoss(); if (aborted()) return; }
+                    util.status("searching " + name + " - waiting for " + split.pending.join(", "), "yellow");
+                    await sleep(1000);
+                }
+            }
             searchLater(name);
             util.log("event", name + " not found - next search in " + Math.max(1, Math.round((nextSearchAt[name] - Date.now()) / 60000)) + " min", "white");
         } catch (e) {
@@ -391,6 +474,7 @@ module.exports = function createEvents(ctx) {
             searchLater(name);
         } finally {
             searching = false;
+            if (split) { ctx.comms.send(split.members, "searchstop", { id: split.id }); split = null; }
         }
     }
 
@@ -411,7 +495,7 @@ module.exports = function createEvents(ctx) {
         }
 
         // Roaming bosses: engaged while visible (or seen in the last 30 s).
-        (cfg.search || []).forEach(function (name) {
+        watched().forEach(function (name) {
             const ok = policy(name) === "always";
             const seen = ok ? get_nearest_monster({ type: name }) : null;
             const told = ok && !seen ? memberSighting(name) : null;
@@ -455,6 +539,7 @@ module.exports = function createEvents(ctx) {
             return "busy";
         }
 
+        if (!leads && job) return "busy"; // walking our share of a parallel boss search
         if (!leads) {
             // Members join the leader's event (an event map can't be walked into).
             const lead = party.leaderInfo();
@@ -520,6 +605,7 @@ module.exports = function createEvents(ctx) {
         // A roaming boss is in sight (ours or a member's): the leader goes to it, no team wait.
         // Checked live: the team wait runs before tick(), so `current` stays stale while waiting
         // (2026-11-20: the priest waited 45 s for the warrior with the Phoenix reported).
+        splitSearching: function () { return !!(split && searching); },
         engaging: function () { return !!(current && current.sighted) || (leads && !!visibleBoss()); },
         teamStats: teamStats, // leader: own stats + fresh member reports
     };

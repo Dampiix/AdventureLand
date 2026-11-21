@@ -79,7 +79,11 @@ module.exports = function createParty(ctx) {
             farm: farm ? farm.monster : null,
             target: target ? target.id : null,
             moving: typeof smart !== "undefined" && !!smart.moving, // on a route (members don't fight meanwhile)
-            event: event ? { name: event.name, join: !!event.join, monster: event.monster || null } : null,
+            // Where the route ends (player decision 2026-11-21, idea from earthiverse): members walk
+            // there themselves instead of following us door by door.
+            dest: cfg.goToDest !== false && typeof smart !== "undefined" && smart.moving && smart.map ? { map: smart.map, x: Math.round(smart.x), y: Math.round(smart.y) } : null,
+            // dest: where a roaming boss was seen (a member's sighting) - members go there, not to its nearest spawn.
+            event: event ? { name: event.name, join: !!event.join, monster: event.monster || null, dest: event.dest && typeof event.dest === "object" ? event.dest : null } : null,
         });
     }
 
@@ -90,8 +94,18 @@ module.exports = function createParty(ctx) {
         return leaderState;
     }
 
-    function moveTowards(point, label) {
+    // isDest: the end of the leader's route - a new destination replaces our current walk.
+    let lastGoal = null;
+    function moveTowards(point, label, isDest) {
         util.status(label, "yellow");
+        if (isDest) {
+            const same = lastGoal && lastGoal.map === point.map && Math.hypot(lastGoal.x - point.x, lastGoal.y - point.y) < 100;
+            if (same && is_moving(character)) return;
+            lastGoal = { map: point.map, x: point.x, y: point.y };
+            smart_move({ map: point.map, x: point.x, y: point.y }).catch(function () {});
+            return;
+        }
+        lastGoal = null;
         if (is_moving(character)) return;
         if (character.map !== point.map) {
             smart_move({ map: point.map, x: point.x, y: point.y }).catch(function () {});
@@ -123,12 +137,22 @@ module.exports = function createParty(ctx) {
         return !!(lead && lead.moving && !lead.target && !lead.event);
     }
 
+    // The end of the leader's route while it travels (fresh broadcast), or null.
+    function travelDest(lead) {
+        return lead && lead.moving && lead.dest && lead.dest.map ? lead.dest : null;
+    }
+
     // Members: hard leash. Returns true when we must move instead of fighting.
     // `loose` (join events): on the leader's map we roam freely after our own targets.
     function keepUp(loose) {
         const lead = leaderInfo();
         if (!lead || detached()) return false;
         if (loose && character.map === lead.map) return false;
+        const dest = travelDest(lead);
+        if (dest) {
+            if (character.map !== dest.map || util.distanceTo(dest) > cfg.followDistance) { moveTowards(dest, "going ahead to " + dest.map, true); return true; }
+            return false;
+        }
         if (character.map !== lead.map || util.distanceTo(lead) > cfg.leash) {
             moveTowards(lead, "following " + leader);
             return true;
@@ -151,6 +175,12 @@ module.exports = function createParty(ctx) {
         }
         if (!lead) {
             util.status("waiting for " + leader, "white");
+            return true;
+        }
+        const dest = travelDest(lead);
+        if (dest) {
+            if (character.map !== dest.map || util.distanceTo(dest) > cfg.followDistance) moveTowards(dest, "going ahead to " + dest.map, true);
+            else util.status("waiting for " + leader + " at the spot", "white");
             return true;
         }
         // Another map counts as far (the distance alone compared coordinates across maps).

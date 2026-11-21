@@ -924,6 +924,11 @@ module.exports = function createFighter(ctx, cls) {
         // A target boss in sight (ours or a member's): the members are already at it, the leader
         // goes there too instead of waiting for them (2026-11-20, Phoenix at the armadillos).
         if (ctx.events && ctx.events.engaging && ctx.events.engaging()) { teamWaitSince = 0; endWaitStatus(); return false; }
+        // On a route: no stops on the way - the members walk to its end themselves and we wait there
+        // (player decision 2026-11-21, idea from earthiverse: the priest stopped at almost every door).
+        if (pc.goToDest !== false && typeof smart !== "undefined" && smart.moving) { teamWaitSince = 0; endWaitStatus(); return false; }
+        // Parallel boss search: the members walk their own areas (2026-11-21).
+        if (ctx.events && ctx.events.splitSearching && ctx.events.splitSearching()) { teamWaitSince = 0; endWaitStatus(); return false; }
         const fighters = (config.team && config.team.fighters) || [];
         const far = party.memberNames().filter(function (n) {
             if (n === character.name || !fighters.includes(n)) return false;
@@ -954,7 +959,31 @@ module.exports = function createFighter(ctx, cls) {
         return true;
     }
 
+    // A member below party.toHealerBelow HP walks into the healer's range (player decision 2026-11-21,
+    // from earthiverse): with the members walking ahead on their own, one may end up out of reach.
+    let toHealerAt = 0;
+    function toHealer() {
+        const pc = config.party || {};
+        if (!party.enabled || party.isLeader || !pc.toHealerBelow || util.hpRatio() >= pc.toHealerBelow || character.ctype === "priest") return false;
+        const healer = party.memberNames().map(function (n) { return n === character.name ? null : get_player(n); })
+            .find(function (p) { return p && !p.rip && p.ctype === "priest"; });
+        if (!healer) return false;
+        const reach = (healer.range || 200) * 0.8;
+        if (util.distanceTo(healer) <= reach) return false;
+        util.status("to " + healer.name + " for heals", "orange");
+        if (Date.now() - toHealerAt > 500) {
+            toHealerAt = Date.now();
+            const p = util.xy(healer);
+            try { Promise.resolve(xmove(p.x, p.y)).catch(function () {}); } catch (e) { /* next tick */ }
+        }
+        return true;
+    }
+    let journalMap = null; // map changes go into the decision journal (util.journal, 2026-11-21)
     function tick() {
+        if (character.map !== journalMap) {
+            if (journalMap !== null) util.journal("[map] " + journalMap + " -> " + character.map);
+            journalMap = character.map;
+        }
         if (handleDeath()) return;
         samplePotions();
         if (!party.enabled || party.isLeader) meterReport(false); // the leader sees the whole team
@@ -968,6 +997,7 @@ module.exports = function createFighter(ctx, cls) {
         ctx.gear.tick();
         cavalryTick();
         if (busyStep()) { defendInPlace(); return; }
+        if (toHealer()) return;
         const covering = coverMembers();
         if (cls.support()) {
             // Healing while passing through: keep walking (a priest healing the warrior every tick

@@ -69,7 +69,8 @@ module.exports = function createWarrior(ctx) {
         const t = c.taunt || {};
         if (p.hp / p.max_hp < (t.allyHpBelow || 0.8) || (m.attack || 0) >= p.max_hp * (t.hitRatio || 0.05)) return true;
         const def = G.monsters[m.mtype] || {};
-        const bosses = (ctx.config.events && ctx.config.events.search) || [];
+        const ev = ctx.config.events || {};
+        const bosses = (ev.search || []).concat(ev.engage || []);
         if (t.bosses !== false && (def.cooperative || bosses.includes(m.mtype) || (m.max_hp || def.hp || 0) >= (t.bossHp || 20000))) return true;
         const healer = G.skills.heal && (G.skills.heal.class || []).includes(p.ctype);
         return t.offHealer !== false && !!healer;
@@ -697,6 +698,8 @@ module.exports = function createWarrior(ctx) {
     function packTick() {
         if (splashOnly()) releaseSplash(); // puts the Lolipops on (also in a swords stream)
         if (!packOn()) { releaseSplash(); return false; }
+        // A roaming boss waiting for the team in reach: no Agitate (it would open the fight alone, 2026-11-21).
+        if (ctx.targeting && ctx.targeting.heldBossNear && ctx.targeting.heldBossNear(G.skills.agitate.range || 300)) return false;
         // Learning: a low-HP moment under attack counts against that monster kind.
         if (util.hpRatio() < (ag.streamStopHp || 0.4)) {
             const on = onMe();

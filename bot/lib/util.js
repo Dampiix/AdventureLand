@@ -129,6 +129,22 @@ function status(text, color) {
 
 function log(tag, text, color) {
     game_log("[" + tag + "] " + text, color || "white");
+    if (JOURNAL_TAGS.includes(tag)) journal("[" + tag + "] " + text);
+}
+
+// Decision journal (player request 2026-11-21): why and when the team changes its spot. The
+// game log keeps ~200 lines without times; this keeps the last 400 decisions with a timestamp
+// per character in the storage ("dmpx_journal:<name>": [[ms, text], ...]).
+const JOURNAL_TAGS = ["target", "drops", "hunt", "event", "party", "cavalry"];
+let journalBuf = null;
+function journal(text) {
+    try {
+        const key = "dmpx_journal:" + character.name;
+        if (!journalBuf) journalBuf = get(key) || [];
+        journalBuf.push([Date.now(), text]);
+        if (journalBuf.length > 400) journalBuf.splice(0, journalBuf.length - 400);
+        set(key, journalBuf);
+    } catch (e) { /* storage unavailable */ }
 }
 
 // Position of an entity or point. Client entities carry real_x/real_y,
@@ -338,6 +354,7 @@ function heartbeat() {
 
 module.exports = {
     heartbeat: heartbeat,
+    journal: journal,
     tooSpiky: tooSpiky,
     teamCycle: teamCycle,
     deriveTeam: deriveTeam,

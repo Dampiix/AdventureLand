@@ -400,6 +400,21 @@ module.exports = function createTargeting(ctx) {
         return occupiedSpots().some(function (s) { return s.map === character.map && Math.hypot(p.x - s.x, p.y - s.y) <= r; });
     }
     const strangerSince = {}; // name -> first seen on our spot (checkOccupied)
+    let sharedLogged = "";
+    // Busy samples from reportSearch: [time, had a target]. Share of the time with a target over the
+    // last windowMs (gaps capped at 5 s) and how much of the window is known.
+    const busyLog = [];
+    function busyShare(windowMs) {
+        const now = Date.now();
+        while (busyLog.length && now - busyLog[0][0] > windowMs) busyLog.shift();
+        let ms = 0, on = 0;
+        for (let i = 1; i < busyLog.length; i++) {
+            const dt = Math.min(5000, busyLog[i][0] - busyLog[i - 1][0]);
+            ms += dt;
+            if (busyLog[i][1]) on += dt;
+        }
+        return { ms: ms, share: ms > 0 ? on / ms : 0 };
+    }
     const emptySince = {}; // occupied spot key -> first time we saw it without other fighters
     // Other players' fighters on a spot (merchants never count).
     function fightersNear(p) {
@@ -437,6 +452,20 @@ module.exports = function createTargeting(ctx) {
         here.forEach(function (e) { if (!strangerSince[e.name]) strangerSince[e.name] = now; });
         const others = here.filter(function (e) { return now - strangerSince[e.name] >= (cfg.occupiedAfterMs || 20000); });
         if (others.length < (cfg.occupiedBy || 1)) return;
+        // Shared, not taken (player decision 2026-11-21): a lone bot farming single giant scorpions
+        // left more than enough for us, but the spot counted as taken after 20 s. While we had a target
+        // at least stayIfBusy of the last shareWindowMs, we stay; judged once shareMinMs of it is known.
+        const busy = busyShare(cfg.shareWindowMs || 2 * 60 * 1000);
+        if (cfg.stayIfBusy && busy.ms < (cfg.shareMinMs || 60 * 1000)) return; // not enough known yet
+        if (cfg.stayIfBusy && busy.share >= cfg.stayIfBusy) {
+            const who = others.map(function (e) { return e.name; }).join(", ");
+            if (sharedLogged !== who + "|" + spotKey(s)) {
+                sharedLogged = who + "|" + spotKey(s);
+                util.log("target", "spot " + s.map + " " + s.x + "," + s.y + " shared with " + who + " - staying, we had a target " + Math.round(busy.share * 100) + "% of the time", "white");
+            }
+            return;
+        }
+        sharedLogged = "";
         occupiedUntil[spotKey(s)] = Date.now() + (cfg.occupiedForMs || 20 * 60 * 1000);
         util.log("target", "spot " + s.map + " " + s.x + "," + s.y + " is taken by " + others.map(function (e) { return e.name; }).join(", ") +
             " - another one for " + Math.round((cfg.occupiedForMs || 20 * 60 * 1000) / 60000) + " min", "orange");
@@ -634,6 +663,7 @@ module.exports = function createTargeting(ctx) {
     // Why none of the farm target's monsters in sight was picked (player request 2026-11-20: the
     // warrior stood idle among free crocs and nothing said why) - once a minute per type.
     const noneLogged = {};
+    const noneSeen = {}; // type -> { at, seen, unsafe, taken } of the last explainNone (too-strong spots, 2026-11-21)
     function explainNone(type) {
         const now = Date.now();
         if (now - (noneLogged[type] || 0) < 60 * 1000) return;
@@ -654,6 +684,7 @@ module.exports = function createTargeting(ctx) {
         if (unsafe) parts.push(unsafe + " too strong");
         if (notAlone) parts.push(notAlone + " not alone");
         if (occupied) parts.push(occupied + " on another player's spot");
+        noneSeen[type] = { at: now, seen: seen.length, unsafe: unsafe, taken: busy + occupied };
         util.log("target", seen.length + " " + type + " in sight, none picked: " + (parts.join(", ") || "no reason found"), "orange");
     }
     // We see monsters of this type but none stands alone: hold position until one does,
@@ -914,8 +945,32 @@ module.exports = function createTargeting(ctx) {
     const CROWD_KEY = "dmpx_crowded:" + character.name;
     const crowdHistory = (function () { try { return get(CROWD_KEY) || {}; } catch (e) { return {}; } })(); // monster -> { n, at, until }
     Object.keys(crowdHistory).forEach(function (m) { if (crowdHistory[m].until > Date.now()) crowdedUntil[m] = crowdHistory[m].until; });
+    // Too strong, not taken (player decision 2026-11-21): grown monsters (booboos at level 3-19) made
+    // the spot "crowded" for 4 h and the team came back to the same grown pack. Now it waits for the
+    // Cavalry: blocked until the Cavalry is ready, then cavalryPlan resets it (sentries kill the grown
+    // ones, they respawn at level 1) and the block is gone.
+    const STRONG_KEY = "dmpx_strong_spots:" + character.name;
+    const strongSpots = (function () { try { return get(STRONG_KEY) || {}; } catch (e) { return {}; } })(); // monster -> since
+    Object.keys(strongSpots).forEach(function (m) { crowdedUntil[m] = Math.max(crowdedUntil[m] || 0, cavalryNext()); }); // after a restart too
+    function saveStrong() { try { set(STRONG_KEY, strongSpots); } catch (e) { /* storage unavailable */ } }
+    function cavalryNext() { try { return get("dmpx_cavalry_next") || 0; } catch (e) { return 0; } }
+    function tooStrongHere(m) {
+        const ns = noneSeen[m];
+        return !!(ns && Date.now() - ns.at < 3 * 60 * 1000 && ns.unsafe > 0 && ns.taken === 0);
+    }
     function markCrowded(why) {
         const now = Date.now();
+        if ((config.cavalry || {}).enabled && tooStrongHere(farm.monster)) {
+            const until = Math.max(cavalryNext(), now + 10 * 60 * 1000);
+            crowdedUntil[farm.monster] = until;
+            strongSpots[farm.monster] = now;
+            saveStrong();
+            util.log("target", farm.monster + " too strong here (" + noneSeen[farm.monster].unsafe + " of " + noneSeen[farm.monster].seen + " in sight) - blocked until the Cavalry is ready (~" + Math.max(1, Math.round((until - now) / 60000)) + " min), then reset", "orange");
+            idleSince = 0;
+            win = null;
+            nextPickAt = 0;
+            return;
+        }
         const h = crowdHistory[farm.monster];
         // A repeat within a day of the last time counts up; otherwise start over.
         const n = h && now - h.at < 24 * 60 * 60 * 1000 ? h.n + 1 : 1;
@@ -933,6 +988,11 @@ module.exports = function createTargeting(ctx) {
         const src = farm ? String(farm.source) : "";
         const now = Date.now();
         if (found) lastFoundAt = now;
+        // Only on the spot of our farm target (walking there is no idle time on the spot).
+        const sp = lastSpot;
+        if (sp && farm && sp.type === farm.monster && character.map === sp.map && Math.hypot(character.real_x - sp.x, character.real_y - sp.y) <= 400) busyLog.push([now, !!found]);
+        else busyLog.length = 0;
+        if (busyLog.length > 2000) busyLog.splice(0, busyLog.length - 2000);
         if (!farm || !(src.startsWith("guide") || src.startsWith("drop") || src === "config list") || character.map !== farm.map) {
             idleSince = 0;
             win = null;
@@ -1064,7 +1124,8 @@ module.exports = function createTargeting(ctx) {
     function cavalryPlan(override) {
         const cv = config.cavalry || {};
         const list = farmList(override);
-        if (!cv.enabled || !list.length || (party.enabled && party.isMember && !party.detached())) { cavPlan = null; return null; }
+        // Without a config list: only resets of too-strong spots from the guide's XP list (2026-11-21).
+        if (!cv.enabled || (!list.length && !Object.keys(strongSpots).length) || (party.enabled && party.isMember && !party.detached())) { cavPlan = null; return null; }
         const now = Date.now();
         if (cavPlan) {
             const called = cavalryCalledAt();
@@ -1072,9 +1133,11 @@ module.exports = function createTargeting(ctx) {
             const tooLong = now - cavPlan.since > (cv.planMaxMs || 10 * 60 * 1000);
             if (done || tooLong) {
                 util.log("target", "cavalry " + cavPlan.mode + " at " + cavPlan.monster + (done ? " done" : " gave up") + " - back to the farm list", done ? "green" : "orange");
+                if (!done && strongSpots[cavPlan.monster]) crowdedUntil[cavPlan.monster] = Math.max(cavalryNext(), now + 30 * 60 * 1000); // try again with the next Cavalry
                 if (done && cavPlan.mode === "reset") {
                     delete crowdedUntil[cavPlan.monster];
                     delete crowdHistory[cavPlan.monster];
+                    if (strongSpots[cavPlan.monster]) { delete strongSpots[cavPlan.monster]; saveStrong(); }
                     try { set(CROWD_KEY, crowdHistory); } catch (e) { /* storage unavailable */ }
                     // A death block goes too (player decision 2026-11-19): the reset spot is fresh.
                     if (experience[cavPlan.monster] && experience[cavPlan.monster].bad) { delete experience[cavPlan.monster].bad; saveExperience(); }
@@ -1086,6 +1149,15 @@ module.exports = function createTargeting(ctx) {
             return { monster: cavPlan.monster, source: "cavalry " + cavPlan.mode };
         }
         if (!cavalryReady()) return null;
+        if (!list.length) {
+            // Guide list: the best too-strong spot that ranks above where we farm now.
+            const rank = teamXpRanking() || [];
+            const cur = farm ? rank.indexOf(farm.monster) : -1;
+            const m = rank.find(function (x) { return strongSpots[x] && !allSpotsTaken(x) && !recentDeath(x); });
+            if (m && (cur === -1 || rank.indexOf(m) < cur)) cavPlan = { monster: m, mode: "reset", since: now };
+            if (cavPlan) util.log("target", "Cavalry ready: reset at " + cavPlan.monster + " (too strong before)", "yellow");
+            return cavPlan ? { monster: cavPlan.monster, source: "cavalry " + cavPlan.mode } : null;
+        }
         // The first target skipped as too strong OR closed by a death (player decision 2026-11-19):
         // the Cavalry resets it, then it is farmed again.
         if ((crowdedUntil[list[0]] > now || recentDeath(list[0])) && !allSpotsTaken(list[0])) cavPlan = { monster: list[0], mode: "reset", since: now };
@@ -1245,7 +1317,48 @@ module.exports = function createTargeting(ctx) {
     }
     let lastRareId = null;
 
+    // No first hit on a roaming boss (events.search / engage) before the whole team is there (player
+    // decision 2026-11-21): with the parallel search one fighter may find it alone - a later rogue would
+    // not survive the Phoenix on its own. A boss already fighting (anyone, e.g. another player) is fair game.
+    function bossList() {
+        const ev = config.events || {};
+        return (ev.search || []).concat(ev.engage || []);
+    }
+    function teamAt(t) {
+        const fighters = (config.team && config.team.fighters) || [];
+        const p = util.xy(t);
+        const r = (config.events && config.events.holdRange) || 350;
+        return fighters.every(function (n) {
+            if (n !== character.name && !party.inParty(n)) return true; // not with us (offline)
+            const f = n === character.name ? character : get_player(n);
+            if (!f || f.rip) return n !== character.name ? false : true;
+            const q = util.xy(f);
+            return Math.hypot(q.x - p.x, q.y - p.y) <= r;
+        });
+    }
+    let holdLogged = 0;
+    function holdBoss(t) {
+        if (!t || (config.events && config.events.holdForTeam === false) || !party.enabled) return false;
+        if (t.target || !bossList().includes(t.mtype)) return false;
+        if (teamAt(t)) return false;
+        if (Date.now() - holdLogged > 60 * 1000) { holdLogged = Date.now(); util.log("target", t.mtype + " not engaged yet - holding until the team is here", "white"); }
+        util.status("holding at " + t.mtype, "yellow");
+        return true;
+    }
+    // A held boss within range px (warrior: no Agitate that would pull it).
+    function heldBossNear(range) {
+        return Object.values(parent.entities || {}).some(function (e) {
+            return e && e.type === "monster" && !e.dead && util.distanceTo(e) <= range && holdBossQuiet(e);
+        });
+    }
+    function holdBossQuiet(t) {
+        return !!t && party.enabled && !(config.events && config.events.holdForTeam === false) && !t.target && bossList().includes(t.mtype) && !teamAt(t);
+    }
     function pick(farmTarget) {
+        const t = pickInner(farmTarget);
+        return t && holdBoss(t) ? null : t;
+    }
+    function pickInner(farmTarget) {
         checkOccupied();
         const rare = rareTarget();
         if (rare) return rare;
@@ -1307,7 +1420,7 @@ module.exports = function createTargeting(ctx) {
         return best;
     }
 
-    return { currentFarm: currentFarm, farmNow: function () { return farm; }, pick: pick, xpRanking: teamXpRanking, doomed: doomed, isValid: isValid, reportSearch: reportSearch, isTeamSafe: isTeamSafe, whyUnsafe: whyUnsafe,
+    return { currentFarm: currentFarm, farmNow: function () { return farm; }, pick: pick, xpRanking: teamXpRanking, heldBossNear: heldBossNear, doomed: doomed, isValid: isValid, reportSearch: reportSearch, isTeamSafe: isTeamSafe, whyUnsafe: whyUnsafe,
         teamModelOn: teamModelOn, teamVerdict: teamVerdict, safetyReport: safetyReport, waitForLone: waitForLone, watchPoint: watchPoint, standPoint: standPoint, aggressive: aggressive, diedAt: diedAt, deathAt: deathAt, spotFor: spotFor, liveSafe: liveSafe, inOccupied: inOccupied, packVerdict: packVerdict, isEasy: isEasy,
         // HP a solo fight against this monster costs (0 if it was never checked: harmless or low level).
         soloCost: function (e) { return (e && soloCostById[e.id]) || 0; } };
