@@ -112,6 +112,21 @@ module.exports = function createPriest(ctx) {
             .map(function (n) { return get_player(n); })
             .find(function (p) { return p && p.rip; });
         if (!dead) return false;
+        // Not next to a rage zone (2026-11-22): the warrior died 9 px from the big booboo zone, and the walk to his
+        // gravestone would have taken the priest into it. He respawns in town instead.
+        const boxes = ctx.targeting && ctx.targeting.rageBoxes ? ctx.targeting.rageBoxes(character.map) : [];
+        const dp = util.xy(dead);
+        const nearZone = boxes.find(function (z) {
+            const b = z.b;
+            return Math.hypot(Math.max(b[0] - dp.x, 0, dp.x - b[2]), Math.max(b[1] - dp.y, 0, dp.y - b[3])) < 150;
+        });
+        if (nearZone) {
+            if (Date.now() - lastWaitSent > 60 * 1000) {
+                lastWaitSent = Date.now();
+                util.log("priest", "not reviving " + dead.name + ": the gravestone lies at the " + nearZone.type + " rage zone", "orange");
+            }
+            return false;
+        }
         if (Date.now() - lastWaitSent > 5000) {
             lastWaitSent = Date.now();
             ctx.comms.send(dead.name, "revive_wait", {});

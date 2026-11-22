@@ -324,5 +324,16 @@ module.exports = function createHunts(ctx) {
         try { stop("smart"); } catch (e) { /* nothing to stop */ }
     }
 
-    return { tick: tick, target: target, abort: abort };
+    // Open hunts (leader) that only fail the safety check - e.g. every spot of the kind found too strong. The
+    // Cavalry plan may reset one of those spots for them (targeting.cavalryPlan, 2026-11-22). Monster names.
+    function blocked() {
+        if (!leads || !active()) return [];
+        const sn = serverName();
+        return allHunts().filter(function (x) {
+            const h = x.hunt;
+            return h && h.c > 0 && h.sn === sn && h.ms > cfg.minRemainingMs && !cfg.deny.includes(h.id) && inXpTop(h.id) && fitsInTime(x) && !isSafe(h.id);
+        }).map(function (x) { return x.hunt.id; });
+    }
+
+    return { tick: tick, target: target, abort: abort, blocked: blocked };
 };

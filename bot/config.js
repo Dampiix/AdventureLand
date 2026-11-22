@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.200.1",
+    version: "1.210.8",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -47,7 +47,7 @@ module.exports = {
         // Party again 2026-11-21 (late evening, player): the team clears the grown CGoos (level 26) in the
         // arena (targeting.farm "cgoo"), then the warrior goes solo again.
         // Solo again 2026-11-21 (night): the warrior alone with Lone Wolf (no fixed farm target).
-        { name: "viz", leader: "VizWar", fighters: ["VizPri", "VizWar", "VizRng"], solo: [], merchant: "VizMerch", farm: {} },
+        { name: "viz", leader: "VizPri", fighters: ["VizPri", "VizWar", "VizRng"], solo: [], merchant: "VizMerch", farm: {} },
     ],
 
     // Market stand (player decision 2026-11-17): what the merchant buys and sells at his stand.
@@ -199,11 +199,18 @@ module.exports = {
 
     // Waypoints (2026-11-21): to reach the key map, walk to the value map first - main -> level1 -> spookytown
     // led the ranger through the Vampire Rats (aggro 1, 9,200 HP) twice in a row.
-    travel: { via: { spookytown: "halloween" } },
+    // rageAvoid (2026-11-22): a planned route through a rage box (+ rageMargin) detours via the box's corner (rageDetour px
+    // out), at most rageMaxDetours times per goal; the box the walk ends in is left alone.
+    // rageMargin 100 (2026-11-22): aggro checks the neighbouring 32-px grid cells - up to ~64 px from a monster at the edge.
+    // rageWalls (2026-11-22): rage boxes the team can't take (+ rageMargin) are walls for this frame's can_move - the path
+    // search plans around them; a step starting inside may always walk out. rageAvoid (the old after-the-fact detours)
+    // is off: it went round in circles.
+    // rageWallSteps (2026-11-22): margins tried one after another when the path search finds no way (-1 = walls off).
+    travel: { via: { spookytown: "halloween" }, rageWalls: true, rageWallSteps: [100, 50, 0, -1], rageAvoid: false, rageMargin: 100, rageDetour: 140, rageMaxDetours: 3 },
 
     // "solo":  only the leader fights (Lone Wolf bonus); the merchant still supports it.
     // "party": all fighters form a party around the leader.
-    phase: "solo", // 2026-11-21 night: VizWar solo again (party in between for the CGoo clearing)
+    phase: "party", // 2026-11-22 morning: party again after the warrior's solo night (VizWar 61 -> 69)
 
     party: {
         followDistance: 80,   // members idle within this distance of the leader
@@ -327,7 +334,10 @@ module.exports = {
         },
         // Held for the team even with holdForTeam off: Dracul stays in its area, and alone he is too strong.
         // Jr. and Green Jr. too (player decision 2026-11-21) - unless someone fights it already.
-        holdFor: ["mvampire", "jr", "greenjr"],
+        // Empty (player decision 2026-11-22, Dracul first, then Jr. and Green Jr.): like the Phoenix the finder calls the
+        // team and opens alone when the solo boss check (kiting included) says it can beat the boss - else it holds
+        // outside the boss's spawn box (bossHoldRing) until the team is there.
+        holdFor: [],
         // After a kill we saw, a slow boss (respawn > 200 s) is searched again only at
         // kill + respawn x respawnFactor (long respawns come up to 28 % early; 2026-11-20).
         respawnFactor: 0.72,
@@ -353,7 +363,7 @@ module.exports = {
 
     // Monster Hunts (Daisy). Unsafe hunts are left to expire.
     hunts: {
-        enabled: false, // off 2026-11-21 evening for the warrior's solo run (player); on again 2026-11-19 (Viz start)
+        enabled: true, // on again 2026-11-22 with the party (player); off for the warrior's solo run 2026-11-21 evening
         minLevel: 20,                    // only once every fighter has this level (Daisy ignores our level)
         allow: [],                       // always hunt these, even if the guide calls them unsafe
         deny: [],                        // never hunt these
@@ -405,7 +415,7 @@ module.exports = {
         // drop spot worth more). Set a monster or a list here only to test or for a drop outside
         // the wish list. (Overnight 2026-11-19 it was ["mummy", "booboo", "stoneworm"].)
         // 2026-11-21 (late evening, player): "cgoo" - the team clears the grown CGoos in the arena; back to null after.
-        farm: null, // a list (2026-11-19): the first one not too strong/crowded; null = the guide picks (cgoo 2026-11-21 late evening, back to null after the clearing)
+        farm: null, // a list (2026-11-19): the first one not too strong/crowded; null = the guide picks. 2026-11-22: booboo/gscorpion party rage-zone test done
         fallback: "goo",          // used when the progression guide has no answer
         // Rare monsters attacked first when in sight (player decision 2026-11-20): golden bat
         // (24k HP, attack 50, gold), cutebee (300 HP, 99.9 avoidance), tiny pinky (5.6k HP, attack
@@ -456,6 +466,28 @@ module.exports = {
         // strongHold: too-strong ones of the farm type stop the search walk only this close.
         // watchMargin (2026-11-19): waiting for a lone one, the leader stands this far outside the spawn box edge
         isolation: { enabled: true, minAggro: 0.3, minRage: 0.3, radius: 120, strongHold: 300, watchMargin: 150 },
+        // Spot check (2026-11-22, after the warrior walked into the grown booboo pack): the one who picks the spot
+        // (solo, leader) stops at its edge - spawn/rage box + the monster's range + 50 px (margin..maxMargin) -,
+        // looks for watchMs and judges what is there (aggressive kinds as one pack, passive ones by the live check).
+        // Too strong: blocked like a too-strong spot, another target. party: false = solo only.
+        // maxMargin 150 (2026-11-22): monsters only join on contact or in their rage box - their shooting range doesn't
+        // matter. From 450 px the 4-booboo spawn was out of sight, "level 1 assumed" passed level-17 booboos.
+        spotCheck: { enabled: true, party: true, margin: 150, maxMargin: 150, watchMs: 3000, maxWaitMs: 30000 },
+        // Learned hit factor (2026-11-22, iceroamers hit 2.3x what the formula says): every hit we take is compared
+        // with attack x damage multiplier; from minHits hits of a kind on, the safety checks multiply its hits by
+        // real / predicted (1 .. max). Sums are halved above keepHits (old hits fade). "/safety" lists the factors.
+        hitFactor: { enabled: true, minHits: 8, max: 5, keepHits: 400 },
+        // Mobbing (2026-11-22, server rule, verified with goos): more than 3 monsters targeting one player multiply every hit
+        // on that player - combo 2..10: 1.62..2, then combo / 4, at most max(300 / attack, 1.2); the combo counts landed
+        // hits and resets after 5 s without one. All pack checks (solo, Agitate, team model, spot check) include it.
+        //   guard: no new free monster while maxOnOne are on one of our fighters (unless mobbing adds at most guardMinMult)
+        //   projectSec: the live check carries the combo this far ahead (warrior escape / Agitate stop)
+        mobbing: { enabled: true, guard: true, maxOnOne: 3, guardMinMult: 1.25, projectSec: 4, healShare: 0.8 }, // healShare: share of a healer's heal/s counted in the live check
+        // Rage zones (2026-11-22, server rule): a spawn with a "rage" box in the map data (spookytown: mummies, both
+        // booboo spawns) sends every member at a player standing in the box, every 4.2 s. Such a spawn counts as a
+        // whole (pack check / team model); failing it, we pick none of it whose spot or way lies in the box, step out
+        // when standing in it, and call the Cavalry from its edge.
+        rage: { enabled: true },
         // Monster levels (player request 2026-11-16): from this level a monster is checked
         // again with its real stats before we pull it (team model, else its damage per
         // second must stay within tolerance x the level-1 monster's).
@@ -632,7 +664,19 @@ module.exports = {
                 maxLevel: null, safetyShare: 0.5, // auto: no fixed level cap (the pack check uses real stats; a number caps by hand); a pull may cost only half the HP the pack check allows
                 splashMin: 1.0, learnHits: 40, denseCount: 5, denseSpacing: 130, // auto: lolipops from 1.0 splash per hit (guess from spawn density first)
                 deathDenyMs: 2 * 60 * 60 * 1000, // auto: no Agitate on a kind for this long after dying to it
-                escapeHp: 0.3, escapeMs: 10000, escapeClear: 250, escapeStep: 200, // solo escape from a losing fight (slower monsters only)
+                // Solo escape from a losing fight (slower monsters only): starts below escapeHp, lasts while anyone is on
+                // us and can reach us (its range + escapeMargin, at least escapeClear) or we are below escapeUntilHp; at most escapeMaxMs.
+                escapeHp: 0.3, escapeUntilHp: 0.6, escapeMaxMs: 45000, escapeClear: 250, escapeMargin: 100, escapeStep: 200,
+                // Mobbing (more than 3 on us): escape already below escapeMobHp when the live combo kills us within
+                // escapeTtdSec; no new Agitate while it would within mobStopTtdSec (2026-11-22).
+                escapeMobHp: 0.7, escapeTtdSec: 8, mobStopTtdSec: 20,
+                // Party escape (2026-11-22): the warrior runs too when the live check - the priest's healing included - says he
+                // dies within escapeTtdSec (mob, or below escapeHp); steps stay within the healer's reach where possible.
+                partyEscape: true,
+                // Gap step (player idea 2026-11-22, solo and party): splash weapons on, minOnMe+ on us and the best target's
+                // splash misses one in range -> a step of "step" px into the largest angle gap between them, so they follow and
+                // bunch up on one side. At most every everyMs; from minMs when all of them are in range again.
+                gapStep: { enabled: true, step: 50, everyMs: 4000, minMs: 2500, minOnMe: 3 },
                 weapons: "splash",    // "splash": put on the splash weapons; "keep": pull with the usual ones ("/agitate off|swords|splash" switches at runtime)
                 minPack: 3,
                 minHp: 0.8,           // start a pull only above this HP share
@@ -850,7 +894,8 @@ module.exports = {
         wishes: [
             { slot: "cape", item: "cape", to: 0, single: true, how: "exchange: 40 Leather" },
             { slot: "shoes", item: "wingedboots", to: 7, replace: true, how: "craft: Shoes + 20 Magical Feathers" },
-            { slot: "offhand", steps: [["quiver", 0], ["quiver", 7]], for: "ranger", how: "craft: Armadillo Scale + 200 Bee Wings" },
+            // +8 allowed (player decision 2026-11-22).
+            { slot: "offhand", steps: [["quiver", 0], ["quiver", 7], ["quiver", 8]], for: "ranger", how: "craft: Armadillo Scale + 200 Bee Wings" },
             { slot: "orb", steps: [["orbg", 0], ["orbg", 1], ["orbof{stat}", 0]], alts: [{ item: "cave_loaded_die", how: "craft: 10 Cave Amber + 8 Seashells + 2 Reef Glass" }], how: "craft (Cole)" },
             { slot: "ring", item: "{stat}ring", from: 2, to: 4, replace: true, anytime: true, alts: [{ item: "suckerpunch", for: "physical", how: "drop: crabs" }] },
             { slot: "earring", item: "{stat}earring", from: 2, to: 4, replace: true, anytime: true },

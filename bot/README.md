@@ -401,7 +401,7 @@ The bot never pulls what it can't survive. Several checks work together.
 - A spot counts as safe when every member calls it safe. With `avoidTrial`, a "trial" route counts only once it is proven: 15 min of farming without a death, or a harmless monster (every fighter survives 20 hits).
 - An objection on the current spot must last `objectionGraceMs` (5 min) before the team leaves. A death counts at once.
 
-**Team model** (`targeting.teamSafety`, the party leader). A spot is safe when the party can take it together:
+**Team model** (`targeting.teamSafety`, the party leader). A spot is safe when the party can take it together. The "tank" is the sturdiest warrior or paladin; without one, it is whoever pulls (the leader), since v1.202.0:
 - **Pull size:**
   - aggressive monsters (attack on sight): 3;
   - monsters pulled one at a time (isolation): 2;
@@ -422,6 +422,56 @@ The bot never pulls what it can't survive. Several checks work together.
 - **solo:** the HP lost over the whole fight (damage minus potions and own healing) stays below 70 % of max HP.
 
 **Isolation** (`targeting.isolation`). Monsters that join fights (aggro and rage ≥ 0.3) are pulled only when no other free one stands within 120 px of the target or of our way there. Otherwise the leader waits at a watch point outside the spawn box (`waiting for a lone X`).
+
+**Spot check from the edge** (`targeting.spotCheck`, v1.201.0). Whoever picks the spot (solo, leader) stops at its edge before walking in:
+- The edge is the spawn box (the rage box if the spot has one) plus the monster's range + 50 px, between 150 and 450 px.
+- It watches for 3 s (`checking the X spot`) and judges what is in sight:
+  - **aggressive kinds** (aggro and rage ≥ 0.3, or a rage zone): all free ones come at once, so the pack check runs with the strongest of them (team model as leader, own hits and sustain solo). There is no "harmless" shortcut, because 20 single hits say nothing about 3 booboos at 1.2 hits/s each;
+  - **passive kinds:** at least one of them passes the live check.
+- **Fails:** the spot is blocked like a too-strong spot (until the Cavalry is ready, or like a crowded one without the Cavalry). Log: `X too strong here (spot check: ...)`.
+- **Passes:** `spot check X: OK - ...`. No new check until we leave the map or the target changes.
+- While the check is open, no free monster of the kind is picked and the warrior doesn't Agitate. Monsters on us are still fought.
+
+**Mobbing** (`targeting.mobbing`, v1.202.0). A server rule (`server.js`, `commence_attack`), confirmed with a test on 9 goos:
+- **Trigger:** more than 3 monsters target one player. Distance doesn't matter: a monster counts once it has taken the player as its target, for example right after Agitate.
+- **Combo:** every hit that lands on that player raises a combo counter. The server sends it as `mobbing` in the hit event. It resets after 5 s without such a hit.
+- **Multiplier per hit:** 1.62–2 for combo 2–10, then combo ÷ 4. The cap is max(300 ÷ the monster's attack, 1.2). In a mob every hit counts like about 300 raw attack, so **weak monsters get the biggest multiplier**:
+  - iceroamers (120 attack): 2.5×;
+  - bats (80): 3.75×;
+  - goos (6): went from 8 to 76 per hit in 18 s in the test.
+- **In the checks:** all pack checks count it, with the combo built up over the fight by the hits that land. This covers the solo pack check and Agitate, the solo live check for dense packs, the team model (on the tank, or on the puller without a tank), and the spot check. "Harmless" holds only for up to 3 at once.
+- **Guard:** no new free monster while 3 are on one of our fighters (`maxOnOne`). The exception is a monster where mobbing adds at most 1.25× (attack 240+). Log: `not pulling X: 3 already on Y`.
+- **Live (warrior, solo):** the warrior reads the real combo from every hit and carries it 4 s ahead (`projectSec`). Below 70 % HP, with more than 3 on it and a time-to-death under 8 s, it escapes (`escapeMobHp`, `escapeTtdSec`). It doesn't Agitate while the mob would kill it within 20 s (`mobStopTtdSec`). The escape ends only once the combo has run out.
+
+**Rage zones** (`targeting.rage`, v1.203.0). Some spawns have a `rage` box in the map data (today in Spookytown: the mummies and both booboo spawns). Every 4.2 s, every monster of such a spawn takes a player standing in the box as its target. That happens wherever the monster is and whether you attacked it or not (`server.js`, `rage_logic`).
+- **Counted as a whole:** the live members in and around the box, at least the spawn's `count`. They are judged with the strongest of them by the pack check (mobbing, fear) or the team model. A member uses the team model when the leader is within 300 px or stands at the zone (within 150 px of the box, v1.210.6); otherwise it judges the zone alone.
+- **If that fails:** no monster of the kind is picked when it, our stand point or the straight way there lies in the box. Log: `not going into the X rage zone`.
+- **Standing in such a box** (waiting, resting, handover): the fighter steps out first. Not while a path walk passes through, and not for a member whose leader farms that very spawn.
+- **Cavalry reset:** the call goes out from just outside the box instead of its middle. The sentries only take level 3+, and the level-1/2 booboos would come at us.
+- Why: three booboo deaths on 2026-11-22. Each time one booboo was picked and all 5 came (terrified, dead in 7 s).
+
+**Wall fallback** (`travel.rageWallSteps`, v1.210.1). The rage walls can shut a fighter in: priest and warrior stood in the strip between the mummy zone and the big booboo zone, and every walk ended in "Path not found!". A failed path search (any `smart_move`: travel, following the leader, revives) now narrows the margin step by step (100, 50, 0 = the box itself, then walls off) and plans the walk again. A finished walk, a walk that fails even without walls (the goal itself is unreachable), or 2 minutes bring the full margin back. Since v1.210.2 every rage zone on the way is a wall, not only the ones the team can't take (with the warrior next to him the booboo zone counted as takeable, and the priest walked right through it). Open stay the zone that holds the walk's own goal, and (v1.210.5) the zones of our own farm target the team can take: the priest could hardly step into the accepted 4-booboo zone.
+
+**Route guard** (`travel.rageAvoid`, v1.209.0). Once a path walk is planned (`smart.plot`), every leg is checked against the rage boxes of its map, with `rageMargin` 100 px around them. Aggro checks the neighbouring 32-px grid cells, up to about 64 px from a monster at the edge. The leg being walked counts too: the client takes a point out of `smart.plot` as it starts walking to it, and its end is `going_x/going_y` (fixed in v1.209.3).
+- **On a crossing:** the walk stops, the fighter first goes to the corner outside the box (`rageDetour` 140 px) with the shortest way on, and then the walk is planned anew. At most `rageMaxDetours` (3) per goal.
+- Once per planned route through a map with rage zones, the log shows `route guard: N points to ...`.
+- **Left alone:** the box the walk ends in (the spot check decides there), and legs on later maps (checked on arrival).
+- Log: `route crosses the X rage zone - detour via x,y`.
+
+Normal aggro is different: a monster with aggro only attacks a player who passes within about 32 px in front of it. Isolation covers that. Monsters also give up a chase after 20 s without being attacked (by chance, depending on `rage`).
+
+**Fear** (server rule, v1.202.1). More attackers of one damage type than our courage for it (`courage` physical, `mcourage` magical, `pcourage` pure) cause fear:
+- attack drops to 60/40/20 %;
+- speed drops by 20/40/70/80/90/100.
+
+The solo pack checks count the attack loss when a pull goes over our courage. Since v1.203.1 the team model counts it for the tank too; fighters report their courage with their stats. The escape uses the real (slower) speed while scared. The warrior has pure courage 2, so 3 booboos already scare him.
+
+**Learned hit factor** (`targeting.hitFactor`, v1.201.0). Every hit a fighter takes is compared with the formula (attack × damage multiplier of our armor/resistance minus its piercing):
+- Per monster kind, from 8 hits on, all checks multiply its hits by real ÷ predicted damage (at least 1, at most 5).
+- All fighters' hits count together (`dmpx_hit_factor:<name>`). Above 400 hits the sums are halved, so old hits fade.
+- `/safety` lists the factors at the end.
+- Mobbed hits (with `mobbing`) are not learned, because the mobbing model covers them.
+- Why: iceroamers hit for 337–365 where the formula says about 150, after Agitate pulled four of them. That turned out to be mobbing, so the factor is now only a safety net.
 
 **Fear guard.** No new monster is pulled while the attackers of its damage type already reach our courage.
 
@@ -455,7 +505,10 @@ The bot never pulls what it can't survive. Several checks work together.
    - otherwise only the leader's target, and only once it is engaged. Members never open fights.
 6. **Leader or solo:** the nearest free, safe, isolated monster of the farm type that is not on a taken spot.
 
-**Holding a boss.** In a party, an unengaged boss on `events.holdFor` (Dracul, Jr., Green Jr.), or one too strong for this fighter alone, gets no first hit until every living fighter is within 350 px. A boss already fighting someone is attacked at once.
+**Holding a boss.** In a party, an unengaged boss on `events.holdFor` (empty since 2026-11-22), or one too strong for this fighter alone (solo boss check, kiting included), gets no first hit until every living fighter is within 350 px. A boss already fighting someone is attacked at once.
+- **Aggressive bosses** (aggro or rage ≥ 0.3, e.g. Jr.: aggro 1, rage 1), since v1.204.0: the fighter waits **outside the boss's spawn box**, by its range + its charge (or speed) + 50 px. Status: `waiting outside the X spawn`.
+- That ring counts as "here" for the team as well. If the boss leaves our sight, the ring is kept for a minute, so nobody walks into the box looking for it.
+- Why: on 2026-11-22 the ranger waited inside Jr.'s box, Jr. walked into him, and the fight began without the team.
 
 Monsters fought by other players are never taken, except cooperative ones (Phoenix, Jr. …), where everyone who hits gets a reward.
 
@@ -471,7 +524,16 @@ A single attacker that can't be kited switches kiting off. The warrior (range 38
 
 **Spacing** (party, `party.spacing`). Ranged non-tanks keep out of the monsters' melee reach (their range + 50) while a tank is near.
 
+**Too-strong spots** (v1.206.1). A spot that fails the spot check is blocked on its own, until the Cavalry is ready (at least 10 min, in memory only). The next spawn of the kind is tried. Only when every spot of a kind fails is the kind blocked (`dmpx_strong_spots`), and a hunt on it is skipped ("every X spot taken or too strong").
+
 ## 15. Cavalry (Tracktrix)
+
+**Hunt reset** (v1.208.0). An open hunt held back only by too-strong spots, with the Cavalry ready, works like this:
+- The Cavalry resets the spot of that kind that the team could take with **fresh level-1 monsters**: the whole spawn at once where it comes at once, checked by the team model or the solo pack check.
+- The team calls from just outside a rage box, never from inside.
+- After the reset the spot is free again, and the hunt is done there.
+- With nothing of level 3+ at the spot after 20 s, the spot check decides as it is.
+- Log: `Cavalry ready: reset at the X spot ... for the hunt`.
 
 The Tracktrix (`tracker`, kept in every fighter's bag) calls the Cavalry. It is strong while the account's highest level is below 80.
 
@@ -541,7 +603,7 @@ A visible boss is checked with its live stats (bosses grow).
 
 **Runner** (`events.runner`, party only).
 - **Who:** the fastest ranged fighter (never the leader or a healer). It searches Dracul (every 20 min), Jr. and Green Jr. (every 60 min) alone while the others farm on.
-- **On a find:** these bosses are held until the team is there (`holdFor`); none is killed alone (`runner.solo: []`).
+- **On a find:** the runner reports it and the team comes. Like the Phoenix, the runner opens the fight alone when its solo boss check (kiting included) passes; otherwise it holds outside the boss's spawn box until the team is there (`holdFor` is empty since v1.209.2).
 - **Nonstop:** `farmBosses` would make the runner hunt a boss nonstop (off).
 
 **Pause after a death.** A fighter dying within 600 px of a boss pauses that boss for 3 h (`pauseAfterDeathMs`). A death elsewhere does not. `/phoenix` (etc.) lifts the pause.
@@ -664,7 +726,12 @@ Every skill checks its level, weapon type, MP and cooldown. Most keep an MP rese
 - **Automatic** (`monsters: "auto"`): the warrior decides per farm target. It is allowed only on monsters that pass a pack safety check (a pull may cost at most 35 % of max HP), are slower than us, have no damage return and no abilities.
 - **Splash or swords:** after 40 hits it learns the splash neighbours per hit. From 1.0 it uses the splash weapons (Lolipop Maces); before that it guesses from spawn density.
 - **Stream mode:** Agitate on cooldown, with at most 5 monsters on us (fewer at low HP), walking to clumps.
-- **Safety:** after three low-HP moments in 10 min it pulls fewer. A death denies the kind for 2 h. Below 30 % HP it escapes from slower monsters.
+- **Safety:** after three low-HP moments in 10 min it pulls fewer. A death denies the kind for 2 h.
+- **Party escape** (`agitate.partyEscape`, v1.207.0): in a party the warrior runs too, but only when the live check says he dies within 8 s. The check includes the healing of every healer in reach (heal/s × `mobbing.healShare` 0.8). It applies with a mob (more than 3 on him, below 70 % HP) or below 30 % HP; low HP the priest covers doesn't count. All monsters follow him, the mobbing combo runs out after 5 s without a hit, and the priest heals meanwhile. Escape steps stay within the healer's reach where they can. The escape ends when he is back at 60 % HP and the combo has run out.
+- **Protective Agitate** (party, v1.207.0): with 3+ monsters on allies, Agitate only when the team model (mobbing, fear, healing) says the warrior can hold **everything** Agitate would take (all within 320 px plus those already on him). Otherwise Taunt takes them one by one. Log: `no protective Agitate: N would be on us (...)`.
+- **Team stats:** every fighter sends its stats to every other one each minute, not only to the leader (v1.207.0). The warrior's live check needs the priest's healing.
+- **Gap step** (`agitate.gapStep`, solo and party, v1.205.0): the splash hits what stands around the *target* (explosion ÷ 3.6 px, hitbox to hitbox), there is no facing. When the splash weapons are on, 3+ monsters are on the warrior and the best target's splash misses one in range (e.g. one behind him), he steps 50 px into the **largest angle gap** between them. They all follow from one side and bunch up. At most every 4 s, from 2.5 s on when all are in range again. Never into free monsters, a failing rage zone, or (member) off the leash. Every 10 min the log shows the steps and the splash per hit.
+- **Escape** (solo, v1.201.0): below 30 % HP (`escapeHp`) it runs from slower monsters, with no swings. It runs as long as something on it can still reach it: that monster's range + 100 px (`escapeMargin`), at least 250 px (`escapeClear`). Once out of reach it stands still and lets the potions work, until it is back at 60 % HP (`escapeUntilHp`). The escape also ends when nothing targets it any more, or after 45 s (`escapeMaxMs`). Each step tries 16 directions at 200, 120 and 70 px and takes the one with the most room to the nearest attacker. Cornered (no step leads away): it fights on and tries again after 5 s.
 - **Override:** `/agitate` switches the mode by hand (off, swords, splash, chain, splashstream).
 
 **Sword swap** (`swordSwap`). Active only while Fiery Blades are worn:
@@ -848,6 +915,11 @@ A delivered wish is not fulfilled again for 6 h (rings and earrings excepted).
 - **Team-wide stages** (`stages: [7, 8]`): everyone's shop gear reaches +7 before anyone goes to +8.
 - **Shop pieces** are re-buyable, so every attempt is made. Finished copies get the fighter's main-stat scroll and are delivered; the old piece comes back as a base.
 - **Shop weapon goal:** a fighter wearing a drop weapon gets its class's shop weapon built to +8 if that would beat the drop weapon.
+- **Off-plan armor** (v1.206.0). An armor slot that is **empty** or holds a piece **outside the class's gear plan** gets the plan's next step. The plan here means: shop piece, Wanderer's equivalents for non-tanks, wish chains with their alternatives, and found items.
+  - A wish chain with `replace` (Rugged for tanks, Wanderer's for the priest) already does this.
+  - Otherwise the shop piece is built at the current stage with the main stat. A fighter whose shop armor is done (all at the last stage) uses the team stage, or the last one (v1.210.8; before, the ranger with all pieces at +8 got nothing for his chest). Only if it is at least as good as the worn piece in main stat and in armor + resistance, and better in one.
+  - Log: `VizRng chest: tshirt1 +3 is outside the gear plan - building coat +8 dex`.
+  - Why: the ranger's lucky T-Shirt +3 (9 DEX, nothing else) kept the gear goals from ever building his Coat +8 (12 DEX, 12 armor, 10 resistance).
 - **Wanderer's set** (`gearPlan.equivalent`, non-tanks):
   - A Wanderer's piece is built at least to the level of the worn shop piece of its slot (or to the stage) and replaces it. Example: the ranger's helmet +7 → Wanderer's Cap +7 (DEX).
   - From then on it is upgraded instead of the shop piece.

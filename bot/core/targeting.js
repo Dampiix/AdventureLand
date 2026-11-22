@@ -154,13 +154,17 @@ module.exports = function createTargeting(ctx) {
     // "unsafe", just unknown: harmless if every fighter survives 20+ of their hits
     // (team stats from bot_events, the game's damage formula).
     // attack (optional): a live monster's real attack instead of the level-1 value.
-    function harmless(monster, attack) {
+    // n (optional, 2026-11-22): how many come at once - above 3 the hits count with the full
+    // mobbing multiplier (util.mobbing): nothing is harmless in a mob.
+    function harmless(monster, attack, n) {
         const m = G.monsters[monster];
         if (!m || m.cooperative || (m.abilities && Object.keys(m.abilities).length)) return false;
         const team = ctx.events && ctx.events.teamStats ? ctx.events.teamStats() : [util.combatStats()];
+        const att = attack || m.attack || 0;
+        const mob = (n || 1) > 3 ? util.mobCap(att) : 1;
         return team.every(function (f) {
             const def = m.damage_type === "physical" ? (f.armor || 0) - (m.apiercing || 0) : (f.resistance || 0) - (m.rpiercing || 0);
-            return f.max_hp >= 20 * (attack || m.attack || 0) * 1.1 * util.damageMultiplier(def);
+            return f.max_hp >= 20 * att * mob * 1.1 * util.damageMultiplier(def) * util.hitFactor(monster);
         });
     }
 
@@ -237,14 +241,17 @@ module.exports = function createTargeting(ctx) {
         const team = ctx.events && ctx.events.teamStats ? ctx.events.teamStats() : [util.combatStats()];
         const expected = config.team.fighters.filter(function (f) { return f === character.name || party.inParty(f); }).length;
         if (team.length < expected) return { ok: false, why: "waiting for the team's stats" };
+        // No tank class in the party (2026-11-22): whoever pulls - we, the leader - takes the hits in the
+        // model instead of refusing every spot ("no tank in the party").
         const tank = team.filter(function (f) { return (ts.tankClasses || []).includes(f.ctype); })
-            .sort(function (a, b) { return b.max_hp - a.max_hp; })[0];
-        if (!tank) return { ok: false, why: "no tank in the party" };
+            .sort(function (a, b) { return b.max_hp - a.max_hp; })[0] ||
+            team.find(function (f) { return f.name === character.name; }) || team[0];
+        if (!tank) return { ok: false, why: "no team stats" };
         const hitOn = function (f) {
             let def = 0;
             if (m.damage_type === "physical") def = (f.armor || 0) - (m.apiercing || 0);
             else if (m.damage_type === "magical") def = (f.resistance || 0) - (m.rpiercing || 0);
-            return (m.attack || 0) * 1.1 * util.damageMultiplier(def);
+            return (m.attack || 0) * 1.1 * util.damageMultiplier(def) * util.hitFactor(monster);
         };
         // Monsters we pull one at a time (isolation) come as one plus a possible add
         // (pullLone) – a level-12 White Wolf failed "5.1 volleys of 3" though we never pull
@@ -256,7 +263,23 @@ module.exports = function createTargeting(ctx) {
         const pull = opts && opts.pull ? opts.pull : (m.aggro || 0) >= 1
             ? Math.max(lonePull ? (ts.pullLone || 2) : (ts.pullAggressive || 3), densePack(monster))
             : passive ? (ts.pullPassive || 1) : (ts.pull || 2);
-        const volley = hitOn(tank) * pull;
+        // Fear on the tank (2026-11-22, server rule): more of one damage type on it than its courage for that
+        // type cuts its attack to 60/40/20 % (members report their courage with their stats).
+        const dtype = m.damage_type || "physical";
+        const tankCourage = dtype === "pure" ? tank.pcourage : dtype === "magical" ? tank.mcourage : tank.courage;
+        const fearOver = typeof tankCourage === "number" ? Math.max(0, pull - tankCourage) : 0;
+        const tankFear = fearOver > 2 ? 0.2 : fearOver > 1 ? 0.4 : fearOver ? 0.6 : 1;
+        // Kill time of the whole pull (for the mobbing combo) and of the fight below.
+        const teamDps = team.reduce(function (s, f) {
+            if ((f.heal || 0) > 0) return s; // a healer's actions are counted as healing above
+            const d = f.damage_type === "magical" ? (m.resistance || 0) - (f.rpiercing || 0) : (m.armor || 0) - (f.apiercing || 0);
+            return s + (f.attack || 0) * (f === tank ? tankFear : 1) * (f.frequency || 1) * util.damageMultiplier(d);
+        }, 0);
+        const monsterHp = (live && (live.hp || live.max_hp)) || m.hp || 0;
+        // Mobbing (2026-11-22): more than 3 on the tank multiply every hit (util.mobbing) - the
+        // volley check with the highest multiplier the fight reaches, the rates with its average.
+        const mob = util.mobbing(m.attack, pull, pull * (m.frequency || 1), monsterHp * pull / Math.max(1, teamDps));
+        const volley = hitOn(tank) * pull * mob.peak;
         // Healing per second from the party: every fighter with a heal stat (a priest today;
         // no class names - player request 2026-11-17).
         const healing = team.reduce(function (s, f) { return s + ((f.heal || 0) > 0 ? f.heal * (f.frequency || 1) : 0); }, 0);
@@ -266,21 +289,16 @@ module.exports = function createTargeting(ctx) {
         const healedPerVolley = healing / (m.frequency || 1);
         const netVolley = volley - healedPerVolley;
         const tankHits = netVolley <= 0 ? Infinity : tank.max_hp / netVolley;
-        if (tankHits < (ts.tankHits || 6)) return { ok: false, why: tank.name + " survives " + tankHits.toFixed(1) + " volleys of " + pull + (healing ? " with healing" : "") + " (need " + (ts.tankHits || 6) + ")" };
-        const incoming = volley * (m.frequency || 1);
-        if (incoming > healing * (ts.healCover || 1.5)) return { ok: false, why: Math.round(incoming) + " dmg/s on " + tank.name + " vs " + Math.round(healing) + " healing/s" };
+        const mobWhy = (mob.peak > 1 ? ", mobbing up to " + mob.peak.toFixed(1) + "x" : "") + (fearOver ? ", " + tank.name + " scared (attack x" + tankFear + ")" : "");
+        if (tankHits < (ts.tankHits || 6)) return { ok: false, why: tank.name + " survives " + tankHits.toFixed(1) + " volleys of " + pull + (healing ? " with healing" : "") + mobWhy + " (need " + (ts.tankHits || 6) + ")" };
+        const incoming = hitOn(tank) * pull * mob.avg * (m.frequency || 1);
+        if (incoming > healing * (ts.healCover || 1.5)) return { ok: false, why: Math.round(incoming) + " dmg/s on " + tank.name + mobWhy + " vs " + Math.round(healing) + " healing/s" };
         // The whole fight, not only its rate: what heals and potions don't cover is lost for
         // as long as the kill takes (a level-12 White Wolf has 312k HP). Lone pulls
         // (isolation) start with one monster; the volley check above keeps the margin for adds.
         const fightPull = lonePull ? 1 : pull;
-        const teamDps = team.reduce(function (s, f) {
-            if ((f.heal || 0) > 0) return s; // a healer's actions are counted as healing above
-            const d = f.damage_type === "magical" ? (m.resistance || 0) - (f.rpiercing || 0) : (m.armor || 0) - (f.apiercing || 0);
-            return s + (f.attack || 0) * (f.frequency || 1) * util.damageMultiplier(d);
-        }, 0);
-        const monsterHp = (live && (live.hp || live.max_hp)) || m.hp || 0;
         const killSec = monsterHp * fightPull / Math.max(1, teamDps);
-        const lost = Math.max(0, hitOn(tank) * fightPull * (m.frequency || 1) - healing - potionHps()) * killSec;
+        const lost = Math.max(0, hitOn(tank) * fightPull * (fightPull > 3 ? mob.avg : 1) * (m.frequency || 1) - healing - potionHps()) * killSec;
         if (lost > tank.max_hp * (ts.fightHpUse || 0.5)) {
             return { ok: false, why: tank.name + " would lose " + Math.round(lost) + " HP over ~" + Math.round(killSec) + " s (max " + Math.round(tank.max_hp * (ts.fightHpUse || 0.5)) + ")" };
         }
@@ -289,7 +307,7 @@ module.exports = function createTargeting(ctx) {
             const hits = f.max_hp / Math.max(1, hitOn(f));
             if (hits < (ts.otherHits || 3)) return { ok: false, why: f.name + " survives " + hits.toFixed(1) + " hits (need " + (ts.otherHits || 3) + ")" };
         }
-        return { ok: true, why: tank.name + " tanks " + pull + " (" + tankHits.toFixed(1) + " volleys, " + Math.round(incoming) + " dmg/s vs " + Math.round(healing) + " healing/s)" };
+        return { ok: true, why: tank.name + " tanks " + pull + " (" + tankHits.toFixed(1) + " volleys, " + Math.round(incoming) + " dmg/s vs " + Math.round(healing) + " healing/s" + mobWhy + ")" };
     }
 
     // ---- monster levels ---------------------------------------------------------
@@ -322,7 +340,7 @@ module.exports = function createTargeting(ctx) {
         const harmlessNow = !(def.abilities && Object.keys(def.abilities).length) && fighters.every(function (f) {
             const d = def.damage_type === "physical" ? (f.armor || 0) - (def.apiercing || 0)
                 : def.damage_type === "magical" ? (f.resistance || 0) - (def.rpiercing || 0) : 0;
-            return f.max_hp >= 20 * (e.attack || def.attack || 0) * 1.1 * util.damageMultiplier(d);
+            return f.max_hp >= 20 * (e.attack || def.attack || 0) * 1.1 * util.damageMultiplier(d) * util.hitFactor(e.mtype);
         });
         if (harmlessNow) {
             liveChecked[e.id] = { level: e.level, ok: true, at: now };
@@ -340,7 +358,7 @@ module.exports = function createTargeting(ctx) {
             const me = util.combatStats();
             const d = def.damage_type === "physical" ? (me.armor || 0) - (def.apiercing || 0)
                 : def.damage_type === "magical" ? (me.resistance || 0) - (def.rpiercing || 0) : 0;
-            const hits = me.max_hp / Math.max(1, (e.attack || def.attack || 0) * 1.1 * util.damageMultiplier(d) * kite);
+            const hits = me.max_hp / Math.max(1, (e.attack || def.attack || 0) * 1.1 * util.damageMultiplier(d) * util.hitFactor(e.mtype) * kite);
             return hits >= (lcfg.ownHits || 6) ? { ok: true } : { ok: false, why: "I survive " + hits.toFixed(1) + " of its hits (need " + (lcfg.ownHits || 6) + ")" };
         };
         // Alone (no party): the fight must be survivable over its whole length – the
@@ -355,13 +373,18 @@ module.exports = function createTargeting(ctx) {
             const d = def.damage_type === "physical" ? (me.armor || 0) - (def.apiercing || 0)
                 : def.damage_type === "magical" ? (me.resistance || 0) - (def.rpiercing || 0) : 0;
             const pull = (def.aggro || 0) >= 1 ? Math.max(1, densePack(e.mtype)) : 1;
-            const incoming = (e.attack || def.attack || 0) * 1.1 * util.damageMultiplier(d) * (e.frequency || def.frequency || 1) * pull * kite;
             let sustain = potionHps();
             if (me.ctype === "priest") sustain += (me.heal || me.attack || 0) * (me.frequency || 1) * 0.5; // half its actions heal
             const myDef = me.damage_type === "physical" ? (def.armor || 0) - (me.apiercing || 0) : (def.resistance || 0) - (me.rpiercing || 0);
-            const myDps = Math.max(1, (me.attack || 0) * (me.frequency || 1) * util.damageMultiplier(myDef));
+            const over = Math.max(0, pull - util.courageOf(def.damage_type || "physical")); // fear (see packVerdict)
+            const fearMult = over > 2 ? 0.2 : over > 1 ? 0.4 : over ? 0.6 : 1;
+            const myDps = Math.max(1, (me.attack || 0) * fearMult * (me.frequency || 1) * util.damageMultiplier(myDef));
             sustain += myDps * ((character.lifesteal || 0) / 100);
             const killSec = (e.hp || e.max_hp || def.hp) * pull / myDps;
+            // A dense aggressive pack of more than 3 mobs us (2026-11-22): its average multiplier over the fight.
+            const freq = e.frequency || def.frequency || 1;
+            const mob = util.mobbing(e.attack || def.attack || 0, pull, pull * freq, killSec);
+            const incoming = (e.attack || def.attack || 0) * 1.1 * util.damageMultiplier(d) * util.hitFactor(e.mtype) * freq * pull * kite * mob.avg;
             const lost = Math.max(0, incoming - sustain) * killSec;
             const budget = me.max_hp * (lcfg.soloHpUse || 0.5);
             soloCostById[e.id] = lost;
@@ -389,6 +412,9 @@ module.exports = function createTargeting(ctx) {
     // biggest bat group while three other bat groups were free): skipped for occupiedForMs,
     // and their free monsters are left alone - ones on us are still fought.
     const occupiedUntil = {}; // "map:x:y" -> timestamp
+    // Spots the spot check found too strong (2026-11-22): "map:x:y" -> until. Only that spot - a booboo hunt
+    // sent the team to the 5-booboo spawn the team can't take while the 4-booboo one is fine.
+    const strongSpotUntil = {};
     let lastSpot = null;
     function spotKey(s) { return s.map + ":" + s.x + ":" + s.y; }
     function strangersNear(p, r) {
@@ -399,7 +425,8 @@ module.exports = function createTargeting(ctx) {
     }
     function occupiedSpots() {
         const now = Date.now();
-        return Object.keys(occupiedUntil).filter(function (k) { return occupiedUntil[k] > now; }).map(function (k) {
+        return Object.keys(occupiedUntil).filter(function (k) { return occupiedUntil[k] > now; })
+            .concat(Object.keys(strongSpotUntil).filter(function (k) { return strongSpotUntil[k] > now; })).map(function (k) {
             const p = k.split(":");
             return { map: p[0], x: Number(p[1]), y: Number(p[2]) };
         });
@@ -437,6 +464,7 @@ module.exports = function createTargeting(ctx) {
         const now = Date.now();
         occupiedSpots().forEach(function (s) {
             const k = spotKey(s);
+            if (strongSpotUntil[k] > now) return; // too strong, not taken: it frees up by time only
             const near = character.map === s.map && Math.hypot(character.real_x - s.x, character.real_y - s.y) <= 400;
             if (!near || fightersNear(s).length) { delete emptySince[k]; return; }
             if (!emptySince[k]) emptySince[k] = now;
@@ -488,7 +516,8 @@ module.exports = function createTargeting(ctx) {
             util.log("target", "every " + farm.monster + " spot is taken - another farm target", "orange");
         }
     }
-    function allSpotsTaken(type) {
+    // ignoreStrong: only other players count (the Cavalry plan resets too-strong spots).
+    function allSpotsTaken(type, ignoreStrong) {
         const now = Date.now();
         let any = false, free = false;
         Object.keys(G.maps).forEach(function (m) {
@@ -500,13 +529,18 @@ module.exports = function createTargeting(ctx) {
                 boxes.forEach(function (b) {
                     any = true;
                     const spot = { map: b[0], x: Math.round((b[1] + b[3]) / 2), y: Math.round((b[2] + b[4]) / 2) };
-                    if (!(occupiedUntil[spotKey(spot)] > now)) free = true;
+                    if (!(occupiedUntil[spotKey(spot)] > now) && (ignoreStrong || !(strongSpotUntil[spotKey(spot)] > now))) free = true;
                 });
             });
         });
         return any && !free;
     }
     function spotFor(type, mapName) {
+        // The spot a Cavalry reset was planned for (hunt reset, 2026-11-22) - even though it is marked too strong.
+        if (cavPlan && cavPlan.spot && cavPlan.monster === type) {
+            lastSpot = { map: cavPlan.spot.map, x: cavPlan.spot.x, y: cavPlan.spot.y, type: type };
+            return { map: cavPlan.spot.map, x: cavPlan.spot.x, y: cavPlan.spot.y };
+        }
         let best = null, bestFree = null;
         const now = Date.now();
         Object.keys(G.maps).forEach(function (m) {
@@ -520,7 +554,7 @@ module.exports = function createTargeting(ctx) {
                     const score = (mapName && spot.map === mapName ? 1000 : 0) + spot.count;
                     spot.score = score;
                     if (!best || score > best.score) best = spot;
-                    if (!(occupiedUntil[spotKey(spot)] > now) && (!bestFree || score > bestFree.score)) bestFree = spot;
+                    if (!(occupiedUntil[spotKey(spot)] > now) && !(strongSpotUntil[spotKey(spot)] > now) && (!bestFree || score > bestFree.score)) bestFree = spot;
                 });
             });
         });
@@ -587,20 +621,37 @@ module.exports = function createTargeting(ctx) {
         const me = util.combatStats();
         const d = def.damage_type === "physical" ? (me.armor || 0) - (def.apiercing || 0)
             : def.damage_type === "magical" ? (me.resistance || 0) - (def.rpiercing || 0) : 0;
-        const hit = (e.attack || def.attack || 0) * 1.1 * util.damageMultiplier(d);
-        const hits = me.max_hp / Math.max(1, hit * n);
-        if (hits < (lcfg.ownHits || 6)) return { ok: false, why: "I survive " + hits.toFixed(1) + " of their combined hits (need " + (lcfg.ownHits || 6) + ")" };
+        const att = e.attack || def.attack || 0;
+        const freq = e.frequency || def.frequency || 1;
+        const hit = att * 1.1 * util.damageMultiplier(d) * util.hitFactor(e.mtype);
         let sustain = potionHps() * hpPotionShare(opts.mpPerSec || 0, me);
         if (me.ctype === "priest") sustain += (me.heal || me.attack || 0) * (me.frequency || 1) * 0.5;
         const myDef = me.damage_type === "physical" ? (def.armor || 0) - (me.apiercing || 0) : (def.resistance || 0) - (me.rpiercing || 0);
-        const myDps = Math.max(1, (me.attack || 0) * (me.frequency || 1) * util.damageMultiplier(myDef) * (1 + 0.7 * Math.min(opts.splash || 0, Math.max(0, n - 1))));
+        // Fear (server.js, 2026-11-22): more attackers of one damage type than our courage for it cut our
+        // attack to 60/40/20 % (and our speed by 20/40/70+). 3 booboos (pure courage 2) scared the warrior,
+        // the fight took longer and he died. Counted only when the pull itself goes over our courage.
+        const over = Math.max(0, n - util.courageOf(def.damage_type || "physical"));
+        const fearMult = over > 2 ? 0.2 : over > 1 ? 0.4 : over ? 0.6 : 1;
+        const myDps = Math.max(1, (me.attack || 0) * fearMult * (me.frequency || 1) * util.damageMultiplier(myDef) * (1 + 0.7 * Math.min(opts.splash || 0, Math.max(0, n - 1))));
         sustain += myDps * ((character.lifesteal || 0) / 100);
-        const incoming = hit * (e.frequency || def.frequency || 1) * (n + 1) / 2;
         const killSec = (e.max_hp || def.hp || 1) * n / myDps;
+        // Mobbing (2026-11-22): while more than 3 of them are alive every hit is multiplied (util.mobbing).
+        // Those on their way don't hit - opts.hitters caps how many stand on us at once (default all).
+        // The burst check uses the highest multiplier the fight reaches; the HP loss the average over
+        // the mobbed part of the fight (the first (n-3)/n of it - after that 3 are left).
+        const hitters = Math.min(n, opts.hitters || n);
+        const mobSec = n > 3 ? killSec * (n - 3) / n : 0;
+        const mob = util.mobbing(att, n, hitters * freq, mobSec);
+        const mobShare = n > 3 ? (n - 3) / n : 0;
+        const hits = me.max_hp / Math.max(1, hit * hitters * mob.peak);
+        const mobWhy = mob.peak > 1 ? ", mobbing up to " + mob.peak.toFixed(1) + "x" : "";
+        if (hits < (lcfg.ownHits || 6)) return { ok: false, why: "I survive " + hits.toFixed(1) + " of their combined hits" + mobWhy + " (need " + (lcfg.ownHits || 6) + ")" };
+        const incoming = hit * freq * Math.min(hitters, (n + 1) / 2) * (mobShare * mob.avg + (1 - mobShare));
         const lost = Math.max(0, incoming - sustain) * killSec;
         const budget = me.max_hp * (lcfg.soloHpUse || 0.5);
-        return lost <= budget ? { ok: true, lost: lost, killSec: killSec }
-            : { ok: false, lost: lost, killSec: killSec, why: Math.round(incoming) + " dmg/s vs " + Math.round(sustain) + " healed/s for ~" +
+        const fearWhy = over ? ", scared (attack x" + fearMult + ")" : "";
+        return lost <= budget ? { ok: true, lost: lost, killSec: killSec, mob: mob.peak }
+            : { ok: false, lost: lost, killSec: killSec, mob: mob.peak, why: Math.round(incoming) + " dmg/s" + mobWhy + fearWhy + " vs " + Math.round(sustain) + " healed/s for ~" +
                 Math.round(killSec) + " s: I'd lose " + Math.round(lost) + " HP (max " + Math.round(budget) + ")" };
     }
     function aggressive(e) {
@@ -609,7 +660,8 @@ module.exports = function createTargeting(ctx) {
         const now = Date.now();
         const k = e.mtype + ":" + Math.round(e.attack || def.attack || 0);
         const c = harmlessSeen[k];
-        if (!c || now - c.at > 30 * 1000) harmlessSeen[k] = { ok: harmless(e.mtype, e.attack), at: now };
+        // A dense spawn comes as a whole - harmless only if it stays harmless as a mob (2026-11-22).
+        if (!c || now - c.at > 30 * 1000) harmlessSeen[k] = { ok: harmless(e.mtype, e.attack, densePack(e.mtype)), at: now };
         if (harmlessSeen[k].ok) return false;
         const pk = e.mtype + ":" + (e.level || 1);
         const p = packSeen[pk];
@@ -649,7 +701,116 @@ module.exports = function createTargeting(ctx) {
         }).length;
     }
     function isolated(e) {
+        // In a rage zone there is no lone pull (2026-11-22): stepping in brings the whole spawn, so the zone's own
+        // verdict decides (rageBlocks) - the priest stood at the booboo zone waiting for a lone one.
+        if (rcfg.enabled !== false && zoneAt(util.xy(e))) return true;
         return !icfg.enabled || !aggressive(e) || crowdAround(e) === 0;
+    }
+
+    // ---- rage zones (2026-11-22, server.js rage_logic) --------------------------------
+    // Some spawns have a rage box (map data "rage"; today the mummies and both booboo spawns in
+    // spookytown): every 4.2 s each monster of that spawn takes a player standing in the box as its
+    // target, wherever it is and whether we attacked it or not. The warrior picked one booboo that
+    // stood alone, walked in and all 5 came (terrified, dead in 7 s) - three times. So a spawn with a
+    // rage box counts as a whole: its live members in and around the box (at least its count), judged
+    // with the strongest of them by the pack check (mobbing, fear) or the team model.
+    //   - no monster of the kind is picked when it, our stand point or the straight way there lies in
+    //     a box that fails (nearestSafe);
+    //   - standing in such a box we step out (fighter.leaveRageZone).
+    const rcfg = cfg.rage || {};
+    const zonesByMap = {};
+    function rageZones(mapName) {
+        if (!zonesByMap[mapName]) {
+            const map = G.maps[mapName] || {};
+            zonesByMap[mapName] = (map.monsters || []).filter(function (p) { return p.rage && G.monsters[p.type]; }).map(function (p) {
+                return { type: p.type, b: p.rage, count: p.count || 1, key: mapName + ":" + p.rage.join(",") };
+            });
+        }
+        return zonesByMap[mapName];
+    }
+    function zoneAt(p, mapName) {
+        return rageZones(mapName || character.map).find(function (z) { return boxDist(p, z.b) === 0; }) || null;
+    }
+    const zoneCache = {}; // key -> { at, ok, why }
+    function zoneVerdict(z) {
+        const c = zoneCache[z.key];
+        if (c && Date.now() - c.at < 10 * 1000) return c;
+        const def = G.monsters[z.type];
+        const near = [z.b[0] - 200, z.b[1] - 200, z.b[2] + 200, z.b[3] + 200];
+        const seen = Object.values(parent.entities || {}).filter(function (e) {
+            return e && e.type === "monster" && e.mtype === z.type && !e.dead && boxDist(util.xy(e), near) === 0;
+        });
+        const n = Math.max(seen.length, z.count);
+        const strongest = seen.slice().sort(function (a, b) { return (b.attack || 0) - (a.attack || 0); })[0] ||
+            { mtype: z.type, attack: def.attack, max_hp: def.hp, hp: def.hp, frequency: def.frequency, level: 1 };
+        // Members judge with the team model themselves (every fighter has the team's stats since v1.207.0) - trusting
+        // "the leader decides" let warrior and ranger walk into the level-17 booboos before the leader looked (2026-11-22).
+        // Ahead of the leader (not near): solo pack check.
+        const lead = party.enabled && party.isMember && !party.detached() ? party.leaderInfo() : null;
+        // Or the leader stands at this zone (2026-11-22): the ranger coming back to the accepted 4-booboo zone was more
+        // than 300 px from the leader in its middle, judged it alone ("I survive 2.4 hits") and stepped out again.
+        const leaderNear = !!lead && lead.map === character.map && (Math.hypot(lead.x - character.x, lead.y - character.y) <= ((config.party && config.party.leash) || 300) ||
+            boxDist({ x: lead.x, y: lead.y }, z.b) <= 150);
+        let v = teamModelOn() || leaderNear ? teamVerdict(z.type, strongest, { pull: n }) : packVerdict(strongest, n);
+        if (!v.ok && /waiting for the team/.test(v.why || "")) v = { ok: false, why: "team stats not in yet" };
+        const r = { at: Date.now(), ok: !!v.ok, why: n + " at once (level " + (strongest.level || 1) + "+)" + (v.ok ? "" : ": " + v.why) };
+        zoneCache[z.key] = r;
+        return r;
+    }
+    // Every rage box on a map (for the route guard): { type, b, key }.
+    function rageBoxes(mapName) {
+        return rcfg.enabled === false ? [] : rageZones(mapName).map(function (z) { return { type: z.type, b: z.b, key: z.key }; });
+    }
+    // The failing rage zone within `margin` px of point p (outside or inside) on our map, or null - nobody should stand
+    // there: a booboo at the edge reaches ~64 px by contact aggro (2026-11-22: the warrior stood 13 px off the big
+    // booboo zone after a "Path not found!" and was taken). { type, b, gap }
+    function failingZoneNear(p, margin) {
+        if (rcfg.enabled === false) return null;
+        let best = null;
+        rageZones(character.map).forEach(function (z) {
+            const gap = boxDist(p, z.b);
+            if (gap >= margin || zoneVerdict(z).ok) return;
+            if (!best || gap < best.gap) best = { type: z.type, b: z.b, gap: gap };
+        });
+        return best;
+    }
+    // The failing rage zone at point p on our map, or null.
+    function failingZoneAt(p) {
+        if (rcfg.enabled === false) return null;
+        const z = zoneAt(p);
+        return z && !zoneVerdict(z).ok ? z : null;
+    }
+    // The failing rage zone we stand in, or null. { type, b, why }
+    function rageZoneHere() {
+        if (rcfg.enabled === false) return null;
+        const z = zoneAt(util.xy(character));
+        if (!z) return null;
+        const v = zoneVerdict(z);
+        return v.ok ? null : { type: z.type, b: z.b, why: v.why };
+    }
+    // The failing rage zone that hitting e would take us into (e, our stand point, or the straight way
+    // there lies in it), or null.
+    const rageLogged = {};
+    function rageBlocks(e) {
+        if (rcfg.enabled === false) return null;
+        const me = util.xy(character), stand = standPoint(e), at = util.xy(e);
+        const zones = rageZones(character.map);
+        if (!zones.length) return null;
+        const hit = zones.find(function (z) {
+            if (zoneVerdict(z).ok) return false;
+            if (boxDist(at, z.b) === 0 || boxDist(stand, z.b) === 0) return true;
+            const steps = Math.ceil(Math.hypot(stand.x - me.x, stand.y - me.y) / 25);
+            for (let i = 1; i < steps; i++) {
+                if (boxDist({ x: me.x + (stand.x - me.x) * i / steps, y: me.y + (stand.y - me.y) * i / steps }, z.b) === 0) return true;
+            }
+            return false;
+        });
+        if (!hit) return null;
+        if (Date.now() - (rageLogged[hit.key] || 0) > 2 * 60 * 1000) {
+            rageLogged[hit.key] = Date.now();
+            util.log("target", "not going into the " + hit.type + " rage zone: " + zoneVerdict(hit).why, "orange");
+        }
+        return hit;
     }
 
     // Free monsters of this type that we may hit (damage return, live level check).
@@ -667,7 +828,7 @@ module.exports = function createTargeting(ctx) {
             if (!isolated(e)) return;
             if (!e.target && inOccupied(e)) return; // another player's spot
             const d = util.distanceTo(e);
-            if (d < bestD && !skipDoomed(e)) { bestD = d; best = e; }
+            if (d < bestD && !skipDoomed(e) && !rageBlocks(e)) { bestD = d; best = e; }
         });
         return best;
     }
@@ -686,7 +847,7 @@ module.exports = function createTargeting(ctx) {
         let busy = 0, unsafe = 0, notAlone = 0, occupied = 0;
         seen.forEach(function (e) {
             if (e.target) busy++;
-            else if (util.tooSpiky(config, e) || !liveSafe(e)) unsafe++;
+            else if (util.tooSpiky(config, e) || !liveSafe(e) || rageBlocks(e)) unsafe++; // a failing rage zone counts as too strong
             else if (!isolated(e)) notAlone++;
             else if (inOccupied(e)) occupied++;
         });
@@ -735,6 +896,9 @@ module.exports = function createTargeting(ctx) {
         let why = null;
         Object.values(parent.entities || {}).forEach(function (e) {
             if (why === "lone" || !e || e.type !== "monster" || e.mtype !== type || e.dead || !e.visible || e.target) return;
+            // A spot already given up (taken, or too strong by the spot check) holds nobody back - the priest stood
+            // still next to the big booboo spawn instead of walking on to the other one (2026-11-22).
+            if (inOccupied(e)) return;
             if (!aggressive(e)) return;
             if (util.tooSpiky(config, e) || !liveSafe(e)) {
                 // Only close ones stop us: holding as soon as the first one came into sight
@@ -744,6 +908,161 @@ module.exports = function createTargeting(ctx) {
             else if (!isolated(e)) why = "lone";
         });
         return why;
+    }
+
+    // ---- spot check from the edge (2026-11-22) -------------------------------------
+    // The guide calls a route safe from level-1 stats, and our own checks only judged the monster we
+    // pick - but walking to the middle of the spot pulls whatever is there. 05:31Z: the warrior walked
+    // into the grown booboo pack (aggro 1.5, range 420, faster than us) his own check had just refused
+    // ("skipping booboo level 17") and died; 05:34Z level-15 bbpompoms at the next spot. So the one who
+    // picks the spot (solo, leader) first stops at the edge - its spawn box (the rage box where there is
+    // one) plus the monster's range + 50 px (spotCheck.margin .. maxMargin) - looks for spotCheck.watchMs
+    // and judges what is there:
+    //   aggressive kinds (they join fights, or a rage zone): all free ones in sight come at once - the
+    //   pack check (team model as leader, our own hits and sustain solo) with the strongest of them;
+    //   passive kinds: at least one of them passes our live check.
+    // Fails: the spot is blocked like a too-strong one (until the Cavalry is ready, see markCrowded) and
+    // another target is picked. Passed: no new check until we leave the map or the target changes.
+    // While the check is open no free monster of the kind is picked (ones on us are still fought).
+    const gcfg = cfg.spotCheck || {};
+    let gate = null; // { key, state: "walk" | "watch" | "ok", since }
+    function spotBox(type, spot) {
+        const map = G.maps[spot.map];
+        let box = null;
+        ((map && map.monsters) || []).forEach(function (pack) {
+            if (box || pack.type !== type) return;
+            const boxes = pack.boundaries ? pack.boundaries.filter(function (b) { return b[0] === spot.map; }).map(function (b) { return b.slice(1); })
+                : pack.boundary ? [pack.boundary] : [];
+            boxes.forEach(function (b) {
+                if (box || Math.round((b[0] + b[2]) / 2) !== spot.x || Math.round((b[1] + b[3]) / 2) !== spot.y) return;
+                // Spawn box and rage box together, whichever reaches farther out (player request 2026-11-22).
+                const r = pack.rage;
+                const u = r ? [Math.min(b[0], r[0]), Math.min(b[1], r[1]), Math.max(b[2], r[2]), Math.max(b[3], r[3])] : b;
+                box = { b: u, rage: !!r, count: pack.count || 1 };
+            });
+        });
+        return box;
+    }
+    function boxDist(p, b) {
+        const dx = Math.max(b[0] - p.x, 0, p.x - b[2]), dy = Math.max(b[1] - p.y, 0, p.y - b[3]);
+        return Math.hypot(dx, dy);
+    }
+    // Is p (on our map) within the spot check's edge of a spawn of this type? (party.travelDest)
+    function inSpotArea(p, type) {
+        const def = G.monsters[type];
+        if (!def || !p) return false;
+        const margin = Math.max(gcfg.margin || 150, Math.min((def.range || 0) + 50, gcfg.maxMargin || 450));
+        const mapName = p.map || character.map; // also a route end on another map (2026-11-22)
+        return ((G.maps[mapName] || {}).monsters || []).some(function (pk) {
+            if (pk.type !== type) return false;
+            const boxes = pk.boundaries ? pk.boundaries.filter(function (b) { return b[0] === mapName; }).map(function (b) { return b.slice(1); })
+                : pk.boundary ? [pk.boundary] : [];
+            if (pk.rage) boxes.push(pk.rage);
+            return boxes.some(function (b) { return boxDist(p, b) < margin; });
+        });
+    }
+    function gateApplies(f) {
+        if (!gcfg.enabled || !f || !f.monster || f.any || f.dest || !G.monsters[f.monster] || G.monsters[f.monster].cooperative) return false;
+        if (party.enabled && (party.isMember && !party.detached())) return false;
+        if (party.enabled && gcfg.party === false) return false;
+        const src = String(f.source || "");
+        return !src.startsWith("event") && !src.startsWith("cavalry");
+    }
+    // null: no restriction. { walk: true }: keep walking to the spot, pick nothing of the kind yet.
+    // { hold: true, why }: stand here and watch.
+    function spotGate(f) {
+        if (!gateApplies(f)) { gate = null; return null; }
+        const spot = spotFor(f.monster, f.map);
+        if (!spot) return null;
+        const key = f.monster + "|" + spotKey(spot);
+        if (!gate || gate.key !== key) gate = { key: key, state: "walk", since: Date.now() };
+        // Away from the spot's map: whatever state the gate was in, a new arrival is checked again (2026-11-22: a
+        // "watch" left over from an earlier visit judged at once on arrival, with nothing in sight).
+        if (character.map !== spot.map) { gate = { key: key, state: "walk", since: Date.now() }; return { walk: true }; }
+        if (gate.state === "ok") return null;
+        const box = spotBox(f.monster, spot);
+        if (!box) { gate.state = "ok"; return null; }
+        const def = G.monsters[f.monster];
+        const margin = Math.max(gcfg.margin || 150, Math.min((def.range || 0) + 50, gcfg.maxMargin || 450));
+        const me = util.xy(character);
+        if (gate.state === "walk") {
+            if (boxDist(me, box.b) > margin) return { walk: true };
+            gate.state = "watch";
+            gate.since = Date.now();
+        }
+        if (Date.now() - gate.since < (gcfg.watchMs || 3000)) return { hold: true, why: "checking the " + f.monster + " spot" };
+        // Judge what we see in and around the box.
+        const near = [box.b[0] - 150, box.b[1] - 150, box.b[2] + 150, box.b[3] + 150];
+        const seen = Object.values(parent.entities || {}).filter(function (e) {
+            return e && e.type === "monster" && e.mtype === f.monster && !e.dead && boxDist(util.xy(e), near) === 0;
+        });
+        // Nothing of an aggressive / rage spawn in sight from farther than the edge: walk on and look again from the
+        // edge - "none in sight, level 1 assumed" must come from up close (2026-11-22).
+        if (!seen.length && boxDist(me, box.b) > margin + 20 && (joinsFights(def) || box.rage)) {
+            gate.state = "walk";
+            return { walk: true };
+        }
+        const verdict = judgeSpot(f.monster, seen, box);
+        // Team stats not in yet: keep watching, at most gcfg.maxWaitMs - then the usual checks decide.
+        if (verdict.wait && Date.now() - gate.since < (gcfg.maxWaitMs || 30000)) return { hold: true, why: "checking the " + f.monster + " spot (team stats)" };
+        if (verdict.ok || verdict.wait) {
+            gate.state = "ok";
+            util.log("target", "spot check " + f.monster + ": OK - " + (verdict.why || "no team stats yet"), "green");
+            return null;
+        }
+        gate = null;
+        // Only this spot first (2026-11-22): another spawn of the kind may be fine (booboos: 5 no, 4 yes).
+        const until = (config.cavalry || {}).enabled ? Math.max(cavalryNext(), Date.now() + 10 * 60 * 1000) : Date.now() + (cfg.crowdedForMs || 20 * 60 * 1000);
+        strongSpotUntil[spotKey(spot)] = until;
+        if (allSpotsTaken(f.monster)) markCrowded(verdict.why, true);
+        else {
+            nextPickAt = 0;
+            util.log("target", f.monster + " spot " + spot.map + " " + spot.x + "," + spot.y + " too strong (" + verdict.why + ") - trying another " + f.monster + " spot", "orange");
+        }
+        return { hold: true, why: "spot too strong" };
+    }
+    // Held back by monsters too strong nearby (waitForLone "strong") before the edge (2026-11-22): the check starts
+    // right there - otherwise neither rule moved and the priest stood 170 px from the booboo spawn for good.
+    function spotGateWatchNow(f) {
+        if (!gate || !f || !gateApplies(f)) return;
+        const spot = spotFor(f.monster, f.map);
+        if (!spot || gate.key !== f.monster + "|" + spotKey(spot) || gate.state !== "walk" || character.map !== spot.map) return;
+        // Only near THIS spot (the strong ones may stand at another spawn of the kind - the next spot was judged
+        // "none in sight" from 800 px away right after the big booboo spawn failed).
+        const box = spotBox(f.monster, spot);
+        if (!box || boxDist(util.xy(character), box.b) > (icfg.strongHold || 300) + 50) return;
+        gate.state = "watch";
+        gate.since = Date.now();
+    }
+    function judgeSpot(type, seen, box) {
+        const def = G.monsters[type];
+        // None in sight: fine - except where the whole spawn comes anyway (aggressive or a rage zone, 2026-11-22):
+        // judged with its count at level 1.
+        const none = !seen.length;
+        if (none && !(joinsFights(def) || box.rage)) return { ok: true, why: "none in sight" };
+        const free = seen.filter(function (e) { return !e.target; });
+        const levels = none ? [1] : seen.map(function (e) { return e.level || 1; });
+        const lv = (none ? "none in sight, level 1 assumed" : "levels " + Math.min.apply(null, levels) + "-" + Math.max.apply(null, levels));
+        if (joinsFights(def) || box.rage) {
+            if (!none && !free.length) return { ok: true, why: "all " + seen.length + " busy" };
+            const strongest = none ? { mtype: type, attack: def.attack, max_hp: def.hp, hp: def.hp, frequency: def.frequency, level: 1 }
+                : free.slice().sort(function (a, b) { return (b.attack || 0) - (a.attack || 0) || (b.max_hp || 0) - (a.max_hp || 0); })[0];
+            // No "harmless" shortcut (2026-11-22): it only means 20 single hits - 3 booboos (1.2 hits/s each,
+            // pure) passed as harmless and killed the warrior in 10 s. The pack check counts the rate too.
+            // The whole spawn, not just what we see from the edge (2026-11-22): the check saw 2 free booboos,
+            // 5 came at once out of the rage zone (4x level 2, 1x level 8) - terrified, dead in 7 s.
+            const n = Math.max(free.length, box.count || 0);
+            // A member on its own (detached: far from the leader) judges like a solo fighter (2026-11-22: the
+            // warrior ran ahead into the 5-booboo spawn - "party member: the leader decides" said OK).
+            const v = teamModelOn() ? teamVerdict(type, strongest, { pull: n })
+                : party.enabled && party.isMember && !party.detached() ? { ok: true } : packVerdict(strongest, n);
+            if (!v.ok && /waiting for the team/.test(v.why || "")) return { wait: true };
+            return v.ok ? { ok: true, why: n + " at once fine (" + free.length + " free in sight, " + lv + ")" }
+                : { ok: false, why: n + " in the " + (box.rage ? "rage zone" : "pack") + " (" + free.length + " free in sight, " + lv + ") would come at once: " + v.why };
+        }
+        const fine = free.filter(function (e) { return !util.tooSpiky(config, e) && liveSafe(e); });
+        if (fine.length || !free.length) return { ok: true, why: fine.length + " of " + seen.length + " fine (" + lv + ")" };
+        return { ok: false, why: "none of " + seen.length + " passes the live check (" + lv + ")" };
     }
 
     // Leader command "/safety [map]": every monster of the map (default: ours) with each
@@ -766,7 +1085,15 @@ module.exports = function createTargeting(ctx) {
             });
             const v = teamVerdict(t);
             util.log("safety", t + " | " + members.join(" ") + " | team: " + (v.ok ? "OK - " : "no - ") + v.why, v.ok ? "green" : "white");
+            // Its rage zones (2026-11-22): the whole spawn at once, as the bot decides there (level 1 stats here).
+            rageZones(mapId).filter(function (z) { return z.type === t; }).forEach(function (z) {
+                const rv = teamVerdict(t, null, { pull: z.count });
+                util.log("safety", "  " + t + " rage zone (" + z.count + " at once): " + (rv.ok ? "OK - " : "no - ") + rv.why, rv.ok ? "green" : "orange");
+            });
         });
+        // Learned hit factors (real / predicted damage per hit, 2026-11-22), strongest first.
+        const hf = util.hitFactors().slice(0, 12).map(function (x) { return x[0] + " " + x[1].toFixed(2) + " (" + x[2] + " hits)"; });
+        if (hf.length) util.log("safety", "hit factors: " + hf.join(", "), "white");
     }
 
     // Who (if anyone) is not safe at this monster.
@@ -825,6 +1152,8 @@ module.exports = function createTargeting(ctx) {
         let own = null;
         try { own = ownSafe(get_progression()); } catch (e) { /* guide not ready */ }
         if (!own) return "no guide data yet";
+        // Every spot of it taken or found too strong by the spot check (2026-11-22: hunts kept the team there).
+        if (allSpotsTaken(monster)) return "every " + monster + " spot taken or too strong";
         const who = objector(monster, own);
         return who ? "not safe for " + who : null;
     }
@@ -986,14 +1315,17 @@ module.exports = function createTargeting(ctx) {
         const ns = noneSeen[m];
         return !!(ns && Date.now() - ns.at < 3 * 60 * 1000 && ns.unsafe > 0 && ns.taken === 0);
     }
-    function markCrowded(why) {
+    // strong (spot check, 2026-11-22): too strong, judged from the edge - `why` says what we saw.
+    function markCrowded(why, strong) {
         const now = Date.now();
-        if ((config.cavalry || {}).enabled && tooStrongHere(farm.monster)) {
+        // Without the Cavalry a too-strong spot is skipped like a crowded one (crowdedForMs, doubling on repeats).
+        if ((config.cavalry || {}).enabled && (strong || tooStrongHere(farm.monster))) {
             const until = Math.max(cavalryNext(), now + 10 * 60 * 1000);
             crowdedUntil[farm.monster] = until;
             strongSpots[farm.monster] = now;
             saveStrong();
-            util.log("target", farm.monster + " too strong here (" + noneSeen[farm.monster].unsafe + " of " + noneSeen[farm.monster].seen + " in sight) - blocked until the Cavalry is ready (~" + Math.max(1, Math.round((until - now) / 60000)) + " min), then reset", "orange");
+            const what = strong ? "spot check: " + why : noneSeen[farm.monster].unsafe + " of " + noneSeen[farm.monster].seen + " in sight";
+            util.log("target", farm.monster + " too strong here (" + what + ") - blocked until the Cavalry is ready (~" + Math.max(1, Math.round((until - now) / 60000)) + " min), then reset", "orange");
             idleSince = 0;
             win = null;
             nextPickAt = 0;
@@ -1006,7 +1338,7 @@ module.exports = function createTargeting(ctx) {
         crowdedUntil[farm.monster] = now + ms;
         crowdHistory[farm.monster] = { n: n, at: now, until: now + ms };
         try { set(CROWD_KEY, crowdHistory); } catch (e) { /* storage unavailable */ }
-        util.log("target", farm.monster + " spot looks crowded (" + why + ") - trying another target for " + Math.round(ms / 60000) + " min", "orange");
+        util.log("target", farm.monster + (strong ? " too strong (spot check: " : " spot looks crowded (") + why + ") - trying another target for " + Math.round(ms / 60000) + " min", "orange");
         idleSince = 0;
         win = null;
         nextPickAt = 0; // pick again right away
@@ -1073,6 +1405,14 @@ module.exports = function createTargeting(ctx) {
         if (lead && lead.farm && !party.detached()) {
             if (!farm || farm.monster !== lead.farm || srcKind(farm) !== "leader") util.log("target", "farm target: " + lead.farm + " (leader)", "yellow");
             farm = { monster: lead.farm, source: "leader" };
+            nextPickAt = 0;
+            return farm;
+        }
+        // A member without the leader's farm target yet (right after a restart) waits for it instead of choosing its
+        // own (2026-11-22: warrior and ranger ran off to the CGoos in the desert while the leader went to the booboos).
+        if (party.enabled && party.isMember && !party.detached()) {
+            if (!farm || farm.source !== "waiting for the leader") util.log("target", "waiting for the leader's farm target", "white");
+            farm = { monster: null, source: "waiting for the leader" };
             nextPickAt = 0;
             return farm;
         }
@@ -1149,20 +1489,78 @@ module.exports = function createTargeting(ctx) {
         try { return get("dmpx_cavalry_called") || 0; } catch (e) { return 0; }
     }
     let cavPlan = null; // { monster, mode: "reset" | "nuke", since }
+    // A spot of `type` found too strong that the team could take with fresh level-1 monsters (the Cavalry's reset
+    // brings them back at level 1): the whole spawn at once where it comes at once (aggressive / rage), else one.
+    // { map, x, y, why } of the cheapest such spot, or null. Spots other players hold are left out.
+    function huntResetSpot(type) {
+        const def = G.monsters[type];
+        if (!def) return null;
+        const now = Date.now();
+        let best = null;
+        Object.keys(G.maps).forEach(function (m) {
+            const map = G.maps[m];
+            if (map.ignore || map.instance) return;
+            (map.monsters || []).forEach(function (pk) {
+                if (pk.type !== type) return;
+                const boxes = pk.boundaries ? pk.boundaries : pk.boundary ? [[m].concat(pk.boundary)] : [];
+                boxes.forEach(function (b) {
+                    const spot = { map: b[0], x: Math.round((b[1] + b[3]) / 2), y: Math.round((b[2] + b[4]) / 2) };
+                    const k = spotKey(spot);
+                    if (!(strongSpotUntil[k] > now) || occupiedUntil[k] > now) return;
+                    const n = joinsFights(def) || pk.rage ? (pk.count || 1) : 1;
+                    const fresh = { mtype: type, attack: def.attack, max_hp: def.hp, hp: def.hp, frequency: def.frequency, level: 1 };
+                    const v = teamModelOn() ? teamVerdict(type, fresh, { pull: n }) : packVerdict(fresh, n);
+                    if (!v.ok) return;
+                    if (!best || n < best.n) best = { map: spot.map, x: spot.x, y: spot.y, n: n, why: n + " at level 1: " + v.why };
+                });
+            });
+        });
+        return best;
+    }
+    // Cavalry reset at a spot with a rage box (2026-11-22): we call from just outside the box, never from inside
+    // (inside, the whole spawn targets us, and the sentries only take level 3+). { hold, why } or null (walk on).
+    function cavalryEdge(f) {
+        if (!f || !String(f.source || "").startsWith("cavalry") || !cavPlan || !cavPlan.spot || character.map !== cavPlan.spot.map) return null;
+        const box = spotBox(f.monster, cavPlan.spot);
+        if (!box || !box.rage) return null;
+        const gap = boxDist(util.xy(character), box.b);
+        return gap <= (cfg.cavalryEdge || 90) ? { hold: true, why: "waiting at the " + f.monster + " zone for the Cavalry" } : null;
+    }
     function cavalryPlan(override) {
         const cv = config.cavalry || {};
         const list = farmList(override);
         // Without a config list: only resets of too-strong spots from the guide's XP list (2026-11-21).
-        if (!cv.enabled || (!list.length && !Object.keys(strongSpots).length) || (party.enabled && party.isMember && !party.detached())) { cavPlan = null; return null; }
+        if (!cv.enabled || (party.enabled && party.isMember && !party.detached())) { cavPlan = null; return null; }
+        const huntsBlocked = !cavPlan && cavalryReady() && ctx.hunts && ctx.hunts.blocked ? ctx.hunts.blocked() : [];
+        if (!cavPlan && !list.length && !Object.keys(strongSpots).length && !huntsBlocked.length) return null;
         const now = Date.now();
         if (cavPlan) {
             const called = cavalryCalledAt();
-            const done = called > cavPlan.since && now - called > (cv.planStayMs || 100 * 1000);
+            let done = called > cavPlan.since && now - called > (cv.planStayMs || 100 * 1000);
+            // Hunt reset: at the spot with nothing of level 3+ there, there is nothing to reset - the spot check
+            // judges it again as it is (2026-11-22).
+            if (!done && cavPlan.hunt && cavPlan.spot && character.map === cavPlan.spot.map && !(called > cavPlan.since)) {
+                const box = spotBox(cavPlan.monster, cavPlan.spot);
+                if (box && boxDist(util.xy(character), box.b) <= 200) {
+                    const near = [box.b[0] - 200, box.b[1] - 200, box.b[2] + 200, box.b[3] + 200];
+                    const grown = Object.values(parent.entities || {}).some(function (e) {
+                        return e && e.type === "monster" && e.mtype === cavPlan.monster && !e.dead && (e.level || 1) >= 3 && boxDist(util.xy(e), near) === 0;
+                    });
+                    if (!grown && now - cavPlan.since > 20 * 1000) {
+                        util.log("target", "cavalry reset at " + cavPlan.monster + ": nothing of level 3+ there - the spot check decides", "white");
+                        delete strongSpotUntil[spotKey(cavPlan.spot)];
+                        cavPlan = null;
+                        nextPickAt = 0;
+                        return null;
+                    }
+                }
+            }
             const tooLong = now - cavPlan.since > (cv.planMaxMs || 10 * 60 * 1000);
             if (done || tooLong) {
                 util.log("target", "cavalry " + cavPlan.mode + " at " + cavPlan.monster + (done ? " done" : " gave up") + " - back to the farm list", done ? "green" : "orange");
                 if (!done && strongSpots[cavPlan.monster]) crowdedUntil[cavPlan.monster] = Math.max(cavalryNext(), now + 30 * 60 * 1000); // try again with the next Cavalry
                 if (done && cavPlan.mode === "reset") {
+                    if (cavPlan.spot) delete strongSpotUntil[spotKey(cavPlan.spot)];
                     delete crowdedUntil[cavPlan.monster];
                     delete crowdHistory[cavPlan.monster];
                     if (strongSpots[cavPlan.monster]) { delete strongSpots[cavPlan.monster]; saveStrong(); }
@@ -1174,25 +1572,35 @@ module.exports = function createTargeting(ctx) {
                 nextPickAt = 0;
                 return null;
             }
-            return { monster: cavPlan.monster, source: "cavalry " + cavPlan.mode };
+            return { monster: cavPlan.monster, source: "cavalry " + cavPlan.mode, map: cavPlan.spot ? cavPlan.spot.map : undefined };
         }
         if (!cavalryReady()) return null;
+        // An open hunt held back only by too-strong spots (player decision 2026-11-22): the Cavalry resets the spot
+        // that the team could take with fresh level-1 monsters, then the hunt is done there.
+        for (const m of huntsBlocked) {
+            if (recentDeath(m)) continue;
+            const spot = huntResetSpot(m);
+            if (!spot) continue;
+            cavPlan = { monster: m, mode: "reset", since: now, spot: spot, hunt: true };
+            util.log("target", "Cavalry ready: reset at the " + m + " spot " + spot.map + " " + spot.x + "," + spot.y + " for the hunt (" + spot.why + ")", "yellow");
+            return { monster: m, source: "cavalry reset", map: spot.map };
+        }
         if (!list.length) {
             // Guide list: the best too-strong spot that ranks above where we farm now.
             const rank = teamXpRanking() || [];
             const cur = farm ? rank.indexOf(farm.monster) : -1;
-            const m = rank.find(function (x) { return strongSpots[x] && !allSpotsTaken(x) && !recentDeath(x); });
+            const m = rank.find(function (x) { return strongSpots[x] && !allSpotsTaken(x, true) && !recentDeath(x); });
             if (m && (cur === -1 || rank.indexOf(m) < cur)) cavPlan = { monster: m, mode: "reset", since: now };
             if (cavPlan) util.log("target", "Cavalry ready: reset at " + cavPlan.monster + " (too strong before)", "yellow");
             return cavPlan ? { monster: cavPlan.monster, source: "cavalry " + cavPlan.mode } : null;
         }
         // The first target skipped as too strong OR closed by a death (player decision 2026-11-19):
         // the Cavalry resets it, then it is farmed again.
-        if ((crowdedUntil[list[0]] > now || recentDeath(list[0])) && !allSpotsTaken(list[0])) cavPlan = { monster: list[0], mode: "reset", since: now };
+        if ((crowdedUntil[list[0]] > now || recentDeath(list[0])) && !allSpotsTaken(list[0], true)) cavPlan = { monster: list[0], mode: "reset", since: now };
         // Nuke only while we actually farm the first target (fighting there within the last
         // minute) - arriving at grown booboos must lead to their reset, not to the dinos.
         else if (!farmBlocked(list[0]) && farm && farm.monster === list[0] && now - lastFoundAt < 60 * 1000) {
-            const t = (cv.targets || []).find(function (m) { return G.monsters[m] && !recentDeath(m) && !allSpotsTaken(m); });
+            const t = (cv.targets || []).find(function (m) { return G.monsters[m] && !recentDeath(m) && !allSpotsTaken(m, true); });
             if (t) cavPlan = { monster: t, mode: "nuke", since: now };
         }
         if (cavPlan) util.log("target", "Cavalry ready: " + cavPlan.mode + " at " + cavPlan.monster, "yellow");
@@ -1356,10 +1764,33 @@ module.exports = function createTargeting(ctx) {
         const ev = config.events || {};
         return (ev.search || []).concat(ev.engage || []);
     }
+    // Hold ring of an aggressive boss (2026-11-22): the ranger waited for the team inside Jr.'s spawn box
+    // (Jr.: aggro 1, rage 1, roams the box at 40, charges at 90) - Jr. walked into him and the fight began
+    // without the team. A boss with aggro or rage >= 0.3 is waited for outside its spawn box on our map, by
+    // its range + its charge (or speed) + 50 px. { box, margin } or null (passive boss, or no box near it).
+    function bossBox(t) {
+        const map = G.maps[character.map] || {};
+        let best = null, bd = Infinity;
+        (map.monsters || []).forEach(function (pk) {
+            if (pk.type !== t.mtype) return;
+            const boxes = pk.boundaries ? pk.boundaries.filter(function (b) { return b[0] === character.map; }).map(function (b) { return b.slice(1); })
+                : pk.boundary ? [pk.boundary] : [];
+            boxes.forEach(function (b) { const d = boxDist(util.xy(t), b); if (d < bd) { bd = d; best = b; } });
+        });
+        return best && bd < 300 ? best : null;
+    }
+    function bossHoldRing(t) {
+        const def = t && G.monsters[t.mtype];
+        if (!def || !((def.aggro || 0) >= 0.3 || (def.rage || 0) >= 0.3)) return null;
+        const box = bossBox(t);
+        if (!box) return null;
+        return { box: box, margin: (t.range || def.range || 30) + Math.max(def.charge || 0, def.speed || 0) + 50 };
+    }
     function teamAt(t) {
         const fighters = (config.team && config.team.fighters) || [];
         const p = util.xy(t);
         const r = (config.events && config.events.holdRange) || 350;
+        const ring = bossHoldRing(t);
         return fighters.every(function (n) {
             if (n !== character.name && !party.inParty(n)) return true; // not with us (offline)
             const f = n === character.name ? character : get_player(n);
@@ -1367,7 +1798,8 @@ module.exports = function createTargeting(ctx) {
             if (f && f.rip) return true;
             if (!f) return n === character.name;
             const q = util.xy(f);
-            return Math.hypot(q.x - p.x, q.y - p.y) <= r;
+            // On the hold ring of an aggressive boss counts as "here" too (it may be farther than holdRange).
+            return Math.hypot(q.x - p.x, q.y - p.y) <= r || (!!ring && f.map === character.map && boxDist(q, ring.box) <= ring.margin + 120);
         });
     }
     let holdLogged = 0;
@@ -1405,8 +1837,81 @@ module.exports = function createTargeting(ctx) {
     // the attackers of its damage type on us already reach our courage for it - fear would cut our
     // attack to 60/40/20 %. Monsters already on us or a member are fought as usual.
     let fearLogged = 0;
+    // ---- mobbing guard and live danger (2026-11-22, see util.mobbing) ----------------
+    // More than 3 monsters on one of us multiply every hit on that one. So no new free monster while
+    // one of our fighters already has mobbing.maxOnOne (3) on it - unless the new one hits so hard that
+    // mobbing adds at most guardMinMult (strong monsters: 300 / attack is small). Monsters already
+    // on us or a member are fought as usual. Agitate decides with its own pack check.
+    const mcfg = cfg.mobbing || {};
+    let mobLogged = 0;
+    function onFighter(name) {
+        return Object.values(parent.entities || {}).filter(function (e) {
+            return e && e.type === "monster" && !e.dead && e.target === name;
+        }).length;
+    }
+    function mobGuard(t) {
+        if (mcfg.enabled === false || mcfg.guard === false || !t || t.target) return false;
+        if (util.mobCap(t.attack || (G.monsters[t.mtype] || {}).attack) <= (mcfg.guardMinMult || 1.25)) return false;
+        const names = [character.name].concat(party.enabled ? party.memberNames() : []);
+        const most = names.reduce(function (best, n) {
+            const c = onFighter(n);
+            return c > best.c ? { n: n, c: c } : best;
+        }, { n: null, c: 0 });
+        if (most.c < (mcfg.maxOnOne || 3)) return false;
+        if (Date.now() - mobLogged > 60 * 1000) {
+            mobLogged = Date.now();
+            util.log("target", "not pulling " + t.mtype + ": " + most.c + " already on " + most.n + " (a 4th starts the mobbing bonus)", "white");
+        }
+        return true;
+    }
+    // What the monsters on us deal right now, with the live mobbing combo (util.mobNow) carried
+    // mobbing.projectSec ahead: { dps, sustain, ttd (s until dead, Infinity if we gain), onMe, mult }.
+    function liveDanger() {
+        const me = character;
+        const on = Object.values(parent.entities || {}).filter(function (e) {
+            return e && e.type === "monster" && !e.dead && e.target === me.name;
+        });
+        if (!on.length) return { dps: 0, sustain: 0, ttd: Infinity, onMe: 0, mult: 1 };
+        const now = util.mobNow(0);
+        let dps = 0, hps = 0, maxMult = 1;
+        on.forEach(function (e) {
+            const def = G.monsters[e.mtype] || {};
+            const reach = (e.range || def.range || 30) + 60;
+            if (util.distanceTo(e) > reach) return; // still on its way - no hits yet
+            hps += e.frequency || def.frequency || 1;
+        });
+        // The combo the next projectSec of hits will reach (only while more than 3 target us).
+        const combo = on.length > 3 ? Math.max(now.combo, 1) + Math.round(hps * (mcfg.projectSec || 4)) : 0;
+        on.forEach(function (e) {
+            const def = G.monsters[e.mtype] || {};
+            if (util.distanceTo(e) > (e.range || def.range || 30) + 60) return;
+            const att = e.attack || def.attack || 0;
+            const mult = combo ? Math.min(combo > 10 ? combo / 4 : 2, util.mobCap(att)) : 1;
+            maxMult = Math.max(maxMult, mult);
+            dps += util.predictedHit(e, me) * util.hitFactor(e.mtype) * mult * (e.frequency || def.frequency || 1);
+        });
+        // Party (2026-11-22): every living healer within its range of us heals too - its heal per second
+        // (reported stats) x mobbing.healShare, as it heals others now and then.
+        let healing = 0;
+        if (party.enabled) {
+            const team = ctx.events && ctx.events.teamStats ? ctx.events.teamStats() : [];
+            team.forEach(function (f) {
+                if (!f || !(f.heal > 0) || f.name === me.name) return;
+                const p = get_player(f.name);
+                if (!p || p.rip || util.distanceTo(p) > (f.range || p.range || 0) + 20) return;
+                healing += f.heal * (f.frequency || 1) * (mcfg.healShare || 0.8);
+            });
+        }
+        const sustain = potionHps() + healing;
+        const net = dps - sustain;
+        return { dps: dps, sustain: sustain, healing: healing, ttd: net > 0 ? me.hp / net : Infinity, onMe: on.length, mult: maxMult };
+    }
     function pick(farmTarget) {
         const t = pickInner(farmTarget);
+        if (t && mobGuard(t)) {
+            util.status("mobbing: no new pull", "white");
+            return null;
+        }
         if (t && util.wouldScare(t)) {
             if (Date.now() - fearLogged > 60 * 1000) {
                 fearLogged = Date.now();
@@ -1479,13 +1984,15 @@ module.exports = function createTargeting(ctx) {
             const boss = get_nearest_monster({ type: type }); // bosses never die to one volley
             if (isValid(boss)) return boss;
         }
+        // Spot check from the edge still open: nothing of the kind picked yet (2026-11-22).
+        if (spotGate(farmTarget)) return null;
         const best = nearestSafe(type);
         if (!best) explainNone(type);
         return best;
     }
 
     return { currentFarm: currentFarm, farmNow: function () { return farm; }, pick: pick, xpRanking: teamXpRanking, heldBossNear: heldBossNear, doomed: doomed, isValid: isValid, reportSearch: reportSearch, isTeamSafe: isTeamSafe, whyUnsafe: whyUnsafe,
-        teamModelOn: teamModelOn, teamVerdict: teamVerdict, safetyReport: safetyReport, waitForLone: waitForLone, watchPoint: watchPoint, standPoint: standPoint, aggressive: aggressive, diedAt: diedAt, deathAt: deathAt, spotFor: spotFor, liveSafe: liveSafe, inOccupied: inOccupied, packVerdict: packVerdict, isEasy: isEasy,
+        teamModelOn: teamModelOn, teamVerdict: teamVerdict, spotGate: spotGate, liveDanger: liveDanger, mobGuard: mobGuard, rageZoneHere: rageZoneHere, failingZoneAt: failingZoneAt, bossHoldRing: bossHoldRing, holdingBoss: holdBossQuiet, inSpotArea: inSpotArea, cavalryEdge: cavalryEdge, spotGateWatchNow: spotGateWatchNow, rageBoxes: rageBoxes, failingZoneNear: failingZoneNear, safetyReport: safetyReport, waitForLone: waitForLone, watchPoint: watchPoint, standPoint: standPoint, aggressive: aggressive, diedAt: diedAt, deathAt: deathAt, spotFor: spotFor, liveSafe: liveSafe, inOccupied: inOccupied, packVerdict: packVerdict, isEasy: isEasy,
         // HP a solo fight against this monster costs (0 if it was never checked: harmless or low level).
         soloCost: function (e) { return (e && soloCostById[e.id]) || 0; } };
 };

@@ -377,12 +377,18 @@ module.exports = function createWarrior(ctx) {
         if (ag.monsters !== "auto" || !auto.type) return true;
         return list.some(function (m) { return m.mtype === auto.type; });
     }
+    // A monster standing in a rage zone the team can't take (2026-11-22): the stream walked to the level-17 booboos
+    // and Agitated them - warrior and ranger died before the leader had looked at the spot.
+    function inBadZone(e) {
+        return !!(ctx.targeting.failingZoneAt && ctx.targeting.failingZoneAt(util.xy(e)));
+    }
     // Free monsters of the wanted kind around us (not fighting another player).
     function packAround(range) {
         return Object.values(parent.entities || {}).filter(function (e) {
             return e && e.type === "monster" && !e.dead && e.visible && packWanted(e) &&
                 util.distanceTo(e) <= range && (!e.target || e.target === character.name) &&
-                !(ctx.targeting.inOccupied && ctx.targeting.inOccupied(e)); // another player's spot
+                !(ctx.targeting.inOccupied && ctx.targeting.inOccupied(e)) && // another player's spot
+                (e.target === character.name || !inBadZone(e));
         });
     }
     // Monsters Agitate would pull as well although we don't want them: other kinds (when
@@ -393,7 +399,7 @@ module.exports = function createWarrior(ctx) {
             if (!e || e.type !== "monster" || e.dead || util.distanceTo(e) > range) return false;
             if (e.target && e.target !== character.name) return false; // busy with another player
             const def = G.monsters[e.mtype] || {};
-            return !packWanted(e) || def.dreturn > 0 || util.tooSpiky(ctx.config, e);
+            return !packWanted(e) || def.dreturn > 0 || util.tooSpiky(ctx.config, e) || (e.target !== character.name && inBadZone(e));
         });
     }
     function onMe() {
@@ -480,6 +486,58 @@ module.exports = function createWarrior(ctx) {
         }
         if (best) best.here = best.d <= (ag.centerWithin || 20);
         return best;
+    }
+
+    // ---- gap step (player idea 2026-11-22) ---------------------------------------------------
+    // The splash hits what stands around the TARGET (server: within explosion / 3.6 px, hitbox to hitbox),
+    // there is no facing. With 3 scorpions on one side and 1 behind us, the one behind never takes splash.
+    // A step into the emptiest direction - the middle of the largest angle gap between the monsters on us -
+    // puts them all on the side we came from: they follow and bunch up there. Splash weapons on, at least
+    // gapStep.minOnMe on us, and the best target's splash misses one of those in our range; at most every
+    // everyMs, earlier (from minMs) only when all of them are in range again. Not into free monsters, a
+    // failing rage zone, or (member) off the leash.
+    const gs = ag.gapStep || {};
+    let lastGap = 0, gapSteps = 0, gapLogAt = Date.now();
+    function gapStep(mine, covered) {
+        if (gs.enabled === false || is_moving(character)) return false;
+        const inRange = mine.filter(function (m) { return is_in_range(m); });
+        if (mine.length < (gs.minOnMe || 3) || covered >= inRange.length) return false;
+        const now = Date.now();
+        const since = now - lastGap;
+        if (since < (gs.minMs || 2500) || (since < (gs.everyMs || 4000) && inRange.length < mine.length)) return false;
+        const me = util.xy(character);
+        const angles = mine.map(function (m) { const p = util.xy(m); return Math.atan2(p.y - me.y, p.x - me.x); }).sort(function (a, b) { return a - b; });
+        const gaps = angles.map(function (a, i) {
+            const next = i + 1 < angles.length ? angles[i + 1] : angles[0] + 2 * Math.PI;
+            return { size: next - a, mid: a + (next - a) / 2 };
+        }).sort(function (a, b) { return b.size - a.size; });
+        const step = gs.step || 50;
+        const free = Object.values(parent.entities || {}).filter(function (e) {
+            return e && e.type === "monster" && !e.dead && !e.target;
+        }).map(util.xy);
+        const lead = ctx.party.enabled && ctx.party.isMember && !ctx.party.detached() ? ctx.party.leaderInfo() : null;
+        const leash = (ctx.config.party && ctx.config.party.leash) || 300;
+        for (const g of gaps) {
+            const x = me.x + Math.cos(g.mid) * step, y = me.y + Math.sin(g.mid) * step;
+            if (!can_move_to(x, y)) continue;
+            if (free.some(function (q) { return Math.hypot(q.x - x, q.y - y) < 80; })) continue; // would pull a free one
+            if (ctx.targeting.failingZoneAt && ctx.targeting.failingZoneAt({ x: x, y: y })) continue;
+            if (lead && lead.map === character.map && Math.hypot(lead.x - x, lead.y - y) > leash) continue;
+            lastGap = now;
+            gapSteps++;
+            quiet(move(x, y));
+            if (now - gapLogAt > 10 * 60 * 1000) {
+                util.log("warrior", "gap steps: " + gapSteps + " in " + Math.round((now - gapLogAt) / 60000) + " min (splash per hit " + splashAvg() + ")", "white");
+                gapLogAt = now; gapSteps = 0;
+            }
+            util.status("gap step: " + mine.length + " on us, splash took " + covered, "orange");
+            return true;
+        }
+        return false;
+    }
+    function splashAvg() {
+        const st = auto.type ? statOf(auto.type) : null;
+        return st && st.hits ? (st.nsum / st.hits).toFixed(2) : "?";
     }
 
     // A step away from the pack's middle: it follows from one side and bunches up.
@@ -577,7 +635,7 @@ module.exports = function createWarrior(ctx) {
             // the warrior kept hitting goos and fell behind).
             if (ag.monsters === "auto" && auto.type && e.mtype !== auto.type) return false;
             return packWanted(e) && !e.target && !(ctx.targeting.inOccupied && ctx.targeting.inOccupied(e)) &&
-                !util.tooSpiky(ctx.config, e) && util.distanceTo(e) <= 600;
+                !util.tooSpiky(ctx.config, e) && util.distanceTo(e) <= 600 && !inBadZone(e);
         }).sort(function (a, b) { return util.distanceTo(a) - util.distanceTo(b); });
         if (!around.length) return false;
         const inRange = around.filter(function (m) { return is_in_range(m); });
@@ -589,6 +647,8 @@ module.exports = function createWarrior(ctx) {
                 const mine = onMe();
                 let bestN = -1;
                 inRange.forEach(function (m) { const n = splashNeighbours(m, mine); if (n > bestN) { bestN = n; t = m; } });
+                // Some on us out of that splash (e.g. one behind us): a step into the emptiest direction first.
+                if (gapStep(mine, bestN + 1)) return true;
             }
             if (get_targeted_monster() !== t) change_target(t);
             // Fired by the strike loop the moment the cooldown ends (2026-11-20).
@@ -641,33 +701,127 @@ module.exports = function createWarrior(ctx) {
     let lastAgitate = { at: 0, type: null };
 
     // Escape (solo, any mode; 2026-11-18 after three deaths at the bats): below escapeHp with
-    // monsters on us that are all slower than we are, run - and keep running - away from them
-    // until none is within escapeClear px or escapeMs has passed; no swings meanwhile (monsters
-    // drop a chase that gets too long). Then the normal rest heals us up. Cornered (no free step)
-    // or facing faster monsters: fight on with Hard Shell and potions.
-    const esc = { until: 0 };
+    // monsters on us that are all slower than we are, run - and keep running - away from them;
+    // no swings meanwhile (monsters drop a chase that gets too long). Then the normal rest heals
+    // us up. Cornered (no free step) or facing faster monsters: fight on with Hard Shell and potions.
+    // Out of reach, not just out of melee (2026-11-22: two level-15 bbpompoms shoot 280 px; the escape
+    // ended at 250 px as "nobody close", the warrior fought back at 6 % HP and the next escape ended the
+    // same way - ten times until he died). So the escape lasts while anyone is on us and we are low:
+    //   done when nobody targets us any more, or nobody can reach us (its range + escapeMargin, at least
+    //   escapeClear) and the potions brought us back to escapeUntilHp, or after escapeMaxMs.
+    const esc = { on: false, start: 0 };
+    function reachOf(e) {
+        return Math.max(ag.escapeClear || 250, (e.range || (G.monsters[e.mtype] || {}).range || 0) + (ag.escapeMargin || 100));
+    }
+    // A step away from them, all around (2026-11-22: in the bat cave five directions within 70° of
+    // "straight away" at 200 px were all blocked - "cornered" four times, then dead). 16 directions,
+    // 200/120/70 px; the step that leaves the most room to the nearest of them wins.
+    // Protective Agitate (2026-11-22): Agitate takes EVERY monster within 320 px, not only those on our allies.
+    // Only when the team model (mobbing, fear, the priest's healing) says we can hold all of them at once -
+    // the ones already on us included; otherwise Taunt takes them one by one. Logged once a minute.
+    let protLogged = 0;
+    function protectiveAgitateOk() {
+        if (!ctx.targeting || !ctx.targeting.teamVerdict) return true;
+        const all = Object.values(parent.entities || {}).filter(function (e) {
+            if (!e || e.type !== "monster" || e.dead) return false;
+            if (e.target === character.name) return true;
+            return util.distanceTo(e) <= G.skills.agitate.range && (!e.target || ctx.party.memberNames().includes(e.target));
+        });
+        if (!all.length) return true;
+        const strongest = all.slice().sort(function (a, b) { return (b.attack || 0) - (a.attack || 0); })[0];
+        const v = ctx.targeting.teamVerdict(strongest.mtype, strongest, { pull: all.length });
+        if (v.ok || /waiting for the team/.test(v.why || "")) return true; // no stats yet: as before
+        if (Date.now() - protLogged > 60 * 1000) {
+            protLogged = Date.now();
+            util.log("warrior", "no protective Agitate: " + all.length + " would be on us (" + v.why + ") - taunting one by one", "white");
+        }
+        return false;
+    }
+    // In a party, the nearest living healer (heal stat) and its reach: escape steps stay within it.
+    function healerNear() {
+        if (!ctx.party.enabled) return null;
+        let best = null;
+        ctx.party.memberNames().forEach(function (n) {
+            if (n === character.name) return;
+            const p = get_player(n);
+            if (!p || p.rip || !(p.heal > 0 || p.ctype === "priest")) return;
+            if (!best || util.distanceTo(p) < util.distanceTo(best)) best = p;
+        });
+        return best ? { x: util.xy(best).x, y: util.xy(best).y, reach: Math.max(80, (best.range || 150) * 0.9) } : null;
+    }
+    function escapeStep(list) {
+        const me = util.xy(character);
+        const pts = list.map(util.xy);
+        const healer = healerNear();
+        let best = null, bestRoom = -Infinity;
+        [ag.escapeStep || 200, 120, 70].forEach(function (step) {
+            if (best && (!healer || bestRoom > -500)) return; // a longer step that works beats a shorter one
+            for (let i = 0; i < 16; i++) {
+                const a = i * Math.PI / 8;
+                const x = me.x + Math.cos(a) * step, y = me.y + Math.sin(a) * step;
+                if (!can_move_to(x, y)) continue;
+                let room = Math.min.apply(null, pts.map(function (p) { return Math.hypot(p.x - x, p.y - y); }));
+                const now = Math.min.apply(null, pts.map(function (p) { return Math.hypot(p.x - me.x, p.y - me.y); }));
+                if (room <= now) continue; // not away from them
+                // Party: out of the healer's reach only if nothing else is left (2026-11-22).
+                if (healer && Math.hypot(healer.x - x, healer.y - y) > healer.reach) room -= 1000;
+                if (room > bestRoom) { bestRoom = room; best = { x: x, y: y }; }
+            }
+        });
+        if (!best) return false;
+        quiet(move(best.x, best.y));
+        return true;
+    }
+    // Party (2026-11-22, player decision): the warrior holds every monster, so when the priest's healing can't
+    // keep up he runs too - they all follow him, the mobbing combo runs out after 5 s without a hit, and the
+    // priest heals him meanwhile (the step stays within the healer's range where it can). Only when the live
+    // check - healing included - says we die within escapeTtdSec, never just for low HP the priest covers.
     function escapeTick() {
-        if (ctx.party.enabled) return false;
+        const inParty = ctx.party.enabled;
+        if (inParty && ag.partyEscape === false) return false;
         const now = Date.now();
         const on = onMe();
         speedRef = Math.max(speedRef, character.speed || 0);
-        if (!esc.until) {
-            if (util.hpRatio() >= (ag.escapeHp || 0.3) || !on.length) return false;
-            if (on.some(function (m) { return (m.speed || (G.monsters[m.mtype] || {}).speed || 0) >= speedRef * 0.8; })) return false;
-            esc.until = now + (ag.escapeMs || 10000);
-            util.log("warrior", "escaping at " + Math.round(util.hpRatio() * 100) + "% HP from " + on.length + "x " + on[0].mtype, "red");
+        if (!esc.on) {
+            if (!on.length || now < (esc.retryAt || 0)) return false;
+            // Also above escapeHp when a mob (more than 3 on us, util.mobbing) would kill us within
+            // escapeTtdSec at the live combo (2026-11-22).
+            let mobbed = null;
+            const low = util.hpRatio() < (ag.escapeHp || 0.3);
+            if ((on.length > 3 && util.hpRatio() < (ag.escapeMobHp || 0.7)) || (inParty && low)) {
+                const dz = ctx.targeting.liveDanger ? ctx.targeting.liveDanger() : null;
+                if (dz && dz.ttd < (ag.escapeTtdSec || 8)) mobbed = dz;
+            }
+            if (inParty ? !mobbed : (!low && !mobbed)) return false;
+            // Scared (fear, 2026-11-22): the server takes 20/40/70+ off our speed - then our real speed counts.
+            const mySpeed = character.fear ? Math.min(speedRef, character.speed || 0) : speedRef;
+            if (on.some(function (m) { return (m.speed || (G.monsters[m.mtype] || {}).speed || 0) >= mySpeed * 0.8; })) return false;
+            esc.on = true;
+            esc.start = now;
+            util.log("warrior", "escaping at " + Math.round(util.hpRatio() * 100) + "% HP from " + on.length + "x " + on[0].mtype +
+                (mobbed ? " (" + (mobbed.mult > 1 ? "mobbed x" + mobbed.mult.toFixed(1) + ", " : "") + Math.round(mobbed.dps) + " dmg/s vs " +
+                    Math.round(mobbed.sustain) + " healed/s - dead in ~" + Math.round(mobbed.ttd) + " s)" : ""), "red");
         }
-        const clear = !Object.values(parent.entities || {}).some(function (e) {
-            return e && e.type === "monster" && !e.dead && e.target === character.name && util.distanceTo(e) < (ag.escapeClear || 250);
-        });
-        if (now > esc.until || clear) {
-            esc.until = 0;
+        const inReach = on.filter(function (e) { return util.distanceTo(e) < reachOf(e); });
+        // Healed: back at escapeUntilHp and the mobbing combo has run out (5 s without a mobbed hit).
+        const healed = util.hpRatio() >= (ag.escapeUntilHp || 0.6) && !util.mobNow(0).combo;
+        const why = !on.length ? "nobody on us" : !inReach.length && healed ? "out of reach, healed" :
+            now - esc.start > (ag.escapeMaxMs || 45000) ? "time up" : null;
+        if (why) {
+            esc.on = false;
             if (is_moving(character)) stop();
-            util.log("warrior", "escape done (" + (clear ? "nobody close" : "time up") + ") at " + Math.round(util.hpRatio() * 100) + "% HP", "yellow");
+            util.log("warrior", "escape done (" + why + ") at " + Math.round(util.hpRatio() * 100) + "% HP after " + Math.round((now - esc.start) / 1000) + " s", "yellow");
             return false;
         }
-        if (!is_moving(character) && !stepAway(on.length ? on : onMe(), ag.escapeStep || 200)) {
-            esc.until = 0; // cornered: fight
+        // Out of their reach but still low: no swing, the potions work; we step on when one comes close.
+        if (!inReach.length) {
+            util.status("escaped, healing " + Math.round(util.hpRatio() * 100) + "%", "orange");
+            return true;
+        }
+        if (!is_moving(character) && !escapeStep(inReach)) {
+            esc.on = false; // cornered: fight (a new try in 5 s)
+            esc.retryAt = now + 5000;
+            util.log("warrior", "escape: cornered at " + Math.round(util.hpRatio() * 100) + "% HP - fighting on", "orange");
             return false;
         }
         util.status("escaping " + Math.round(util.hpRatio() * 100) + "%", "red");
@@ -712,6 +866,21 @@ module.exports = function createWarrior(ctx) {
         if (!packOn()) { releaseSplash(); return false; }
         // A roaming boss waiting for the team in reach: no Agitate (it would open the fight alone, 2026-11-21).
         if (ctx.targeting && ctx.targeting.heldBossNear && ctx.targeting.heldBossNear(G.skills.agitate.range || 300)) return false;
+        // Mobbing live (2026-11-22): more than 3 on us and the live combo would kill us within mobStopTtdSec -
+        // no Agitate (it only adds to the mob); the normal combat kills those on us until 3 are left.
+        if (onMe().length > 3 && ctx.targeting && ctx.targeting.liveDanger) {
+            const dz = ctx.targeting.liveDanger();
+            if (dz.ttd < (ag.mobStopTtdSec || 20)) {
+                util.status("mobbed x" + dz.mult.toFixed(1) + ": no Agitate", "orange");
+                return false;
+            }
+        }
+        // Spot check from the edge still open (2026-11-22): no pull before the spot is judged, unless monsters are on us.
+        if (ctx.targeting && ctx.targeting.spotGate && !onMe().length) {
+            let fm = null;
+            try { fm = ctx.targeting.farmNow(); } catch (e) { fm = null; }
+            if (fm && ctx.targeting.spotGate(fm)) { releaseSplash(); return false; }
+        }
         // Learning: a low-HP moment under attack counts against that monster kind.
         if (util.hpRatio() < (ag.streamStopHp || 0.4)) {
             const on = onMe();
@@ -1035,7 +1204,8 @@ module.exports = function createWarrior(ctx) {
                     e.target !== character.name && !onAllies.includes(e.id) && !others.some(function (o) { return o.mtype === e.mtype; });
             });
             if (!bystanders && others.length >= (c.agitateFrom || 3) && util.canCast("agitate") && mpLeftAfter("agitate") >= reserve() &&
-                others.filter(function (m) { return util.distanceTo(m) <= G.skills.agitate.range; }).length >= (c.agitateFrom || 3)) {
+                others.filter(function (m) { return util.distanceTo(m) <= G.skills.agitate.range; }).length >= (c.agitateFrom || 3) &&
+                protectiveAgitateOk()) {
                 use_skill("agitate").catch(function () {});
                 util.log("warrior", "Agitate (" + others.length + " monsters on allies)", "yellow");
                 return false;

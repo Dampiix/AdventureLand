@@ -143,9 +143,15 @@ module.exports = function createParty(ctx) {
 
     // The end of the leader's route while it travels (fresh broadcast), or null.
     let badDest = null; // a leader's route end we found no path to (moveTowards)
+    let lastLeadDest = null; // { d, at }: the leader's last route end we went ahead to
+    // Not ahead into the leader's farm spot (2026-11-22): its route ends in the middle of the spawn, but the leader
+    // stops at the edge for the spot check - the warrior went ahead into the 5-booboo rage zone alone. A route end
+    // within the spot check's edge of a spawn of the leader's farm target: we follow the leader instead.
     function travelDest(lead) {
         const d = lead && lead.moving && lead.dest && lead.dest.map ? lead.dest : null;
         if (d && badDest && Date.now() < badDest.until && badDest.map === d.map && Math.hypot(badDest.x - d.x, badDest.y - d.y) < 60) return null;
+        // Any map (2026-11-22: started in halloween, the walk went on into the booboo spawn in spookytown).
+        if (d && lead.farm && ctx.targeting && ctx.targeting.inSpotArea && ctx.targeting.inSpotArea(d, lead.farm)) return null;
         return d;
     }
 
@@ -188,6 +194,14 @@ module.exports = function createParty(ctx) {
             return true;
         }
         const dest = travelDest(lead);
+        if (dest) lastLeadDest = { d: dest, at: Date.now() };
+        // At the leader's last route end while it stops for a moment (2026-11-22): stay there instead of walking back
+        // to it - the leader no longer waits for members at its next goal (fighter.waitForTeam).
+        const prev = !dest && lastLeadDest && Date.now() - lastLeadDest.at < 30 * 1000 ? lastLeadDest.d : null;
+        if (prev && prev.map === character.map && lead.map === character.map && util.distanceTo(prev) <= (cfg.waitDistance || 500)) {
+            util.status("waiting for " + leader + " ahead", "white");
+            return true;
+        }
         if (dest) {
             if (character.map !== dest.map || util.distanceTo(dest) > cfg.followDistance) moveTowards(dest, "going ahead to " + dest.map, true);
             else util.status("waiting for " + leader + " at the spot", "white");

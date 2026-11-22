@@ -143,10 +143,15 @@ module.exports = function createEvents(ctx) {
         try { set(STATS_KEY, stats); } catch (e) { /* storage unavailable */ }
     });
 
+    // Every fighter tells every other one (2026-11-22, was: members to the leader only): the warrior's live
+    // check (mobbing escape, protective Agitate) needs the priest's healing and the team's stats too.
     function shareStats() {
-        if (leads || Date.now() - lastStatsSent < 60 * 1000) return;
+        if (!party.enabled || Date.now() - lastStatsSent < 60 * 1000) return;
         lastStatsSent = Date.now();
-        ctx.comms.send(config.leader, "stats", util.combatStats());
+        const me = util.combatStats();
+        config.team.fighters.forEach(function (n) {
+            if (n !== character.name && party.inParty(n)) ctx.comms.send(n, "stats", me);
+        });
     }
 
     function teamStats() {

@@ -2131,6 +2131,77 @@ module.exports = function createWorkshop(ctx) {
         return g.stages && g.stages.length ? Math.max.apply(null, g.stages) : g.upTo;
     }
 
+    // ---- off-plan armor (player decision 2026-11-22) ---------------------------------------
+    // The gear goals push the WORN piece up - a slot holding something outside the class's gear plan was
+    // skipped for good: the ranger's lucky T-Shirt +3 (9 DEX, nothing else) kept the merchant from ever
+    // building him a Coat +8 (12 DEX, 12 armor, 10 resistance). Now an armor slot that is empty or holds a
+    // piece outside its ladder (gearPlan: shop piece, equivalents for the parallel group, wish chains with
+    // their alts, found items - for this class) gets the ladder's next step: a wish chain with "replace"
+    // (Rugged for tanks, Wanderer's for the priest) already handles it; otherwise the shop piece at the
+    // current stage, with the main stat - if it is at least as good as the worn piece in main stat and in
+    // armor + resistance (and better in one). The equip pass decides with the game's valuation as before.
+    const ARMOR_SLOTS = ["helmet", "chest", "pants", "shoes", "gloves"];
+    function inPlanGroup(spec, cls) {
+        if (!spec) return true;
+        const groups = (config.gearPlan || {}).groups || {};
+        return (Array.isArray(spec) ? spec : [spec]).some(function (x) { return x === cls || (groups[x] || []).includes(cls); });
+    }
+    function planItems(f, slot) {
+        const plan = config.gearPlan || {};
+        const cls = fighterClass(f);
+        const main = cls && G.classes[cls] ? G.classes[cls].main_stat : "";
+        const set = new Set();
+        const shop = (plan.shop || {})[slot];
+        if (shop) set.add(shop);
+        if (parallelFor(f)) Object.keys(plan.equivalent || {}).forEach(function (n) { if (plan.equivalent[n] === shop) set.add(n); });
+        (plan.wishes || []).forEach(function (w) {
+            if (w.slot !== slot || !inPlanGroup(w.for, cls)) return;
+            if (w.item) set.add(String(w.item).replace("{stat}", main));
+            (w.steps || []).forEach(function (s) { set.add(String(s[0]).replace("{stat}", main)); });
+            (w.alts || []).forEach(function (a) { if (inPlanGroup(a.for, cls)) set.add(a.item); });
+        });
+        ((plan.found || {})[slot] || []).forEach(function (x) { if (inPlanGroup(x.for, cls)) set.add(x.item); });
+        return set;
+    }
+    function chainReplaces(f, slot) {
+        const cls = fighterClass(f);
+        return ((config.gearPlan || {}).wishes || []).some(function (w) { return w.slot === slot && w.replace && inPlanGroup(w.for, cls); });
+    }
+    function itemProps(it) {
+        try { return parent.calculate_item_properties(it) || {}; } catch (e) { return G.items[it.name] || {}; }
+    }
+    function atLeastAsGood(a, b, main) {
+        const pa = itemProps(a), pb = itemProps(b);
+        const m = function (p) { return (main && p[main]) || 0; };
+        const d = function (p) { return (p.armor || 0) + (p.resistance || 0); };
+        return m(pa) >= m(pb) && d(pa) >= d(pb) && (m(pa) > m(pb) || d(pa) > d(pb));
+    }
+    // The shop piece an off-plan slot gets (name, without the comparison), or null.
+    function offPlanShop(f, slot) {
+        if (!ARMOR_SLOTS.includes(slot) || !worn[f]) return null; // unknown gear (offline since the restart): no guess
+        const w = worn[f][slot];
+        if (w && planItems(f, slot).has(w.name)) return null;
+        if (chainReplaces(f, slot)) return null;
+        const shop = ((config.gearPlan || {}).shop || {})[slot];
+        return shop && G.items[shop] ? shop : null;
+    }
+    const offPlanLogged = {};
+    function offPlanNeed(f, slot, target) {
+        const shop = target ? offPlanShop(f, slot) : null;
+        if (!shop) return null;
+        const w = worn[f] && worn[f][slot];
+        const cls = fighterClass(f);
+        const main = cls && G.classes[cls] ? G.classes[cls].main_stat : null;
+        const stat = G.items[shop].stat ? main : null;
+        if (w && !atLeastAsGood({ name: shop, level: target, stat_type: stat || undefined }, { name: w.name, level: w.level || 0, stat_type: w.stat || undefined }, main)) return null;
+        const k = f + ":" + slot + ":" + (w ? w.name + (w.level || 0) : "-") + ":" + target;
+        if (!offPlanLogged[k]) {
+            offPlanLogged[k] = true;
+            util.log("workshop", f + " " + slot + ": " + (w ? w.name + " +" + (w.level || 0) + " is outside the gear plan" : "empty") + " - building " + shop + " +" + target + (stat ? " " + stat : ""), "white");
+        }
+        return { fighter: f, slot: slot, name: shop, stat: stat, weapon: null, level: target, offPlan: true };
+    }
+
     function goalNeeds() {
         return goalNeedsAll().filter(function (n) { return Date.now() - (goalSentAt[n.fighter + ":" + n.slot] || 0) > 15 * 60 * 1000; });
     }
@@ -2158,6 +2229,11 @@ module.exports = function createWorkshop(ctx) {
                 const target = slot === "mainhand" || slot === "offhand" ? (stage === null ? null : Math.min(stage, g.upTo)) : stage;
                 const cls0 = classes[f] && G.classes[classes[f]];
                 const statOf = function (d) { return d && d.stat ? (w.stat || (cfg.mainStatOnArmor && cls0 ? cls0.main_stat : null)) : null; };
+                // Empty, or a piece outside the class's gear plan: the plan's next step (2026-11-22).
+                // A fighter whose shop armor is done (all +8) has no stage of its own any more - the off-plan slot still
+                // gets the team stage, or the last one (2026-11-22: the ranger kept the T-Shirt +3, no Coat +8 was built).
+                const off = offPlanNeed(f, slot, target !== null ? target : (team !== null ? team : finalStage()));
+                if (off) { list.push(off); return; }
                 if (w && def && def.upgrade && parallelFor(f) && slot !== "mainhand" && slot !== "offhand") {
                     const map = equivMap();
                     const equiv = Object.keys(map).find(function (n) { return map[n] === w.name; });
@@ -2213,6 +2289,10 @@ module.exports = function createWorkshop(ctx) {
         });
         (cfg.gearGoals.weapons || []).forEach(function (rule) { names.add(rule.name); });
         config.team.fighters.forEach(function (f) { const n = shopWeaponGoal(f); if (n) names.add(n); });
+        // Shop pieces an off-plan slot is waiting for (2026-11-22): their copies are goal stock.
+        config.team.fighters.forEach(function (f) {
+            ARMOR_SLOTS.forEach(function (s) { const n = offPlanShop(f, s); if (n) names.add(n); });
+        });
         return names;
     }
 
