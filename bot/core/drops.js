@@ -388,7 +388,7 @@ module.exports = function createDrops(ctx) {
             if (copies > 0) list.push({ name: n, copies: Math.ceil(copies) });
         });
         list.forEach(function (need) {
-            const cands = routeFor(need);
+            const cands = routeFor(need) || []; // null when the guide failed (2026-11-22 review: TypeError)
             const r = cands[0];
             if (r && isFinite(r.perCopy)) {
                 times[need.name] = Math.round(r.perCopy);

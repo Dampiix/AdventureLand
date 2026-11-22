@@ -177,9 +177,11 @@ module.exports = function createEvents(ctx) {
         const expected = config.team.fighters.filter(function (f) { return f === character.name || party.inParty(f); }).length;
         if (!alone && team.length < expected) return { ok: false, why: "waiting for the team's stats" };
         const minHits = bcfg.minHits || 6;
+        // Pure damage ignores armor and resistance; the learned hit factor counts as in the farm checks (2026-11-22 review).
         const hitOn = function (f) {
-            const def = m.damage_type === "physical" ? (f.armor || 0) - (m.apiercing || 0) : (f.resistance || 0) - (m.rpiercing || 0);
-            return m.attack * 1.1 * util.damageMultiplier(def);
+            const def = m.damage_type === "physical" ? (f.armor || 0) - (m.apiercing || 0)
+                : m.damage_type === "magical" ? (f.resistance || 0) - (m.rpiercing || 0) : 0;
+            return m.attack * 1.1 * util.damageMultiplier(def) * util.hitFactor(name);
         };
         // 1. Burst: every fighter survives minHits hits.
         for (const f of team) {
@@ -191,9 +193,10 @@ module.exports = function createEvents(ctx) {
         const tankClasses = (config.targeting.teamSafety && config.targeting.teamSafety.tankClasses) || ["warrior", "paladin"];
         const tank = team.filter(function (f) { return tankClasses.includes(f.ctype); })
             .sort(function (a, b) { return b.max_hp - a.max_hp; })[0] || team[0];
-        // A fighter alone that can kite the boss (the same rule as fighter.kiteStep: range >= boss range +
-        // kite margin, boss slower than 90 % of us) takes practically no lasting damage (player decision
-        // 2026-11-21); the burst check above still applies for a kite gone wrong.
+        // A fighter alone that can kite the boss (range >= boss range + kite margin like fighter.kiteStep, but
+        // stricter on speed: the boss slower than 90 % of us, where the kite step takes up to maxSpeedRatio 0.99)
+        // takes practically no lasting damage (player decision 2026-11-21); the burst check above still applies
+        // for a kite gone wrong.
         const k = (config.combat && config.combat.kite) || {};
         const kites = !!alone && k.enabled !== false && (alone.range || 0) >= (m.range || 20) + (k.margin || 30) && Math.max(m.speed || 0, m.charge || 0) < (alone.speed || 0) * 0.9; // charge: Jr. rushes at 90 (2026-11-21)
         const incoming = kites ? 0 : hitOn(tank) * (m.frequency || 1);

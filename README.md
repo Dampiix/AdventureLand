@@ -3,7 +3,7 @@
 One bot for a whole Adventure Land team: up to three fighters and one merchant, all running the same code.
 The fighters farm, hunt bosses and level up; the merchant supplies them, sells, banks, trades with other players and upgrades their gear.
 
-> **Version:** `1.210.8` (`bot/config.js` → `version`) · **Teams:** `Dmpx…` (main account) and `Viz…` (second account) · **Code:** `bot/` → in-game CODE slots 20–39
+> **Version:** `1.211.0` (`bot/config.js` → `version`) · **Teams:** `Dmpx…` (main account) and `Viz…` (second account) · **Code:** `bot/` → in-game CODE slots 20–39
 
 ## Repository
 
@@ -298,28 +298,28 @@ Only `main.js` calls `require_code()`. Every other module is a factory that rece
 
 | File | Slot | Purpose |
 |---|---|---|
-| [`main.js`](main.js) | 20 `bot_main` | Entry point, role lookup, starts the team, chat commands, watchdog, hop watcher |
-| [`config.js`](config.js) | 21 `bot_config` | Everything you tune |
-| [`lib/util.js`](lib/util.js) | 22 `bot_util` | Shared helpers: damage formula, weapon power, kite risk, logging, heartbeat, team derivation |
-| [`lib/comms.js`](lib/comms.js) | 23 `bot_comms` | CODE messages between our own characters |
-| [`core/targeting.js`](core/targeting.js) | 24 `bot_targeting` | Farm spot, safety checks, target picking |
-| [`core/supply.js`](core/supply.js) | 25 `bot_supply` | Fighter side of loot, gold and potions |
-| [`core/fighter.js`](core/fighter.js) | 26 `bot_fighter` | Fighter main loop: potions, combat, kiting, travel, Cavalry, deaths |
-| [`classes/paladin.js`](classes/paladin.js) | 27 `bot_class_paladin` | Paladin skills |
-| [`classes/mage.js`](classes/mage.js) | 28 `bot_class_mage` | Mage skills |
-| [`classes/priest.js`](classes/priest.js) | 29 `bot_class_priest` | Priest heals and skills |
-| [`roles/merchant.js`](roles/merchant.js) | 30 `bot_merchant` | Merchant main loop, selling, banking, stand, trips, Ponty rounds |
-| [`core/party.js`](core/party.js) | 31 `bot_party` | Invites, leader broadcast, following |
-| [`core/hunts.js`](core/hunts.js) | 32 `bot_hunts` | Monster Hunts and Daisy trips |
-| [`core/gear.js`](core/gear.js) | 33 `bot_gear` | Fighter wishes and equipping |
-| [`roles/workshop.js`](roles/workshop.js) | 34 `bot_workshop` | Merchant: upgrades, gear goals, weapons, materials, pots, Ponty |
-| [`core/events.js`](core/events.js) | 35 `bot_events` | Events and world bosses |
-| [`classes/ranger.js`](classes/ranger.js) | 36 `bot_class_ranger` | Ranger skills |
-| [`core/drops.js`](core/drops.js) | 37 `bot_drops` | Drop farming and spot gold |
-| [`classes/warrior.js`](classes/warrior.js) | 38 `bot_class_warrior` | Warrior skills, Agitate, sword swap |
-| [`classes/rogue.js`](classes/rogue.js) | 39 `bot_class_rogue` | Rogue skills |
+| [`main.js`](bot/main.js) | 20 `bot_main` | Entry point, role lookup, starts the team, chat commands, watchdog, hop watcher |
+| [`config.js`](bot/config.js) | 21 `bot_config` | Everything you tune |
+| [`lib/util.js`](bot/lib/util.js) | 22 `bot_util` | Shared helpers: damage formula, weapon power, kite risk, logging, heartbeat, team derivation |
+| [`lib/comms.js`](bot/lib/comms.js) | 23 `bot_comms` | CODE messages between our own characters |
+| [`core/targeting.js`](bot/core/targeting.js) | 24 `bot_targeting` | Farm spot, safety checks, target picking |
+| [`core/supply.js`](bot/core/supply.js) | 25 `bot_supply` | Fighter side of loot, gold and potions |
+| [`core/fighter.js`](bot/core/fighter.js) | 26 `bot_fighter` | Fighter main loop: potions, combat, kiting, travel, Cavalry, deaths |
+| [`classes/paladin.js`](bot/classes/paladin.js) | 27 `bot_class_paladin` | Paladin skills |
+| [`classes/mage.js`](bot/classes/mage.js) | 28 `bot_class_mage` | Mage skills |
+| [`classes/priest.js`](bot/classes/priest.js) | 29 `bot_class_priest` | Priest heals and skills |
+| [`roles/merchant.js`](bot/roles/merchant.js) | 30 `bot_merchant` | Merchant main loop, selling, banking, stand, trips, Ponty rounds |
+| [`core/party.js`](bot/core/party.js) | 31 `bot_party` | Invites, leader broadcast, following |
+| [`core/hunts.js`](bot/core/hunts.js) | 32 `bot_hunts` | Monster Hunts and Daisy trips |
+| [`core/gear.js`](bot/core/gear.js) | 33 `bot_gear` | Fighter wishes and equipping |
+| [`roles/workshop.js`](bot/roles/workshop.js) | 34 `bot_workshop` | Merchant: upgrades, gear goals, weapons, materials, pots, Ponty |
+| [`core/events.js`](bot/core/events.js) | 35 `bot_events` | Events and world bosses |
+| [`classes/ranger.js`](bot/classes/ranger.js) | 36 `bot_class_ranger` | Ranger skills |
+| [`core/drops.js`](bot/core/drops.js) | 37 `bot_drops` | Drop farming and spot gold |
+| [`classes/warrior.js`](bot/classes/warrior.js) | 38 `bot_class_warrior` | Warrior skills, Agitate, sword swap |
+| [`classes/rogue.js`](bot/classes/rogue.js) | 39 `bot_class_rogue` | Rogue skills |
 
-[`slots.json`](slots.json) holds the same file-to-slot mapping for the deploy script.
+[`slots.json`](bot/slots.json) holds the same file-to-slot mapping for the deploy script.
 
 **Messages between characters** (`comms.js`): `send_cm` with the envelope `{ p: "dmpx1", t: type, d: payload }`. A message is accepted only from a character of our own team (`config.characters`) and only for a known type. Other players' messages are ignored.
 

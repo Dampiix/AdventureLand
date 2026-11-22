@@ -71,7 +71,10 @@ module.exports = function createParty(ctx) {
         const now = Date.now();
         if (now - lastBroadcast < cfg.broadcastMs) return;
         lastBroadcast = now;
-        const others = members.filter(function (n) { return n !== character.name; });
+        // Only members in the party (2026-11-22 review): an offline member made every send fail - a red log line
+        // every broadcastMs. events.shareStats filters the same way.
+        const others = members.filter(function (n) { return n !== character.name && inParty(n); });
+        if (!others.length) return;
         comms.send(others, "lead", {
             map: character.map,
             x: Math.round(character.x),

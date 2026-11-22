@@ -79,6 +79,15 @@ module.exports = function createWorkshop(ctx) {
     })();
 
     const classes = {}; // fighter -> ctype (sent with its wishes)
+    // Known from the account's character list right away (2026-11-22 review): after a merchant restart, and for
+    // offline fighters, classes stayed empty until a "wishes" message came - weapon goals, shop weapon goals and
+    // their isGoalStock protection were missing meanwhile (weaponPower without a class is 0).
+    try {
+        ((config.team && config.team.fighters) || []).forEach(function (f) {
+            const c = ((parent.X && parent.X.characters) || []).find(function (x) { return x.name === f; });
+            if (c && G.classes[c.type]) classes[f] = c.type;
+        });
+    } catch (e) { /* filled by the wishes messages */ }
     const carries = {}; // fighter -> { item: true/false } for one-per-character items
     // Gold a fighter handed over (shown apart from sales in the budget line; every gold rise
     // is income since 2026-11-19).
@@ -1049,6 +1058,9 @@ module.exports = function createWorkshop(ctx) {
                 if (character.esize < 4) break;
                 await retrieve(b);
             }
+            // Nothing came out (bag nearly full, 2026-11-22 review): no dismantling this round - returning true
+            // here kept the rest of the workshop waiting until the bag freed up.
+            if (inBag() === -1) return false;
             let index;
             while ((index = inBag()) !== -1) {
                 const item = character.items[index];
@@ -3472,6 +3484,16 @@ module.exports = function createWorkshop(ctx) {
         }
         const counts = pontyCounts();
         const boughtLevels = {}; // copies bought on this visit, before the bank snapshot knows them
+        // Only the ones not in the bag yet (2026-11-22 review): unlockedCopies reads the bag live, so a bought
+        // copy that already arrived counted twice and base buying stopped too early.
+        const boughtBase = {}; // name -> unlocked bag copies before our first buy of it on this visit
+        const bagUnlocked = function (name) { return character.items.filter(function (i) { return i && i.name === name && !i.l && !i.p; }).length; };
+        const pendingBought = function (name) {
+            const b = boughtLevels[name] || [];
+            if (!b.length) return b;
+            const arrived = Math.max(0, bagUnlocked(name) - (boughtBase[name] || 0));
+            return b.slice(Math.min(arrived, b.length));
+        };
         // Highest level first: of several bases on offer the best one is bought.
         const offers = list.slice().sort(function (a, b) { return ((b && b.level) || 0) - ((a && a.level) || 0); });
         for (const it of offers) {
@@ -3495,11 +3517,11 @@ module.exports = function createWorkshop(ctx) {
             }
             if (!it || !wants.hasOwnProperty(it.name) || it.p === "glitched") continue;
             const lvl = it.level || 0;
-            const levels = allCopyLevels(it.name).concat(boughtLevels[it.name] || []);
+            const levels = allCopyLevels(it.name).concat(pendingBought(it.name));
             if (sellerOf(it.name)) {
                 // Shop items: only a copy better than everything we hold (the +0 comes from the NPC).
                 if (lvl <= levels.reduce(function (m, l) { return Math.max(m, l); }, -1)) continue;
-            } else if (!wantsAsBase(it.name, lvl, wants[it.name], counts[it.name] || 1, unlockedCopies(it.name).concat(boughtLevels[it.name] || []))) continue;
+            } else if (!wantsAsBase(it.name, lvl, wants[it.name], counts[it.name] || 1, unlockedCopies(it.name).concat(pendingBought(it.name)))) continue;
             let price = 0;
             try { price = calculate_item_value(it) * (G.items[it.name].cash ? 3 : 2) * (it.q || 1); } catch (e) { continue; }
             if (pc.maxPrice && price > pc.maxPrice) continue;
@@ -3511,6 +3533,7 @@ module.exports = function createWorkshop(ctx) {
                 continue;
             }
             if (character.esize < 2) { bagFull = true; break; }
+            if (!(it.name in boughtBase)) boughtBase[it.name] = bagUnlocked(it.name);
             try {
                 await buy_secondhand(it);
                 pay(GOALS, price);
@@ -3912,7 +3935,10 @@ module.exports = function createWorkshop(ctx) {
                 return;
             }
             if (!banked) {
-                delete earmarks[e.fighter + "|" + e.name];
+                // By its own key (2026-11-22 review): the second copy of a weapon pair sits under "|2" - deleting
+                // fighter|name left it for up to 12 h, blocking every weapon delivery for that fighter.
+                const key = Object.keys(earmarks).find(function (k) { return earmarks[k] === e; }) || e.fighter + "|" + e.name;
+                delete earmarks[key];
                 saveEarmarks();
             }
         }

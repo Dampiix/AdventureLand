@@ -296,6 +296,7 @@ module.exports = function createFighter(ctx, cls) {
         return { map: v, x: at[0], y: at[1] };
     }
     function travel(destination, label) {
+        const goal = destination; // the real goal: a failed walk marks it, not the waypoint (2026-11-22 review)
         destination = viaFor(destination);
         util.status(label, "yellow");
         if (is_moving(character) && travelGoal && !sameGoal(travelGoal, destination) && typeof smart !== "undefined" && smart.moving) {
@@ -312,7 +313,7 @@ module.exports = function createFighter(ctx, cls) {
                 if (searchWalk === id) searchWalk = 0;
                 if (stoppedOnPurpose) { stoppedOnPurpose = false; return; } // we stopped it for a target
                 const why = util.errReason(e);
-                if (!/interrupt|stop/i.test(why)) markBadGoal(destination);
+                if (!/interrupt|stop/i.test(why) && destination === goal) markBadGoal(goal);
                 util.log("move", "route to " + JSON.stringify(destination) + " failed: " + why, "red");
             });
         } else if (cls.move) {
@@ -490,7 +491,10 @@ module.exports = function createFighter(ctx, cls) {
             try { dist = parent.distance(character, m); } catch (e) { dist = util.distanceTo(m); }
             // Would it reach us before it dies? The target dies after its HP / our damage per
             // second; any other attacker only after the target.
-            const myDef = (def.armor || 0) - (character.apiercing || 0);
+            // Our damage type decides armor or resistance (2026-11-22 review: the priest was judged against armor).
+            const myType = character.damage_type || ((G.classes && G.classes[character.ctype]) || {}).damage_type || "physical";
+            const myDef = myType === "magical" ? (def.resistance || 0) - (character.rpiercing || 0)
+                : myType === "pure" ? 0 : (def.armor || 0) - (character.apiercing || 0);
             const myDps = Math.max(1, (character.attack || 0) * (character.frequency || 1) * util.damageMultiplier(myDef));
             const killSec = (m === target ? m.hp : m.hp + (target ? target.hp : 0)) / myDps;
             const reachSec = Math.max(0, dist - mRange) / Math.max(1, mSpeed);
@@ -620,9 +624,11 @@ module.exports = function createFighter(ctx, cls) {
         util.status("keeping distance from " + near.mtype, "white");
         return true;
     }
+    // This frame's can_move: the one with the rage walls (2026-11-22 review: kite and escape points used the page's
+    // copy and could lie in a rage zone).
     function canMoveFrom(x1, y1, x2, y2) {
         try {
-            return !!parent.can_move({ map: character.map, x: x1, y: y1, going_x: x2, going_y: y2, base: character.base });
+            return !!can_move({ map: character.map, x: x1, y: y1, going_x: x2, going_y: y2, base: character.base });
         } catch (e) { return true; }
     }
 

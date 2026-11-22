@@ -312,8 +312,9 @@ function startHopWatcher() {
     let home =BOT_UTIL.teamServer(BOT_CONFIG); // where the leader runs, read again each check (2026-11-21)
     let hosting = false, handled = null, hopping = false;
     async function hopTo(to) {
-        if (!(await reopenRunner(merch, to))) return;
+        if (!(await reopenRunner(merch, to))) return false;
         BOT_UTIL.log("bot", merch + " hopped to " + to, "yellow");
+        return true;
     }
     setInterval(async function () {
         if (hopping) return;
@@ -337,9 +338,17 @@ function startHopWatcher() {
                 return;
             }
             if (!req || req.done || req.id === handled) return;
+            if (req.retryAt && Date.now() < req.retryAt) return; // a failed hop waits 30 s before the next try
             handled = req.id;
             hopping = true;
-            await hopTo(req.to);
+            // Not done when no hop happened (2026-11-22 review): the watchdog was reopening the merchant, or the
+            // target was malformed - it was marked done anyway and never retried. Up to 5 tries, then given up.
+            if (!(await hopTo(req.to))) {
+                req.tries = (req.tries || 0) + 1;
+                if (req.tries < 5) { handled = null; req.retryAt = Date.now() + 30 * 1000; set(HOP_KEY, req); return; }
+                BOT_UTIL.log("bot", "hop of " + merch + " to " + req.to + " failed 5 times - given up", "orange");
+                req.failed = true;
+            }
             req.done = Date.now();
             set(HOP_KEY, req);
         } catch (e) {

@@ -163,7 +163,9 @@ module.exports = function createTargeting(ctx) {
         const att = attack || m.attack || 0;
         const mob = (n || 1) > 3 ? util.mobCap(att) : 1;
         return team.every(function (f) {
-            const def = m.damage_type === "physical" ? (f.armor || 0) - (m.apiercing || 0) : (f.resistance || 0) - (m.rpiercing || 0);
+            // Pure damage ignores armor and resistance (2026-11-22 review: booboos hit "pure" and counted as reduced).
+            const def = m.damage_type === "physical" ? (f.armor || 0) - (m.apiercing || 0)
+                : m.damage_type === "magical" ? (f.resistance || 0) - (m.rpiercing || 0) : 0;
             return f.max_hp >= 20 * att * mob * 1.1 * util.damageMultiplier(def) * util.hitFactor(monster);
         });
     }
@@ -373,7 +375,8 @@ module.exports = function createTargeting(ctx) {
             const d = def.damage_type === "physical" ? (me.armor || 0) - (def.apiercing || 0)
                 : def.damage_type === "magical" ? (me.resistance || 0) - (def.rpiercing || 0) : 0;
             const pull = (def.aggro || 0) >= 1 ? Math.max(1, densePack(e.mtype)) : 1;
-            let sustain = potionHps();
+            // The MP potions share the cooldown (2026-11-22 review: packVerdict had this fix, soloCheck not).
+            let sustain = potionHps() * hpPotionShare(0, me);
             if (me.ctype === "priest") sustain += (me.heal || me.attack || 0) * (me.frequency || 1) * 0.5; // half its actions heal
             const myDef = me.damage_type === "physical" ? (def.armor || 0) - (me.apiercing || 0) : (def.resistance || 0) - (me.rpiercing || 0);
             const over = Math.max(0, pull - util.courageOf(def.damage_type || "physical")); // fear (see packVerdict)

@@ -178,6 +178,18 @@ module.exports = function createMerchant(ctx) {
                 : "price " + it.price + " -> " + o.price + ", listed again";
             util.log("merchant", "buy order for " + it.name + " taken down (" + why + ")", "white");
         });
+        // Sell listings of config.market.sell items at an old price (2026-11-22 review: only buy orders were
+        // checked, so a changed sell price never reached the stand). Taken down; the sell pass below lists them
+        // again at the current price. Listings of items not on the sell list are left alone (they may be ours by hand).
+        slots.forEach(function (s) {
+            const it = character.slots[s];
+            if (!it || it.b || !it.price) return;
+            const o = (market.sell || []).find(function (x) { return x.item === it.name && (x.level || 0) === (it.level || 0); });
+            if (!o || it.price === o.price) return;
+            delete watched[s]; // taken down by us, not sold
+            parent.socket.emit("unequip", { slot: s });
+            util.log("merchant", "sell listing for " + it.name + " taken down (price " + it.price + " -> " + o.price + ", listed again)", "white");
+        });
         // Buy orders: what is missing up to "want" (bag + bank).
         buys.forEach(function (o) {
             if (!G.items[o.item]) return;
@@ -649,13 +661,20 @@ module.exports = function createMerchant(ctx) {
             }
         }
         if (taken) util.log("merchant", "took " + taken + " junk stacks out of the bank to sell", "green");
-        // Market sell items (config.market.sell) above "keep": into the bag for the stand.
+        // Market sell items (config.market.sell) above "keep": into the bag for the stand. Only the surplus
+        // (2026-11-22 review): a retrieve only moves a stack from bank to bag, so the owned count never drops -
+        // the kept copies came out too and went back on the next bank trip. Counted down here instead.
+        const left = {};
         for (const pack of Object.keys(character.bank || {})) {
             if (!/^items\d+$/.test(pack)) continue;
             const items = character.bank[pack] || [];
             for (let i = 0; i < items.length; i++) {
                 if (character.esize <= 3) break;
-                if (!items[i] || marketSurplus(items[i].name, items[i].level) <= 0) continue;
+                if (!items[i]) continue;
+                const k = items[i].name + ":" + (items[i].level || 0);
+                if (!(k in left)) left[k] = marketSurplus(items[i].name, items[i].level) - bagCount(items[i].name, items[i].level || 0);
+                if (left[k] <= 0) continue;
+                left[k] -= items[i].q || 1;
                 try {
                     await bank_retrieve(pack, i);
                     util.log("merchant", "took " + items[i].name + " from the bank for the stand", "green");
@@ -749,7 +768,9 @@ module.exports = function createMerchant(ctx) {
             if (!settled && Date.now() - st.at < (prc.prepMaxMs || 8 * 60 * 1000)) { saveRound(st); return false; }
             await goHome();
             await sellJunk();
-            await bankTrip();
+            // Store only (2026-11-22 review): a full bank trip ends by taking junk and stand items out of the bank -
+            // they would ride along unsold through the whole round and take the bag slots the Ponty buys need.
+            await bankTrip(true);
             st.phase = "travel";
             st.target = st.queue.shift();
             st.at = Date.now();
