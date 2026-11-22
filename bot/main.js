@@ -48,7 +48,7 @@ function startTeam() {
 }
 
 // Chat commands for the player (player request 2026-11-21), typed in the leader's chat:
-//   /phoenix, /jr, /greenjr, /mvampire (also /phönix, /vampir, /dracul, /gjr) - search that boss now (lifts a pause)
+//   /phoenix, /jr, /greenjr, /mvampire, /fvampire (also /phönix, /vampir, /dracul, /gjr, /msdracul) - search that boss now (lifts a pause)
 //   /search <boss>               - the same for another watched boss (mvampire, jr, greenjr)
 // The game hands every command it doesn't know to handle_command(command, args) of the running
 // CODE ("Command not found. You can add a handle_command function..."); -1 = not ours.
@@ -66,9 +66,10 @@ function installChatCommands(ctx) {
     BOT_CMD_CTX = ctx;
 }
 var BOT_CMD_CTX = null;
-// Every boss by its own name (/phoenix, /jr, /greenjr, /mvampire) plus a few short or German
+// Every boss by its own name (/phoenix, /jr, /greenjr, /mvampire, /fvampire) plus a few short or German
 // names (player request 2026-11-21); /search <boss> as before. true when handled.
-const BOSS_ALIASES = { "phönix": "phoenix", phonix: "phoenix", vampire: "mvampire", vampir: "mvampire", dracul: "mvampire", gjr: "greenjr" };
+const BOSS_ALIASES = { "phönix": "phoenix", phonix: "phoenix", vampire: "mvampire", vampir: "mvampire", dracul: "mvampire", gjr: "greenjr",
+    msdracul: "fvampire", missdracul: "fvampire" }; // Ms. Dracul (2026-11-22)
 function bossCommand(c, args) {
     const a = (Array.isArray(args) ? args.join(" ") : String(args || "")).trim().toLowerCase();
     const name = c === "search" ? (BOSS_ALIASES[a] || a || "phoenix") : (BOSS_ALIASES[c] || c);

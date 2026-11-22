@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.216.0",
+    version: "1.216.1",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -273,6 +273,10 @@ module.exports = {
             // 5%, int/str/dex earrings 10% each, Dracul's Attire 3%, void thread 10%. Not
             // cooperative: never taken from another player who fights it.
             mvampire: "always",
+            // Ms. Dracul (2026-11-22, player decision): 240k HP, 875 magical, one spawn in halloween, back after 24 min;
+            // drops Dracul's Attire (1 %). Team model: the warrior tanks her (761 dmg/s vs ~1,500 healing/s, ~100 s).
+            // Alone the runner holds for the team (it survives only ~4 of her hits).
+            fvampire: "always",
             // Jr. (Spooky Town; player request 2026-11-17): drops the orange Lolipop Mace (+24 STR,
             // explosion splash) on every kill - a warrior weapon for the Agitate mode. 3,200 HP,
             // 80% evasion, weak magical hits, cooperative; respawns after ~5-9 h.
@@ -285,12 +289,12 @@ module.exports = {
             graveyard: "always",          // Halloween: zombies/ghouls in Spooky Town's graveyard - Bones (2026-11-16)
         },
         // "always" only applies once every fighter has reached this level
-        minLevel: { phoenix: 40, goobrawl: 20, snowman: 10, graveyard: 40, mvampire: 50, jr: 40, greenjr: 40 },
+        minLevel: { phoenix: 40, goobrawl: 20, snowman: 10, graveyard: 40, mvampire: 50, fvampire: 60, jr: 40, greenjr: 40 },
         // The whole team searches only the Phoenix (player decision 2026-11-21: in one hour two team rounds
         // for Mvampire, Jr. and Green Jr. took 14.6 min - 23 % of the time - without a find). The others
         // are searched by one runner (runner below) and fought when one is met (engage).
         search: ["phoenix"],
-        engage: ["mvampire", "jr", "greenjr"],
+        engage: ["mvampire", "fvampire", "jr", "greenjr"],
         // Parallel search (player decision 2026-11-21): the leader splits the spawn areas between the
         // fighters in the party; a find is reported and the team meets there (splitWaitMs: how long the
         // leader waits for the others' areas). holdForTeam: nobody opens the fight on an unengaged boss
@@ -316,7 +320,7 @@ module.exports = {
         // leader gives up on a runner that never reports back; killMs: longest solo fight.
         runner: {
             enabled: true,
-            bosses: { mvampire: 20 * 60 * 1000, jr: 60 * 60 * 1000, greenjr: 60 * 60 * 1000 },
+            bosses: { mvampire: 20 * 60 * 1000, fvampire: 25 * 60 * 1000, jr: 60 * 60 * 1000, greenjr: 60 * 60 * 1000 },
             // Player decision 2026-11-21 (EU IV, grown bosses): no solo kills - Jr. and Green Jr. are held for
             // the team like Dracul (holdFor). Was ["jr", "greenjr"].
             solo: [],

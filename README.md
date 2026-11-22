@@ -3,7 +3,7 @@
 One bot for a whole Adventure Land team: up to three fighters and one merchant, all running the same code.
 The fighters farm, hunt bosses and level up; the merchant supplies them, sells, banks, trades with other players and upgrades their gear.
 
-> **Version:** `1.216.0` (`bot/config.js` → `version`) · **Teams:** `Dmpx…` (main account) and `Viz…` (second account) · **Code:** `bot/` → in-game CODE slots 20–39
+> **Version:** `1.216.1` (`bot/config.js` → `version`) · **Teams:** `Dmpx…` (main account) and `Viz…` (second account) · **Code:** `bot/` → in-game CODE slots 20–39
 
 ## Repository
 
@@ -76,8 +76,8 @@ Type these in the chat box of a game client that runs the bot. The game passes u
 | `/pickup` | any fighter | Ask the merchant to come now (potions, loot handover). |
 | `/ponty` or `/ponti` | any of our clients | The merchant starts a Ponty round on its next check (shared storage `dmpx_ponty_force`, dropped after 10 min). Started in minutes 0–29 of an hour, it counts as that hour's round. |
 | `/phoenix` | leader | Search the Phoenix now and lift its 3 h pause. |
-| `/jr`, `/greenjr`, `/mvampire` | leader | The same for Jr., Green Jr. and Dracul. In the party phase a runner searches them; in solo it only lifts the pause. |
-| `/search <boss>` | leader | The same for any watched boss (default `phoenix`). Aliases: `phönix`, `phonix` → phoenix · `vampire`, `vampir`, `dracul` → mvampire · `gjr` → greenjr. |
+| `/jr`, `/greenjr`, `/mvampire`, `/fvampire` | leader | The same for Jr., Green Jr., Dracul and Ms. Dracul. In the party phase a runner searches them; in solo it only lifts the pause. |
+| `/search <boss>` | leader | The same for any watched boss (default `phoenix`, e.g. `/search fvampire` for Ms. Dracul). Aliases: `phönix`, `phonix` → phoenix · `vampire`, `vampir`, `dracul` → mvampire · `msdracul`, `missdracul` → fvampire · `gjr` → greenjr. |
 | `/agitate off\|swords\|splash\|chain\|splashstream\|config` | warrior | The warrior's Agitate mode, kept across restarts (`agitate_mode:<name>`). `config` goes back to the config's choice. Solo only: in a party the automatic decision applies. |
 | `/dps` | leader or solo fighter | Print the damage meter now ([§16](#16-party-play)). |
 | `/safety [map]` | leader | Log every member's guide verdict and the team model's verdict for every monster on the map. |
@@ -162,7 +162,7 @@ All settings live in [`config.js`](bot/config.js) (slot 21 `bot_config`). The co
 | How often the Phoenix is searched | `events.searchEveryMs` (20 min) |
 | Bosses the team searches / only fights when met | `events.search` / `events.engage` |
 | Parallel search in the party | `events.splitSearch` |
-| Runner for Dracul, Jr., Green Jr. | `events.runner.enabled`, `runner.bosses` (interval per boss) |
+| Runner for Dracul, Ms. Dracul, Jr., Green Jr. | `events.runner.enabled`, `runner.bosses` (interval per boss) |
 | Hunt a boss nonstop with the runner | `events.farmBosses: ["phoenix"]` |
 | Pause after a death at a boss | `events.boss.pauseAfterDeathMs` (3 h); lift it with `/phoenix` etc. |
 
@@ -596,7 +596,7 @@ It does not wait:
 - **World bosses with a position** (Snowman): the team travels there and fights.
 - **Roaming bosses:**
   - `events.search` (Phoenix): the team searches all spawn areas every `searchEveryMs` (20 min).
-  - `events.engage` (Dracul, Jr., Green Jr.): fought whenever met, and searched by a runner.
+  - `events.engage` (Dracul, Ms. Dracul, Jr., Green Jr.): fought whenever met, and searched by a runner. Ms. Dracul (`fvampire`, v1.216.1): 240k HP, 875 magical, one spawn in halloween, drops Dracul's Attire (1 %); alone the runner holds for the team.
 
 **Boss check** (`events.boss`). From the team's real stats:
 - every fighter survives 6 hits;
@@ -612,7 +612,7 @@ A visible boss is checked with its live stats (bosses grow).
 - **Parallel search** (party, `splitSearch`): the leader splits the areas between the fighters. A finder reports, the team meets at the finder, and the leader waits at most 4 min for the others' areas.
 
 **Runner** (`events.runner`, party only).
-- **Who:** the fastest ranged fighter (never the leader or a healer). It searches Dracul (every 20 min), Jr. and Green Jr. (every 60 min) alone while the others farm on.
+- **Who:** the fastest ranged fighter (never the leader or a healer). It searches Dracul (every 20 min), Ms. Dracul (every 25 min), Jr. and Green Jr. (every 60 min) alone while the others farm on.
 - **On a find:** the runner reports it and the team comes. Like the Phoenix, the runner opens the fight alone when its solo boss check (kiting included) passes; otherwise it holds outside the boss's spawn box until the team is there (`holdFor` is empty since v1.209.2).
 - **Nonstop:** `farmBosses` would make the runner hunt a boss nonstop (off).
 
