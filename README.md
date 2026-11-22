@@ -3,7 +3,7 @@
 One bot for a whole Adventure Land team: up to three fighters and one merchant, all running the same code.
 The fighters farm, hunt bosses and level up; the merchant supplies them, sells, banks, trades with other players and upgrades their gear.
 
-> **Version:** `1.216.1` (`bot/config.js` → `version`) · **Teams:** `Dmpx…` (main account) and `Viz…` (second account) · **Code:** `bot/` → in-game CODE slots 20–39
+> **Version:** `1.216.2` (`bot/config.js` → `version`) · **Teams:** `Dmpx…` (main account) and `Viz…` (second account) · **Code:** `bot/` → in-game CODE slots 20–39
 
 ## Repository
 
@@ -599,7 +599,7 @@ It does not wait:
   - `events.engage` (Dracul, Ms. Dracul, Jr., Green Jr.): fought whenever met, and searched by a runner. Ms. Dracul (`fvampire`, v1.216.1): 240k HP, 875 magical, one spawn in halloween, drops Dracul's Attire (1 %); alone the runner holds for the team.
 
 **Boss check** (`events.boss`). From the team's real stats:
-- every fighter survives 6 hits;
+- every fighter survives 6 hits (`boss.minHits`); with a tank (warrior/paladin) in the team the others need only 4 (`minHitsNonTank`, v1.216.2 - Ms. Dracul hits the ranger for ~800, 4.4 hits, while the warrior tanks her; kiting in tight spots like Dracul's cave doesn't work);
 - the damage on the tank stays below the priest's healing × 1.5 (solo: 150 HP/s sustain);
 - a fighter that can kite the boss counts as taking no damage;
 - `maxFightMinutes: null` sets no kill-time limit.

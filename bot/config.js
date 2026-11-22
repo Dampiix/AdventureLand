@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.216.1",
+    version: "1.216.2",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -352,6 +352,7 @@ module.exports = {
         // and the game's damage formula. Other players are not counted on.
         boss: {
             minHits: 6,                 // every fighter must survive this many hits in a row
+            minHitsNonTank: 4,          // ...the others only this many while a tank (warrior/paladin) is in the team (2026-11-22)
             healCover: 1.5,             // damage/s on the tank <= priests' healing/s x this (potions do the rest)
             maxFightMinutes: null,      // kill-time limit for the team alone; null = none (player decision 2026-11-15)
             priestDamageShare: 0.3,     // priests mostly heal: count this share of their damage

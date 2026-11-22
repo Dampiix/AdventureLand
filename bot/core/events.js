@@ -181,14 +181,18 @@ module.exports = function createEvents(ctx) {
         const hitOn = function (f) {
             return m.attack * 1.1 * util.hitMultiplier(f, m.damage_type, m) * util.hitFactor(name);
         };
-        // 1. Burst: every fighter survives minHits hits.
+        // 1. Burst: every fighter survives minHits hits. With a tank in the team (Taunt keeps the boss on it) the
+        // others need only minHitsNonTank (2026-11-22, player decision: Ms. Dracul hits the ranger for ~800 - 4.4
+        // hits - while the warrior tanks her for 15; kiting in tight spots like Dracul's cave doesn't work).
+        const tankClasses = (config.targeting.teamSafety && config.targeting.teamSafety.tankClasses) || ["warrior", "paladin"];
+        const hasTank = !alone && team.some(function (f) { return tankClasses.includes(f.ctype); });
         for (const f of team) {
+            const need = hasTank && !tankClasses.includes(f.ctype) ? (bcfg.minHitsNonTank || minHits) : minHits;
             const hits = f.max_hp / hitOn(f);
-            if (hits < minHits) return { ok: false, why: f.name + " survives only " + hits.toFixed(1) + " hits (need " + minHits + ")" };
+            if (hits < need) return { ok: false, why: f.name + " survives only " + hits.toFixed(1) + " hits (need " + need + ")" };
         }
         // 2. Healing vs. damage on the tank: a warrior/paladin in the party (Taunt keeps the
         // boss on it), else the leader.
-        const tankClasses = (config.targeting.teamSafety && config.targeting.teamSafety.tankClasses) || ["warrior", "paladin"];
         const tank = team.filter(function (f) { return tankClasses.includes(f.ctype); })
             .sort(function (a, b) { return b.max_hp - a.max_hp; })[0] || team[0];
         // A fighter alone that can kite the boss (range >= boss range + kite margin like fighter.kiteStep, but
