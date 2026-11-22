@@ -112,6 +112,54 @@ module.exports = function createFighter(ctx, cls) {
             (parts.length > 1 ? " (" + parts.join(", ") + ")" : "") + ", " + kills + " kills", "white");
     }
     BOT_DPS_REPORT = function () { meterReport(true); };
+    // Kills by target (2026-11-22, for the luck catch): drops roll with the luck of the character a monster targets
+    // when it dies. The game's "death" event carries that luck (luckm) but comes after the client removed the monster,
+    // so every tick notes each monster's target (noteTargets) and a death is counted under the last one seen - our
+    // members by name, "none" (no target), "others" (another player). Logged with twice the damage meter's
+    // interval, "/kills" prints it now.
+    PAGE.__dmpxLastTarget = PAGE.__dmpxLastTarget || {};
+    function noteTargets() {
+        const now = Date.now();
+        Object.values(PAGE.entities || {}).forEach(function (e) {
+            if (e && e.type === "monster" && !e.dead) PAGE.__dmpxLastTarget[e.id] = { target: e.target || "", mtype: e.mtype, t: now };
+        });
+        Object.keys(PAGE.__dmpxLastTarget).forEach(function (id) { if (now - PAGE.__dmpxLastTarget[id].t > 60 * 1000) delete PAGE.__dmpxLastTarget[id]; });
+    }
+    try {
+        if (PAGE.__dmpxDeathFn) PAGE.socket.off("death", PAGE.__dmpxDeathFn);
+        PAGE.__dmpxKills = PAGE.__dmpxKills || [];
+        PAGE.__dmpxDeathFn = function (d) {
+            try {
+                const last = d && PAGE.__dmpxLastTarget && PAGE.__dmpxLastTarget[d.id];
+                if (!last) return; // not a monster we saw
+                PAGE.__dmpxKills.push({ t: Date.now(), target: last.target, mtype: last.mtype, luckm: d.luckm });
+                const keep = (meterCfg.windowMs || 5 * 60 * 1000) * 2 + 5000;
+                while (PAGE.__dmpxKills.length && Date.now() - PAGE.__dmpxKills[0].t > keep) PAGE.__dmpxKills.shift();
+            } catch (err) { /* statistics only */ }
+        };
+        PAGE.socket.on("death", PAGE.__dmpxDeathFn);
+    } catch (e) { /* no socket */ }
+    let lastKillLog = Date.now();
+    function killReport(force) {
+        const now = Date.now();
+        const every = (meterCfg.everyMs || 5 * 60 * 1000) * 2;
+        if (!force && now - lastKillLog < every) return;
+        lastKillLog = now;
+        const team = party.enabled ? party.memberNames() : [character.name];
+        const by = {}, luck = {}; let total = 0;
+        (PAGE.__dmpxKills || []).forEach(function (k) {
+            if (now - k.t > every) return;
+            const key = !k.target ? "none" : team.includes(k.target) ? k.target : "others";
+            if (key === "others") return; // other players' fights: not ours
+            by[key] = (by[key] || 0) + 1; total++;
+            if (typeof k.luckm === "number") { const l = luck[key] = luck[key] || { s: 0, n: 0 }; l.s += k.luckm; l.n++; }
+        });
+        if (!total) { if (force) util.log("kills", "no kills of ours in the last " + Math.round(every / 60000) + " min", "white"); return; }
+        const parts = Object.keys(by).sort(function (a, b) { return by[b] - by[a]; })
+            .map(function (n) { return n.replace(/^Dmpx/, "") + " " + by[n] + " (" + Math.round(by[n] / total * 100) + " %" + (luck[n] ? ", luck x" + (luck[n].s / luck[n].n).toFixed(2) : "") + ")"; });
+        util.log("kills", "by target at death, last " + Math.round(every / 60000) + " min: " + parts.join(", "), "white");
+    }
+    BOT_KILLS_REPORT = function () { killReport(true); };
     const potSamples = []; // { t, hp, mp } potion counts, one per second
     function samplePotions() {
         const now = Date.now();
@@ -682,6 +730,15 @@ module.exports = function createFighter(ctx, cls) {
         const def = G.monsters[mtype] || {};
         return (ev.search || []).concat(ev.engage || []).includes(mtype) || !!def.cooperative;
     }
+    function leaderGone() {
+        const lead = party.leaderInfo ? party.leaderInfo() : null;
+        if (!lead) return false;
+        if (lead.map !== character.map) return true;
+        return Math.hypot(lead.x - character.x, lead.y - character.y) > ((config.party || {}).farmRadius || 400);
+    }
+    function startPassing(farm) {
+        passing = { until: Date.now() + 3000, dest: farm.dest || targeting.spotFor(farm.monster, farm.map) || farm.monster };
+    }
     function passThrough(farm, target) {
         const pt = config.combat.passThrough || {};
         if (!pt.enabled || !farm || farm.any || !farm.monster || target.mtype === farm.monster || isBossType(target.mtype)) { offSince = 0; return false; }
@@ -689,7 +746,9 @@ module.exports = function createFighter(ctx, cls) {
             const spot0 = targeting.spotFor(farm.monster, farm.map);
             return !(spot0 && spot0.map === character.map && util.distanceTo(spot0) < (pt.spotRadius || 400));
         }
-        if (party.enabled && party.isMember && !party.detached()) return false; // members follow the leader
+        // Members follow the leader - unless the leader is gone already (another map, or beyond party.farmRadius):
+        // then they pass slow attackers too instead of fighting them for leaveAfterMs (2026-11-22, player decision).
+        if (party.enabled && party.isMember && !party.detached() && !leaderGone()) return false;
         if (util.hpRatio() < (pt.minHp || 0.5)) return false;
         const spot = targeting.spotFor(farm.monster, farm.map);
         if (spot && spot.map === character.map && util.distanceTo(spot) < (pt.spotRadius || 400)) return false; // arrived
@@ -715,7 +774,7 @@ module.exports = function createFighter(ctx, cls) {
         if (target && passThrough(farm, target)) {
             lastFarm = farm;
             lastTarget = null; // members see the leader travelling with no target: they follow, no fights
-            passing = { until: Date.now() + 3000, dest: farm.dest || targeting.spotFor(farm.monster, farm.map) || farm.monster };
+            startPassing(farm);
             util.status("passing " + target.mtype, "yellow");
             travel(goalFor(farm), "searching " + farm.monster);
             return;
@@ -1349,7 +1408,8 @@ module.exports = function createFighter(ctx, cls) {
         }
         if (handleDeath()) return;
         samplePotions();
-        if (!party.enabled || party.isLeader) meterReport(false); // the leader sees the whole team
+        noteTargets();
+        if (!party.enabled || party.isLeader) { meterReport(false); killReport(false); } // the leader sees the whole team
         if (!cls.survive()) handlePotions();
         if (cls.always) cls.always(); // every tick, also while a trip keeps the loop busy
         lootChests();
@@ -1367,7 +1427,17 @@ module.exports = function createFighter(ctx, cls) {
         // stood 13 px off and hit it all along. Heals and attacks still fire while we walk; the
         // kite step in handleCombat is throttled and does not move twice.
         const aimed = get_targeted_monster();
-        const kited = kiteStep(aimed && !aimed.dead ? aimed : null);
+        // Passing through (2026-11-22, player report): on a spot change with 1-2 slow monsters on us, the kite step
+        // cut the walk to the new spot every time the monster came near - a step, a wait, a step, for 60 s and more
+        // (the priest alone in desertland while the others were at the Phoenix in the cave). Once we pass through,
+        // there are no kite steps: we outrun them, heals and attacks in range go on. The decision is made here too,
+        // because a healing priest ends most ticks in cls.support and never reaches handleCombat.
+        if (lastFarm && !(passing && Date.now() < passing.until)) {
+            const on = aimed && !aimed.dead ? aimed : util.attackersOnMe()[0];
+            if (on && passThrough(lastFarm, on)) startPassing(lastFarm);
+        }
+        const passingNow = !!passing && Date.now() < passing.until;
+        const kited = !passingNow && kiteStep(aimed && !aimed.dead ? aimed : null);
         if (!kited && toHealer()) return;
         const covering = !kited && coverMembers();
         if (cls.support()) {

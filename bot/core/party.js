@@ -184,6 +184,17 @@ module.exports = function createParty(ctx) {
     // Members without a target: stay close to the leader. Without a fresh
     // broadcast (e.g. right after a restart) use the leader if it is visible,
     // otherwise wait where we are – never wander off alone.
+    // Farm radius (2026-11-22): a member only picks FREE monsters within party.farmRadius of the leader (same map,
+    // not detached). In the bat cave there are bats everywhere - the warrior, back from a restart, streamed from clump
+    // to clump ~1,000 px away from the priest and never came back (idleFollow only runs without a target). Monsters
+    // already on us are fought wherever they are. true when the point is fine.
+    function nearLeader(p) {
+        if (!enabled || isLeader || detached() || !p) return true;
+        const lead = leaderInfo();
+        if (!lead || lead.map !== character.map) return true;
+        const q = util.xy(p);
+        return Math.hypot(q.x - lead.x, q.y - lead.y) <= (cfg.farmRadius || 400);
+    }
     function idleFollow() {
         if (!enabled || isLeader || detached()) return false;
         let lead = leaderInfo();
@@ -230,6 +241,7 @@ module.exports = function createParty(ctx) {
         leaderInfo: leaderInfo,
         keepUp: keepUp,
         idleFollow: idleFollow,
+        nearLeader: nearLeader,
         detached: detached,
         leaderTravels: leaderTravels,
     };

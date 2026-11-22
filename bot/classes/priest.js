@@ -102,6 +102,57 @@ module.exports = function createPriest(ctx) {
         return true;
     }
 
+    // Luck catch (2026-11-22, player decision): drops are rolled with the luck of the character a monster TARGETS when
+    // it dies. The priest carries the luck gear: when a monster on an ally dies within luckCatch.hits hits, Absorb Sins
+    // pulls everything off that ally - the dying ones die on the priest. A tank in the party (Taunt/Agitate) takes the
+    // longer-living ones back; without one, the priest only absorbs what his courage holds without fear. Bosses too.
+    const lc = c.luckCatch || {};
+    const lastCatch = {}; // ally -> ms
+    const catchStats = { n: 0, monsters: 0, since: Date.now(), logAt: Date.now() };
+    function tankNear() {
+        const pullers = ((G.skills.taunt && G.skills.taunt.class) || []).concat((G.skills.agitate && G.skills.agitate.class) || []);
+        return ctx.party.memberNames().some(function (n) {
+            if (n === character.name) return false;
+            const p = get_player(n);
+            return !!p && !p.rip && pullers.includes(p.ctype) && util.distanceTo(p) <= (lc.tankRange || 400);
+        });
+    }
+    function tryLuckCatch() {
+        if (!lc.enabled || !ctx.party.enabled || !util.canCast("absorb") || !ctx.targeting.diesSoon) return false;
+        if (util.hpRatio() < (lc.minHp || 0.6)) return false;
+        const range = (G.skills.absorb && G.skills.absorb.range) || 240;
+        const mine = util.attackersOnMe();
+        const now = Date.now();
+        for (const n of ctx.party.memberNames()) {
+            if (n === character.name || now - (lastCatch[n] || 0) < (lc.everyMs || 1500)) continue;
+            const ally = get_player(n);
+            if (!ally || ally.rip || util.distanceTo(ally) > range) continue;
+            const on = Object.values(parent.entities || {}).filter(function (e) {
+                return e && e.type === "monster" && !e.dead && e.target === n;
+            });
+            if (!on.length || on.length > (lc.maxPull || 5)) continue;
+            const dying = on.filter(function (m) { return ctx.targeting.diesSoon(m, lc.hits || 2); });
+            if (!dying.length) continue;
+            // Without a tank to take the rest back: only what our courage holds per damage type (no fear).
+            if (!tankNear()) {
+                const count = {};
+                mine.concat(on).forEach(function (m) { const t = util.damageTypeOf(m); count[t] = (count[t] || 0) + 1; });
+                if (Object.keys(count).some(function (t) { return count[t] > util.courageOf(t); })) continue;
+            }
+            lastCatch[n] = now;
+            use_skill("absorb", ally).catch(function () {});
+            catchStats.n++;
+            catchStats.monsters += on.length;
+            if (now - catchStats.logAt > (lc.logEveryMs || 10 * 60 * 1000)) {
+                util.log("priest", "luck catch: " + catchStats.n + " absorbs (" + catchStats.monsters + " monsters) in " +
+                    Math.round((now - catchStats.since) / 60000) + " min", "white");
+                catchStats.logAt = now;
+            }
+            return true;
+        }
+        return false;
+    }
+
     // Revive (consumes an Essence of Life): heal a fallen member's gravestone to full,
     // then revive it. The dead fighter is told to wait instead of respawning in town.
     let lastWaitSent = 0;
@@ -166,7 +217,7 @@ module.exports = function createPriest(ctx) {
             if (tryRevive()) return true;
             const hurt = hurtMembers();
             if (tryPartyHeal(hurt)) return false; // Party Heal is a skill: the heal/attack stays available
-            tryAbsorb(hurt); // a skill too: the heal below still runs
+            if (!tryLuckCatch()) tryAbsorb(hurt); // skills too: the heal below still runs
             const worst = hurt[0];
             if (worst && worst.ratio < c.healBelow) return tryHeal(worst.entity, true);
             return false;

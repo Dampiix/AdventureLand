@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.216.2",
+    version: "1.217.7",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -211,6 +211,9 @@ module.exports = {
         // at the zone) judges a rage zone with the team model, else with its own pack check (targeting zoneVerdict).
         // The follow/kite leash was removed 2026-11-21.
         leash: 300,
+        // farmRadius (2026-11-22): members pick free monsters only within this of the leader (same map); the warrior
+        // streamed from clump to clump ~1,000 px off in the bat cave.
+        farmRadius: 400,
         broadcastMs: 2000,    // leader shares position/target this often
         inviteEveryMs: 10000, // leader re-invites a missing member this often
         // Leader waits while a fighter is farther than waitDistance px (or out of sight), at most
@@ -371,6 +374,7 @@ module.exports = {
         // Only hunts for monsters among the team's top xpTop XP spots (player decision 2026-11-20; the
         // farm pick's ranking): a fresh account keeps hunting its beginner monsters, a stronger team
         // farms its XP spots instead of bees and snakes. 0 = every safe hunt.
+        // 2026-11-22: 0 for a while (every safe hunt), back to 5 the same evening (player).
         xpTop: 5,
         minRemainingMs: 2 * 60 * 1000,   // skip hunts about to expire
         teamSpeedup: 2,                  // the team kills ~2x as fast as the leader alone (time check)
@@ -416,7 +420,7 @@ module.exports = {
         // drop spot worth more). Set a monster or a list here only to test or for a drop outside
         // the wish list. (Overnight 2026-11-19 it was ["mummy", "booboo", "stoneworm"].)
         // 2026-11-21 (late evening, player): "cgoo" - the team clears the grown CGoos in the arena; back to null after.
-        farm: null, // a list (2026-11-19): the first one not too strong/crowded; null = the guide picks. 2026-11-22: booboo/gscorpion party rage-zone test done
+        farm: null, // a list (2026-11-19): the first one not too strong/crowded; null = the guide picks. 2026-11-22: "bat" for the luck-catch test, back to null after
         fallback: "goo",          // used when the progression guide has no answer
         // Rare monsters attacked first when in sight (player decision 2026-11-20): golden bat
         // (24k HP, attack 50, gold), cutebee (300 HP, 99.9 avoidance), tiny pinky (5.6k HP, attack
@@ -605,6 +609,12 @@ module.exports = {
             // Absorb Sins (lvl 55): emergency only - a member below `below` with monsters on it
             // and no warrior/paladin within Taunt range of it; only while we are above selfAbove.
             absorb: { enabled: true, below: 0.35, selfAbove: 0.6 },
+            // Luck catch (2026-11-22, player decision; test): drops roll with the luck of the monster's target at death.
+            // A monster on an ally that dies within `hits` hits of our strongest fighter: Absorb Sins pulls everything off
+            // that ally (at most maxPull, priest above minHp, once per everyMs per ally). A tank (Taunt/Agitate) within
+            // tankRange takes the longer-living ones back and spares the dying ones; without a tank only what the
+            // priest's courage holds per damage type. Bosses included. Logged every logEveryMs.
+            luckCatch: { enabled: true, hits: 2, maxPull: 5, minHp: 0.6, everyMs: 1500, tankRange: 400, logEveryMs: 10 * 60 * 1000 },
             // Dark Blessing (lvl 70): +25% party damage for 8 s on targets needing sturdyHits+
             // of our hits, and on bosses.
             darkBlessing: { enabled: true, sturdyHits: 10 },
@@ -632,7 +642,10 @@ module.exports = {
             // anything on our healer - a kiting priest walked the Phoenix around the map.
             // walkFirst (2026-11-20): walk up to the monster (within range + closeBy), then taunt - from
             // afar only when the ally is below urgentHpBelow or the monster returns damage to melee.
-            taunt: { enabled: true, allyHpBelow: 0.8, hitRatio: 0.05, bosses: true, bossHp: 20000, offHealer: true,
+            // first/agitateOver (2026-11-22, luck-catch test): true = Taunt takes monsters off allies one by one first, Agitate only
+            // from agitateOver on allies. Tested at the bats: priest share 82 -> 91 % but ~10 % fewer kills, so off (player:
+            // more kills = more XP).
+            taunt: { enabled: true, first: false, agitateOver: 6, allyHpBelow: 0.8, hitRatio: 0.05, bosses: true, bossHp: 20000, offHealer: true,
                 walkFirst: true, closeBy: 25, urgentHpBelow: 0.5 },
             agitateFrom: 3,                 // Agitate (lvl 68) when this many monsters are on allies
             cleaveFrom: 3,                  // Cleave (lvl 52, axe/scythe) with this many monsters around

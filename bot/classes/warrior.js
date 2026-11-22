@@ -62,7 +62,15 @@ module.exports = function createWarrior(ctx) {
     // the Phoenix (attack 125, under 5 % of the priest's HP) stayed on the kiting priest, who
     // walked it around the map while the warrior never took it.
     let tauntWalk = null; // where we last walked to for a taunt (a new order when it moved 30+ px)
+    // Luck catch (2026-11-22): a monster on an ally that dies within luckCatch.hits hits is left there while a luck
+    // catcher (Absorb Sins) is near - it should die on the catcher. Neither Taunt nor Agitate takes it.
+    function spareForLuck(m) {
+        if (!m || m.target === character.name || !ctx.targeting.luckCatcherNear || !ctx.targeting.diesSoon) return false;
+        const lc = ((ctx.config.classes || {}).priest || {}).luckCatch || {};
+        return !!ctx.targeting.luckCatcherNear() && ctx.targeting.diesSoon(m, lc.hits || 2);
+    }
     function worthTaunting(m) {
+        if (spareForLuck(m)) return false;
         const p = get_player(m.target);
         if (!p || p.rip) return false;
         const t = c.taunt || {};
@@ -392,6 +400,7 @@ module.exports = function createWarrior(ctx) {
     // Free monsters of the wanted kind around us (not fighting another player).
     function packAround(range) {
         return Object.values(parent.entities || {}).filter(function (e) {
+            if (e && !e.target && ctx.party.nearLeader && !ctx.party.nearLeader(e)) return false; // member: farm radius
             return e && e.type === "monster" && !e.dead && e.visible && packWanted(e) &&
                 util.distanceTo(e) <= range && (!e.target || e.target === character.name) &&
                 !(ctx.targeting.inOccupied && ctx.targeting.inOccupied(e)) && // another player's spot
@@ -639,7 +648,8 @@ module.exports = function createWarrior(ctx) {
             // the warrior kept hitting goos and fell behind).
             if (ag.monsters === "auto" && auto.type && e.mtype !== auto.type) return false;
             return packWanted(e) && !e.target && !(ctx.targeting.inOccupied && ctx.targeting.inOccupied(e)) &&
-                !util.tooSpiky(ctx.config, e) && util.distanceTo(e) <= 600 && !inBadZone(e);
+                !util.tooSpiky(ctx.config, e) && util.distanceTo(e) <= 600 && !inBadZone(e) &&
+                !(ctx.party.nearLeader && !ctx.party.nearLeader(e)); // member: free ones only near the leader (2026-11-22)
         }).sort(function (a, b) { return util.distanceTo(a) - util.distanceTo(b); });
         if (!around.length) return false;
         const inRange = around.filter(function (m) { return is_in_range(m); });
@@ -1349,7 +1359,13 @@ module.exports = function createWarrior(ctx) {
                 return e && e.type === "monster" && !e.dead && util.distanceTo(e) <= G.skills.agitate.range &&
                     e.target !== character.name && !onAllies.includes(e.id) && !others.some(function (o) { return o.mtype === e.mtype; });
             });
-            if (!bystanders && others.length >= (c.agitateFrom || 3) && util.canCast("agitate") && mpLeftAfter("agitate") >= reserve() &&
+            // Agitate takes every monster in reach - not while one on an ally is about to die for the luck catcher.
+            const sparing = others.some(function (m) { return util.distanceTo(m) <= G.skills.agitate.range && spareForLuck(m); });
+            // Taunt first (taunt.first, 2026-11-22 player test): Agitate only for more than Taunt can take one by one
+            // (taunt.agitateOver on allies) - it also pulls the free monsters around.
+            const tf = c.taunt || {};
+            const crowd = !tf.first || others.length >= (tf.agitateOver || 6);
+            if (!bystanders && !sparing && crowd && others.length >= (c.agitateFrom || 3) && util.canCast("agitate") && mpLeftAfter("agitate") >= reserve() &&
                 others.filter(function (m) { return util.distanceTo(m) <= G.skills.agitate.range; }).length >= (c.agitateFrom || 3) &&
                 protectiveAgitateOk()) {
                 use_skill("agitate").catch(function () {});

@@ -105,6 +105,7 @@ function hideGoldLogs() {
 }
 
 var BOT_DPS_REPORT = null;  // damage meter report (set by bot_fighter)
+var BOT_KILLS_REPORT = null; // kills by target at death (set by bot_fighter, 2026-11-22)
 var BOT_FOLLOWS_LEADER = null; // party member following its leader (set in startBot)
 
 function startBot() {
@@ -391,6 +392,10 @@ function handle_command(command, args) {
         return true;
     }
     // "/dps": the damage meter now (bot_fighter, the leader counts the whole party).
+    if (command === "kills") {
+        if (typeof BOT_KILLS_REPORT === "function") BOT_KILLS_REPORT(); else game_log("no kill log here", "orange");
+        return true;
+    }
     if (command === "dps") {
         if (typeof BOT_DPS_REPORT === "function") BOT_DPS_REPORT(); else game_log("no damage meter here", "orange");
         return true;

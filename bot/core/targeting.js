@@ -819,6 +819,7 @@ module.exports = function createTargeting(ctx) {
     function safeCandidates(type) {
         return Object.values(parent.entities || {}).filter(function (e) {
             if (!e || e.type !== "monster" || e.mtype !== type || e.dead || !e.visible || e.target) return false;
+            if (party.nearLeader && !party.nearLeader(e)) return false; // member: only within the farm radius of the leader
             return !util.tooSpiky(config, e) && liveSafe(e);
         });
     }
@@ -1686,6 +1687,37 @@ module.exports = function createTargeting(ctx) {
         PAGE.socket.on("action", PAGE.__dmpxActFn);
         PAGE.socket.on("hit", PAGE.__dmpxActHitFn);
     } catch (e) { /* no socket */ }
+    // Dies within `hits` hits of our strongest fighter (or the damage on its way kills it already). For the luck catch
+    // (2026-11-22, player decision): drops are rolled with the luck of the character the monster TARGETS when it dies.
+    function diesSoon(m, hits) {
+        if (!m || m.dead) return false;
+        if (doomed(m)) return true;
+        const def = G.monsters[m.mtype] || {};
+        const team = ctx.events && ctx.events.teamStats ? ctx.events.teamStats() : [util.combatStats()];
+        let best = 0;
+        team.forEach(function (f) {
+            const hit = (f.attack || 0) * util.hitMultiplier(def, f.damage_type, f);
+            if (hit > best) best = hit;
+        });
+        return best > 0 && (m.hp || 0) <= best * (hits || 1);
+    }
+    // A party member that catches dying monsters for its luck (Absorb Sins, classes.priest.luckCatch) within `range` px
+    // of p (default: us), or null. Any class that has the skill counts.
+    function luckCatcherNear(p, range) {
+        const lc = ((config.classes || {}).priest || {}).luckCatch || {};
+        if (!lc.enabled || !party.enabled) return null;
+        const at = p ? util.xy(p) : util.xy(character);
+        const skillClasses = (G.skills.absorb && G.skills.absorb.class) || [];
+        const names = party.memberNames();
+        for (const n of names) {
+            const pl = n === character.name ? character : get_player(n);
+            if (!pl || pl.rip || !skillClasses.includes(pl.ctype)) continue;
+            if (pl.level < ((G.skills.absorb && G.skills.absorb.level) || 0)) continue;
+            const q = util.xy(pl);
+            if (Math.hypot(q.x - at.x, q.y - at.y) <= (range || 400)) return pl;
+        }
+        return null;
+    }
     // Will the damage already on its way kill this monster? (armor/resistance via util.damageMultiplier)
     function doomed(t) {
         const fl = PAGE.__dmpxInflight;
@@ -1999,6 +2031,7 @@ module.exports = function createTargeting(ctx) {
     }
 
     return { currentFarm: currentFarm, farmNow: function () { return farm; }, pick: pick, xpRanking: teamXpRanking, heldBossNear: heldBossNear, doomed: doomed, reportSearch: reportSearch, isTeamSafe: isTeamSafe, whyUnsafe: whyUnsafe,
+        diesSoon: diesSoon, luckCatcherNear: luckCatcherNear,
         teamModelOn: teamModelOn, teamVerdict: teamVerdict, spotGate: spotGate, liveDanger: liveDanger, rageZoneHere: rageZoneHere, failingZoneAt: failingZoneAt, bossHoldRing: bossHoldRing, holdingBoss: holdBossQuiet, inSpotArea: inSpotArea, cavalryEdge: cavalryEdge, spotGateWatchNow: spotGateWatchNow, rageBoxes: rageBoxes, failingZoneNear: failingZoneNear, safetyReport: safetyReport, waitForLone: waitForLone, watchPoint: watchPoint, standPoint: standPoint, aggressive: aggressive, diedAt: diedAt, deathAt: deathAt, spotFor: spotFor, inOccupied: inOccupied, packVerdict: packVerdict, 
         // HP a solo fight against this monster costs (0 if it was never checked: harmless or low level).
         soloCost: function (e) { return (e && soloCostById[e.id]) || 0; } };

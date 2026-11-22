@@ -3,7 +3,7 @@
 One bot for a whole Adventure Land team: up to three fighters and one merchant, all running the same code.
 The fighters farm, hunt bosses and level up; the merchant supplies them, sells, banks, trades with other players and upgrades their gear.
 
-> **Version:** `1.216.2` (`bot/config.js` → `version`) · **Teams:** `Dmpx…` (main account) and `Viz…` (second account) · **Code:** `bot/` → in-game CODE slots 20–39
+> **Version:** `1.217.7` (`bot/config.js` → `version`) · **Teams:** `Dmpx…` (main account) and `Viz…` (second account) · **Code:** `bot/` → in-game CODE slots 20–39
 
 ## Repository
 
@@ -80,6 +80,7 @@ Type these in the chat box of a game client that runs the bot. The game passes u
 | `/search <boss>` | leader | The same for any watched boss (default `phoenix`, e.g. `/search fvampire` for Ms. Dracul). Aliases: `phönix`, `phonix` → phoenix · `vampire`, `vampir`, `dracul` → mvampire · `msdracul`, `missdracul` → fvampire · `gjr` → greenjr. |
 | `/agitate off\|swords\|splash\|chain\|splashstream\|config` | warrior | The warrior's Agitate mode, kept across restarts (`agitate_mode:<name>`). `config` goes back to the config's choice. Solo only: in a party the automatic decision applies. |
 | `/dps` | leader or solo fighter | Print the damage meter now ([§16](#16-party-play)). |
+| `/kills` | leader or solo fighter | Kills by target at death over the last 10 min, with the average luck the game rolled them with (v1.217.1, for the luck catch). Logged on its own every 10 min (`kills` tag, also in the journal). |
 | `/safety [map]` | leader | Log every member's guide verdict and the team model's verdict for every monster on the map. |
 
 Boss commands answer in chat with `[bot] …` (for example `only the leader (X) searches`).
@@ -361,7 +362,7 @@ The fighter loop runs every `tickMs` (250 ms). Each pass writes the heartbeat `d
 - `travel.leaveVia` (v1.215.0) does the same on the way out: every path walk leaving `spookytown` for another map (travel, following the leader, pickups, bank and potion walks) goes to `halloween` first. Before, the way back went spookytown -> level2 -> level1 past the level-20 Vampire Rats. A direct neighbour (`level2`) and goals whose map can't be told are walked to as asked.
 - A failed route marks its point bad for 60 s; the bot then walks by monster name.
 - The Town teleport (`movement.useTown`) is used only farther than 600 px from the map's center, never while monsters attack us, and never while following a leader.
-- **Pass-through:** the leader or a solo fighter on its way to the farm spot leaves slower attackers of other kinds behind (HP ≥ 50 %, not within 400 px of the spot, never bosses). Any fighter stuck for 60 s fighting a non-farm kind walks out towards the farm target (`combat.passThrough`).
+- **Pass-through:** the leader or a solo fighter on its way to the farm spot leaves slower attackers of other kinds behind (HP ≥ 50 %, not within 400 px of the spot, never bosses). Any fighter stuck for 60 s fighting a non-farm kind walks out towards the farm target (`combat.passThrough`). Members pass through as well once the leader is gone (another map, or beyond `party.farmRadius`), and while passing through there are no kite steps (v1.217.7: the kite step cut the walk every time the monster came near - a step, a wait, a step).
 
 ## 9. Potions, resting and survival
 
@@ -565,6 +566,8 @@ The cooldown is shared by the account (`dmpx_cavalry_next`, at least 10 min).
 
 ## 16. Party play
 
+
+**Farm radius** (`party.farmRadius` 400, v1.217.4): a member picks free monsters only within 400 px of the leader (same map); monsters already on it are fought wherever they are. Without one in reach it goes back to the leader. Why: in the bat cave the warrior, back from a restart, streamed from clump to clump ~1,000 px away from the priest and never returned (the follow leash on the same map was removed 2026-11-21).
 **Leader.**
 - Invites missing members every 10 s.
 - Broadcasts its position, farm target, target, route end and event every 2 s.
@@ -625,7 +628,7 @@ During a boss fight Daisy trips are aborted, and the fighter fights the event's 
 `hunts.enabled` (off in solo). A hunt is taken only when every fighter has reached level 20 (`minLevel`) and all of these hold:
 - it is on this server with kills left and more than 2 min left;
 - it is safe for the team (the same check as farm spots; `allow` / `deny` override);
-- the monster is among the team's **top 5 XP spots** (`xpTop`);
+- the monster is among the team's **top `xpTop` XP spots** (0 = every safe hunt; 5 again since v1.217.6 after a short test with 0);
 - the remaining kills fit in the time left (team speed from the guide).
 
 The hunt expiring first wins.
@@ -741,6 +744,8 @@ Every skill checks its level, weapon type, MP and cooldown. Most keep an MP rese
 - **Safety:** after three low-HP moments in 10 min it pulls fewer. A death within 90 s of an Agitate denies Agitate on that kind for 2 h (`deathDenyMs`).
 - **Escape triggers since v1.216.0** (solo and party), besides low HP and the mob check: **real HP loss** - the HP actually lost over the last `escapeLossSec` (3 s; every hit, burn, heal and potion included) would kill him within 8 s; or a **monster rejected even alone** - one on him that the team model (party) or the pack check (solo) rejects as a single monster, e.g. a Fire Spirit ("abilities: burn"). Bosses never count as rejected. Why: a Fire Spirit pulled into the Giant Scorpions by another player killed him with "1 on me" - 17,262 damage in 10 s from stacking burn, which the hit formula doesn't know. The usual speed rule stays: he only runs from monsters slower than him.
 - **Party escape** (`agitate.partyEscape`, v1.207.0): in a party the warrior runs too, but only when the live check says he dies within 8 s. The check includes the healing of every healer in reach (heal/s × `mobbing.healShare` 0.8). It applies with a mob (more than 3 on him, below 70 % HP) or below 30 % HP; low HP the priest covers doesn't count. All monsters follow him, the mobbing combo runs out after 5 s without a hit, and the priest heals meanwhile. Escape steps stay within the healer's reach where they can. The escape ends when he is back at 60 % HP and the combo has run out.
+- **Taunt first** (`taunt.first`, off): Taunt one by one before Agitate (Agitate only from `agitateOver` 6). Tested 2026-11-22 at the bats: the priest's share of kills 82 -> 91 %, but ~10 % fewer kills - so off.
+- **Luck catch** (v1.217.0): while a luck catcher (priest with `luckCatch`) is near, a monster on an ally that is about to die (2 hits) is spared: no Taunt, and no Agitate while one is in reach. The longer-living ones the priest absorbed are taunted back one by one, or with Agitate when none in reach is about to die and the team model allows it.
 - **Protective Agitate** (party, v1.207.0): with 3+ monsters on allies, Agitate only when the team model (mobbing, fear, healing) says the warrior can hold **everything** Agitate would take (all within 320 px plus those already on him). Otherwise Taunt takes them one by one. Log: `no protective Agitate: N would be on us (...)`.
 - **Team stats:** every fighter sends its stats to every other one each minute, not only to the leader (v1.207.0). The warrior's live check needs the priest's healing.
 - **Gap step** (`agitate.gapStep`, solo and party, v1.205.0): the splash hits what stands around the *target* (explosion ÷ 3.6 px, hitbox to hitbox), there is no facing. When the splash weapons are on, 3+ monsters are on the warrior and the best target's splash misses one in range (e.g. one behind him), he steps 50 px into the **largest angle gap** between them. They all follow from one side and bunch up. At most every 4 s, from 2.5 s on when all are in range again. Never into free monsters, a failing rage zone, or (member) off the leash. Every 10 min the log shows the steps and the splash per hit.
@@ -760,6 +765,7 @@ Every skill checks its level, weapon type, MP and cooldown. Most keep an MP rese
 | **Heal** | Most hurt member below 75 % (shares the attack cooldown). Self below 60 %. |
 | **Party Heal** | 2+ members below 65 %, one below 35 %, or any other member below 50 % (also out of sight, from its heartbeat). |
 | **Absorb Sins** | A non-tank below 35 % with monsters on it and no tank in Taunt range, while we are above 60 %. |
+| **Absorb Sins: luck catch** (v1.217.0, `luckCatch`) | A monster on an ally dies within 2 hits of our strongest fighter (or the damage on its way kills it): Absorb Sins pulls everything off that ally, so the dying ones die on the priest. Drops roll with the luck of the monster's target at death, and the priest carries the luck gear. At most 5 monsters, priest above 60 %, once per 1.5 s per ally; without a tank (Taunt/Agitate) within 400 px only what his courage holds per damage type. Bosses too. Log every 10 min: `luck catch: N absorbs`. |
 | **Revive** | A dead member, with an Essence of Life in the bag. |
 | **Curse** | Targets needing 5+ hits. |
 | **Dark Blessing** (lvl 70) | Bosses and targets needing 10+ hits. |

@@ -292,7 +292,7 @@ function log(tag, text, color) {
 // game log keeps ~200 lines without times; this keeps the last 400 decisions with a timestamp
 // per character in the storage ("dmpx_journal:<name>": [[ms, text], ...]).
 // "dps" (2026-11-21): the damage meter's 5-minute lines (team damage/s, kills) for the measurement hours.
-const JOURNAL_TAGS = ["target", "drops", "hunt", "event", "party", "cavalry", "dps"];
+const JOURNAL_TAGS = ["target", "drops", "hunt", "event", "party", "cavalry", "dps", "kills"];
 let journalBuf = null;
 function journal(text) {
     try {
