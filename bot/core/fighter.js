@@ -23,7 +23,7 @@
 
 module.exports = function createFighter(ctx, cls) {
     // A move promise rejects when the next move interrupts it: swallow it (the log filled with "{}", 2026-11-18).
-    function quiet(p) { if (p && p.catch) p.catch(function () {}); return p; }
+    const quiet = ctx.util.quiet;
     const config = ctx.config;
     const util = ctx.util;
     const targeting = ctx.targeting;
@@ -192,7 +192,7 @@ module.exports = function createFighter(ctx, cls) {
         return party.memberNames().some(function (n) {
             if (n === character.name) return false;
             const p = get_player(n);
-            return !!p && !p.rip && p.ctype === "priest" && util.distanceTo(p) < 600;
+            return !!p && !p.rip && util.isHealer(p) && util.distanceTo(p) < 600;
         });
     }
     // HP lost per second over the last ~3 s, as a share of max HP.
@@ -454,7 +454,7 @@ module.exports = function createFighter(ctx, cls) {
         let best = null, bestD = Infinity;
         ((map && map.monsters) || []).forEach(function (pack) {
             if (pack.type !== m.mtype) return;
-            const boxes = pack.boundaries ? pack.boundaries.filter(function (b) { return b[0] === character.map; }).map(function (b) { return b.slice(1); }) : pack.boundary ? [pack.boundary] : [];
+            const boxes = util.spawnBoxes(pack, character.map);
             boxes.forEach(function (b) {
                 const c = { x: (b[0] + b[2]) / 2, y: (b[1] + b[3]) / 2 };
                 const d = Math.hypot(c.x - m.x, c.y - m.y);
@@ -476,9 +476,7 @@ module.exports = function createFighter(ctx, cls) {
     function kiteStep(target) {
         const k = config.combat.kite;
         if (!k || !k.enabled) return false;
-        const attackers = Object.values(parent.entities || {}).filter(function (e) {
-            return e && e.type === "monster" && !e.dead && e.target === character.name;
-        });
+        const attackers = util.attackersOnMe();
         if (!attackers.length) return false;
         const myRange = character.range || 0, mySpeed = character.speed || 0;
         let threat = null, threatDist = Infinity;
@@ -493,8 +491,7 @@ module.exports = function createFighter(ctx, cls) {
             // second; any other attacker only after the target.
             // Our damage type decides armor or resistance (2026-11-22 review: the priest was judged against armor).
             const myType = character.damage_type || ((G.classes && G.classes[character.ctype]) || {}).damage_type || "physical";
-            const myDef = myType === "magical" ? (def.resistance || 0) - (character.rpiercing || 0)
-                : myType === "pure" ? 0 : (def.armor || 0) - (character.apiercing || 0);
+            const myDef = util.defenseVs(def, myType, character);
             const myDps = Math.max(1, (character.attack || 0) * (character.frequency || 1) * util.damageMultiplier(myDef));
             const killSec = (m === target ? m.hp : m.hp + (target ? target.hp : 0)) / myDps;
             const reachSec = Math.max(0, dist - mRange) / Math.max(1, mSpeed);
@@ -1322,7 +1319,7 @@ module.exports = function createFighter(ctx, cls) {
         const pc = config.party || {};
         if (!party.enabled || party.isLeader || !pc.toHealerBelow || util.hpRatio() >= pc.toHealerBelow || character.ctype === "priest") return false;
         const healer = party.memberNames().map(function (n) { return n === character.name ? null : get_player(n); })
-            .find(function (p) { return p && !p.rip && p.ctype === "priest"; });
+            .find(function (p) { return p && !p.rip && util.isHealer(p); });
         if (!healer) return false;
         const reach = (healer.range || 200) * 0.8;
         if (util.distanceTo(healer) <= reach) return false;

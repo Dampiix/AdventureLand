@@ -39,13 +39,49 @@ function hitCfg() {
     const c = typeof BOT_CONFIG !== "undefined" && BOT_CONFIG ? BOT_CONFIG : {};
     return (c.targeting && c.targeting.hitFactor) || {};
 }
+// The defense that counts when `attacker` hits `target` with damage `type` (codebase review 2026-11-22: written out
+// about 15 times, and the copies drifted - pure damage was reduced by resistance in some). Physical: armor minus
+// the attacker's armor piercing; magical: resistance minus resistance piercing; pure: none. Unknown types count
+// as physical. target / attacker: an entity, a stats object or a G.monsters entry.
+function defenseVs(target, type, attacker) {
+    const a = attacker || {};
+    if (type === "pure") return 0;
+    if (type === "magical") return ((target && target.resistance) || 0) - (a.rpiercing || 0);
+    return ((target && target.armor) || 0) - (a.apiercing || 0);
+}
+// The damage multiplier of that hit (server formula).
+function hitMultiplier(target, type, attacker) {
+    return damageMultiplier(defenseVs(target, type, attacker));
+}
+// Fear (server.js): attackers over our courage for one damage type cut our attack to 60 / 40 / 20 %.
+function fearMult(over) {
+    return over > 2 ? 0.2 : over > 1 ? 0.4 : over > 0 ? 0.6 : 1;
+}
+// A promise whose rejection is not interesting (an interrupted move): no "Uncaught (in promise)" log spam.
+function quiet(p) {
+    if (p && typeof p.catch === "function") p.catch(function () {});
+    return p;
+}
+// A healer among the players (priest, or anything that reports a heal stat).
+function isHealer(p) {
+    return !!p && ((p.heal || 0) > 0 || p.ctype === "priest");
+}
+// The spawn boxes [x1, y1, x2, y2] of a map's monster pack (map.monsters entry) on that map.
+function spawnBoxes(pack, mapName) {
+    if (!pack) return [];
+    if (pack.boundaries) return pack.boundaries.filter(function (b) { return !mapName || b[0] === mapName; }).map(function (b) { return b.slice(1); });
+    return pack.boundary ? [pack.boundary] : [];
+}
+// MP left after casting a skill now.
+function mpLeftAfter(skill) {
+    return character.mp - ((G.skills[skill] && G.skills[skill].mp) || 0);
+}
 function predictedHit(attacker, me) {
     const def = G.monsters[attacker.mtype] || {};
     const type = attacker.damage_type || def.damage_type || "physical";
-    const pierce = function (k) { return attacker[k] != null ? attacker[k] : (def[k] || 0); };
-    const d = type === "physical" ? (me.armor || 0) - pierce("apiercing")
-        : type === "magical" ? (me.resistance || 0) - pierce("rpiercing") : 0;
-    return (attacker.attack || def.attack || 0) * damageMultiplier(d);
+    const pierce = { apiercing: attacker.apiercing != null ? attacker.apiercing : (def.apiercing || 0),
+        rpiercing: attacker.rpiercing != null ? attacker.rpiercing : (def.rpiercing || 0) };
+    return (attacker.attack || def.attack || 0) * hitMultiplier(me, type, pierce);
 }
 // A "hit" event on us: d.damage from d.hid (attacker entity, if we see it).
 // Mobbed hits (d.mobbing, see mobbingMult) carry the server's combo: noted for the live check, not
@@ -593,6 +629,14 @@ module.exports = {
     hpRatio: hpRatio,
     teamLevel: teamLevel,
     damageMultiplier: damageMultiplier,
+    defenseVs: defenseVs,
+    hitMultiplier: hitMultiplier,
+    fearMult: fearMult,
+    quiet: quiet,
+    isHealer: isHealer,
+    spawnBoxes: spawnBoxes,
+    mpLeftAfter: mpLeftAfter,
+    attackersOnMe: attackersOnMe,
     noteHitTaken: noteHitTaken,
     mobbing: mobbing,
     mobCap: mobCap,

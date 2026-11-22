@@ -12,9 +12,7 @@ module.exports = function createRanger(ctx) {
     const util = ctx.util;
     const c = ctx.config.classes.ranger;
 
-    function mpLeftAfter(skill) {
-        return character.mp - (G.skills[skill].mp || 0);
-    }
+    const mpLeftAfter = ctx.util.mpLeftAfter;
 
     function sturdy(target) {
         return target.hp > character.attack * c.sturdyHits;
@@ -33,8 +31,7 @@ module.exports = function createRanger(ctx) {
         const mult = (G.skills["3shot"] && G.skills["3shot"].damage_multiplier) || 0.7;
         const kills = function (e) {
             const d = G.monsters[e.mtype] || {};
-            const def = (d.armor || 0) - (character.apiercing || 0);
-            return (character.attack || 0) * 0.9 * mult * util.damageMultiplier(def) >= e.hp;
+            return (character.attack || 0) * 0.9 * mult * util.hitMultiplier(d, "physical", character) >= e.hp;
         };
         const inReach = Object.values(parent.entities || {}).filter(function (e) {
             return e && e.type === "monster" && !e.dead && e.visible && is_in_range(e, "3shot") &&

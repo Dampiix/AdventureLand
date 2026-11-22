@@ -15,21 +15,15 @@
 
 module.exports = function createRogue(ctx) {
     // A move promise rejects when the next move interrupts it: swallow it (the log filled with "{}", 2026-11-18).
-    function quiet(p) { if (p && p.catch) p.catch(function () {}); return p; }
+    const quiet = ctx.util.quiet;
     const util = ctx.util;
     const c = ctx.config.classes.rogue || {};
 
-    function mpLeftAfter(skill) {
-        return character.mp - ((G.skills[skill] && G.skills[skill].mp) || 0);
-    }
+    const mpLeftAfter = util.mpLeftAfter;
     function reserve() {
         return character.max_mp * (c.mpReserveRatio || 0.25);
     }
-    function onMe() {
-        return Object.values(parent.entities || {}).filter(function (e) {
-            return e && e.type === "monster" && !e.dead && e.target === character.name;
-        });
-    }
+    const onMe = util.attackersOnMe;
     function wearsKnifeBelt() {
         const b = character.slots && character.slots.belt;
         const need = (G.skills.fanofknives.slot || []).find(function (s) { return s[0] === "belt"; });

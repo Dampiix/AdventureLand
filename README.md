@@ -3,7 +3,7 @@
 One bot for a whole Adventure Land team: up to three fighters and one merchant, all running the same code.
 The fighters farm, hunt bosses and level up; the merchant supplies them, sells, banks, trades with other players and upgrades their gear.
 
-> **Version:** `1.213.1` (`bot/config.js` → `version`) · **Teams:** `Dmpx…` (main account) and `Viz…` (second account) · **Code:** `bot/` → in-game CODE slots 20–39
+> **Version:** `1.214.0` (`bot/config.js` → `version`) · **Teams:** `Dmpx…` (main account) and `Viz…` (second account) · **Code:** `bot/` → in-game CODE slots 20–39
 
 ## Repository
 
@@ -300,7 +300,7 @@ Only `main.js` calls `require_code()`. Every other module is a factory that rece
 |---|---|---|
 | [`main.js`](bot/main.js) | 20 `bot_main` | Entry point, role lookup, starts the team, chat commands, watchdog, hop watcher |
 | [`config.js`](bot/config.js) | 21 `bot_config` | Everything you tune |
-| [`lib/util.js`](bot/lib/util.js) | 22 `bot_util` | Shared helpers: damage formula, weapon power, kite risk, logging, heartbeat, team derivation |
+| [`lib/util.js`](bot/lib/util.js) | 22 `bot_util` | Shared helpers: damage formula and defense against a damage type (`defenseVs`, `hitMultiplier`), fear, mobbing, learned hit factors, attackers on us, healer test, spawn boxes, weapon power, kite risk, logging, heartbeat, team derivation |
 | [`lib/comms.js`](bot/lib/comms.js) | 23 `bot_comms` | CODE messages between our own characters |
 | [`core/targeting.js`](bot/core/targeting.js) | 24 `bot_targeting` | Farm spot, safety checks, target picking |
 | [`core/supply.js`](bot/core/supply.js) | 25 `bot_supply` | Fighter side of loot, gold and potions |

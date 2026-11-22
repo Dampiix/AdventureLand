@@ -179,9 +179,7 @@ module.exports = function createEvents(ctx) {
         const minHits = bcfg.minHits || 6;
         // Pure damage ignores armor and resistance; the learned hit factor counts as in the farm checks (2026-11-22 review).
         const hitOn = function (f) {
-            const def = m.damage_type === "physical" ? (f.armor || 0) - (m.apiercing || 0)
-                : m.damage_type === "magical" ? (f.resistance || 0) - (m.rpiercing || 0) : 0;
-            return m.attack * 1.1 * util.damageMultiplier(def) * util.hitFactor(name);
+            return m.attack * 1.1 * util.hitMultiplier(f, m.damage_type, m) * util.hitFactor(name);
         };
         // 1. Burst: every fighter survives minHits hits.
         for (const f of team) {
@@ -212,7 +210,7 @@ module.exports = function createEvents(ctx) {
         // 3. Kill time with the team alone (priests mostly heal).
         const dps = team.reduce(function (sum, f) {
             const physical = f.damage_type === "physical";
-            const def = physical ? (m.armor || 0) - (f.apiercing || 0) : (m.resistance || 0) - (f.rpiercing || 0);
+            const def = util.defenseVs(m, f.damage_type, f);
             const hitChance = Math.max(0.1, 1 - (physical ? (m.evasion || 0) : (m.reflection || 0)) / 100);
             const share = f.ctype === "priest" ? (bcfg.priestDamageShare || 0.3) : 1;
             return sum + (f.attack || 0) * (f.frequency || 1) * util.damageMultiplier(def) * hitChance * share;

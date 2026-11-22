@@ -16,13 +16,11 @@
 
 module.exports = function createWarrior(ctx) {
     // A move promise rejects when the next move interrupts it: swallow it (the log filled with "{}", 2026-11-18).
-    function quiet(p) { if (p && p.catch) p.catch(function () {}); return p; }
+    const quiet = ctx.util.quiet;
     const util = ctx.util;
     const c = ctx.config.classes.warrior;
 
-    function mpLeftAfter(skill) {
-        return character.mp - ((G.skills[skill] && G.skills[skill].mp) || 0);
-    }
+    const mpLeftAfter = util.mpLeftAfter;
     function reserve() {
         return character.max_mp * (c.mpReserveRatio || 0);
     }
@@ -72,8 +70,7 @@ module.exports = function createWarrior(ctx) {
         const ev = ctx.config.events || {};
         const bosses = (ev.search || []).concat(ev.engage || []);
         if (t.bosses !== false && (def.cooperative || bosses.includes(m.mtype) || (m.max_hp || def.hp || 0) >= (t.bossHp || 20000))) return true;
-        const healer = G.skills.heal && (G.skills.heal.class || []).includes(p.ctype);
-        return t.offHealer !== false && !!healer;
+        return t.offHealer !== false && util.isHealer(p);
     }
 
     // Dash: a short jump towards a point ([x, y]). It has no cooldown, so we space the
@@ -402,11 +399,7 @@ module.exports = function createWarrior(ctx) {
             return !packWanted(e) || def.dreturn > 0 || util.tooSpiky(ctx.config, e) || (e.target !== character.name && inBadZone(e));
         });
     }
-    function onMe() {
-        return Object.values(parent.entities || {}).filter(function (e) {
-            return e && e.type === "monster" && !e.dead && e.target === character.name;
-        });
-    }
+    const onMe = util.attackersOnMe;
     // Hitbox edge to edge, like the server's splash check.
     function edge(a, b) {
         try { return parent.distance(a, b); } catch (e) {
@@ -745,7 +738,7 @@ module.exports = function createWarrior(ctx) {
         ctx.party.memberNames().forEach(function (n) {
             if (n === character.name) return;
             const p = get_player(n);
-            if (!p || p.rip || !(p.heal > 0 || p.ctype === "priest")) return;
+            if (!p || p.rip || !util.isHealer(p)) return;
             if (!best || util.distanceTo(p) < util.distanceTo(best)) best = p;
         });
         return best ? { x: util.xy(best).x, y: util.xy(best).y, reach: Math.max(80, (best.range || 150) * 0.9) } : null;
@@ -770,8 +763,7 @@ module.exports = function createWarrior(ctx) {
         ((G.maps[character.map] || {}).monsters || []).forEach(function (p) {
             const d = G.monsters[p.type] || {};
             if (onTypes[p.type] || !((d.aggro || 0) > 0 || (d.rage || 0) > 0) || d.cooperative) return;
-            (p.boundaries ? p.boundaries.filter(function (b) { return b[0] === character.map; }).map(function (b) { return b.slice(1); })
-                : p.boundary ? [p.boundary] : []).forEach(function (b) {
+            util.spawnBoxes(p, character.map).forEach(function (b) {
                 boxes.push([b[0] - keep, b[1] - keep, b[2] + keep, b[3] + keep]);
             });
         });
@@ -1186,7 +1178,7 @@ module.exports = function createWarrior(ctx) {
     }
     function hitsToKill(t) {
         let mult = 1;
-        try { mult = damage_multiplier((t.armor || 0) - (character.apiercing || 0)); } catch (e) { /* 1 */ }
+        mult = util.hitMultiplier(G.monsters[t.mtype] || t, character.damage_type || ((G.classes[character.ctype] || {}).damage_type), character);
         return (t.max_hp || t.hp || 1) / Math.max(1, (character.attack || 1) * mult);
     }
     async function putOn(list, why) {

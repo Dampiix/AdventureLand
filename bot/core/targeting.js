@@ -164,9 +164,7 @@ module.exports = function createTargeting(ctx) {
         const mob = (n || 1) > 3 ? util.mobCap(att) : 1;
         return team.every(function (f) {
             // Pure damage ignores armor and resistance (2026-11-22 review: booboos hit "pure" and counted as reduced).
-            const def = m.damage_type === "physical" ? (f.armor || 0) - (m.apiercing || 0)
-                : m.damage_type === "magical" ? (f.resistance || 0) - (m.rpiercing || 0) : 0;
-            return f.max_hp >= 20 * att * mob * 1.1 * util.damageMultiplier(def) * util.hitFactor(monster);
+            return f.max_hp >= 20 * att * mob * 1.1 * util.hitMultiplier(f, m.damage_type, m) * util.hitFactor(monster);
         });
     }
 
@@ -203,7 +201,7 @@ module.exports = function createTargeting(ctx) {
             if (map.ignore || map.instance) return;
             (map.monsters || []).forEach(function (pack) {
                 if (pack.type !== monster || !pack.count) return;
-                const boxes = pack.boundaries ? pack.boundaries.map(function (b) { return b.slice(1); }) : pack.boundary ? [pack.boundary] : [];
+                const boxes = util.spawnBoxes(pack);
                 boxes.forEach(function (b) {
                     const area = Math.abs((b[2] - b[0]) * (b[3] - b[1]));
                     if (area / pack.count < (ts.denseArea || 15000)) most = Math.max(most, pack.count);
@@ -250,10 +248,7 @@ module.exports = function createTargeting(ctx) {
             team.find(function (f) { return f.name === character.name; }) || team[0];
         if (!tank) return { ok: false, why: "no team stats" };
         const hitOn = function (f) {
-            let def = 0;
-            if (m.damage_type === "physical") def = (f.armor || 0) - (m.apiercing || 0);
-            else if (m.damage_type === "magical") def = (f.resistance || 0) - (m.rpiercing || 0);
-            return (m.attack || 0) * 1.1 * util.damageMultiplier(def) * util.hitFactor(monster);
+            return (m.attack || 0) * 1.1 * util.hitMultiplier(f, m.damage_type, m) * util.hitFactor(monster);
         };
         // Monsters we pull one at a time (isolation) come as one plus a possible add
         // (pullLone) – a level-12 White Wolf failed "5.1 volleys of 3" though we never pull
@@ -270,12 +265,11 @@ module.exports = function createTargeting(ctx) {
         const dtype = m.damage_type || "physical";
         const tankCourage = dtype === "pure" ? tank.pcourage : dtype === "magical" ? tank.mcourage : tank.courage;
         const fearOver = typeof tankCourage === "number" ? Math.max(0, pull - tankCourage) : 0;
-        const tankFear = fearOver > 2 ? 0.2 : fearOver > 1 ? 0.4 : fearOver ? 0.6 : 1;
+        const tankFear = util.fearMult(fearOver);
         // Kill time of the whole pull (for the mobbing combo) and of the fight below.
         const teamDps = team.reduce(function (s, f) {
             if ((f.heal || 0) > 0) return s; // a healer's actions are counted as healing above
-            const d = f.damage_type === "magical" ? (m.resistance || 0) - (f.rpiercing || 0) : (m.armor || 0) - (f.apiercing || 0);
-            return s + (f.attack || 0) * (f === tank ? tankFear : 1) * (f.frequency || 1) * util.damageMultiplier(d);
+            return s + (f.attack || 0) * (f === tank ? tankFear : 1) * (f.frequency || 1) * util.hitMultiplier(m, f.damage_type, f);
         }, 0);
         const monsterHp = (live && (live.hp || live.max_hp)) || m.hp || 0;
         // Mobbing (2026-11-22): more than 3 on the tank multiply every hit (util.mobbing) - the
@@ -340,9 +334,7 @@ module.exports = function createTargeting(ctx) {
         const team = ctx.events && ctx.events.teamStats ? ctx.events.teamStats() : [];
         const fighters = team.length ? team : [util.combatStats()];
         const harmlessNow = !(def.abilities && Object.keys(def.abilities).length) && fighters.every(function (f) {
-            const d = def.damage_type === "physical" ? (f.armor || 0) - (def.apiercing || 0)
-                : def.damage_type === "magical" ? (f.resistance || 0) - (def.rpiercing || 0) : 0;
-            return f.max_hp >= 20 * (e.attack || def.attack || 0) * 1.1 * util.damageMultiplier(d) * util.hitFactor(e.mtype);
+            return f.max_hp >= 20 * (e.attack || def.attack || 0) * 1.1 * util.hitMultiplier(f, def.damage_type, def) * util.hitFactor(e.mtype);
         });
         if (harmlessNow) {
             liveChecked[e.id] = { level: e.level, ok: true, at: now };
@@ -358,8 +350,7 @@ module.exports = function createTargeting(ctx) {
         const kite = util.kiteRisk(def, e, { speed: character.speed, range: character.range });
         const ownCheck = function () {
             const me = util.combatStats();
-            const d = def.damage_type === "physical" ? (me.armor || 0) - (def.apiercing || 0)
-                : def.damage_type === "magical" ? (me.resistance || 0) - (def.rpiercing || 0) : 0;
+            const d = util.defenseVs(me, def.damage_type, def);
             const hits = me.max_hp / Math.max(1, (e.attack || def.attack || 0) * 1.1 * util.damageMultiplier(d) * util.hitFactor(e.mtype) * kite);
             return hits >= (lcfg.ownHits || 6) ? { ok: true } : { ok: false, why: "I survive " + hits.toFixed(1) + " of its hits (need " + (lcfg.ownHits || 6) + ")" };
         };
@@ -372,15 +363,14 @@ module.exports = function createTargeting(ctx) {
             const first = ownCheck();
             if (!first.ok) return first;
             const me = util.combatStats();
-            const d = def.damage_type === "physical" ? (me.armor || 0) - (def.apiercing || 0)
-                : def.damage_type === "magical" ? (me.resistance || 0) - (def.rpiercing || 0) : 0;
+            const d = util.defenseVs(me, def.damage_type, def);
             const pull = (def.aggro || 0) >= 1 ? Math.max(1, densePack(e.mtype)) : 1;
             // The MP potions share the cooldown (2026-11-22 review: packVerdict had this fix, soloCheck not).
             let sustain = potionHps() * hpPotionShare(0, me);
             if (me.ctype === "priest") sustain += (me.heal || me.attack || 0) * (me.frequency || 1) * 0.5; // half its actions heal
-            const myDef = me.damage_type === "physical" ? (def.armor || 0) - (me.apiercing || 0) : (def.resistance || 0) - (me.rpiercing || 0);
+            const myDef = util.defenseVs(def, me.damage_type, me);
             const over = Math.max(0, pull - util.courageOf(def.damage_type || "physical")); // fear (see packVerdict)
-            const fearMult = over > 2 ? 0.2 : over > 1 ? 0.4 : over ? 0.6 : 1;
+            const fearMult = util.fearMult(over);
             const myDps = Math.max(1, (me.attack || 0) * fearMult * (me.frequency || 1) * util.damageMultiplier(myDef));
             sustain += myDps * ((character.lifesteal || 0) / 100);
             const killSec = (e.hp || e.max_hp || def.hp) * pull / myDps;
@@ -622,19 +612,18 @@ module.exports = function createTargeting(ctx) {
         opts = opts || {};
         const def = G.monsters[e.mtype] || {};
         const me = util.combatStats();
-        const d = def.damage_type === "physical" ? (me.armor || 0) - (def.apiercing || 0)
-            : def.damage_type === "magical" ? (me.resistance || 0) - (def.rpiercing || 0) : 0;
+        const d = util.defenseVs(me, def.damage_type, def);
         const att = e.attack || def.attack || 0;
         const freq = e.frequency || def.frequency || 1;
         const hit = att * 1.1 * util.damageMultiplier(d) * util.hitFactor(e.mtype);
         let sustain = potionHps() * hpPotionShare(opts.mpPerSec || 0, me);
         if (me.ctype === "priest") sustain += (me.heal || me.attack || 0) * (me.frequency || 1) * 0.5;
-        const myDef = me.damage_type === "physical" ? (def.armor || 0) - (me.apiercing || 0) : (def.resistance || 0) - (me.rpiercing || 0);
+        const myDef = util.defenseVs(def, me.damage_type, me);
         // Fear (server.js, 2026-11-22): more attackers of one damage type than our courage for it cut our
         // attack to 60/40/20 % (and our speed by 20/40/70+). 3 booboos (pure courage 2) scared the warrior,
         // the fight took longer and he died. Counted only when the pull itself goes over our courage.
         const over = Math.max(0, n - util.courageOf(def.damage_type || "physical"));
-        const fearMult = over > 2 ? 0.2 : over > 1 ? 0.4 : over ? 0.6 : 1;
+        const fearMult = util.fearMult(over);
         const myDps = Math.max(1, (me.attack || 0) * fearMult * (me.frequency || 1) * util.damageMultiplier(myDef) * (1 + 0.7 * Math.min(opts.splash || 0, Math.max(0, n - 1))));
         sustain += myDps * ((character.lifesteal || 0) / 100);
         const killSec = (e.max_hp || def.hp || 1) * n / myDps;
@@ -878,9 +867,7 @@ module.exports = function createTargeting(ctx) {
             if (pack.type !== type) return;
             // A spawn with a rage zone (map data "rage", 2026-11-19: the mummies): every 4.2 s each
             // free monster of that spawn goes for a player standing inside it - wait outside that.
-            const boxes = pack.rage ? [pack.rage]
-                : pack.boundaries ? pack.boundaries.filter(function (b) { return b[0] === character.map; }).map(function (b) { return b.slice(1); })
-                : pack.boundary ? [pack.boundary] : [];
+            const boxes = pack.rage ? [pack.rage] : util.spawnBoxes(pack, character.map);
             boxes.forEach(function (b) {
                 const cx = (b[0] + b[2]) / 2, cy = (b[1] + b[3]) / 2;
                 // Nearest point of the box, then margin px further out along the way from its center.
@@ -934,8 +921,7 @@ module.exports = function createTargeting(ctx) {
         let box = null;
         ((map && map.monsters) || []).forEach(function (pack) {
             if (box || pack.type !== type) return;
-            const boxes = pack.boundaries ? pack.boundaries.filter(function (b) { return b[0] === spot.map; }).map(function (b) { return b.slice(1); })
-                : pack.boundary ? [pack.boundary] : [];
+            const boxes = util.spawnBoxes(pack, spot.map);
             boxes.forEach(function (b) {
                 if (box || Math.round((b[0] + b[2]) / 2) !== spot.x || Math.round((b[1] + b[3]) / 2) !== spot.y) return;
                 // Spawn box and rage box together, whichever reaches farther out (player request 2026-11-22).
@@ -958,8 +944,7 @@ module.exports = function createTargeting(ctx) {
         const mapName = p.map || character.map; // also a route end on another map (2026-11-22)
         return ((G.maps[mapName] || {}).monsters || []).some(function (pk) {
             if (pk.type !== type) return false;
-            const boxes = pk.boundaries ? pk.boundaries.filter(function (b) { return b[0] === mapName; }).map(function (b) { return b.slice(1); })
-                : pk.boundary ? [pk.boundary] : [];
+            const boxes = util.spawnBoxes(pk, mapName);
             if (pk.rage) boxes.push(pk.rage);
             return boxes.some(function (b) { return boxDist(p, b) < margin; });
         });
@@ -1037,6 +1022,13 @@ module.exports = function createTargeting(ctx) {
         gate.state = "watch";
         gate.since = Date.now();
     }
+    // n of this kind at once: the team model (leader), a member trusting its leader, or our own pack check (solo, or
+    // a detached member - 2026-11-22: the warrior ran ahead into the 5-booboo spawn).
+    function pullVerdict(type, strongest, n) {
+        if (teamModelOn()) return teamVerdict(type, strongest, { pull: n });
+        if (party.enabled && party.isMember && !party.detached()) return { ok: true };
+        return packVerdict(strongest, n);
+    }
     function judgeSpot(type, seen, box) {
         const def = G.monsters[type];
         // None in sight: fine - except where the whole spawn comes anyway (aggressive or a rage zone, 2026-11-22):
@@ -1055,10 +1047,7 @@ module.exports = function createTargeting(ctx) {
             // The whole spawn, not just what we see from the edge (2026-11-22): the check saw 2 free booboos,
             // 5 came at once out of the rage zone (4x level 2, 1x level 8) - terrified, dead in 7 s.
             const n = Math.max(free.length, box.count || 0);
-            // A member on its own (detached: far from the leader) judges like a solo fighter (2026-11-22: the
-            // warrior ran ahead into the 5-booboo spawn - "party member: the leader decides" said OK).
-            const v = teamModelOn() ? teamVerdict(type, strongest, { pull: n })
-                : party.enabled && party.isMember && !party.detached() ? { ok: true } : packVerdict(strongest, n);
+            const v = pullVerdict(type, strongest, n);
             if (!v.ok && /waiting for the team/.test(v.why || "")) return { wait: true };
             return v.ok ? { ok: true, why: n + " at once fine (" + free.length + " free in sight, " + lv + ")" }
                 : { ok: false, why: n + " in the " + (box.rage ? "rage zone" : "pack") + " (" + free.length + " free in sight, " + lv + ") would come at once: " + v.why };
@@ -1083,8 +1072,7 @@ module.exports = function createTargeting(ctx) {
         });
         if (group.length >= 2) {
             const strongest = group.slice().sort(function (a, b) { return (b.attack || 0) - (a.attack || 0) || (b.max_hp || 0) - (a.max_hp || 0); })[0];
-            const v = teamModelOn() ? teamVerdict(type, strongest, { pull: group.length })
-                : party.enabled && party.isMember && !party.detached() ? { ok: true } : packVerdict(strongest, group.length);
+            const v = pullVerdict(type, strongest, group.length);
             if (!v.ok && /waiting for the team/.test(v.why || "")) return { wait: true };
             if (!v.ok) return { ok: false, why: "a group of " + group.length + " stands together (" + lv + ") and would come at once: " + v.why };
         }
@@ -1690,22 +1678,6 @@ module.exports = function createTargeting(ctx) {
         PAGE.socket.on("hit", PAGE.__dmpxActHitFn);
     } catch (e) { /* no socket */ }
     // The game's damage multiplier for armor/resistance (server formula, as ALClient's Tools).
-    function defenseMult(d) {
-        if (d <= -980) return 1.32;
-        if (d <= -150) return 1.1125 - (d + 150) * 0.00025;
-        if (d <= -100) return 1.0875 - (d + 100) * 0.0005;
-        if (d <= -50) return 1.05 - (d + 50) * 0.00075;
-        if (d <= 100) return 1 - d * 0.001;
-        if (d <= 200) return 0.9 - (d - 100) * 0.001;
-        if (d <= 300) return 0.8 - (d - 200) * 0.00095;
-        if (d <= 400) return 0.705 - (d - 300) * 0.0009;
-        if (d <= 500) return 0.615 - (d - 400) * 0.00082;
-        if (d <= 600) return 0.533 - (d - 500) * 0.0007;
-        if (d <= 700) return 0.463 - (d - 600) * 0.0006;
-        if (d <= 800) return 0.403 - (d - 700) * 0.0005;
-        if (d <= 1557.5) return 0.353 - (d - 800) * 0.0004;
-        return 0.05;
-    }
     // Will the damage already on its way kill this monster?
     function doomed(t) {
         const fl = PAGE.__dmpxInflight;
@@ -1725,7 +1697,7 @@ module.exports = function createTargeting(ctx) {
             if (dtype === "magical" && (t.reflection || def.reflection)) continue;
             if (dtype === "physical" && (t.evasion || def.evasion)) continue;
             const defense = dtype === "magical" ? (t.resistance != null ? t.resistance : (def.resistance || 0)) : (t.armor != null ? t.armor : (def.armor || 0));
-            sum += def["1hp"] ? 1 : p.damage * defenseMult(defense) * 0.9;
+            sum += def["1hp"] ? 1 : p.damage * util.damageMultiplier(defense) * 0.9;
             if (sum >= t.hp) return true;
         }
         return false;
@@ -1799,8 +1771,7 @@ module.exports = function createTargeting(ctx) {
         let best = null, bd = Infinity;
         (map.monsters || []).forEach(function (pk) {
             if (pk.type !== t.mtype) return;
-            const boxes = pk.boundaries ? pk.boundaries.filter(function (b) { return b[0] === character.map; }).map(function (b) { return b.slice(1); })
-                : pk.boundary ? [pk.boundary] : [];
+            const boxes = util.spawnBoxes(pk, character.map);
             boxes.forEach(function (b) { const d = boxDist(util.xy(t), b); if (d < bd) { bd = d; best = b; } });
         });
         return best && bd < 300 ? best : null;

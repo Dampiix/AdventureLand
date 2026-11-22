@@ -132,9 +132,7 @@ function startBot() {
                     // Not while monsters attack us: every hit cancels the channel, and the server
                     // refuses it with more than 5 on us ("can't escape") - a warrior following the
                     // leader home stood in place until the last tortoise let go (2026-11-18).
-                    if (Object.values(parent.entities || {}).some(function (e) {
-                        return e && e.type === "monster" && !e.dead && e.target === character.name;
-                    })) return false;
+                    if (BOT_UTIL.attackersOnMe().length) return false;
                     const m = G.maps[character.map];
                     const s = m && m.spawns && m.spawns[0];
                     return !!s && Math.hypot(character.x - s[0], character.y - s[1]) > (mv.townMinDistance || 600);
