@@ -417,7 +417,11 @@ module.exports = function createWorkshop(ctx) {
     }
 
     async function retrieve(entry) {
-        if (character.esize < 1) throw { reason: "bag full" };
+        // Bag reserve (2026-11-22, player decision): copies come out of the bank only while bagReserve slots stay
+        // free afterwards - the workshop filled the bag to 2 free slots right after the merchant had banked for a
+        // pickup, so copies went back and forth and pickups failed with send_no_space.
+        const reserve = cfg.bagReserve || 0;
+        if (character.esize < 1 + reserve) throw { reason: reserve ? "bag full (keeping " + reserve + " slots free for pickups)" : "bag full" };
         if (!(await util.walkToBank())) throw { reason: "not inside the bank after the walk" };
         readBank();
         let fresh = bankSnapshot.items.find(function (b) { return b.pack === entry.pack && b.index === entry.index && b.name === entry.name; });
@@ -441,6 +445,8 @@ module.exports = function createWorkshop(ctx) {
     // (fighters hand gold over regularly) is retried soon; a used-up wish budget
     // or any other reason (too risky, no copies, ...) waits giveUpForMs.
     function pauseAfter(k, reason) {
+        // A full bag clears soon (banking, pickups, sales): again in a few minutes, not after an hour (2026-11-22).
+        if (/space|bag full/.test(String(reason || ""))) return cfg.retryAfterBudgetMs || cfg.giveUpForMs;
         if (reason === "budget" && k !== GOALS && !isOwn(k) && goalBudget().allowed < 10000) return cfg.retryAfterBudgetMs || cfg.giveUpForMs;
         if (reason !== "budget" || k === GOALS) return cfg.giveUpForMs;
         const left = budgetFor(k) - (spent[k] || 0);

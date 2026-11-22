@@ -3,7 +3,7 @@
 One bot for a whole Adventure Land team: up to three fighters and one merchant, all running the same code.
 The fighters farm, hunt bosses and level up; the merchant supplies them, sells, banks, trades with other players and upgrades their gear.
 
-> **Version:** `1.217.7` (`bot/config.js` → `version`) · **Teams:** `Dmpx…` (main account) and `Viz…` (second account) · **Code:** `bot/` → in-game CODE slots 20–39
+> **Version:** `1.218.0` (`bot/config.js` → `version`) · **Teams:** `Dmpx…` (main account) and `Viz…` (second account) · **Code:** `bot/` → in-game CODE slots 20–39
 
 ## Repository
 
@@ -527,13 +527,13 @@ Monsters fought by other players are never taken, except cooperative ones (Phoen
 
 **Kiting** (`combat.kite`). A fighter that outranges an attacker by 30 px and is faster than it (its charge speed below 0.99 × ours) stands on a circle around it and only moves while inside.
 - **Circle radius:** its speed + its range + 50, at most our range − 10.
-- **Avoid:** points near free monsters (120 px).
+- **Avoid:** points near free monsters (120 px), and points within the reach of monsters of other kinds than the farm target + 50 px (`kite.foreignMargin`, v1.218.0 - Fire Spirits, range 280, next to the Giant Scorpions). Escape points too.
 - **Bosses:** kiting stays within 280 px of the boss's spawn area.
 - **Cornered:** the fighter looks for an escape point; if there is none, it stands and fights.
 
 A single attacker that can't be kited switches kiting off. The warrior (range 38) never kites. Check a monster's `charge` in `G.monsters` before tuning: the Phoenix charges at 65, faster than a ranger.
 
-**Spacing** (party, `party.spacing`). Ranged non-tanks keep out of the monsters' melee reach (their range + 50) while a tank is near.
+**Spacing** (party, `party.spacing`). Ranged non-tanks keep out of the monsters' melee reach (their range + 50) while a tank is near. Other kinds than the farm target: out of their whole reach + 50, not capped at our own range (v1.218.0: the priest stood towards the Fire Spirits, the pulled scorpions came his way and the fight drifted into their reach).
 
 **Too-strong spots:** see [§12](#12-crowded-taken-and-too-strong-spots).
 
@@ -731,7 +731,7 @@ Every skill checks its level, weapon type, MP and cooldown. Most keep an MP rese
 | **Charge** | Whenever we walk (cooldown). |
 | **Dash** | **Off.** Combat only, ≤ 49 px towards the target. |
 | **Taunt** | A monster on an ally below 80 % HP, or hitting for ≥ 5 % of its HP, a boss, or anything on the priest. The warrior walks up first unless the ally is below 50 %. |
-| **Agitate** (lvl 68) | 3+ monsters on allies, with no bystanders in reach. |
+| **Agitate** (lvl 68) | 3+ monsters on allies, with no bystanders and no other kind than the farm target in reach. |
 | **Cleave / Stomp** | 3+ / 2+ monsters around, never near damage-return monsters. |
 | **War Cry** | Party: targets needing 4+ hits. Solo: before a pull-point Agitate. |
 
@@ -746,7 +746,7 @@ Every skill checks its level, weapon type, MP and cooldown. Most keep an MP rese
 - **Party escape** (`agitate.partyEscape`, v1.207.0): in a party the warrior runs too, but only when the live check says he dies within 8 s. The check includes the healing of every healer in reach (heal/s × `mobbing.healShare` 0.8). It applies with a mob (more than 3 on him, below 70 % HP) or below 30 % HP; low HP the priest covers doesn't count. All monsters follow him, the mobbing combo runs out after 5 s without a hit, and the priest heals meanwhile. Escape steps stay within the healer's reach where they can. The escape ends when he is back at 60 % HP and the combo has run out.
 - **Taunt first** (`taunt.first`, off): Taunt one by one before Agitate (Agitate only from `agitateOver` 6). Tested 2026-11-22 at the bats: the priest's share of kills 82 -> 91 %, but ~10 % fewer kills - so off.
 - **Luck catch** (v1.217.0): while a luck catcher (priest with `luckCatch`) is near, a monster on an ally that is about to die (2 hits) is spared: no Taunt, and no Agitate while one is in reach. The longer-living ones the priest absorbed are taunted back one by one, or with Agitate when none in reach is about to die and the team model allows it.
-- **Protective Agitate** (party, v1.207.0): with 3+ monsters on allies, Agitate only when the team model (mobbing, fear, healing) says the warrior can hold **everything** Agitate would take (all within 320 px plus those already on him). Otherwise Taunt takes them one by one. Log: `no protective Agitate: N would be on us (...)`.
+- **Protective Agitate** (party, v1.207.0): with 3+ monsters on allies, Agitate only when the team model (mobbing, fear, healing) says the warrior can hold **everything** Agitate would take (all within 320 px plus those already on him). Otherwise Taunt takes them one by one. Log: `no protective Agitate: N would be on us (...)`. Since v1.218.0 everything in reach that is not on the warrior yet must be of the farm kind (event types count): one Fire Spirit on an ally let Agitate pull three.
 - **Team stats:** every fighter sends its stats to every other one each minute, not only to the leader (v1.207.0). The warrior's live check needs the priest's healing.
 - **Gap step** (`agitate.gapStep`, solo and party, v1.205.0): the splash hits what stands around the *target* (explosion ÷ 3.6 px, hitbox to hitbox), there is no facing. When the splash weapons are on, 3+ monsters are on the warrior and the best target's splash misses one in range (e.g. one behind him), he steps 50 px into the **largest angle gap** between them. They all follow from one side and bunch up. At most every 4 s, from 2.5 s on when all are in range again. Never into free monsters, a failing rage zone, or (member) off the leash. Every 10 min the log shows the steps and the splash per hit.
 - **Escape** (solo, v1.201.0): below 30 % HP (`escapeHp`) it runs from slower monsters, with no swings. It runs as long as something on it can still reach it: that monster's range + 100 px (`escapeMargin`), at least 250 px (`escapeClear`). Once out of reach it stands still and lets the potions work, until it is back at 60 % HP (`escapeUntilHp`). The escape also ends when nothing targets it any more, or after 45 s (`escapeMaxMs`). Each step tries 16 directions at 200, 120 and 70 px and takes the one with the most room to the nearest attacker. Cornered (no step leads away): it fights on and tries again after 5 s.
@@ -845,7 +845,7 @@ The merchant ticks every second.
 - **Wanderer's pieces** are sold only when no non-tank can still use the copy.
 
 **Banking.**
-- **When:** fewer than 6 free bag slots (`bank.whenFreeBelow`), or 30 min since the last visit.
+- **When:** fewer than 6 free bag slots (`bank.whenFreeBelow`), or 30 min since the last visit. Before every pickup too, while fewer than 12 slots are free (`bank.beforePickupFree`, v1.217.8: store only, workshop copies included) - back-to-back pickups (Ponty-round prep) used to fail with `send_no_space`. The workshop takes copies out of the bank only while 8 slots stay free (`workshop.bagReserve`, v1.217.9); a job stopped by a full bag tries again after 10 min, not an hour.
 - **What stays in the bag:** sellable items, finished gear-goal copies, potions, `bank.keep` items (scrolls, stand, rod, Tracktrix …), copies waiting to be dismantled, and reserved items unless the bag is tight.
 - **Junk:** after a visit, sellable junk is taken back out of the bank and sold.
 - **New bank packs are never bought.**

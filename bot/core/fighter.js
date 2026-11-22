@@ -577,8 +577,11 @@ module.exports = function createFighter(ctx, cls) {
         const R = k.anchorRadius || 280;
         const inAnchor = function (ok) { return function (x, y) { return ok(x, y) && (!anchor || Math.hypot(x - anchor.x, y - anchor.y) <= R); }; };
         const toAnchor = anchor ? function (x, y) { return Math.hypot(x - anchor.x, y - anchor.y); } : null;
+        // Out of foreign kinds' reach first (2026-11-22, Fire Spirits next to the scorpions).
+        const skip = [threat, target];
+        const okSafe = function (x, y) { return okFree(x, y) && !inForeignReach(x, y, skip); };
         // Inside the anchor circle first; none there: the fitting point closest to the anchor.
-        const p = orbitPoint(threat, want, inAnchor(okFree)) || orbitPoint(threat, want, inAnchor(okBase)) ||
+        const p = orbitPoint(threat, want, inAnchor(okSafe)) || orbitPoint(threat, want, inAnchor(okFree)) || orbitPoint(threat, want, inAnchor(okBase)) ||
             (anchor ? orbitPoint(threat, want, okBase, toAnchor) : orbitPoint(threat, want, okBase));
         if (!p) {
             // Cornered: run to open ground instead of standing and tanking (player idea 2026-11-18),
@@ -587,7 +590,7 @@ module.exports = function createFighter(ctx, cls) {
                 util.status("kiting " + threat.mtype + " - out of the corner", "orange");
                 return true;
             }
-            const esc = escapePoint(me, util.xy(threat), free, k);
+            const esc = escapePoint(me, util.xy(threat), free, k, skip);
             if (!esc || (aim && Math.hypot(esc.x - aim.x, esc.y - aim.y) > myRange * 0.95)) return false; // nowhere to go: stand and fight
             lastKite = Date.now();
             escape = { x: esc.x, y: esc.y, until: Date.now() + 4000 };
@@ -602,7 +605,31 @@ module.exports = function createFighter(ctx, cls) {
         util.status("kiting " + threat.mtype, "orange");
         return true;
     }
-    function escapePoint(me, pack, free, k) {
+    // Foreign kinds (2026-11-22, player report): the warrior died to three Fire Spirits (range 280, magical,
+    // burn) next to the Giant Scorpions. The priest stood towards them, the pulled scorpions ran his way, and
+    // step by step the fight drifted into their reach - kite and spacing points only kept 120-130 px. A monster
+    // of another kind than the farm target (event types count as ours) is kept off by its own reach +
+    // kite.foreignMargin. skip: entities not to count (the monster we kite, our target).
+    function isForeign(e) {
+        const fm = lastFarm;
+        if (!fm || !e || e.type !== "monster") return false;
+        if (fm.any) return Array.isArray(fm.types) ? !fm.types.includes(e.mtype) : false;
+        return !!fm.monster && e.mtype !== fm.monster;
+    }
+    function reachOf(e) { return e.range || (G.monsters[e.mtype] || {}).range || 20; }
+    function inForeignReach(x, y, skip) {
+        const margin = (config.combat.kite || {}).foreignMargin || 50;
+        return Object.values(parent.entities || {}).some(function (e) {
+            if (!e || e.dead || (skip && skip.includes(e)) || !isForeign(e)) return false;
+            const q = util.xy(e);
+            return Math.hypot(q.x - x, q.y - y) < reachOf(e) + margin;
+        });
+    }
+    function escapePoint(me, pack, free, k, skip) {
+        // Clear of foreign kinds' reach first; nothing there: as before (2026-11-22).
+        return escapePointFrom(me, pack, free, k, skip || []) || escapePointFrom(me, pack, free, k, null);
+    }
+    function escapePointFrom(me, pack, free, k, skip) {
 
         let best = null, bestScore = -Infinity;
         for (const r of [150, 220, 300]) {
@@ -612,6 +639,7 @@ module.exports = function createFighter(ctx, cls) {
                 // Through the pack is fine: monsters don't block the way, and they hit us anyway
                 // while we stand in reach (player note 2026-11-18). Only free ones are avoided.
                 if (free.some(function (p) { return Math.hypot(p.x - x, p.y - y) < (k.avoidRadius || 120); })) continue;
+                if (skip && inForeignReach(x, y, skip)) continue;
                 if (!canMoveFrom(me.x, me.y, x, y)) continue; // straight line only (no smart_move into walls)
                 let open = 0;
                 for (let j = 0; j < 8; j++) {
@@ -647,9 +675,14 @@ module.exports = function createFighter(ctx, cls) {
             .find(function (p) { return p && !p.rip && tanks.includes(p.ctype) && util.distanceTo(p) < 400; });
         if (!tank) return false;
         const margin = sp.margin || 50;
-        const reachOf = function (m) { return m.range || (G.monsters[m.mtype] || {}).range || 20; };
-        // Never farther than we can shoot (2026-11-21): at most our range - 25 px.
-        const keep = function (m) { const r = reachOf(m) + margin; return r < myRange ? Math.min(r, myRange - 25) : Math.min(sp.gap || 130, myRange - 25); };
+        // Never farther than we can shoot (2026-11-21): at most our range - 25 px. Foreign kinds (not our target)
+        // out of their whole reach + foreignMargin (2026-11-22: Fire Spirits, 280, next to the scorpions).
+        const fMargin = (config.combat.kite || {}).foreignMargin || 50;
+        const keep = function (m) {
+            if (m !== target && isForeign(m)) return reachOf(m) + fMargin;
+            const r = reachOf(m) + margin;
+            return r < myRange ? Math.min(r, myRange - 25) : Math.min(sp.gap || 130, myRange - 25);
+        };
         // The same circle as kiting (2026-11-21): around the closest monster we are too near to, from
         // our own angle - we only move while inside its circle, so we don't swing back and forth.
         // Every monster around counts, also free ones (player decision 2026-11-21: many have aggro and

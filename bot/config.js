@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.217.7",
+    version: "1.218.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -551,6 +551,9 @@ module.exports = {
         // farmRisk/farmSpeedRatio/farmRangeMargin (player decision 2026-11-21): in the farm checks a kiteable monster
         // (util.kiteRisk) hits with farmRisk of its damage - a residual risk, never 0.
         kite: { enabled: true, margin: 30, extra: 50, rangeSlack: 10, slack: 15, maxSpeedRatio: 0.99, anchorRadius: 280, everyMs: 250, avoidRadius: 120,
+            // foreignMargin (2026-11-22): kite, escape and spacing points stay this far beyond the reach of monsters of
+            // other kinds than the farm target (Fire Spirits, range 280, next to the Giant Scorpions).
+            foreignMargin: 50,
             farmRisk: 0.25, farmSpeedRatio: 0.9, farmRangeMargin: 50 },
         potionHpBelow: 0.8,      // below this: an HP potion on every cooldown (player decision 2026-11-16, was 0.45)
         // 0.5 since 2026-11-21 (player decision): below it MP comes before the HP top-up (HP above half).
@@ -1070,7 +1073,8 @@ module.exports = {
         mainStatOnArmor: true,        // wished armor always gets the class's main stat scroll
         deliveryBatchMs: 10 * 60 * 1000, // finish the open wishes first; a ready item waits at most this long
         giveUpForMs: 60 * 60 * 1000,  // after a stop (risk/no source/wish budget used up) retry in an hour
-        retryAfterBudgetMs: 10 * 60 * 1000, // ...but only 10 min when we merely lack gold right now
+        retryAfterBudgetMs: 10 * 60 * 1000, // ...but only 10 min when we merely lack gold right now (or the bag is full)
+        bagReserve: 8,                // copies come out of the bank only while this many bag slots stay free (pickups)
         bankScanEveryMs: 10 * 60 * 1000,
         // Value report (stage 1, player request 2026-11-19): logs gain, cost and gain per hour of
         // every open wish plus the fighters' XP value - no decisions are made from it yet.
@@ -1362,6 +1366,9 @@ module.exports = {
         // New bank packs are never bought automatically.
         bank: {
             whenFreeBelow: 6,
+            // Before each pickup: bank first while fewer slots are free (store only, workshop copies too;
+            // 2026-11-22: back-to-back pickups failed with send_no_space). 0 = off.
+            beforePickupFree: 12,
             keep: [
                 "tracker",
                 "scroll0", "scroll1", "scroll2", "cscroll0", "cscroll1", "cscroll2",

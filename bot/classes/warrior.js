@@ -1359,13 +1359,24 @@ module.exports = function createWarrior(ctx) {
                 return e && e.type === "monster" && !e.dead && util.distanceTo(e) <= G.skills.agitate.range &&
                     e.target !== character.name && !onAllies.includes(e.id) && !others.some(function (o) { return o.mtype === e.mtype; });
             });
+            // Only the farm kind (2026-11-22, player decision): a Fire Spirit on an ally made the other Fire Spirits in
+            // reach "not bystanders" (same kind as one on an ally) and Agitate pulled three of them - the warrior died.
+            // Now every monster in reach that is not on us yet must be of the farm kind (event types count); other
+            // kinds on allies are taunted one by one.
+            let fmNow = null;
+            try { fmNow = ctx.targeting.farmNow ? ctx.targeting.farmNow() : null; } catch (e) { fmNow = null; }
+            const ourKinds = !fmNow ? null : fmNow.any ? (Array.isArray(fmNow.types) ? fmNow.types : null) : (fmNow.monster ? [fmNow.monster] : null);
+            const foreignInReach = !!ourKinds && Object.values(parent.entities || {}).some(function (e) {
+                return e && e.type === "monster" && !e.dead && e.target !== character.name &&
+                    util.distanceTo(e) <= G.skills.agitate.range && !ourKinds.includes(e.mtype);
+            });
             // Agitate takes every monster in reach - not while one on an ally is about to die for the luck catcher.
             const sparing = others.some(function (m) { return util.distanceTo(m) <= G.skills.agitate.range && spareForLuck(m); });
             // Taunt first (taunt.first, 2026-11-22 player test): Agitate only for more than Taunt can take one by one
             // (taunt.agitateOver on allies) - it also pulls the free monsters around.
             const tf = c.taunt || {};
             const crowd = !tf.first || others.length >= (tf.agitateOver || 6);
-            if (!bystanders && !sparing && crowd && others.length >= (c.agitateFrom || 3) && util.canCast("agitate") && mpLeftAfter("agitate") >= reserve() &&
+            if (!bystanders && !foreignInReach && !sparing && crowd && others.length >= (c.agitateFrom || 3) && util.canCast("agitate") && mpLeftAfter("agitate") >= reserve() &&
                 others.filter(function (m) { return util.distanceTo(m) <= G.skills.agitate.range; }).length >= (c.agitateFrom || 3) &&
                 protectiveAgitateOk()) {
                 use_skill("agitate").catch(function () {});

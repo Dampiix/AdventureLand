@@ -610,7 +610,9 @@ module.exports = function createMerchant(ctx) {
 
     // Walk into the bank and store what we can. Returns the number of stacks stored.
     // storeOnly: only store (mid Ponty round) - no junk or stand items taken out into the bag.
-    async function bankTrip(storeOnly) {
+    // tightBelow: reserved workshop copies go to the bank too while fewer slots than this are free
+    // (default whenFreeBelow + 5).
+    async function bankTrip(storeOnly, tightBelow) {
         util.status("banking", "yellow");
         // smart_move can end outside the bank (interrupted by another move, e.g. a pickup
         // call): then every store fails with not_in_bank – try again on the next round.
@@ -624,7 +626,7 @@ module.exports = function createMerchant(ctx) {
         // Walk the bag once from the end; each index is checked right before storing.
         // Reserved items only while fewer than whenFreeBelow + 5 slots are free (no back and forth).
         const keep = workshop.deliveryIndexes ? workshop.deliveryIndexes() : new Set();
-        const tight = function () { return character.esize < (m.bank.whenFreeBelow || 6) + 5; };
+        const tight = function () { return character.esize < (tightBelow || (m.bank.whenFreeBelow || 6) + 5); };
         for (let index = character.items.length - 1; index >= 0; index--) {
             const item = character.items[index];
             if (!isBankable(item, index, tight, keep)) continue;
@@ -688,6 +690,18 @@ module.exports = function createMerchant(ctx) {
     }
 
     let nextBankTripAt = 0;
+    // Before a pickup (2026-11-22, player report "send_no_space"): with fewer than bank.beforePickupFree slots
+    // free we bank first (store only, workshop copies too) - pickups back to back (the Ponty-round prep calls
+    // every fighter at once) filled the bag, the bank trip came only after the last one. Nothing fit: no new
+    // try for 10 min (no bank-pickup ping-pong).
+    let nextPrePickupBankAt = 0;
+    async function bankBeforePickup() {
+        const want = m.bank.beforePickupFree || 0;
+        if (!want || character.esize >= want || Date.now() < nextPrePickupBankAt) return;
+        const stored = await bankTrip(true, want);
+        lastBankVisit = Date.now();
+        if (!stored) nextPrePickupBankAt = Date.now() + 10 * 60 * 1000;
+    }
     let lastBankVisit = 0;
     async function bankIfNeeded() {
         if (Date.now() < nextBankTripAt) return;
@@ -1139,6 +1153,7 @@ module.exports = function createMerchant(ctx) {
             }
             const next = requests.keys().next();
             if (!next.done) {
+                await bankBeforePickup();
                 await deliver(next.value);
                 await goHome();
                 return;
