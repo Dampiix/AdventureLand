@@ -107,7 +107,6 @@ module.exports = function createWorkshop(ctx) {
     // v1.150.0: measured team gold only; the old key held costs from the guide calibration.
     const COSTS_KEY = "dmpx_drop_costs_v2";
     const dropCosts = (function () { try { return get(COSTS_KEY) || {}; } catch (e) { return {}; } })();
-    let dropBasis = null; // { monster, goldH } - the leader's normal spot
     const costAsk = {}; // items ownCost had no drop cost for (asked with the next value report)
     comms.on("droptimes", function (data, from) {
         if (from !== config.leader) return;
@@ -117,7 +116,6 @@ module.exports = function createWorkshop(ctx) {
             // The leader's normal spot is not measured: no costs, so no wish orders on guesses.
             Object.keys(dropCosts).forEach(function (n) { delete dropCosts[n]; });
             try { set(COSTS_KEY, dropCosts); } catch (e) { /* storage unavailable */ }
-            dropBasis = null;
             return;
         }
         if (data.costs) {
@@ -125,7 +123,6 @@ module.exports = function createWorkshop(ctx) {
             Object.keys(data.costs).forEach(function (n) { delete costAsk[n]; });
             try { set(COSTS_KEY, dropCosts); } catch (e) { /* storage unavailable */ }
         }
-        dropBasis = data.basis;
     });
     comms.on("wishes", function (data, from) {
         if (data.value) fighterValues[from] = Object.assign({ at: Date.now() }, data.value);
@@ -477,7 +474,6 @@ module.exports = function createWorkshop(ctx) {
         if (character.gold - amount < floor) return false;
         if (k === GOALS) return goalBudget().allowed >= amount;
         if (k === LADDER) return ladderBudget().allowed >= amount;
-        if (k === SHOPPING) return shoppingBudget().allowed >= amount;
         if ((spent[k] || 0) + amount > budgetFor(k)) return false; // safety cap per wish
         // One pot for all gear (player decision 2026-11-19): wishes, weapon plans, stock rules,
         // stat scrolls - everything but the merchant's own tools - pays from the gear pot.
@@ -488,10 +484,10 @@ module.exports = function createWorkshop(ctx) {
     // Every workshop spend goes into the income window, so the income the pots share is the
     // gross income minus consumables only (potions, materials bought through buy orders):
     // gear spending is never a loss of income (player decision 2026-11-19, one gear pot).
-    // Ladder and shopping spends carry their key; the merchant's own tools are put back into
+    // Ladder spends carry their key; the merchant's own tools are put back into
     // the income but charged to no pot; everything else is gear-pot spending.
     function pay(k, amount) {
-        if (k === LADDER || k === SHOPPING) {
+        if (k === LADDER) {
             income.spends.push({ t: Date.now(), a: amount, k: k });
             saveIncome();
             return;
@@ -518,7 +514,6 @@ module.exports = function createWorkshop(ctx) {
     // more: a 3M+ jump (mummy handovers, a pricey stand sale) is income like any other.
     const GOALS = "goals"; // budget key of the gear goals
     const LADDER = "ladder"; // budget key of the weapon ladder (its own income share)
-    const SHOPPING = "shopping"; // budget key of buying wished items (config.market.shopping)
     const INCOME_KEY = "workshop_income:" + character.name;
     const DAY = 24 * 60 * 60 * 1000;
     const income = (function () {
@@ -605,9 +600,9 @@ module.exports = function createWorkshop(ctx) {
             gross: gross, fighters: fighters, consumables: consumables };
     }
 
-    // Weapon ladder budget (player decision 2026-11-17): its own share of the last 24 h of
-    // income (bruteForce.incomeShare) – no fixed amount, it grows with the account, and it
-    // keeps going while the gear goals' pot is empty after a player-granted extra.
+    // Ladder budget (player decision 2026-11-17): its own share of the last 24 h of income
+    // (bruteForce.incomeShare) - no fixed amount, it grows with the account. The weapon ladder itself is
+    // gone (2026-11-22: its weapons are dismantled); the pot pays the material goals (MG.borrowFrom).
     function ladderBudget() {
         const share = (cfg.bruteForce && cfg.bruteForce.incomeShare) || 0;
         const spentLadder = income.spends.reduce(function (sum, s) { return s.k === LADDER ? sum + s.a : sum; }, 0);
@@ -616,16 +611,6 @@ module.exports = function createWorkshop(ctx) {
         const ex = cfg.bruteForce && cfg.bruteForce.extra;
         const extra = ex && ex.amount && Date.now() < Date.parse(ex.until) ? ex.amount : 0;
         return { allowed: Math.max(0, earned * share + extra - spentLadder), earned: earned, spent: spentLadder };
-    }
-
-    // Shopping pot (player decision 2026-11-18): config.market.shopping.incomeShare of the last
-    // 24 h of income, like the ladder. Only filled for now - the server tour will spend it.
-    function shoppingBudget() {
-        const s = config.market && config.market.shopping;
-        const share = (s && s.incomeShare) || 0;
-        const spentShop = income.spends.reduce(function (sum, x) { return x.k === SHOPPING ? sum + x.a : sum; }, 0);
-        const earned = goalBudget().earned;
-        return { allowed: Math.max(0, earned * share - spentShop), earned: earned, spent: spentShop };
     }
 
     // Grace budget per target level and 24 h (player decision 2026-11-16): a share of the
@@ -1871,46 +1856,11 @@ module.exports = function createWorkshop(ctx) {
         return null;
     }
 
-    // Upgrade the copy at `index` towards `target`. Returns true on success.
-    // ---- stock upgrades ---------------------------------------------------------
-    //
-    // config.workshop.stock: items we hold many spare copies of (Phoenix weapons).
-    // Without open wishes, the best copy below upTo is upgraded step by step with
-    // the usual risk rules. While we hold more than `spares` copies, a copy counts
-    // as replaceable, so failures (which use up surplus copies) are acceptable.
-
+    // Copies of an item in bag and bank (locked and shiny ones too), optionally only levels passing filter.
     function totalCopies(name, filter) {
         const inBag = character.items.filter(function (i) { return i && i.name === name && (!filter || filter(i.level || 0)); }).length;
         const inBank = bankSnapshot ? bankSnapshot.items.filter(function (b) { return b.name === name && (!filter || filter(b.level)); }).length : 0;
         return inBag + inBank;
-    }
-
-    async function stockUpgrade() {
-        if (cfg.stockEnabled === false) return false; // paused (player decision 2026-11-16)
-        const now = Date.now();
-        for (const rule of cfg.stock || []) {
-            if (dismantleOn(rule.name)) continue;
-            const k = key("_stock", { name: rule.name, level: rule.upTo });
-            if (blockedUntil[k] > now) continue;
-            const total = totalCopies(rule.name);
-            if (total <= rule.spares) continue;
-            if (!totalCopies(rule.name, function (l) { return l < rule.upTo; })) continue;
-            if (character.esize < 3) return false;
-            util.status("upgrading spare " + rule.name, "orange");
-            try {
-                await develop("_stock", { name: rule.name, level: rule.upTo }, { replaceable: total > rule.spares, spare: true });
-            } catch (e) {
-                util.log("workshop", "spare " + rule.name + ": " + util.errReason(e), "orange");
-                blockedUntil[k] = Date.now() + pauseAfter(k, util.errReason(e));
-            }
-            if (reachedOnly[k] !== undefined) {
-                // Next step too risky right now: try again later (grace or luck may help).
-                delete reachedOnly[k];
-                blockedUntil[k] = Date.now() + cfg.giveUpForMs;
-            }
-            return true;
-        }
-        return false;
     }
 
     // opts.replaceable overrides the shop check (e.g. a spare we hold many copies of);
@@ -2708,11 +2658,6 @@ module.exports = function createWorkshop(ctx) {
     // fighters' worn weapons. A copy that is already stronger goes out; otherwise the best
     // copy is upgraded to the first level that beats the worn weapon.
 
-    // Mainhand power of a fighter's worn weapon (0 = nothing worn).
-    function wornPower(f) {
-        const m = worn[f] && worn[f].mainhand;
-        return m ? util.weaponPower(m.name, m.level || 0, classes[f]) : 0;
-    }
 
     // Can fighter f wield this weapon (a two-handed one only with an empty offhand)?
     function canWield(f, name) {
@@ -3167,8 +3112,8 @@ module.exports = function createWorkshop(ctx) {
     // Every market.ponty.everyMs the merchant looks at Ponty's listings (players' items sold
     // to NPCs, price = item value x 2, x 3 for shell items) and buys what a fighter wishes or
     // a gear goal needs, when it beats our best copy and costs less than making it ourselves
-    // (our gold cost, plus farm hours counted at our gold per hour). Paid from the shopping
-    // pot (market.shopping.incomeShare); the copy then goes out through the usual deliveries.
+    // (our gold cost, plus farm hours counted at our gold per hour). Paid from the gear pot;
+    // the copy then goes out through the usual deliveries.
     let nextPontyAt = Date.now() + 60 * 1000;
     let bestPerGold = 0; // % power per gold of our best gold-only upgrade (value report)
     // % more power for fighter f if item (assumed with f's main-stat scroll when it takes one)
@@ -3713,79 +3658,6 @@ module.exports = function createWorkshop(ctx) {
     const readySince = {}; // fighter -> since when something waits for it
     let lastGoalStep = 0;  // last gear-goal unit of work
     let lastBonusStep = 0; // last unit of work on a bonus wish (no measurable gain, e.g. Wanderer's set)
-    // Weapon ladder (config.workshop.bruteForce, player decision 2026-11-16): high-grade
-    // drop weapons (fire weapons) can't be helped by grace (-1 on them), so spare copies
-    // are tried right away with the normal scroll – but only one level above the WEAKEST
-    // worn copy of that item in the team (a warrior's two fireblades both count). A spare
-    // that gets there is delivered (deliverBetterCopies swaps it in), the old worn copy
-    // comes back as the next spare, and only once every worn copy is at the top level does
-    // the next level start. Worn copies are never risked; nothing happens while a copy
-    // of that item is on its way to a fighter.
-    function spareLadderCopies() {
-        const bf = cfg.bruteForce;
-        if (!bf || !bf.names) return 0;
-        return bf.names.filter(function (n) { return !dismantleOn(n); }).reduce(function (sum, n) { return sum + unlockedCopies(n).length; }, 0);
-    }
-        async function bruteForceSpares() {
-        const bf = cfg.bruteForce;
-        if (!bf || !bf.names) return false;
-        const now = Date.now();
-        for (const name of bf.names) {
-            if (dismantleOn(name)) continue; // config.dismantle: no upgrades, essence instead
-            const levels = [];
-            config.team.fighters.forEach(function (f) {
-                const eq = worn[f];
-                if (!eq) return;
-                ["mainhand", "offhand"].forEach(function (s) { if (eq[s] && eq[s].name === name) levels.push(eq[s].level || 0); });
-            });
-            if (!levels.length) continue; // nobody wears it: spares wait
-            let target = Math.min.apply(null, levels) + 1;
-            // Hoard (player decision 2026-11-16): above bf.hoardAt nothing is risked – spares
-            // only climb to hoardAt and stay there (later: server grace peaks, Primlings).
-            const capped = !!bf.hoardAt && target > bf.hoardAt;
-            if (capped) target = bf.hoardAt;
-            if (target > (bf.maxLevel || 9)) continue;
-            const k = key("_brute", { name: name, level: target });
-            if (blockedUntil[k] > now) continue;
-            if (activeEarmarks().some(function (e) { return e.name === name; })) continue; // a better copy is on its way
-            const spares = unlockedCopies(name);
-            if (!spares.some(function (l) { return l < target; })) {
-                // Craftable ladder weapons (bf.craft, e.g. Dagger of the Dead from Bones): a fresh
-                // +0 spare when none is left below the target (gear plan 2026-11-19).
-                if (!(bf.craft || []).includes(name) || !crafterOf(name) || character.esize < 3) continue;
-                if (spares.some(function (l) { return l >= target; })) continue; // one is ready to deliver
-                util.status("crafting a spare " + name, "orange");
-                try {
-                    const r = await craftItem(LADDER, name);
-                    if (!r.ok) {
-                        util.log("workshop", "can't craft a spare " + name + " yet - missing " + r.missing.map(function (m) { return (m.need - m.have) + "x " + m.name; }).join(", "), "orange");
-                        r.missing.forEach(function (m) { noteIngredientShortage(m.name, m.level, m.need, name); });
-                        blockedUntil[k] = Date.now() + cfg.giveUpForMs;
-                    }
-                } catch (e) {
-                    const why = util.errReason(e);
-                    util.log("workshop", "crafting a spare " + name + ": " + why, "orange");
-                    blockedUntil[k] = Date.now() + pauseAfter(k, why);
-                }
-                return true;
-            }
-            if (!capped && spares.some(function (l) { return l >= target; })) continue; // one is ready to deliver
-            if (character.esize < 3) return false;
-            const best = Math.max.apply(null, spares.filter(function (l) { return l < target; }));
-            util.status("upgrading a spare " + name + " +" + best + " towards +" + target, "orange");
-            util.log("workshop", "spare " + name + " +" + best + " -> +" + target + (capped ? " (kept there)" : " (weakest worn +" + (target - 1) + ")"), "white");
-            try {
-                await develop("_brute", { name: name, level: target }, { budgetKey: LADDER, minChance: 0, spare: true });
-            } catch (e) {
-                const why = util.errReason(e);
-                util.log("workshop", name + " +" + target + ": " + why, "orange");
-                blockedUntil[k] = Date.now() + pauseAfter(k, why);
-            }
-            return true;
-        }
-        return false;
-    }
-
     // Box armor in parallel (config.workshop.boxArmor, player decision 2026-11-17): armor
     // boxes give all five Rugged pieces, but only one is wished at a time – the others
     // would fill the bank. While a fighter wishes any piece of the set, every spare copy
@@ -3968,9 +3840,6 @@ module.exports = function createWorkshop(ctx) {
         // Waiting box armor copies are upgraded every round (not only every gear-goal step),
         // before the wish job opens new boxes.
         if (waitingBoxArmor() >= 3 && await upgradeBoxArmor()) return;
-        // Same for the fire weapon ladder: solo Phoenix kills bring ~2 weapons each, far more
-        // than the 3-minute step could work through (player decision 2026-11-17).
-        if (spareLadderCopies() >= 3 && await bruteForceSpares()) return;
         // Material goals (config.materialGoals: essence, Bones) every round as well, after the box armor copies.
         if (await workOnMaterialGoals()) return;
         // A tight bank comes first: every compound (3 -> 1) frees two slots, and the armor
@@ -3979,10 +3848,8 @@ module.exports = function createWorkshop(ctx) {
         const open = openWishes().filter(function (o) { return wishIndex(o.wish, targetLevel(o.fighter, o.wish)) === -1; });
         if (!open.length) {
             if (await autoCompound()) return;
-            if (await stockUpgrade()) return;
             lastGoalStep = Date.now();
             if (await workOnBetterWeapons()) return;
-            if (await bruteForceSpares()) return;
             if (await upgradeBoxArmor()) return;
             if (await workOnGoals()) return;
             await autoExchange();
@@ -3996,7 +3863,6 @@ module.exports = function createWorkshop(ctx) {
             // orb) it used to wait for an idle moment that never came (2026-11-17).
             if (await autoCompound()) return;
             if (await workOnBetterWeapons()) return;
-            if (await bruteForceSpares()) return;
             if (await upgradeBoxArmor()) return;
             if (await workOnGoals()) return;
             // Exchanging used to wait for a moment without open wishes – with the Rugged
@@ -4055,7 +3921,7 @@ module.exports = function createWorkshop(ctx) {
     }
 
     return {
-        work: work, handOver: handOver, isReserved: isReserved, readyFor: readyFor,
+        work: work, handOver: handOver, isReserved: isReserved,
         isGoalStock: isGoalStock, isGoalFinished: isGoalFinished, isOutgrownGoalCopy: isOutgrownGoalCopy,
         isDoneBoxArmor: isDoneBoxArmor, isOrphanStatCopy: isOrphanStatCopy, isSpareJoyRing: isSpareJoyRing,
         fillsEmptySlot: fillsEmptySlot,
@@ -4077,17 +3943,14 @@ module.exports = function createWorkshop(ctx) {
             });
             const k = function (n) { return Math.round(n / 1000) + "k"; };
             return "budget: goals " + k(goalBudget().allowed) + ", ladder " + k(ladderBudget().allowed) +
-                ", shopping " + k(shoppingBudget().allowed) + " (24h: in " + k(goalBudget().gross) + " - fighters " + k(goalBudget().fighters) +
+                " (24h: in " + k(goalBudget().gross) + " - fighters " + k(goalBudget().fighters) +
                 ", sales/other " + k(goalBudget().gross - goalBudget().fighters) + "; consumables " + k(goalBudget().consumables) +
                 "; gear spent " + k(goalBudget().spent) + ")" +
                 " | working on: " + (list.slice(0, 6).join(", ") || "nothing") + (list.length > 6 ? " ..." : "") +
                 materialReport();
         },
-        isOwnWish: isOwnWish,
-        shoppingBudget: shoppingBudget,
         wishBuyOrders: wishBuyOrders,
         bookWishFill: bookWishFill,
-        dropBasis: function () { return dropBasis; },
         playerOffers: playerOffers,
         bookPlayerBuy: bookPlayerBuy,
         // Ponty round (merchantRole.pontyRound): one visit now; { items, bought } or null.

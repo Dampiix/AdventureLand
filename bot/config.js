@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.211.0",
+    version: "1.213.1",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -106,13 +106,6 @@ module.exports = {
                 { item: "vitearring", level: 2, minPrice: 8000000, keep: 0 },
             ],
         },
-        // Shopping pot (player decision 2026-11-18): a share of the merchant's net income over
-        // the last 24 h for buying wished items from Ponty / other players (server tour, not
-        // built yet). It only fills for now; nothing spends it. Other pots for comparison:
-        // gear goals 0.5, weapon ladder 0.25, grace 0.05 per target level (all in workshop).
-        // Merged into the gear pot (gearGoals.budget.incomeShare 0.5 -> 0.7) on 2026-11-19 (player
-        // decision): Ponty purchases replace building and are paid from it.
-        shopping: { incomeShare: 0 },
         // Buy orders for what we wish (player idea 2026-11-19): one copy of every wished item / gear
         // goal at its level, priced at priceShare of our own expected cost (two digits), only when
         // funded and at most maxShareOfPot of the gear pot; not for +0 NPC stock; taken down once we
@@ -127,7 +120,7 @@ module.exports = {
         wishOrders: { enabled: true, priceShare: 1.2, maxShareOfPot: 0.2, minPrice: 1000, max: 8 }, // pot share 0.5 -> 0.2 (2026-11-20)
         // Ponty (player request 2026-11-19, fresh account): every everyMs the merchant checks his
         // listings and buys what a fighter wishes or a gear goal needs - better than our best copy
-        // and at most maxShareOfOwn of what making it ourselves would cost. From the shopping pot.
+        // and at most maxShareOfOwn of what making it ourselves would cost. From the gear pot.
         // Rules (player decisions 2026-11-19): at most maxShareOfOwn of our own expected cost (up to
         // 20 % more - the time saved is worth it) and at most maxShareOfPot of the gear pot per purchase
         // (50 %: one purchase never takes the whole pot; it grows with the income; was a fixed 1M). reportFinds: pieces outside the wish
@@ -199,14 +192,12 @@ module.exports = {
 
     // Waypoints (2026-11-21): to reach the key map, walk to the value map first - main -> level1 -> spookytown
     // led the ranger through the Vampire Rats (aggro 1, 9,200 HP) twice in a row.
-    // rageAvoid (2026-11-22): a planned route through a rage box (+ rageMargin) detours via the box's corner (rageDetour px
-    // out), at most rageMaxDetours times per goal; the box the walk ends in is left alone.
     // rageMargin 100 (2026-11-22): aggro checks the neighbouring 32-px grid cells - up to ~64 px from a monster at the edge.
     // rageWalls (2026-11-22): rage boxes the team can't take (+ rageMargin) are walls for this frame's can_move - the path
-    // search plans around them; a step starting inside may always walk out. rageAvoid (the old after-the-fact detours)
-    // is off: it went round in circles.
+    // search plans around them; a step starting inside may always walk out. (The old after-the-fact detours went round
+    // in circles and were removed.)
     // rageWallSteps (2026-11-22): margins tried one after another when the path search finds no way (-1 = walls off).
-    travel: { via: { spookytown: "halloween" }, rageWalls: true, rageWallSteps: [100, 50, 0, -1], rageAvoid: false, rageMargin: 100, rageDetour: 140, rageMaxDetours: 3 },
+    travel: { via: { spookytown: "halloween" }, rageWalls: true, rageWallSteps: [100, 50, 0, -1], rageMargin: 100 },
 
     // "solo":  only the leader fights (Lone Wolf bonus); the merchant still supports it.
     // "party": all fighters form a party around the leader.
@@ -472,7 +463,9 @@ module.exports = {
         // Too strong: blocked like a too-strong spot, another target. party: false = solo only.
         // maxMargin 150 (2026-11-22): monsters only join on contact or in their rage box - their shooting range doesn't
         // matter. From 450 px the 4-booboo spawn was out of sight, "level 1 assumed" passed level-17 booboos.
-        spotCheck: { enabled: true, party: true, margin: 150, maxMargin: 150, watchMs: 3000, maxWaitMs: 30000 },
+        // groupGap (2026-11-22): passive kinds standing close (free ones chained within groupGap px, edge to edge) are
+        // judged as one pull too - the X-scorpions passed one by one, the splash pulled 6 and the warrior died.
+        spotCheck: { enabled: true, party: true, margin: 150, maxMargin: 150, watchMs: 3000, maxWaitMs: 30000, groupGap: 60 },
         // Learned hit factor (2026-11-22, iceroamers hit 2.3x what the formula says): every hit we take is compared
         // with attack x damage multiplier; from minHits hits of a kind on, the safety checks multiply its hits by
         // real / predicted (1 .. max). Sums are halved above keepHits (old hits fade). "/safety" lists the factors.
@@ -660,13 +653,19 @@ module.exports = {
                 monsters: "auto", deny: [],
                 maxOnMe: 8, maxHp: 50000, abilities: [], // auto: at most this many at once; no bosses / unknown abilities
                 splashOnlyFrom: 3, splashOnlyHoldMs: 8000, // Lolipops without Agitate with this many on us (splash must pay) - 2026-11-19
+                // ...and only when we survive what the splash pulls (2026-11-22, X-scorpions: 3 on us became 6): those on
+                // us plus the free ones chained within the splash radius + splashPullSlack px, by the team model (party)
+                // or the pack check's safe count (solo).
+                splashPullSlack: 40,
                 fearMax: 0, // attackers of one damage type beyond our courage for it (each one more costs 20-40 % attack)
                 maxLevel: null, safetyShare: 0.5, // auto: no fixed level cap (the pack check uses real stats; a number caps by hand); a pull may cost only half the HP the pack check allows
                 splashMin: 1.0, learnHits: 40, denseCount: 5, denseSpacing: 130, // auto: lolipops from 1.0 splash per hit (guess from spawn density first)
                 deathDenyMs: 2 * 60 * 60 * 1000, // auto: no Agitate on a kind for this long after dying to it
                 // Solo escape from a losing fight (slower monsters only): starts below escapeHp, lasts while anyone is on
                 // us and can reach us (its range + escapeMargin, at least escapeClear) or we are below escapeUntilHp; at most escapeMaxMs.
-                escapeHp: 0.3, escapeUntilHp: 0.6, escapeMaxMs: 45000, escapeClear: 250, escapeMargin: 100, escapeStep: 200,
+                // escapeKeepOff (2026-11-22): escape points keep free dangerous monsters' range + this (at least 150 px) and
+                // other aggressive spawns' boxes + this clear - twice the warrior ran into the Fire Spirits by the Giant Scorpions.
+                escapeHp: 0.3, escapeUntilHp: 0.6, escapeMaxMs: 45000, escapeClear: 250, escapeMargin: 100, escapeStep: 200, escapeKeepOff: 80,
                 // Mobbing (more than 3 on us): escape already below escapeMobHp when the live combo kills us within
                 // escapeTtdSec; no new Agitate while it would within mobStopTtdSec (2026-11-22).
                 escapeMobHp: 0.7, escapeTtdSec: 8, mobStopTtdSec: 20,
@@ -857,7 +856,7 @@ module.exports = {
                 return e;
             });
         },
-        caps: { armor: 8, weapon: 9, shopWeapon: 8, lateHint: 10 },
+        caps: { armor: 8, weapon: 9 }, // for the gear plan PDF (scripts/gear-plan-guide.mjs)
         // Weapon lists per class (player decision 2026-11-21): items only, worst to best. The merchant goes from
         // the BACK: the last item we hold a copy of (any level) is upgraded, step by step, as long as a step
         // beats the fighter's weaker worn weapon (util.weaponPower: burn counts, but not for the priest) -
@@ -1061,8 +1060,6 @@ module.exports = {
             // budgetPerLevel.
             incomeShare: 0.05,
             budgetPerLevel: 300000,
-            // Player decision 2026-11-16: +5M per level until the gear goal extra ends.
-            extra: { amount: 5000000, until: "2026-11-17T06:15:44Z" },
             maxAttempts: 25,         // fodder attempts per farming round
             // Grace stacks only while the fodder itself would fail more likely than not: stop
             // when its own chance at the target level is above this - now, or by the time the
@@ -1070,36 +1067,17 @@ module.exports = {
             maxFodderChance: 0.5,
             batch: 5,                // helmets prepared at once, then attempted back to back
         },
-        // Spare copies to upgrade when idle (approved 2026-11-15): Phoenix weapons are kept
-        // as spares; the best copy below upTo is upgraded, failures use up surplus copies,
-        // never going below `spares` copies in total. Normal scrolls only: rare scrolls
-        // and grace farming are reserved for the fighters' wishes.
-        stockEnabled: false, // paused 2026-11-16 (shop +9 first)
-        // Weapon ladder (player decision 2026-11-16): grace can't lift high-grade items, so
-        // spare copies of these are upgraded at once with the normal scroll - always to one
-        // level above the WEAKEST worn copy in the team (both of the warrior's fireblades
-        // count). A spare that gets there is swapped in, the old one becomes the next spare;
-        // the next level starts only once every worn copy is at the top. Worn copies are never
-        // risked; items nobody wears are left alone.
-        // hoardAt (2026-11-16): spares are not risked beyond this level; +7 copies are kept.
-        // incomeShare (player decision 2026-11-17): the ladder's own pot, a share of the last
-        // 24 h of income â€“ it scales with the account and is not stopped by the gear goals.
-        // Dagger of the Dead joins the ladder (gear plan 2026-11-19); craft: a +0 spare is crafted
-        // from Bones when none is left. Note: it is rare grade from +6 (scroll2, 1.6M per try).
-        // extra (player decision 2026-11-20 ~22:20 German time): 5M for 12 h on top of the income share - the
-        // ladder pot also pays the essence goals (fire weapons +7) and was empty after the reset.
-        bruteForce: { names: ["fireblade", "firebow", "firestaff", "daggerofthedead"], craft: ["daggerofthedead"], maxLevel: 9, hoardAt: 7, incomeShare: 0.25,
-            extra: { amount: 5000000, until: "2026-11-21T09:22:00Z" } },
+        // Ladder pot (player decision 2026-11-17): its own share of the last 24 h of income - it scales with
+        // the account and is not stopped by the gear goals. The weapon ladder it was made for is gone
+        // (2026-11-22: all its weapons are on the dismantle list); it pays the material goals now
+        // (materialGoals ... budget: "ladder"). Optional extra: { amount, until } on top.
+        bruteForce: { incomeShare: 0.25 },
         // Box armor (player decision 2026-11-17): while a fighter wishes any Rugged piece,
         // every spare copy from the armor boxes is upgraded towards upTo at once â€“ failures
         // free bank slots and the next chain pieces are ready early (the bank has ~19 free
         // slots; a new pack costs 75M).
         // Once a piece is worn (or held) at upTo and nobody wishes it, new copies are sold.
         boxArmor: { names: ["helmet1", "gloves1", "pants1", "coat1", "shoes1"], upTo: 7 },
-        stock: [
-            { name: "fireblade", upTo: 7, spares: 3 },
-            { name: "firestaff", upTo: 7, spares: 3 },
-        ],
         // Drop weapons (player decision 2026-11-15): a Phoenix weapon we hold that beats a
         // fighter's worn weapon goes to that fighter; if none does yet, the best copy is
         // upgraded to the first level that would (at most maxLevel). A failure only costs
@@ -1161,7 +1139,7 @@ module.exports = {
             // offhand: a second shop weapon (dual wield) goes to upTo too, so a fresh warrior
             // reaches the Wooden Axe wish (both hands +7); shields, books, quivers stay out.
             slots: ["helmet", "chest", "pants", "shoes", "gloves", "mainhand", "offhand"],
-            weapons: [], // fire weapons: workshop.bruteForce (weapon ladder) since 2026-11-16
+            weapons: [], // drop weapons: materialGoals and gearPlan.weapons
             // Daily budget from income (player decisions 2026-11-15/19): every gold rise of the
             // merchant over the last 24 h is income (booked directly: fighter handovers, sales),
             // minus consumables (potions, buy-order materials). One gear pot: wishes, weapon
@@ -1171,19 +1149,11 @@ module.exports = {
             // would cap everything ever spent on gear goals.
             budget: {
                 incomeShare: 0.7, // transferAbove removed 2026-11-19 (direct booking, player decision)
-                // Player decisions 2026-11-17: 10M more for 12 h at 08:45, another 10M at 12:23 (the
-                // budget ran out on the Rugged pants/shoes). The extra counts against the last 24 h of
-                // spending, so the total grows: 30M until 2026-11-18 00:23 UTC.
-                // Ends with the reset at 22:00 German time (player decision 2026-11-17), so the reset
-                // does not hand out a fresh 30M.
-                // Player decision 2026-11-20 ~22:15 German time: pots reset (gear spending of the evening
-                // - stand purchases from other players - had pushed the gear pot below 0) and 20M extra for 12 h.
-                extra: { amount: 20000000, until: "2026-11-21T09:17:00Z" },
-                // One-time fresh start of every pot (gear goals, weapon ladder, grace): from this
-                // time on, spending and gold samples before it are ignored, so no pot starts in
-                // the minus â€“ the income since then fills them again. May lie in the future;
-                // once 24 h have passed it has no effect any more. null = none.
-                resetAt: "2026-11-20T21:17:00Z", // player decision 2026-11-20: fresh start (was 2026-11-17T21:00Z)
+                // Optional (the old ones expired and were removed 2026-11-22):
+                //   extra: { amount, until } - a player-granted amount on top until that time (counts against
+                //          the last 24 h of spending);
+                //   resetAt: "ISO time" - one-time fresh start of every pot (gear goals, ladder, grace): spending
+                //          and gold samples before it are ignored; no effect once 24 h have passed.
             },
         },
         // Fixed wishes on top of the guide's. Items without a shop are bought with tokens
@@ -1238,7 +1208,6 @@ module.exports = {
             // Mainland pier by the fisherman: water within 24 px (server). One catch per
             // 48 min (10% per cast), 99.5% a Rugged piece.
             fishing: { enabled: true, spot: { map: "main", x: -1560, y: 470 }, maxCasts: 40 },
-            mining: { enabled: false },
         },
         // Market stand (player decision 2026-11-17): with a Merchant Stand (stand0, bought by
         // hand) the merchant's home is a spot on the town square with the stand open - buy

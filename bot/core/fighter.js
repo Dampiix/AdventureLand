@@ -1354,7 +1354,6 @@ module.exports = function createFighter(ctx, cls) {
         if (cavalryTick() === true) return; // walking to a grown pack for the Cavalry
         if (leaveRageZone()) return; // standing in a rage zone we can't take: out first (2026-11-22)
         if (keepClearOfZones()) return; // standing next to one: on to rageMargin first (2026-11-22)
-        if (routeGuard()) return;    // a planned route through a rage zone: around it (2026-11-22)
         if (busyStep()) { defendInPlace(); return; }
         // Kiting comes before healing and covering (2026-11-21): the priest alone with a Phoenix
         // healed itself every tick (cls.support ends the tick) and never stepped back - the Phoenix
@@ -1374,16 +1373,10 @@ module.exports = function createFighter(ctx, cls) {
         handleCombat();
     }
 
-    // ---- route guard (player decision 2026-11-22) ------------------------------------
-    // A path walk (smart_move) plans its route without knowing rage zones - the priest walked right through the big
-    // booboo zone on his way out. Once the route is planned (smart.plot), every leg is checked against the rage
-    // boxes of its map (+ travel.rageMargin): a crossing stops the walk, we first go to the corner outside the box
-    // (travel.rageDetour px off) with the shortest way on, then the walk is planned anew. The zone the walk ENDS in
-    // is left alone (that is where we want to go - the spot check decides there). Standing inside a zone: none
-    // (stepping out is leaveRageZone's job). At most travel.rageMaxDetours detours per goal, then we walk on.
     // ---- rage zones as walls for the path search (player decision 2026-11-22) ------------
-    // Detours after the fact went round in circles (the next plan crossed the zone again), and three fighters died at
-    // the booboo zones on the way past. So the CODE frame's own can_move - the one smart_move's path search (bfs) asks
+    // A path walk (smart_move) plans its route without knowing rage zones - the priest walked right through the big
+    // booboo zone on his way out. Detours after the fact (the route guard, removed 2026-11-22) went round in circles
+    // (the next plan crossed the zone again), and three fighters died at the booboo zones on the way past. So the CODE frame's own can_move - the one smart_move's path search (bfs) asks
     // for every step, and can_move_to too - refuses a step that ends in, or passes through, a rage box the team can't
     // take, grown by travel.rageMargin. A step that STARTS inside that grown box is always allowed: whoever stands there
     // can walk out. Only this frame's copy is wrapped (the game's data stays as it is); installed once per page.
@@ -1492,7 +1485,7 @@ module.exports = function createFighter(ctx, cls) {
 
     // Standing still within travel.rageMargin of a rage zone the team can't take (outside it): a step out to the margin
     // first (2026-11-22: after "Path not found!" the warrior stood 13 px off the big booboo zone and was taken). Not
-    // while a path walk runs (the route guard plans those).
+    // while a path walk runs (the rage walls plan those).
     let clearLogged = 0;
     function keepClearOfZones() {
         if (!targeting.failingZoneNear) return false;
@@ -1528,91 +1521,6 @@ module.exports = function createFighter(ctx, cls) {
         util.status("away from the " + z.type + " zone", "orange");
         return true;
     }
-    let detour = null; // { goalKey, n, to }
-    let routeLogAt = 0;
-    function segHitsBox(a, b, box, pad) {
-        const steps = Math.max(1, Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) / 20));
-        for (let i = 0; i <= steps; i++) {
-            const x = a.x + (b.x - a.x) * i / steps, y = a.y + (b.y - a.y) * i / steps;
-            if (x >= box[0] - pad && x <= box[2] + pad && y >= box[1] - pad && y <= box[3] + pad) return true;
-        }
-        return false;
-    }
-    function routeGuard() {
-        const tc = config.travel || {};
-        if (tc.rageAvoid === false || !targeting.rageBoxes || typeof smart === "undefined") return false;
-        if (detour && detour.to && is_moving(character)) return true; // walking the detour
-        // smart.found, not !smart.searching: the client leaves "searching" true after the route is found (2026-11-22:
-        // the guard never ran). An empty plot is fine too - the leg we are on is going_x/going_y.
-        if (!smart.moving || !smart.found || !Array.isArray(smart.plot)) return false;
-        const goalKey = smart.map + ":" + Math.round(smart.x || 0) + ":" + Math.round(smart.y || 0);
-        if (!detour || detour.goalKey !== goalKey) {
-            detour = { goalKey: goalKey, n: 0, to: null };
-            // Diagnosis (2026-11-22: a walk along the big booboo zone's edge got no detour): once per planned route.
-            const maps = {};
-            smart.plot.forEach(function (p) { if (p && p.map) maps[p.map] = (maps[p.map] || 0) + 1; });
-            const zoneMaps = Object.keys(maps).filter(function (m) { return targeting.rageBoxes(m).length; });
-            // Not for every short follow step (members got a new goal every few seconds): longer routes, once per 30 s.
-            if ((zoneMaps.length || targeting.rageBoxes(character.map).length) && smart.plot.length >= 3 && Date.now() - routeLogAt > 30 * 1000) {
-                routeLogAt = Date.now();
-                util.log("move", "route guard: " + smart.plot.length + " points to " + goalKey + " (" + Object.keys(maps).map(function (m) { return m + ":" + maps[m]; }).join(", ") + ")", "white");
-            }
-        }
-        if (detour.n >= (tc.rageMaxDetours || 3)) return false;
-        const pad = tc.rageMargin || 60;
-        const me = { map: character.map, x: character.real_x, y: character.real_y };
-        // The leg we are on is no longer in smart.plot - the client takes a point out as it starts walking to it
-        // (smart_move_logic: plot.splice(0, 1)). Its end is our current move target (going_x/going_y).
-        const going = character.moving && typeof character.going_x === "number" ? [{ map: character.map, x: character.going_x, y: character.going_y }] : [];
-        const pts = [me].concat(going, smart.plot.filter(function (p) { return p && typeof p.x === "number"; }));
-        const endBox = function (b) { return smart.map === pts[pts.length - 1].map && smart.x >= b[0] && smart.x <= b[2] && smart.y >= b[1] && smart.y <= b[3]; };
-        for (let i = 0; i + 1 < pts.length; i++) {
-            const a = pts[i], c = pts[i + 1];
-            if (a.map !== c.map || c.transport) continue;
-            const hit = targeting.rageBoxes(a.map).find(function (z) {
-                const b = z.b;
-                if (endBox(b)) return false;
-                if (a.map === character.map && me.x >= b[0] && me.x <= b[2] && me.y >= b[1] && me.y <= b[3]) return false; // inside: stepping out
-                return segHitsBox(a, c, b, pad);
-            });
-            if (!hit) continue;
-            if (a.map !== character.map) return false; // a later map: checked when we get there
-            // A point outside the box with the shortest way: us -> point -> the end of the crossing leg. The 4 corners
-            // and the 4 side middles, rageDetour px out; only points one can stand on (the game's can_move), none we
-            // found no path to before for this goal (2026-11-22: the corner 146,-422 gave "Path not found!" again
-            // and again).
-            const off = tc.rageDetour || 100, b = hit.b;
-            const mx = (b[0] + b[2]) / 2, my = (b[1] + b[3]) / 2;
-            const standable = function (q) {
-                try { return !!parent.can_move({ map: character.map, x: q.x, y: q.y, going_x: q.x + 1, going_y: q.y, base: character.base }); } catch (e) { return true; }
-            };
-            const cands = [[b[0] - off, b[1] - off], [b[2] + off, b[1] - off], [b[0] - off, b[3] + off], [b[2] + off, b[3] + off],
-                [mx, b[1] - off], [mx, b[3] + off], [b[0] - off, my], [b[2] + off, my]]
-                .map(function (q) { return { x: Math.round(q[0]), y: Math.round(q[1]) }; })
-                .filter(function (q) { return standable(q) && !(detour.bad || []).some(function (z) { return Math.hypot(z.x - q.x, z.y - q.y) < 20; }); })
-                .sort(function (p, q) {
-                    return (Math.hypot(p.x - me.x, p.y - me.y) + Math.hypot(c.x - p.x, c.y - p.y)) - (Math.hypot(q.x - me.x, q.y - me.y) + Math.hypot(c.x - q.x, c.y - q.y));
-                });
-            const to = cands.find(function (q) { return !segHitsBox(me, q, b, pad / 2); }) || cands[0];
-            if (!to) return false; // nowhere to go round: walk on
-            detour.n++;
-            detour.to = to;
-            util.log("move", "route crosses the " + hit.type + " rage zone - detour via " + to.x + "," + to.y, "orange");
-            stoppedOnPurpose = true;
-            try { stop("smart"); } catch (e) { /* not walking */ }
-            const d0 = detour;
-            smart_move({ map: character.map, x: to.x, y: to.y }).then(function () {
-                if (d0) d0.to = null;
-            }).catch(function (e) {
-                if (!d0) return;
-                d0.to = null;
-                if (!/interrupt|stop/i.test(util.errReason(e))) (d0.bad = d0.bad || []).push(to); // no path there: another point next time
-            });
-            return true;
-        }
-        return false;
-    }
-
     let lastRing = null; // { map, type, ring, at }
     function boxGap(p, b) {
         return Math.hypot(Math.max(b[0] - p.x, 0, p.x - b[2]), Math.max(b[1] - p.y, 0, p.y - b[3]));

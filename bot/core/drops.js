@@ -203,17 +203,6 @@ module.exports = function createDrops(ctx) {
         const n = team.filter(function (f) { return f === character.name || (ctx.party && ctx.party.inParty && ctx.party.inParty(f)); }).length;
         return Math.max(1, n);
     }
-    // Team gold per second on a guide route. The guide's `net` is the leader's own net gold per
-    // second (loot gold minus potions): measured in the party (proven) it is one share of the
-    // party's gold; estimated it is the leader alone, so it is scaled to the team's kill speed.
-    // Its estimates are far off (2026-11-20: armadillo 8/s estimated vs 52-71/s measured, croc
-    // 0.3 vs 86), and its measurements restart with every reload - our own come first.
-    function teamGold(r) {
-        if (!r || typeof r.net !== "number" || !isFinite(r.net)) return null;
-        if (r.proven) return r.net * partySize();
-        const tc = teamCycle(r);
-        return tc && r.cycle > 0 ? r.net * r.cycle / tc : r.net;
-    }
 
     // ---- own gold per spot (player decision 2026-11-20) -------------------------
     // Every fighter counts the loot gold it gets (fighters sell nothing; handovers only lower

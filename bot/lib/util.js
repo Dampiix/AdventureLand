@@ -349,11 +349,6 @@ function findItemIndex(predicate) {
     return character.items.findIndex(function (item) { return !!item && predicate(item); });
 }
 
-// Upgraded, shiny or locked items are treated as valuable.
-function isProtected(item) {
-    return (item.level || 0) > 0 || !!item.p || !!item.l;
-}
-
 // Fill in the derived fields (leader, merchant, characters, phases) from
 // config.team, so the rest of the bot can keep reading them directly.
 function deriveTeam(cfg) {
@@ -623,5 +618,4 @@ module.exports = {
     isNear: isNear,
     countItem: countItem,
     findItemIndex: findItemIndex,
-    isProtected: isProtected,
 };

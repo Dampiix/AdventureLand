@@ -3,7 +3,7 @@
 One bot for a whole Adventure Land team: up to three fighters and one merchant, all running the same code.
 The fighters farm, hunt bosses and level up; the merchant supplies them, sells, banks, trades with other players and upgrades their gear.
 
-> **Version:** `1.211.0` (`bot/config.js` → `version`) · **Teams:** `Dmpx…` (main account) and `Viz…` (second account) · **Code:** `bot/` → in-game CODE slots 20–39
+> **Version:** `1.213.1` (`bot/config.js` → `version`) · **Teams:** `Dmpx…` (main account) and `Viz…` (second account) · **Code:** `bot/` → in-game CODE slots 20–39
 
 ## Repository
 
@@ -441,7 +441,7 @@ The bot never pulls what it can't survive. Several checks work together.
 - The edge is the spawn box (the rage box if the spot has one) plus the monster's range + 50 px, between 150 and 450 px.
 - It watches for 3 s (`checking the X spot`) and judges what is in sight:
   - **aggressive kinds** (aggro and rage ≥ 0.3, or a rage zone): all free ones come at once, so the pack check runs with the strongest of them (team model as leader, own hits and sustain solo). There is no "harmless" shortcut, because 20 single hits say nothing about 3 booboos at 1.2 hits/s each;
-  - **passive kinds:** at least one of them passes the live check.
+  - **passive kinds:** at least one of them passes the live check, and the largest group of free ones standing close (chained within `groupGap` 60 px, edge to edge) passes the pack check as one pull (v1.213.0). One at a time each X-scorpion passed ("6 of 6 fine", levels 10-11); the warrior's splash pulled 6 and he died.
 - **Fails:** the spot is blocked like a too-strong spot (until the Cavalry is ready, or like a crowded one without the Cavalry). Log: `X too strong here (spot check: ...)`.
 - **Passes:** `spot check X: OK - ...`. No new check until we leave the map or the target changes.
 - While the check is open, no free monster of the kind is picked and the warrior doesn't Agitate. Monsters on us are still fought.
@@ -466,11 +466,7 @@ The bot never pulls what it can't survive. Several checks work together.
 
 **Wall fallback** (`travel.rageWallSteps`, v1.210.1). The rage walls can shut a fighter in: priest and warrior stood in the strip between the mummy zone and the big booboo zone, and every walk ended in "Path not found!". A failed path search (any `smart_move`: travel, following the leader, revives) now narrows the margin step by step (100, 50, 0 = the box itself, then walls off) and plans the walk again. A finished walk, a walk that fails even without walls (the goal itself is unreachable), or 2 minutes bring the full margin back. Since v1.210.2 every rage zone on the way is a wall, not only the ones the team can't take (with the warrior next to him the booboo zone counted as takeable, and the priest walked right through it). Open stay the zone that holds the walk's own goal, and (v1.210.5) the zones of our own farm target the team can take: the priest could hardly step into the accepted 4-booboo zone.
 
-**Route guard** (`travel.rageAvoid`, v1.209.0). Once a path walk is planned (`smart.plot`), every leg is checked against the rage boxes of its map, with `rageMargin` 100 px around them. Aggro checks the neighbouring 32-px grid cells, up to about 64 px from a monster at the edge. The leg being walked counts too: the client takes a point out of `smart.plot` as it starts walking to it, and its end is `going_x/going_y` (fixed in v1.209.3).
-- **On a crossing:** the walk stops, the fighter first goes to the corner outside the box (`rageDetour` 140 px) with the shortest way on, and then the walk is planned anew. At most `rageMaxDetours` (3) per goal.
-- Once per planned route through a map with rage zones, the log shows `route guard: N points to ...`.
-- **Left alone:** the box the walk ends in (the spot check decides there), and legs on later maps (checked on arrival).
-- Log: `route crosses the X rage zone - detour via x,y`.
+The margin is `rageMargin` 100 px: aggro checks the neighbouring 32-px grid cells, up to about 64 px from a monster at the edge. (Before the walls, a route guard detoured after the path was planned; it went round in circles and was removed in v1.212.0.)
 
 Normal aggro is different: a monster with aggro only attacks a player who passes within about 32 px in front of it. Isolation covers that. Monsters also give up a chase after 20 s without being attacked (by chance, depending on `rage`).
 
@@ -739,6 +735,8 @@ Every skill checks its level, weapon type, MP and cooldown. Most keep an MP rese
 **Agitate pack mode** (solo, `classes.warrior.agitate`):
 - **Automatic** (`monsters: "auto"`): the warrior decides per farm target. It is allowed only on monsters that pass a pack safety check (a pull may cost at most 35 % of max HP), are slower than us, have no damage return and no abilities.
 - **Splash or swords:** after 40 hits it learns the splash neighbours per hit. From 1.0 it uses the splash weapons (Lolipop Maces); before that it guesses from spawn density.
+- **Splash without Agitate** (`splashOnlyFrom` 3): with 3+ on him the Lolipops go on even where Agitate is off - since v1.213.0 only when he survives what the splash would pull: those on him plus every free monster chained within the splash radius + `splashPullSlack` (40 px), three rounds deep. Party: the team model (healing counts); solo: the pack check's safe count. Log: `no splash: it would pull N (...)`.
+- **Not on the way** (v1.213.1): while a path walk runs (an event call, a spot change, following the leader) the splash weapons come off at once and don't go on again - they slow us down, and leaving the Giant Scorpions for the Phoenix with the scorpions behind him, the warrior defended himself with the Lolipops past the Fire Spirits. Log: `splash weapons off: on the way`.
 - **Stream mode:** Agitate on cooldown, with at most 5 monsters on us (fewer at low HP), walking to clumps.
 - **Safety:** after three low-HP moments in 10 min it pulls fewer. A death denies the kind for 2 h.
 - **Party escape** (`agitate.partyEscape`, v1.207.0): in a party the warrior runs too, but only when the live check says he dies within 8 s. The check includes the healing of every healer in reach (heal/s × `mobbing.healShare` 0.8). It applies with a mob (more than 3 on him, below 70 % HP) or below 30 % HP; low HP the priest covers doesn't count. All monsters follow him, the mobbing combo runs out after 5 s without a hit, and the priest heals meanwhile. Escape steps stay within the healer's reach where they can. The escape ends when he is back at 60 % HP and the combo has run out.
@@ -746,6 +744,7 @@ Every skill checks its level, weapon type, MP and cooldown. Most keep an MP rese
 - **Team stats:** every fighter sends its stats to every other one each minute, not only to the leader (v1.207.0). The warrior's live check needs the priest's healing.
 - **Gap step** (`agitate.gapStep`, solo and party, v1.205.0): the splash hits what stands around the *target* (explosion ÷ 3.6 px, hitbox to hitbox), there is no facing. When the splash weapons are on, 3+ monsters are on the warrior and the best target's splash misses one in range (e.g. one behind him), he steps 50 px into the **largest angle gap** between them. They all follow from one side and bunch up. At most every 4 s, from 2.5 s on when all are in range again. Never into free monsters, a failing rage zone, or (member) off the leash. Every 10 min the log shows the steps and the splash per hit.
 - **Escape** (solo, v1.201.0): below 30 % HP (`escapeHp`) it runs from slower monsters, with no swings. It runs as long as something on it can still reach it: that monster's range + 100 px (`escapeMargin`), at least 250 px (`escapeClear`). Once out of reach it stands still and lets the potions work, until it is back at 60 % HP (`escapeUntilHp`). The escape also ends when nothing targets it any more, or after 45 s (`escapeMaxMs`). Each step tries 16 directions at 200, 120 and 70 px and takes the one with the most room to the nearest attacker. Cornered (no step leads away): it fights on and tries again after 5 s.
+  - **Not into other dangers** (v1.213.0): a step whose point (or the middle of the way) comes within a free dangerous monster's range + `escapeKeepOff` (80 px, at least 150 px) or into another aggressive spawn's box (+ 80 px) is taken only if nothing else is left. Twice the warrior fled into the Fire Spirits ~300 px south of the Giant Scorpions and died.
 - **Override:** `/agitate` switches the mode by hand (off, swords, splash, chain, splashstream).
 
 **Sword swap** (`swordSwap`). Active only while Fiery Blades are worn:
@@ -1000,7 +999,6 @@ A delivered wish is not fulfilled again for 6 h (rings and earrings excepted).
 |---|---|---|
 | **Gear pot** (`goals`) | 70 % of the net income of 24 h (`gearGoals.budget.incomeShare`) − gear spending | wishes, gear goals, stat scrolls, Ponty and player purchases, wish orders, Bones goals, Rugged spares |
 | **Ladder pot** | 25 % (`bruteForce.incomeShare`) | essence goals (borrows from the gear pot while gear goals are idle) |
-| Shopping pot | 0 % (merged into the gear pot) | — |
 
 - **Floor:** the workshop never spends below `workshop.keepGold` (20 % of the highest gold of 24 h, at most 5M) or the merchant's gold reserve.
 - **Extra gold:** `budget.extra: { amount, until }` adds gold to a pot until a time.
@@ -1050,10 +1048,10 @@ The leader uses it to weigh drop spots ([§19](#19-drop-farming)).
 
 | Setting | State |
 |---|---|
-| `workshop.bruteForce` (weapon ladder), `workshop.stock` | Inactive: all their items are on `dismantle.names`; the material goals took over. |
+| `workshop.bruteForce` | Only its `incomeShare` is left: the ladder pot that pays the material goals. The weapon ladder and the stock upgrades were removed in v1.212.0 (all their items are on `dismantle.names`). |
 | `workshop.grace` | Off; all risk floors are 0, so every step is tried. |
 | `betterWeapons.names` | Only used for classes without a weapon list (all four of ours have one). |
-| `gearGoals.budget.extra`, `bruteForce.extra` | Expired (2026-11-21); the pots run on income only. |
+| `gearGoals.budget.extra`, `bruteForce.extra` | Not set; the pots run on income only. Add `{ amount, until }` for a one-off. |
 | `classes.warrior.dash` | Off. |
 | `events.farmBosses` | Empty: no nonstop boss hunting. |
 | `cavalry.targets` | Empty: no nuking for loot. |

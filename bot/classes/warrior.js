@@ -429,6 +429,7 @@ module.exports = function createWarrior(ctx) {
     }
 
     async function putOnSplash() {
+        if (travelling()) return; // never on the way (see dropSplashOnTheWay)
         pack.busy = true;
         try {
             ctx.gear.holdWeapons(ag.holdMs || 10 * 60 * 1000);
@@ -749,13 +750,44 @@ module.exports = function createWarrior(ctx) {
         });
         return best ? { x: util.xy(best).x, y: util.xy(best).y, reach: Math.max(80, (best.range || 150) * 0.9) } : null;
     }
+    // Other dangers an escape must not run into (2026-11-22): twice the warrior died to Fire Spirits (range 280,
+    // 320 magical with rpiercing 320, burn) ~300 px south of the Giant Scorpions - the step only looked at the
+    // monsters on us. Free monsters not on us keep their range + escapeKeepOff px (at least 150) clear; aggressive
+    // spawns of other kinds on this map (their boxes) escapeKeepOff px. A point inside counts as a last resort only.
+    function escapeDangers(list) {
+        const keep = ag.escapeKeepOff || 80;
+        const mons = Object.values(parent.entities || {}).filter(function (e) {
+            return e && e.type === "monster" && !e.dead && list.indexOf(e) === -1 && e.target !== character.name;
+        }).map(function (e) {
+            const d = G.monsters[e.mtype] || {};
+            const p = util.xy(e);
+            const danger = (d.aggro || 0) > 0 || (d.rage || 0) > 0 || !!(d.abilities && Object.keys(d.abilities).length);
+            return { x: p.x, y: p.y, r: danger ? Math.max(150, (e.range || d.range || 20) + keep) : 60 };
+        });
+        const onTypes = {};
+        list.forEach(function (m) { onTypes[m.mtype] = true; });
+        const boxes = [];
+        ((G.maps[character.map] || {}).monsters || []).forEach(function (p) {
+            const d = G.monsters[p.type] || {};
+            if (onTypes[p.type] || !((d.aggro || 0) > 0 || (d.rage || 0) > 0) || d.cooperative) return;
+            (p.boundaries ? p.boundaries.filter(function (b) { return b[0] === character.map; }).map(function (b) { return b.slice(1); })
+                : p.boundary ? [p.boundary] : []).forEach(function (b) {
+                boxes.push([b[0] - keep, b[1] - keep, b[2] + keep, b[3] + keep]);
+            });
+        });
+        return function (x, y) {
+            if (mons.some(function (m) { return Math.hypot(m.x - x, m.y - y) < m.r; })) return true;
+            return boxes.some(function (b) { return x >= b[0] && x <= b[2] && y >= b[1] && y <= b[3]; });
+        };
+    }
     function escapeStep(list) {
         const me = util.xy(character);
         const pts = list.map(util.xy);
         const healer = healerNear();
+        const risky = escapeDangers(list);
         let best = null, bestRoom = -Infinity;
         [ag.escapeStep || 200, 120, 70].forEach(function (step) {
-            if (best && (!healer || bestRoom > -500)) return; // a longer step that works beats a shorter one
+            if (best && bestRoom > -500) return; // a longer step that works beats a shorter one (not a risky one)
             for (let i = 0; i < 16; i++) {
                 const a = i * Math.PI / 8;
                 const x = me.x + Math.cos(a) * step, y = me.y + Math.sin(a) * step;
@@ -765,6 +797,8 @@ module.exports = function createWarrior(ctx) {
                 if (room <= now) continue; // not away from them
                 // Party: out of the healer's reach only if nothing else is left (2026-11-22).
                 if (healer && Math.hypot(healer.x - x, healer.y - y) > healer.reach) room -= 1000;
+                // Towards other dangers (the point or the middle of the way): only if nothing else is left.
+                if (risky(x, y) || risky((me.x + x) / 2, (me.y + y) / 2)) room -= 2000;
                 if (room > bestRoom) { bestRoom = room; best = { x: x, y: y }; }
             }
         });
@@ -836,14 +870,74 @@ module.exports = function createWarrior(ctx) {
     // on even where Agitate is not allowed - 6-7 mummies stood on the warrior and he hit them with
     // swords. Held a few seconds after the crowd thins out (no swapping back and forth).
     let splashOnlyUntil = 0;
+    // What the splash would pull (2026-11-22): the splash hits the free monsters next to our targets, they attack us,
+    // and their neighbours get hit next - at the X-scorpions 3 on us became 6 and the warrior died (the team model
+    // says no to 6 at once: 2746 dmg/s vs 1492 healing/s). Those on us plus every free monster chained within the
+    // splash radius (+ splashPullSlack px for walking in), three rounds deep.
+    function splashPull(on) {
+        const r = splashRadius() + (ag.splashPullSlack || 40);
+        const free = Object.values(parent.entities || {}).filter(function (e) {
+            return e && e.type === "monster" && !e.dead && !e.target;
+        });
+        const set = on.slice();
+        let frontier = on.slice();
+        for (let round = 0; round < 3 && frontier.length; round++) {
+            const next = free.filter(function (m) {
+                return set.indexOf(m) === -1 && frontier.some(function (t) { return edge(m, t) < r; });
+            });
+            next.forEach(function (m) { set.push(m); });
+            frontier = next;
+        }
+        return set;
+    }
+    // Would we survive all of them? Party: the team model (healing counts), solo: the pack check's safe count.
+    let splashDenyLog = 0;
+    function splashPullOk(type, all) {
+        const ofType = all.filter(function (m) { return m.mtype === type; });
+        const strongest = (ofType.length ? ofType : all).slice().sort(function (a, b) { return (b.level || 1) - (a.level || 1); })[0];
+        let v = null;
+        if (ctx.party.enabled && ctx.targeting.teamVerdict) {
+            v = ctx.targeting.teamVerdict(type, strongest, { pull: all.length });
+            if (!v.ok && /waiting for the team|not in yet/.test(v.why || "")) v = null; // no team stats yet: the solo count
+        }
+        if (!v) {
+            const n = safeLimit(type);
+            v = all.length <= n ? { ok: true } : { ok: false, why: "pack check allows " + n };
+        }
+        if (!v.ok && Date.now() - splashDenyLog > 30 * 1000) {
+            splashDenyLog = Date.now();
+            util.log("warrior", "no splash: it would pull " + all.length + " (" + v.why + ")", "orange");
+        }
+        return v.ok;
+    }
+    // On the way (a path walk: an event call, a spot change, following the leader - 2026-11-22): no splash weapons.
+    // Leaving the Giant Scorpions for the Phoenix, the scorpions followed, the warrior defended himself with the
+    // Lolipops on - their splash could pull the Fire Spirits along the way, and they slow us down too.
+    function travelling() {
+        return typeof smart !== "undefined" && !!smart.moving;
+    }
+    let travelOffLog = 0;
+    function dropSplashOnTheWay() {
+        if (!travelling() || !wearingSplash()) return;
+        splashOnlyUntil = 0;
+        if (ctx.gear.weaponsHeld()) ctx.gear.holdWeapons(0); // the next equip pass puts the usual weapons back on
+        if (Date.now() - travelOffLog > 30 * 1000) {
+            travelOffLog = Date.now();
+            util.log("warrior", "splash weapons off: on the way", "white");
+        }
+    }
     function splashOnly() {
+        if (travelling()) { splashOnlyUntil = 0; return false; }
         if (ag.monsters !== "auto" || agOverride() || !(ag.splashOnlyFrom > 0)) return false;
         const on = onMe();
         if (on.length >= ag.splashOnlyFrom) {
             const count = {};
             on.forEach(function (m) { count[m.mtype] = (count[m.mtype] || 0) + 1; });
             const type = Object.keys(count).sort(function (a, b) { return count[b] - count[a]; })[0];
-            if (splashWorth(type)) splashOnlyUntil = Date.now() + (ag.splashOnlyHoldMs || 8000);
+            if (splashWorth(type)) {
+                if (splashPullOk(type, splashPull(on))) splashOnlyUntil = Date.now() + (ag.splashOnlyHoldMs || 8000);
+                else splashOnlyUntil = 0; // too many would come: the usual weapons (the hold ends at once)
+            }
         }
         return Date.now() < splashOnlyUntil;
     }
@@ -1152,6 +1246,7 @@ module.exports = function createWarrior(ctx) {
         // boss searches and Daisy trips too (player request 2026-11-16).
         always: function () {
             if (c.useCharge && is_moving(character)) tryCharge();
+            dropSplashOnTheWay();
             swordSwap();
         },
 

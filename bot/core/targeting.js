@@ -760,7 +760,7 @@ module.exports = function createTargeting(ctx) {
         zoneCache[z.key] = r;
         return r;
     }
-    // Every rage box on a map (for the route guard): { type, b, key }.
+    // Every rage box on a map (for the rage walls): { type, b, key }.
     function rageBoxes(mapName) {
         return rcfg.enabled === false ? [] : rageZones(mapName).map(function (z) { return { type: z.type, b: z.b, key: z.key }; });
     }
@@ -1064,8 +1064,31 @@ module.exports = function createTargeting(ctx) {
                 : { ok: false, why: n + " in the " + (box.rage ? "rage zone" : "pack") + " (" + free.length + " free in sight, " + lv + ") would come at once: " + v.why };
         }
         const fine = free.filter(function (e) { return !util.tooSpiky(config, e) && liveSafe(e); });
-        if (fine.length || !free.length) return { ok: true, why: fine.length + " of " + seen.length + " fine (" + lv + ")" };
-        return { ok: false, why: "none of " + seen.length + " passes the live check (" + lv + ")" };
+        if (!fine.length && free.length) return { ok: false, why: "none of " + seen.length + " passes the live check (" + lv + ")" };
+        // A tight group comes together (2026-11-22): one at a time each X-scorpion was fine ("6 of 6 fine",
+        // levels 10-11), but they stood close - the warrior's splash (and anything else hitting the group) pulled
+        // their neighbours, 6 came at once and killed him. The largest group of free ones chained within
+        // spotCheck.groupGap px (edge to edge, the splash radius plus walking in) is judged as one pull.
+        const gap = gcfg.groupGap || 60;
+        let group = [];
+        free.forEach(function (e) {
+            if (group.indexOf(e) !== -1) return;
+            const g = [e];
+            for (let i = 0; i < g.length; i++) {
+                free.forEach(function (o) {
+                    if (g.indexOf(o) === -1 && Math.max(0, Math.hypot(o.real_x - g[i].real_x, o.real_y - g[i].real_y) - 20) < gap) g.push(o);
+                });
+            }
+            if (g.length > group.length) group = g;
+        });
+        if (group.length >= 2) {
+            const strongest = group.slice().sort(function (a, b) { return (b.attack || 0) - (a.attack || 0) || (b.max_hp || 0) - (a.max_hp || 0); })[0];
+            const v = teamModelOn() ? teamVerdict(type, strongest, { pull: group.length })
+                : party.enabled && party.isMember && !party.detached() ? { ok: true } : packVerdict(strongest, group.length);
+            if (!v.ok && /waiting for the team/.test(v.why || "")) return { wait: true };
+            if (!v.ok) return { ok: false, why: "a group of " + group.length + " stands together (" + lv + ") and would come at once: " + v.why };
+        }
+        return { ok: true, why: fine.length + " of " + seen.length + " fine" + (group.length >= 2 ? ", group of " + group.length + " too" : "") + " (" + lv + ")" };
     }
 
     // Leader command "/safety [map]": every monster of the map (default: ours) with each
@@ -1994,8 +2017,8 @@ module.exports = function createTargeting(ctx) {
         return best;
     }
 
-    return { currentFarm: currentFarm, farmNow: function () { return farm; }, pick: pick, xpRanking: teamXpRanking, heldBossNear: heldBossNear, doomed: doomed, isValid: isValid, reportSearch: reportSearch, isTeamSafe: isTeamSafe, whyUnsafe: whyUnsafe,
-        teamModelOn: teamModelOn, teamVerdict: teamVerdict, spotGate: spotGate, liveDanger: liveDanger, mobGuard: mobGuard, rageZoneHere: rageZoneHere, failingZoneAt: failingZoneAt, bossHoldRing: bossHoldRing, holdingBoss: holdBossQuiet, inSpotArea: inSpotArea, cavalryEdge: cavalryEdge, spotGateWatchNow: spotGateWatchNow, rageBoxes: rageBoxes, failingZoneNear: failingZoneNear, safetyReport: safetyReport, waitForLone: waitForLone, watchPoint: watchPoint, standPoint: standPoint, aggressive: aggressive, diedAt: diedAt, deathAt: deathAt, spotFor: spotFor, liveSafe: liveSafe, inOccupied: inOccupied, packVerdict: packVerdict, isEasy: isEasy,
+    return { currentFarm: currentFarm, farmNow: function () { return farm; }, pick: pick, xpRanking: teamXpRanking, heldBossNear: heldBossNear, doomed: doomed, reportSearch: reportSearch, isTeamSafe: isTeamSafe, whyUnsafe: whyUnsafe,
+        teamModelOn: teamModelOn, teamVerdict: teamVerdict, spotGate: spotGate, liveDanger: liveDanger, rageZoneHere: rageZoneHere, failingZoneAt: failingZoneAt, bossHoldRing: bossHoldRing, holdingBoss: holdBossQuiet, inSpotArea: inSpotArea, cavalryEdge: cavalryEdge, spotGateWatchNow: spotGateWatchNow, rageBoxes: rageBoxes, failingZoneNear: failingZoneNear, safetyReport: safetyReport, waitForLone: waitForLone, watchPoint: watchPoint, standPoint: standPoint, aggressive: aggressive, diedAt: diedAt, deathAt: deathAt, spotFor: spotFor, inOccupied: inOccupied, packVerdict: packVerdict, 
         // HP a solo fight against this monster costs (0 if it was never checked: harmless or low level).
         soloCost: function (e) { return (e && soloCostById[e.id]) || 0; } };
 };
