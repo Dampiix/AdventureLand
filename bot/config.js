@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.214.0",
+    version: "1.215.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -198,7 +198,9 @@ module.exports = {
     // zones of our farm target the team can take (core/fighter.js installRageWalls). (The old after-the-fact detours
     // went round in circles and were removed.)
     // rageWallSteps (2026-11-22): margins tried one after another when the path search finds no way (-1 = walls off).
-    travel: { via: { spookytown: "halloween" }, rageWalls: true, rageWallSteps: [100, 50, 0, -1], rageMargin: 100 },
+    // leaveVia (2026-11-22): leaving the key map for any other, walk to the value map first - the way back from Spooky
+    // Town went through level1's Vampire Rats too (every path walk, see core/fighter.js leaveLeg).
+    travel: { via: { spookytown: "halloween" }, leaveVia: { spookytown: "halloween" }, rageWalls: true, rageWallSteps: [100, 50, 0, -1], rageMargin: 100 },
 
     // "solo":  only the leader fights (Lone Wolf bonus); the merchant still supports it.
     // "party": all fighters form a party around the leader.
@@ -662,6 +664,9 @@ module.exports = {
                 // us plus the free ones chained within the splash radius + splashPullSlack px, by the team model (party)
                 // or the pack check's safe count (solo).
                 splashPullSlack: 40,
+                // offAfterMs (2026-11-22): a running auto mode goes off on a live "no" (pack check, level cap) only after it
+                // held this long - it flipped swords <-> off every 15 s at the CGoos; each Agitate checks what is in reach anyway.
+                offAfterMs: 60 * 1000,
                 fearMax: 0, // attackers of one damage type beyond our courage for it (each one more costs 20-40 % attack)
                 maxLevel: null, safetyShare: 0.5, // auto: no fixed level cap (the pack check uses real stats; a number caps by hand); a pull may cost only half the HP the pack check allows
                 splashMin: 1.0, learnHits: 40, denseCount: 5, denseSpacing: 130, // auto: lolipops from 1.0 splash per hit (guess from spawn density first)

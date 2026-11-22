@@ -321,8 +321,8 @@ module.exports = function createWarrior(ctx) {
         // No fixed level cap (player decision 2026-11-18): safeLimit judges the strongest one in
         // reach with its real stats - grown monsters fail it by themselves when they are too much.
         // agitate.maxLevel (a number) can still cap it by hand.
-        if (typeof ag.maxLevel === "number" && (safeLevel[type] || 1) > ag.maxLevel) return { ok: false, why: "level " + safeLevel[type] + " in reach (max " + ag.maxLevel + ")" };
-        if (n < 2) return { ok: false, why: "pack check allows " + n };
+        if (typeof ag.maxLevel === "number" && (safeLevel[type] || 1) > ag.maxLevel) return { ok: false, live: true, why: "level " + safeLevel[type] + " in reach (max " + ag.maxLevel + ")" };
+        if (n < 2) return { ok: false, live: true, why: "pack check allows " + n };
         return { ok: true, n: n };
     }
     const auto = { at: 0, type: null, mode: "off", why: "" };
@@ -340,6 +340,15 @@ module.exports = function createWarrior(ctx) {
         auto.at = Date.now();
         const type = farmType();
         const a = type ? autoAllowed(type) : { ok: false, why: "no farm target" };
+        // Steadier (2026-11-22): at the CGoos the decision flipped swords <-> off every 15 s - the pack check judges
+        // the strongest one in reach, and grown and fresh ones walked in and out of it. A live "no" (the pack check
+        // or the level cap) switches a running mode off only after it held for agitate.offAfterMs; every single
+        // Agitate checks what is in reach anyway (autoCap, maxLevel). Fixed reasons (death, damage return,
+        // abilities, speed, a new farm target) switch at once.
+        if (!a.ok && a.live && type && type === auto.type && auto.mode !== "off") {
+            if (!auto.liveNoSince) auto.liveNoSince = Date.now();
+            if (Date.now() - auto.liveNoSince < (ag.offAfterMs || 60 * 1000)) return auto.mode;
+        } else auto.liveNoSince = 0;
         const mode = !a.ok ? "off" : splashWorth(type) ? "splashstream" : "swords";
         const st = type ? statOf(type) : null;
         const why = !a.ok ? a.why : "up to " + Math.max(1, Math.floor(a.n * scaleOf(type))) + " at once, splash " +

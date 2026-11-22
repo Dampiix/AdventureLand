@@ -1460,21 +1460,53 @@ module.exports = function createFighter(ctx, cls) {
         }
         // Every path walk (travel, following the leader, revives...) retries with a narrower margin when the search
         // finds no way (2026-11-22: the ranger following the priest got "Path not found!" over and over).
+        // Leaving a map by a safe one (travel.leaveVia, 2026-11-22): from Spooky Town to anywhere else the path search
+        // took spookytown -> level2 -> level1 -> main, right past the level-20 Vampire Rats (aggro 1, 9,200 HP) - priest
+        // and ranger walked through them on the way to pick up the warrior. Every path walk (travel, following, the
+        // merchant pickup, bank and potion walks) that leaves such a map for another one first goes to the safe map.
+        // A goal whose map can't be told (an unknown name) walks as asked.
+        function destMap(d) {
+            if (!d) return null;
+            if (typeof d === "object") {
+                if (d.map) return d.map;
+                d = d.to;
+                if (!d) return null;
+            }
+            if (typeof d !== "string") return null;
+            if (G.maps[d]) return d;
+            if (/^(bank|potions|upgrade|compound|exchange|scrolls|town)$/.test(d)) return "main";
+            const names = Object.keys(G.maps).filter(function (m) { return !G.maps[m].ignore && !G.maps[m].instance; });
+            const byMonster = names.find(function (m) { return (G.maps[m].monsters || []).some(function (p) { return p.type === d; }); });
+            if (byMonster) return byMonster;
+            return names.find(function (m) { return (G.maps[m].npcs || []).some(function (n) { return n.id === d; }); }) || null;
+        }
+        function leaveLeg(d) {
+            const lv = ((config.travel || {}).leaveVia || {})[character.map];
+            if (!lv) return null;
+            const to = destMap(d);
+            if (!to || to === character.map || to === lv) return null;
+            // A direct neighbour (a door from here, e.g. spookytown -> level2) is walked to directly.
+            if (((G.maps[character.map] || {}).doors || []).some(function (dr) { return dr[4] === to; })) return null;
+            return { map: lv };
+        }
         if (!W.__dmpxOrigSmartMove && typeof W.smart_move === "function") {
             W.__dmpxOrigSmartMove = W.smart_move;
             W.smart_move = function () {
                 const self = this, args = arguments;
-                function go() {
-                    return W.__dmpxOrigSmartMove.apply(self, args).catch(function (e) {
+                function run(a) {
+                    return W.__dmpxOrigSmartMove.apply(self, a).catch(function (e) {
                         const why = util.errReason(e);
-                        if (/path not found|failed/i.test(why) && rageWallLoosen()) return go();
+                        if (/path not found|failed/i.test(why) && rageWallLoosen()) return run(a);
                         // Not even without walls (2026-11-22): the goal itself is unreachable - the walls weren't the
                         // reason, so the full margin is back at once instead of walls off for 2 minutes.
                         rageWallReset();
                         throw e;
                     });
                 }
-                return go().then(function (r) { rageWallReset(); return r; });
+                let leg = null;
+                try { leg = leaveLeg(args[0]); } catch (e) { /* walk as asked */ }
+                const first = leg ? run([leg]) : Promise.resolve();
+                return first.then(function () { return run(args); }).then(function (r) { rageWallReset(); return r; });
             };
         }
         W.can_move = function (m, based) {

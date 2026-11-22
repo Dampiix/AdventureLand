@@ -3,7 +3,7 @@
 One bot for a whole Adventure Land team: up to three fighters and one merchant, all running the same code.
 The fighters farm, hunt bosses and level up; the merchant supplies them, sells, banks, trades with other players and upgrades their gear.
 
-> **Version:** `1.214.0` (`bot/config.js` → `version`) · **Teams:** `Dmpx…` (main account) and `Viz…` (second account) · **Code:** `bot/` → in-game CODE slots 20–39
+> **Version:** `1.215.0` (`bot/config.js` → `version`) · **Teams:** `Dmpx…` (main account) and `Viz…` (second account) · **Code:** `bot/` → in-game CODE slots 20–39
 
 ## Repository
 
@@ -151,7 +151,7 @@ All settings live in [`config.js`](bot/config.js) (slot 21 `bot_config`). The co
 | Fallback when the progression guide has no answer | `targeting.fallback: "goo"` |
 | Rare monsters attacked first | `targeting.rare.types` |
 | Take a crowded or shared spot sooner or later | `targeting.crowdedAfterMs`, `crowdedForMs`, `occupiedForMs`, `stayIfBusy` |
-| Waypoints for dangerous routes | `travel.via: { spookytown: "halloween" }` |
+| Waypoints for dangerous routes | `travel.via: { spookytown: "halloween" }` (there), `travel.leaveVia: { spookytown: "halloween" }` (back) |
 
 ### Bosses and events
 
@@ -358,6 +358,7 @@ The fighter loop runs every `tickMs` (250 ms). Each pass writes the heartbeat `d
 
 **Travel.** Routes use `smart_move`.
 - `travel.via` sends a route to `spookytown` through `halloween` first, avoiding the Vampire Rats.
+- `travel.leaveVia` (v1.215.0) does the same on the way out: every path walk leaving `spookytown` for another map (travel, following the leader, pickups, bank and potion walks) goes to `halloween` first. Before, the way back went spookytown -> level2 -> level1 past the level-20 Vampire Rats. A direct neighbour (`level2`) and goals whose map can't be told are walked to as asked.
 - A failed route marks its point bad for 60 s; the bot then walks by monster name.
 - The Town teleport (`movement.useTown`) is used only farther than 600 px from the map's center, never while monsters attack us, and never while following a leader.
 - **Pass-through:** the leader or a solo fighter on its way to the farm spot leaves slower attackers of other kinds behind (HP ≥ 50 %, not within 400 px of the spot, never bosses). Any fighter stuck for 60 s fighting a non-farm kind walks out towards the farm target (`combat.passThrough`).
@@ -732,7 +733,7 @@ Every skill checks its level, weapon type, MP and cooldown. Most keep an MP rese
 | **War Cry** | Party: targets needing 4+ hits. Solo: before a pull-point Agitate. |
 
 **Agitate pack mode** (solo, `classes.warrior.agitate`):
-- **Automatic** (`monsters: "auto"`): the warrior decides per farm target. It is allowed only on monsters that pass a pack safety check (a pull may cost at most 35 % of max HP), are slower than us, have no damage return and no abilities.
+- **Automatic** (`monsters: "auto"`): the warrior decides per farm target. It is allowed only on monsters that pass a pack safety check (a pull may cost at most 35 % of max HP), are slower than us, have no damage return and no abilities. A running mode goes off on a live "no" (pack check or level cap for what is in reach) only after it held for `offAfterMs` (60 s, v1.215.0) - at the CGoos it flipped swords <-> off every 15 s as grown and fresh ones walked in and out of reach; every single Agitate checks what is in reach anyway. Fixed reasons (a death, damage return, abilities, speed, a new farm target) switch at once.
 - **Splash or swords:** after 40 hits it learns the splash neighbours per hit. From 1.0 it uses the splash weapons (Lolipop Maces); before that it guesses from spawn density.
 - **Splash without Agitate** (`splashOnlyFrom` 3): with 3+ on him the Lolipops go on even where Agitate is off - since v1.213.0 only when he survives what the splash would pull: those on him plus every free monster chained within the splash radius + `splashPullSlack` (40 px), three rounds deep. Party: the team model (healing counts); solo: the pack check's safe count. Log: `no splash: it would pull N (...)`.
 - **Not on the way** (v1.213.1): while a path walk runs (an event call, a spot change, following the leader) the splash weapons come off at once and don't go on again - they slow us down, and leaving the Giant Scorpions for the Phoenix with the scorpions behind him, the warrior defended himself with the Lolipops past the Fire Spirits. Log: `splash weapons off: on the way`.
