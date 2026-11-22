@@ -78,6 +78,8 @@ module.exports = function createTargeting(ctx) {
         return !!e && !!e.bad && Date.now() - e.bad < 60 * 60 * 1000;
     }
 
+    const deathReported = {}; // fighter -> when it reported its own death (diedAt)
+    const pendingDeath = {};  // fighter -> since when the leader sees it dead without a report
     // Leader: count the time spent on the current farm target; a death wipes it.
     function clock() {
         const now = Date.now();
@@ -91,9 +93,20 @@ module.exports = function createTargeting(ctx) {
         // closed the NEW spot too (booboos after a mummy death). Every fighter reports its own
         // death with the monster that killed it (fighter.js), so this is only a fallback.
         if (farm.monster !== clockMonster) { clockMonster = farm.monster; clockSince = now; }
+        // The fallback waits for the dead fighter's own report (2026-11-22): the warrior killed by a Fire Spirit next to
+        // the Giant Scorpions reported "fireroamer", but this check saw a gscorpion within 500 px in the same tick and
+        // closed the gscorpion spot for an hour as well. A death with a report (diedAt, killer by damage) is never
+        // counted here; one without a report only after 15 s.
+        Object.keys(pendingDeath).forEach(function (n) {
+            const p = n === character.name ? character : get_player(n);
+            if (!p || !p.rip) delete pendingDeath[n];
+        });
         const dead = (now - clockSince < 15 * 1000) ? null : [character.name].concat(party.memberNames()).find(function (n) {
             const p = n === character.name ? character : get_player(n);
             if (!p || !p.rip) return false;
+            if (deathReported[n] && now - deathReported[n] < 5 * 60 * 1000) return false; // it told us what killed it
+            if (!pendingDeath[n]) pendingDeath[n] = now;
+            if (now - pendingDeath[n] < 15 * 1000) return false;
             if (farm.map && p.map !== farm.map) return false;
             const m = get_nearest_monster({ type: farm.monster });
             return !!m && Math.hypot(m.x - p.x, m.y - p.y) < 500;
@@ -119,6 +132,7 @@ module.exports = function createTargeting(ctx) {
     // fighter reports its own death (fighter.js), so a whole-team wipe counts too – the
     // leader's clock() only sees deaths while it is alive itself.
     function diedAt(monster, who) {
+        if (who) deathReported[who] = Date.now();
         if (!monster || !G.monsters[monster]) return;
         const now = Date.now();
         const e = experience[monster];

@@ -140,6 +140,9 @@ module.exports = function createPriest(ctx) {
                 if (Object.keys(count).some(function (t) { return count[t] > util.courageOf(t); })) continue;
             }
             lastCatch[n] = now;
+            // Luck swap (2026-11-22, gear plan v2): the luck gear goes on in the same moment (one equip_batch call) - the
+            // dying ones die on us a moment later with our luck; core/gear.js changes back after luckSwap.backMs.
+            if (ctx.gear && ctx.gear.luckOn) ctx.gear.luckOn();
             use_skill("absorb", ally).catch(function () {});
             catchStats.n++;
             catchStats.monsters += on.length;

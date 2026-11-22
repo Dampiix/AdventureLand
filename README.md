@@ -3,7 +3,7 @@
 One bot for a whole Adventure Land team: up to three fighters and one merchant, all running the same code.
 The fighters farm, hunt bosses and level up; the merchant supplies them, sells, banks, trades with other players and upgrades their gear.
 
-> **Version:** `1.218.0` (`bot/config.js` → `version`) · **Teams:** `Dmpx…` (main account) and `Viz…` (second account) · **Code:** `bot/` → in-game CODE slots 20–39
+> **Version:** `1.219.3` (`bot/config.js` → `version`) · **Teams:** `Dmpx…` (main account) and `Viz…` (second account) · **Code:** `bot/` → in-game CODE slots 20–39
 
 ## Repository
 
@@ -76,7 +76,7 @@ Type these in the chat box of a game client that runs the bot. The game passes u
 | `/pickup` | any fighter | Ask the merchant to come now (potions, loot handover). |
 | `/ponty` or `/ponti` | any of our clients | The merchant starts a Ponty round on its next check (shared storage `dmpx_ponty_force`, dropped after 10 min). Started in minutes 0–29 of an hour, it counts as that hour's round. |
 | `/phoenix` | leader | Search the Phoenix now and lift its 3 h pause. |
-| `/jr`, `/greenjr`, `/mvampire`, `/fvampire` | leader | The same for Jr., Green Jr., Dracul and Ms. Dracul. In the party phase a runner searches them; in solo it only lifts the pause. |
+| `/jr`, `/greenjr`, `/mvampire`, `/fvampire`, `/skeletor` | leader | The same for Jr., Green Jr., Dracul, Ms. Dracul and Skeletor. In the party phase a runner searches them; in solo it only lifts the pause. |
 | `/search <boss>` | leader | The same for any watched boss (default `phoenix`, e.g. `/search fvampire` for Ms. Dracul). Aliases: `phönix`, `phonix` → phoenix · `vampire`, `vampir`, `dracul` → mvampire · `msdracul`, `missdracul` → fvampire · `gjr` → greenjr. |
 | `/agitate off\|swords\|splash\|chain\|splashstream\|config` | warrior | The warrior's Agitate mode, kept across restarts (`agitate_mode:<name>`). `config` goes back to the config's choice. Solo only: in a party the automatic decision applies. |
 | `/dps` | leader or solo fighter | Print the damage meter now ([§16](#16-party-play)). |
@@ -163,7 +163,7 @@ All settings live in [`config.js`](bot/config.js) (slot 21 `bot_config`). The co
 | How often the Phoenix is searched | `events.searchEveryMs` (20 min) |
 | Bosses the team searches / only fights when met | `events.search` / `events.engage` |
 | Parallel search in the party | `events.splitSearch` |
-| Runner for Dracul, Ms. Dracul, Jr., Green Jr. | `events.runner.enabled`, `runner.bosses` (interval per boss) |
+| Runner for Dracul, Ms. Dracul, Jr., Green Jr., Skeletor | `events.runner.enabled`, `runner.bosses` (interval per boss) |
 | Hunt a boss nonstop with the runner | `events.farmBosses: ["phoenix"]` |
 | Pause after a death at a boss | `events.boss.pauseAfterDeathMs` (3 h); lift it with `/phoenix` etc. |
 
@@ -415,7 +415,7 @@ The bot never pulls what it can't survive. Several checks work together.
 **Per-member guide verdicts.**
 - Every member sends its own guide's safe list to the leader every 60 s.
 - A spot counts as safe when every member calls it safe. With `avoidTrial`, a "trial" route counts only once it is proven: 15 min of farming without a death, or a harmless monster (every fighter survives 20 hits).
-- An objection on the current spot must last `objectionGraceMs` (5 min) before the team leaves. A death counts at once.
+- An objection on the current spot must last `objectionGraceMs` (5 min) before the team leaves. A death counts at once. A death closes the monster that killed it (by damage, reported by the dead fighter) for an hour - since v1.219.2 the leader's own fallback check (a dead member near a farm monster) waits 15 s for that report and never adds the farm monster on top (a Fire Spirit death next to the Giant Scorpions used to close the gscorpion spot too).
 
 **Team model** (`targeting.teamSafety`, the party leader). A spot is safe when the party can take it together. The "tank" is the sturdiest warrior or paladin; without one, it is whoever pulls (the leader), since v1.202.0:
 - **Pull size:**
@@ -599,10 +599,10 @@ It does not wait:
 - **World bosses with a position** (Snowman): the team travels there and fights.
 - **Roaming bosses:**
   - `events.search` (Phoenix): the team searches all spawn areas every `searchEveryMs` (20 min).
-  - `events.engage` (Dracul, Ms. Dracul, Jr., Green Jr.): fought whenever met, and searched by a runner. Ms. Dracul (`fvampire`, v1.216.1): 240k HP, 875 magical, one spawn in halloween, drops Dracul's Attire (1 %); alone the runner holds for the team.
+  - `events.engage` (Dracul, Ms. Dracul, Jr., Green Jr.): fought whenever met, and searched by a runner. Ms. Dracul (`fvampire`, v1.216.1): 240k HP, 875 magical, one spawn in halloween, drops Dracul's Attire (1 %); alone the runner holds for the team. Skeletor (`skeletor`, v1.218.1, trial): 80k HP, no armor, 1,800 physical at 1.2/s, 120k XP, one spawn in the arena (cgoo area), back after 16 min.
 
 **Boss check** (`events.boss`). From the team's real stats:
-- every fighter survives 6 hits (`boss.minHits`); with a tank (warrior/paladin) in the team the others need only 4 (`minHitsNonTank`, v1.216.2 - Ms. Dracul hits the ranger for ~800, 4.4 hits, while the warrior tanks her; kiting in tight spots like Dracul's cave doesn't work);
+- every fighter survives 6 hits (`boss.minHits`); with a tank (warrior/paladin) in the team the others need only 4 (`minHitsNonTank`, v1.216.2 - Ms. Dracul hits the ranger for ~800, 4.4 hits, while the warrior tanks her; kiting in tight spots like Dracul's cave doesn't work); per boss `minHitsNonTankBy` (v1.218.2: `{ skeletor: 2 }` - the ranger survives 2.1 of his hits, the priest 2.8);
 - the damage on the tank stays below the priest's healing × 1.5 (solo: 150 HP/s sustain);
 - a fighter that can kite the boss counts as taking no damage;
 - `maxFightMinutes: null` sets no kill-time limit.
@@ -615,7 +615,7 @@ A visible boss is checked with its live stats (bosses grow).
 - **Parallel search** (party, `splitSearch`): the leader splits the areas between the fighters. A finder reports, the team meets at the finder, and the leader waits at most 4 min for the others' areas.
 
 **Runner** (`events.runner`, party only).
-- **Who:** the fastest ranged fighter (never the leader or a healer). It searches Dracul (every 20 min), Ms. Dracul (every 25 min), Jr. and Green Jr. (every 60 min) alone while the others farm on.
+- **Who:** the fastest ranged fighter (never the leader or a healer). It searches Dracul (every 20 min), Ms. Dracul (every 25 min), Skeletor (every 20 min), Jr. and Green Jr. (every 60 min) alone while the others farm on.
 - **On a find:** the runner reports it and the team comes. Like the Phoenix, the runner opens the fight alone when its solo boss check (kiting included) passes; otherwise it holds outside the boss's spawn box until the team is there (`holdFor` is empty since v1.209.2).
 - **Nonstop:** `farmBosses` would make the runner hunt a boss nonstop (off).
 
@@ -656,19 +656,40 @@ Items that can't be bought come before XP when they are worth more (`drops`).
   - the class chains from `gearPlan.wishes`;
 - what it wears, its class, its XP value, and whether it carries a Tracktrix.
 
-**Class chains** (`gearPlan.wishes`, `{stat}` = the class's main stat):
+**Class chains** (`gearPlan.wishes`, gear plan v2 since v1.219.0 - the per-class overview is `docs/gear-guide/gear-plan-v2.pdf`, built by `scripts/gear-plan-v2.mjs`; `{stat}` = the class's main stat):
 
 | Slot | Chain | For |
 |---|---|---|
 | cape | Cape +0 (40 Leather) | all |
-| shoes | Winged Boots +7 | all |
+| shoes | Winged Boots +7 | non-tanks |
+| shoes | Rugged +7 → +8 → Winged Boots +7 | tanks |
 | offhand | Quiver +0 → +7 → +8 | ranger |
 | orb | orbg +0 → +1 → Orb of {stat} (alt: Loaded Die) | all |
-| ring / earring / amulet | {stat} piece +2 → +4 | all |
-| belt | {stat} belt +0 → +4 (alts: Wind Belt, Knife Belt) | all |
-| helmet, gloves, pants, chest, shoes | Rugged set +7 | tanks |
-| chest, pants, gloves, shoes | Wanderer's pieces +8 (shoes alt: Winged Boots) | priest (chest opener) |
+| ring | {stat} ring +2 → +4 (alt: Sucker Punch, ranger only) | ranger, rogue, mage, paladin |
+| ring | STR ring +2 → +4 → Ember Seal +2 | warrior |
+| ring | INT ring +2 → +4 → Glacier Seal +2 | priest |
+| earring | {stat} earring +2 → +4 | all but the priest |
+| earring | INT earring +2 → +4 → Moonshard Earring +2 | priest |
+| amulet | {stat} amulet +2 → +4 | all |
+| belt | {stat} belt +0 → +4 (alt: Knife Belt for the rogue) | all but the ranger |
+| belt | DEX belt +0 → +4 → Wind Belt +2 | ranger |
+| helmet, pants | Rugged +7 → +8 | tanks |
+| gloves | Rugged +7 → +8 → Fiery Gloves +7 → +8 | warrior |
+| chest | Rugged +7 → Dracul's Attire +7 → +8 (at most 3 tries a day) | warrior |
+| chest, pants, shoes | Wanderer's pieces +8 (shoes alt: Winged Boots) | priest (chest opener) |
+| gloves | Wanderer's Gloves +8 → Fiery Gloves +7 → +8 | priest |
+| gloves | Thundergrips +7 → +8 (crafted from hunter gloves +6) | ranger |
 | carried | 2 orange Lolipop Maces +7 (green ones stand in) | warrior |
+| carried | Shield M +7, Rabbit's Foot, Clover Stud (luck swap set) | priest |
+| carried | Poucher +7, Alloy Quiver (held for a later AoE mode) | ranger |
+
+**From the back** (v1.219.1, like the weapon lists): when the merchant holds a copy of a later item of a fighter's chain (a Dracul's Attire +0 in the bank), it works on that one at its first step's level instead of the wished earlier step; paused there, one item further to the front. **Tokens** (`workshop.tokenOrder`): Fun Tokens go to the Rabbit's Foot before the Shield M. **Fire weapons** go to +8 (`materialGoals` essence of fire `upTo: 8`, `gearPlan.weaponCaps`) before essence goes to the Fiery Gloves or Ember Seals.
+
+Crafted compound pieces (seals, Moonshard, Wind Belt) are wished at **+2**: the first level that beats the worn +4 piece (+2 = 9 crafted copies). Weapons per class (`gearPlan.weapons`): the ranger's list is Bow → Hunting Bow → Fire Bow → Crossbow.
+
+**Luck swap** (priest, `classes.priest.luckSwap`, v1.219.0): the priest wears its INT gear; right before Absorb Sins (luck catch) it puts on Shield M, Rabbit's Foot, the five Wanderer's pieces (+16 luck) and a Clover Stud with one `equip_batch` call, and changes back 3 s after the last catch. Meanwhile the equip pass and the wish report pause; the best copy of each luck piece and the swapped-out gear stay in the bag.
+
+**Limits** (`gear.minLevel`, `gear.maxWorn`): Dracul's Attire and Heavy Underarmor are never put on below +7; at most one Zapper is worn.
 
 Chain rules:
 - A worn alternative pauses its chain.
@@ -683,7 +704,7 @@ Chain rules:
 4. two one-handers over a two-hander;
 5. a stronger weapon (`util.weaponPower` + 3 %);
 6. any usable piece for an empty slot;
-7. take off off-stat jewelry and `gear.noEquip` items (Hand of Midas, Heavy Underarmor, Dracul's Attire).
+7. take off off-stat jewelry and `gear.noEquip` items (Hand of Midas).
 
 **Weapon power** (`util.weaponPower`) = attack × class weapon bonus × frequency × **burn factor**. Fire weapons proc burn: about 4.8 × the hit over 5 s, counted at 80 % → `BURN_VALUE` 3.8 × proc chance. The priest is exempt (a heal never burns).
 
@@ -746,7 +767,7 @@ Every skill checks its level, weapon type, MP and cooldown. Most keep an MP rese
 - **Party escape** (`agitate.partyEscape`, v1.207.0): in a party the warrior runs too, but only when the live check says he dies within 8 s. The check includes the healing of every healer in reach (heal/s × `mobbing.healShare` 0.8). It applies with a mob (more than 3 on him, below 70 % HP) or below 30 % HP; low HP the priest covers doesn't count. All monsters follow him, the mobbing combo runs out after 5 s without a hit, and the priest heals meanwhile. Escape steps stay within the healer's reach where they can. The escape ends when he is back at 60 % HP and the combo has run out.
 - **Taunt first** (`taunt.first`, off): Taunt one by one before Agitate (Agitate only from `agitateOver` 6). Tested 2026-11-22 at the bats: the priest's share of kills 82 -> 91 %, but ~10 % fewer kills - so off.
 - **Luck catch** (v1.217.0): while a luck catcher (priest with `luckCatch`) is near, a monster on an ally that is about to die (2 hits) is spared: no Taunt, and no Agitate while one is in reach. The longer-living ones the priest absorbed are taunted back one by one, or with Agitate when none in reach is about to die and the team model allows it.
-- **Protective Agitate** (party, v1.207.0): with 3+ monsters on allies, Agitate only when the team model (mobbing, fear, healing) says the warrior can hold **everything** Agitate would take (all within 320 px plus those already on him). Otherwise Taunt takes them one by one. Log: `no protective Agitate: N would be on us (...)`. Since v1.218.0 everything in reach that is not on the warrior yet must be of the farm kind (event types count): one Fire Spirit on an ally let Agitate pull three.
+- **Protective Agitate** (party, v1.207.0): with 3+ monsters on allies, Agitate only when the team model (mobbing, fear, healing) says the warrior can hold **everything** Agitate would take (all within 320 px plus those already on him). Otherwise Taunt takes them one by one. Log: `no protective Agitate: N would be on us (...)`. Since v1.218.0 everything in reach that is not on the warrior yet must be of the farm kind (event types count): one Fire Spirit on an ally let Agitate pull three. Since v1.219.3 a foreign kind that targets an ally blocks it at any distance, not only within 320 px.
 - **Team stats:** every fighter sends its stats to every other one each minute, not only to the leader (v1.207.0). The warrior's live check needs the priest's healing.
 - **Gap step** (`agitate.gapStep`, solo and party, v1.205.0): the splash hits what stands around the *target* (explosion ÷ 3.6 px, hitbox to hitbox), there is no facing. When the splash weapons are on, 3+ monsters are on the warrior and the best target's splash misses one in range (e.g. one behind him), he steps 50 px into the **largest angle gap** between them. They all follow from one side and bunch up. At most every 4 s, from 2.5 s on when all are in range again. Never into free monsters, a failing rage zone, or (member) off the leash. Every 10 min the log shows the steps and the splash per hit.
 - **Escape** (solo, v1.201.0): below 30 % HP (`escapeHp`) it runs from slower monsters, with no swings. It runs as long as something on it can still reach it: that monster's range + 100 px (`escapeMargin`), at least 250 px (`escapeClear`). Once out of reach it stands still and lets the potions work, until it is back at 60 % HP (`escapeUntilHp`). The escape also ends when nothing targets it any more, or after 45 s (`escapeMaxMs`). Each step tries 16 directions at 200, 120 and 70 px and takes the one with the most room to the nearest attacker. Cornered (no step leads away): it fights on and tries again after 5 s.
@@ -931,6 +952,7 @@ A delivered wish is not fulfilled again for 6 h (rings and earrings excepted).
 
 - **Slots:** helmet, chest, pants, shoes, gloves, mainhand, and the offhand when it holds a weapon.
 - **Team-wide stages** (`stages: [7, 8]`): everyone's shop gear reaches +7 before anyone goes to +8.
+- **Per-piece caps** (`capBy`, v1.219.0): once the whole team is through the stages, a listed worn shop piece goes on to its own cap - the ranger's coat to +9.
 - **Shop pieces** are re-buyable, so every attempt is made. Finished copies get the fighter's main-stat scroll and are delivered; the old piece comes back as a base.
 - **Shop weapon goal:** a fighter wearing a drop weapon gets its class's shop weapon built to +8 if that would beat the drop weapon.
 - **Off-plan armor** (v1.206.0). An armor slot that is **empty** or holds a piece **outside the class's gear plan** gets the plan's next step. The plan here means: shop piece, Wanderer's equivalents for non-tanks, wish chains with their alternatives, and found items.
@@ -958,6 +980,8 @@ A delivered wish is not fulfilled again for 6 h (rings and earrings excepted).
 | rogue | Stinger → Dagger of the Dead |
 
 **Planner.** The planner walks each list **from the back**. It takes the first item it can work on that, at most at its cap (`weaponCaps` 7), beats the fighter's weaker weapon hand by 3 % (`betterWeapons.margin`). Shop weapons are left to the gear goals; fire and Dead weapons to the material goals.
+
+**Shared materials** (v1.219.0): a recipe that is no weapon waits while the material's weapon goals are open (essence of fire: fire weapons before Fiery Gloves and Ember Seals); `workshop.materialOrder` sets who gets a material first (essence of ether: Thundergrips, then Moonshard, then Wind Belt). A missing ingredient at a level (hunter gloves +6, INT ring +2) is built first when we have a lower copy, a shop or a token offer. `workshop.dailyTries` caps upgrade tries per day (Dracul's Attire +8: 3). The Rugged spare copies (`boxArmor.upTo`) go to +8.
 
 **Material goals** (`materialGoals`). The weapons made from a dismantled material:
 

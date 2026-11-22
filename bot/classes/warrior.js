@@ -1366,9 +1366,12 @@ module.exports = function createWarrior(ctx) {
             let fmNow = null;
             try { fmNow = ctx.targeting.farmNow ? ctx.targeting.farmNow() : null; } catch (e) { fmNow = null; }
             const ourKinds = !fmNow ? null : fmNow.any ? (Array.isArray(fmNow.types) ? fmNow.types : null) : (fmNow.monster ? [fmNow.monster] : null);
+            // Foreign kinds on an ally block it at ANY distance (2026-11-22, player decision): at 20:51 Agitate pulled Fire
+            // Spirits that already targeted the priest/ranger from just outside the 320 px check.
+            const allies = ctx.party.memberNames();
             const foreignInReach = !!ourKinds && Object.values(parent.entities || {}).some(function (e) {
-                return e && e.type === "monster" && !e.dead && e.target !== character.name &&
-                    util.distanceTo(e) <= G.skills.agitate.range && !ourKinds.includes(e.mtype);
+                if (!e || e.type !== "monster" || e.dead || e.target === character.name || ourKinds.includes(e.mtype)) return false;
+                return util.distanceTo(e) <= G.skills.agitate.range || (!!e.target && allies.includes(e.target));
             });
             // Agitate takes every monster in reach - not while one on an ally is about to die for the luck catcher.
             const sparing = others.some(function (m) { return util.distanceTo(m) <= G.skills.agitate.range && spareForLuck(m); });

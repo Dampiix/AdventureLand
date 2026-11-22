@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.218.0",
+    version: "1.219.3",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -102,7 +102,8 @@ module.exports = {
                 // a buyer pays 500k+; without one for demandHours the workshop compounds them (+1 in
                 // between is never sold) up to +2, the highest level here - stock for +2 buyers (10-15M).
                 { item: "vitearring", level: 0, minPrice: 500000, keep: 0, demandHours: 3 },
-                { item: "vitearring", level: 2, minPrice: 8000000, keep: 0 },
+                // keep 1 (2026-11-22, gear plan v2): the priest's Clover Stud is crafted from an Earring of Vitality +2.
+                { item: "vitearring", level: 2, minPrice: 8000000, keep: 1 },
             ],
         },
         // Buy orders for what we wish (player idea 2026-11-19): one copy of every wished item / gear
@@ -179,7 +180,9 @@ module.exports = {
         skip: ["firestars"],
         materials: {
             // deliver "better" for both (player decision 2026-11-22): always the best copy we have is worn.
-            essenceoffire: { upTo: 7, budget: "ladder", deliver: "better", buyCopies: false, extra: [] },
+            // upTo 8 since 2026-11-22 (player decision): the fire weapons go to +8 before the Fiery Gloves and Ember Seals
+            // get any essence (workshop.materialHold).
+            essenceoffire: { upTo: 8, budget: "ladder", deliver: "better", buyCopies: false, extra: [] },
             mbones: {
                 upTo: 7, budget: "goals", deliver: "better", buyCopies: true,
                 sources: ["maceofthedead", "staffofthedead", "bowofthedead", "daggerofthedead"], // not the Sword of the Dead: kept, never Bones
@@ -287,17 +290,22 @@ module.exports = {
             // Green Jr. (Spooky Forest): the green Lolipop Mace (+24 DEX) on every kill - no loss
             // against the fireblades (no stat either), a stand-in until two orange ones are done.
             greenjr: "always",
+            // Skeletor (arena, in the cgoo area; 2026-11-22, player decision "try it"): 80k HP, no armor, 1,800 physical
+            // at 1.2/s, range 80, charge 56, 120k XP, back 16 min after death. The warrior takes ~1,100 a hit (~1,320/s vs
+            // ~1,590 healing/s); the ranger (~1,590 a hit) and the priest (~1,600) survive only 2-3 hits - see
+            // boss.minHitsNonTankBy. Drops: Tiny Ruby, armor box 5 %, weapon box 2 %, Dawnward Aegis 2 %, Shadow Stone 1 %.
+            skeletor: "always",
             crabxx: "never", franky: "never", icegolem: "never",
             horseman: "never", abtesting: "never",
             graveyard: "always",          // Halloween: zombies/ghouls in Spooky Town's graveyard - Bones (2026-11-16)
         },
         // "always" only applies once every fighter has reached this level
-        minLevel: { phoenix: 40, goobrawl: 20, snowman: 10, graveyard: 40, mvampire: 50, fvampire: 60, jr: 40, greenjr: 40 },
+        minLevel: { phoenix: 40, goobrawl: 20, snowman: 10, graveyard: 40, mvampire: 50, fvampire: 60, jr: 40, greenjr: 40, skeletor: 60 },
         // The whole team searches only the Phoenix (player decision 2026-11-21: in one hour two team rounds
         // for Mvampire, Jr. and Green Jr. took 14.6 min - 23 % of the time - without a find). The others
         // are searched by one runner (runner below) and fought when one is met (engage).
         search: ["phoenix"],
-        engage: ["mvampire", "fvampire", "jr", "greenjr"],
+        engage: ["mvampire", "fvampire", "jr", "greenjr", "skeletor"],
         // Parallel search (player decision 2026-11-21): the leader splits the spawn areas between the
         // fighters in the party; a find is reported and the team meets there (splitWaitMs: how long the
         // leader waits for the others' areas). holdForTeam: nobody opens the fight on an unengaged boss
@@ -323,7 +331,7 @@ module.exports = {
         // leader gives up on a runner that never reports back; killMs: longest solo fight.
         runner: {
             enabled: true,
-            bosses: { mvampire: 20 * 60 * 1000, fvampire: 25 * 60 * 1000, jr: 60 * 60 * 1000, greenjr: 60 * 60 * 1000 },
+            bosses: { mvampire: 20 * 60 * 1000, fvampire: 25 * 60 * 1000, jr: 60 * 60 * 1000, greenjr: 60 * 60 * 1000, skeletor: 20 * 60 * 1000 },
             // Player decision 2026-11-21 (EU IV, grown bosses): no solo kills - Jr. and Green Jr. are held for
             // the team like Dracul (holdFor). Was ["jr", "greenjr"].
             solo: [],
@@ -356,6 +364,7 @@ module.exports = {
         boss: {
             minHits: 6,                 // every fighter must survive this many hits in a row
             minHitsNonTank: 4,          // ...the others only this many while a tank (warrior/paladin) is in the team (2026-11-22)
+            minHitsNonTankBy: { skeletor: 2 }, // per boss instead of minHitsNonTank (2026-11-22, player decision: Skeletor - ranger 2.1, priest 2.8 hits)
             healCover: 1.5,             // damage/s on the tank <= priests' healing/s x this (potions do the rest)
             maxFightMinutes: null,      // kill-time limit for the team alone; null = none (player decision 2026-11-15)
             priestDamageShare: 0.3,     // priests mostly heal: count this share of their damage
@@ -618,6 +627,11 @@ module.exports = {
             // tankRange takes the longer-living ones back and spares the dying ones; without a tank only what the
             // priest's courage holds per damage type. Bosses included. Logged every logEveryMs.
             luckCatch: { enabled: true, hits: 2, maxPull: 5, minHp: 0.6, everyMs: 1500, tankRange: 400, logEveryMs: 10 * 60 * 1000 },
+            // Luck swap (2026-11-22, player decision, gear plan v2): the INT gear in normal fights; right before Absorb Sins
+            // (luck catch) the priest puts these on with one equip_batch call - Shield M, Rabbit's Foot, the five Wanderer's
+            // pieces (set bonus +16 luck) and a Clover Stud - and changes back backMs after the last catch (core/gear.js).
+            // Pieces it does not have yet are skipped; the best copy of each stays in its bag.
+            luckSwap: { enabled: true, items: ["mshield", "rabbitsfoot", "wcap", "wattire", "wbreeches", "wgloves", "wshoes", "cloverstud"], backMs: 3000 },
             // Dark Blessing (lvl 70): +25% party damage for 8 s on targets needing sturdyHits+
             // of our hits, and on bosses.
             darkBlessing: { enabled: true, sturdyHits: 10 },
@@ -777,7 +791,14 @@ module.exports = {
         enabled: true,
         // Never equipped automatically, taken off when worn (player decision 2026-11-18):
         // Hand of Midas (-20 speed), Heavy Underarmor, Dracul's Attire (mcape, a chest piece).
-        noEquip: ["handofmidas", "hpants", "mcape"],
+        // Dracul's Attire and Heavy Underarmor off the list 2026-11-22 (gear plan v2): they are steps of the plan now,
+        // guarded by minLevel below.
+        noEquip: ["handofmidas"],
+        // Never put on below this level (2026-11-22, player decision): Dracul's Attire replaces the warrior's Rugged
+        // coat only from +7 (no stat drop below +7); Heavy Underarmor the same.
+        minLevel: { mcape: 7, hpants: 7 },
+        // At most this many worn at once (2026-11-22, player decision): one Zapper - its zap skill exists only once.
+        maxWorn: { zapper: 1 },
         wishEveryMs: 5 * 60 * 1000, // re-read the guide and resend wishes this often
         maxWishes: 12,  // class chains alone are up to 9 (ring, earring, belt, orb, cape, five Rugged pieces)   // a longer list shifts less (the merchant works through it one by one)
         // Class wishes for slots the guide leaves empty: the chains of gearPlan.wishes (below), built
@@ -822,8 +843,8 @@ module.exports = {
     // Items: "{stat}" = the class's main stat (str/int/dex). `for`: a class or a group.
     // =================================================================
     gearPlan: {
-        version: "1.0",
-        updated: "2026-11-19",
+        version: "2.0",
+        updated: "2026-11-22",
         about: "General gear progression rules the bot follows. Derived from the community chart and our own decisions.",
         principles: [
             "Every slot has a ladder: base -> better pieces -> end goal. Each step has a target upgrade level.",
@@ -902,11 +923,11 @@ module.exports = {
         weapons: {
             warrior: ["blade", "swordofthedead", "fireblade"],
             priest: ["staff", "firestaff", "staffofthedead"],
-            ranger: ["bow", "firebow"],
+            ranger: ["bow", "hbow", "firebow", "crossbow"], // gear plan v2: Hunting Bow and Crossbow
             rogue: ["stinger", "daggerofthedead"],
         },
         // Highest level the list items are upgraded to (per item, else default).
-        weaponCaps: { default: 7 },
+        weaponCaps: { default: 7, fireblade: 8, firestaff: 8, firebow: 8 }, // fire weapons +8 since 2026-11-22 (player decision)
         // Bones and essence: see materialGoals (2026-11-22).
         // Shop armor per slot: gear goals push the worn piece through workshop.gearGoals.stages
         // (up to gearGoals.upTo) with the main-stat scroll - no wish needed.
@@ -927,21 +948,41 @@ module.exports = {
         // in the bag for a mode (count copies, insteadOf: stand-in for another carried item).
         wishes: [
             { slot: "cape", item: "cape", to: 0, single: true, how: "exchange: 40 Leather" },
-            { slot: "shoes", item: "wingedboots", to: 7, replace: true, how: "craft: Shoes + 20 Magical Feathers" },
+            // Tanks take the Winged Boots after their Rugged Shoes +8 (tank shoes chain below).
+            { slot: "shoes", item: "wingedboots", to: 7, replace: true, for: "nontank", how: "craft: Shoes + 20 Magical Feathers" },
             // +8 allowed (player decision 2026-11-22).
             { slot: "offhand", steps: [["quiver", 0], ["quiver", 7], ["quiver", 8]], for: "ranger", how: "craft: Armadillo Scale + 200 Bee Wings" },
             { slot: "orb", steps: [["orbg", 0], ["orbg", 1], ["orbof{stat}", 0]], alts: [{ item: "cave_loaded_die", how: "craft: 10 Cave Amber + 8 Seashells + 2 Reef Glass" }], how: "craft (Cole)" },
-            { slot: "ring", item: "{stat}ring", from: 2, to: 4, replace: true, anytime: true, alts: [{ item: "suckerpunch", for: "physical", how: "drop: crabs" }] },
-            { slot: "earring", item: "{stat}earring", from: 2, to: 4, replace: true, anytime: true },
+            // Rings (gear plan v2, 2026-11-22): main-stat rings +2 -> +4; then the crafted seals at +2 (12 main stat, beats a
+            // ring +4 with 10 - compound items: +2 = 9 crafted copies). Sucker Punch is the ranger's only.
+            { slot: "ring", item: "{stat}ring", from: 2, to: 4, replace: true, anytime: true, for: ["ranger", "rogue", "mage", "paladin"],
+                alts: [{ item: "suckerpunch", for: "ranger", how: "drop: crabs" }] },
+            { slot: "ring", steps: [["strring", 2], ["strring", 3], ["strring", 4], ["emberseal", 2]], replace: true, anytime: true, for: "warrior",
+                how: "craft: STR ring +2 + ember core + 6 essence of fire" },
+            { slot: "ring", steps: [["intring", 2], ["intring", 3], ["intring", 4], ["glacierseal", 2]], replace: true, anytime: true, for: "priest",
+                how: "craft: INT ring +2 + frost core + 6 essence of frost" },
+            { slot: "earring", item: "{stat}earring", from: 2, to: 4, replace: true, anytime: true, for: ["warrior", "ranger", "rogue", "mage", "paladin"] },
+            // Moonshard +2: 12.5 INT + 160 MP (an INT earring +4 has 11).
+            { slot: "earring", steps: [["intearring", 2], ["intearring", 3], ["intearring", 4], ["moonshardearring", 2]], replace: true, anytime: true, for: "priest",
+                how: "craft: INT earring +2 + 8 void thread + 40 bat wings + 4 essence of ether" },
             { slot: "amulet", item: "{stat}amulet", from: 2, to: 4, replace: true, anytime: true },
-            { slot: "belt", item: "{stat}belt", from: 0, to: 4, replace: true, anytime: true, how: "map drop: Spooky Town",
-                alts: [{ item: "windbelt", for: "ranger", how: "craft" }, { item: "knifebelt", for: "rogue", how: "craft - gives Fan of Knives" }] },
-            // Tanks: Rugged set from armor boxes, +7, worn over the shop piece once the shop gear is done.
-            { slot: "helmet", item: "helmet1", to: 7, replace: true, for: "tank", how: "armor box" },
-            { slot: "gloves", item: "gloves1", to: 7, replace: true, for: "tank", how: "armor box" },
-            { slot: "pants", item: "pants1", to: 7, replace: true, for: "tank", how: "armor box" },
-            { slot: "chest", item: "coat1", to: 7, replace: true, for: "tank", how: "armor box" },
-            { slot: "shoes", item: "shoes1", to: 7, replace: true, for: "tank", how: "armor box" },
+            { slot: "belt", item: "{stat}belt", from: 0, to: 4, replace: true, anytime: true, how: "map drop: Spooky Town", for: ["warrior", "priest", "rogue", "mage", "paladin"],
+                alts: [{ item: "knifebelt", for: "rogue", how: "craft - gives Fan of Knives" }] },
+            // Ranger (gear plan v2): DEX belt +4, then the Wind Belt +2 (16 DEX like the belt +4, plus armor and speed).
+            { slot: "belt", steps: [["dexbelt", 0], ["dexbelt", 1], ["dexbelt", 2], ["dexbelt", 3], ["dexbelt", 4], ["windbelt", 2]], replace: true, anytime: true, for: "ranger",
+                how: "craft: DEX belt +2 + 40 storm feathers + 4 essence of ether" },
+            // Tanks: Rugged set from armor boxes, +7 then +8 (gear plan v2), worn over the shop piece once the shop gear is done.
+            { slot: "helmet", steps: [["helmet1", 7], ["helmet1", 8]], replace: true, for: "tank", how: "armor box" },
+            { slot: "pants", steps: [["pants1", 7], ["pants1", 8]], replace: true, for: "tank", how: "armor box" },
+            // Warrior gloves: Rugged +8, then the Fiery Gloves (+7, then +8 - never more than one level below).
+            { slot: "gloves", steps: [["gloves1", 7], ["gloves1", 8], ["fierygloves", 7], ["fierygloves", 8]], replace: true, for: "warrior",
+                how: "armor box / craft: gloves + 20 feathers + 2 essence of fire" },
+            { slot: "gloves", steps: [["gloves1", 7], ["gloves1", 8]], replace: true, for: "paladin", how: "armor box" },
+            // Warrior chest: Rugged +7, then Dracul's Attire from +7 (no stat drop below +7), then +8 slowly
+            // (workshop.dailyTries: 3 tries a day). No Rugged Coat +8 - the Attire replaces it.
+            { slot: "chest", steps: [["coat1", 7], ["mcape", 7], ["mcape", 8]], replace: true, for: "warrior", how: "armor box / drop: Dracul, Ms. Dracul" },
+            { slot: "chest", steps: [["coat1", 7], ["coat1", 8]], replace: true, for: "paladin", how: "armor box" },
+            { slot: "shoes", steps: [["shoes1", 7], ["shoes1", 8], ["wingedboots", 7]], replace: true, for: "tank", how: "armor box / craft: shoes + 20 magical feathers" },
             // Priest - the chest opener: Wanderer's pieces +8 (int) replace the shop pieces once its
             // own shop gear is done (player decision 2026-11-20). With the cap that is 4 pieces:
             // +10% gold on every chest it opens. Bases from Ponty (+0 copies are plentiful).
@@ -949,7 +990,18 @@ module.exports = {
             // +16 luck. Worn Winged Boots pause this chain; finished ones replace the stand-in (2026-11-20).
             { slot: "chest", item: "wattire", to: 8, replace: true, for: "priest", how: "Ponty / craft" },
             { slot: "pants", item: "wbreeches", to: 8, replace: true, for: "priest", how: "Ponty / craft" },
-            { slot: "gloves", item: "wgloves", to: 8, replace: true, for: "priest", how: "Ponty / craft" },
+            { slot: "gloves", steps: [["wgloves", 8], ["fierygloves", 7], ["fierygloves", 8]], replace: true, for: "priest", how: "Ponty / craft" },
+            // Ranger gloves (gear plan v2): Thundergrips, crafted from Gloves of the Hunter Ranger +6 (8 Monster Tokens).
+            { slot: "gloves", steps: [["thundergrips", 7], ["thundergrips", 8]], replace: true, for: "ranger",
+                how: "craft: hunter gloves +6 + 80 storm feathers + 12 essence of ether" },
+            // Priest luck swap set (gear plan v2): carried, never worn by the equip pass - classes.priest.luckSwap puts them on
+            // for the luck catch. The Wanderer's pieces are the chains above (kept in the bag once something else is worn).
+            { slot: "orb", item: "rabbitsfoot", to: 0, carry: true, for: "priest", how: "120 Fun Tokens" },
+            { slot: "offhand", item: "mshield", to: 7, carry: true, for: "priest", how: "10 Fun Tokens (after the Rabbit's Foot: workshop.tokenOrder)" },
+            { slot: "earring", item: "cloverstud", to: 0, carry: true, for: "priest", how: "craft: vit earring +2 + verdant core + 40 ash leaf + 40 spores + 5 green slime" },
+            // Ranger AoE (gear plan v2): Poucher and Alloy Quiver are held in the bag for a later AoE mode.
+            { slot: "mainhand", item: "pouchbow", to: 7, carry: true, for: "ranger", how: "craft: bow + Pouch of Poof" },
+            { slot: "offhand", item: "alloyquiver", to: 0, carry: true, for: "ranger", how: "drop: targetrons 1:4,000" },
             { slot: "shoes", item: "wshoes", to: 8, replace: true, for: "priest", how: "Ponty / craft",
                 alts: [{ item: "wingedboots", how: "craft: Shoes + 20 Magical Feathers" }] },
             // Weapons: see gearPlan.weapons (item lists per class, 2026-11-21) - no stepped chains here any more.
@@ -966,9 +1018,9 @@ module.exports = {
             gloves: [{ item: "supermittens" }, { item: "mpxgloves", for: ["paladin", "priest", "rogue"] }],
             cape: [{ item: "horsecape" }, { item: "ecape" }, { item: "vcape" }, { item: "gcape", for: "priest" }],
             earring: [{ item: "cearring" }, { item: "moonshardearring", for: "mage" }, { item: "frostfang" }, { item: "molesteeth" }],
-            ring: [{ item: "cring", for: "caster" }, { item: "zapper", for: "priest" }, { item: "emberseal", for: "paladin" }],
-            amulet: [{ item: "mpxamulet", for: ["paladin", "priest", "rogue"] }, { item: "keepsakependant", for: "paladin" }, { item: "gloampendant", for: "rogue" }],
-            belt: [{ item: "sbelt", for: "priest" }],
+            ring: [{ item: "cring", for: "caster" }, { item: "zapper", for: "priest" }, { item: "vring", for: "warrior" }, { item: "emberseal", for: "paladin" }],
+            amulet: [{ item: "mpxamulet", for: ["paladin", "rogue"] }, { item: "keepsakependant", for: "paladin" }, { item: "gloampendant", for: "rogue" }],
+            belt: [],
             orb: [{ item: "rabbitsfoot", for: "priest" }],
         },
         elixirs: { off: true, note: "Not used for now (player decision 2026-11-19).", options: [{ item: "pumpkinspice", for: "physical" }, { item: "elixirluck", for: "priest" }] },
@@ -988,14 +1040,14 @@ module.exports = {
             },
             ranger: {
                 modes: {
-                    single: { mainhand: [["bow", 8], ["firebow", 9]], offhand: [["quiver", 8], ["t2quiver", null, "found"]] },
-                    aoe: { mainhand: [["firebow", 9], ["pouchbow", 9, "craft"]], offhand: [["quiver", 8], ["alloyquiver", null, "found"]] },
+                    single: { mainhand: [["bow", 8], ["hbow", null, "craft"], ["firebow", 7], ["crossbow", null, "found"]], offhand: [["quiver", 8], ["t2quiver", null, "found"]] },
+                    aoe: { mainhand: [["pouchbow", 7, "craft"]], offhand: [["alloyquiver", null, "found"]], note: "Held in the bag for a later AoE mode." },
                 },
             },
             priest: {
                 modes: {
-                    single: { mainhand: [["staff", 8], ["staffofthedead", 7], ["lmace", null, "found"]], offhand: [["wbook0", 2], ["wshield", 6], ["mshield", null, "found"]],
-                        note: "Offhand: Book or Wooden Shield - the valuation decides." },
+                    single: { mainhand: [["staff", 8], ["firestaff", 7], ["staffofthedead", 7], ["lmace", null, "found"]], offhand: [["wbook0", 2]],
+                        note: "Shield M, Rabbit's Foot, the Wanderer's set and a Clover Stud are the luck swap set (classes.priest.luckSwap)." },
                 },
             },
             rogue: {
@@ -1115,7 +1167,17 @@ module.exports = {
         // free bank slots and the next chain pieces are ready early (the bank has ~19 free
         // slots; a new pack costs 75M).
         // Once a piece is worn (or held) at upTo and nobody wishes it, new copies are sold.
-        boxArmor: { names: ["helmet1", "gloves1", "pants1", "coat1", "shoes1"], upTo: 7 },
+        boxArmor: { names: ["helmet1", "gloves1", "pants1", "coat1", "shoes1"], upTo: 8 }, // +8 since 2026-11-22 (gear plan v2)
+        // At most this many upgrade tries per day for "item:level" (2026-11-22, player decision): Dracul's Attire +8 -
+        // few copies, so 2-3 tries a day instead of burning them all at once.
+        dailyTries: { "mcape:8": 3 },
+        // Who gets a shared material first (2026-11-22, player decision): a recipe waits while an item listed before it is
+        // still wished. Recipes that are no weapons also wait while the material's weapon goals (materialGoals) are open -
+        // essence of fire goes to the fire weapons first.
+        materialOrder: { essenceofether: ["thundergrips", "moonshardearring", "windbelt"] },
+        // Token purchases in this order (2026-11-22, player decision): Fun Tokens for the Rabbit's Foot (120, one buy, a
+        // big step) before the Shield M (10 each, but every failed upgrade costs another).
+        tokenOrder: { funtoken: ["rabbitsfoot", "mshield"] },
         // Drop weapons (player decision 2026-11-15): a weapon we hold that beats a fighter's
         // worn weapon goes to that fighter; if none does yet, the best copy is upgraded to the
         // first level that would. A failure only costs a drop - the fighter keeps its weapon.
@@ -1178,6 +1240,9 @@ module.exports = {
             // Since 2026-11-20 (player decision) the stages are team-wide: every fighter's shop gear
             // reaches +7 before anyone goes on to +8.
             stages: [7, 8], // shop weapons run through the stages too (player decision 2026-11-19)
+            // Per-piece caps above the last stage (2026-11-22, gear plan v2): once the whole team is through the stages,
+            // these worn shop pieces go on to this level - the ranger's coat to +9.
+            capBy: { ranger: { chest: 9 } },
             everyMs: 3 * 60 * 1000,   // one gear-goal step this often even while wishes are open
             // offhand: a second shop weapon (dual wield) goes to upTo too, so a fresh warrior
             // reaches the Wooden Axe wish (both hands +7); shields, books, quivers stay out.

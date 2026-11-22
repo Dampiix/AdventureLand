@@ -187,7 +187,8 @@ module.exports = function createEvents(ctx) {
         const tankClasses = (config.targeting.teamSafety && config.targeting.teamSafety.tankClasses) || ["warrior", "paladin"];
         const hasTank = !alone && team.some(function (f) { return tankClasses.includes(f.ctype); });
         for (const f of team) {
-            const need = hasTank && !tankClasses.includes(f.ctype) ? (bcfg.minHitsNonTank || minHits) : minHits;
+            const byBoss = (bcfg.minHitsNonTankBy || {})[name];
+            const need = hasTank && !tankClasses.includes(f.ctype) ? (byBoss || bcfg.minHitsNonTank || minHits) : minHits;
             const hits = f.max_hp / hitOn(f);
             if (hits < need) return { ok: false, why: f.name + " survives only " + hits.toFixed(1) + " hits (need " + need + ")" };
         }

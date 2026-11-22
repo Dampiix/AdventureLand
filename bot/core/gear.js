@@ -262,6 +262,7 @@ module.exports = function createGear(ctx) {
             const mine = chainProgress(steps, item);
             const slot = (steps.slots || SLOTS_BY_TYPE[G.items[item.name].type] || []).find(function (s) {
                 if (slotOk && !slotOk(s)) return false;
+                if (equipBlocked(item, s)) return false;
                 const worn = character.slots && character.slots[s];
                 if (!worn || steps.alts.includes(worn.name)) return false; // a worn alternative stays
                 // Never trade a worn stat scroll away (a stat-less Wanderer's Cap over a DEX helmet).
@@ -311,6 +312,8 @@ module.exports = function createGear(ctx) {
             if (item && item.name) out[slot] = { name: item.name, level: item.level || 0, stat: item.stat_type || null };
         });
         if (usualWeapons) Object.keys(usualWeapons).forEach(function (s) { out[s] = usualWeapons[s]; });
+        // Luck gear on: report what goes back afterwards (the merchant must not see the swap set as our gear).
+        if (luck) luck.back.forEach(function (b) { if (b.name) out[b.slot] = { name: b.name, level: b.level, stat: null }; else delete out[b.slot]; });
         // A splash weapon in hand without a remembered set (a restart mid-mode, or half-way
         // through the swap back): report the bag's best normal weapon for that hand - each
         // restart at the bats sent a Lolipop and the merchant crafted Fireblades (2026-11-18).
@@ -359,6 +362,7 @@ module.exports = function createGear(ctx) {
                 if (!slotOk(a.slot)) continue;
                 if (isCarry(item.name)) continue; // carried for a later mode, not worn
                 if (NO_EQUIP.has(G.items[item.name])) continue;
+                if (equipBlocked(item, a.slot)) continue; // min level, max worn, luck-swap piece (2026-11-22)
                 if (chainDowngrade(item, a.slot)) continue;
                 const there = character.slots && character.slots[a.slot];
                 if (wrongStat(item) && ownStat(there) && (there.level || 0) >= (item.level || 0) - 1) continue; // our stat wins
@@ -374,6 +378,7 @@ module.exports = function createGear(ctx) {
                 if (!def || !WEARABLE.includes(def.type) || !usable(def)) continue;
                 const slot = slotsFor(def).find(function (s) {
                     if (!slotOk(s)) return false;
+                    if (equipBlocked(item, s)) return false;
                     const w = character.slots && character.slots[s];
                     if (w && equivalentOf(item, w)) return true;
                     if (!w || w.name !== item.name) return false;
@@ -428,7 +433,7 @@ module.exports = function createGear(ctx) {
                 const def = item && G.items[item.name];
                 if (!def || !WEARABLE.includes(def.type) || !usable(def)) continue;
                 if (isCarry(item.name)) continue;
-                const slot = slotsFor(def).find(function (s) { return slotOk(s) && !(character.slots && character.slots[s]); });
+                const slot = slotsFor(def).find(function (s) { return slotOk(s) && !(character.slots && character.slots[s]) && !equipBlocked(item, s); });
                 if (!slot) continue;
                 await equip(num, slot);
                 util.log("gear", "equipped " + item.name + " +" + (item.level || 0) + " -> " + slot + " (slot was empty)", "green");
@@ -492,8 +497,88 @@ module.exports = function createGear(ctx) {
         return MAIN_STATS.some(function (s) { return s !== own && def[s] > 0; });
     }
     // config.gear.noEquip (player decision 2026-11-18): never put on automatically, and taken off
-    // when worn - e.g. Hand of Midas (-20 speed), Heavy Underarmor.
+    // when worn - e.g. Hand of Midas (-20 speed).
     const NO_EQUIP = new Set(((cfg.noEquip) || []).map(function (n) { return G.items[n]; }).filter(Boolean));
+    // config.gear.minLevel / maxWorn (2026-11-22, gear plan v2): never put on below that level (Dracul's Attire from +7),
+    // and at most that many copies worn at once (one Zapper). slot: where it would go (a copy there is replaced).
+    function belowMin(item) {
+        const min = (cfg.minLevel || {})[item.name];
+        return typeof min === "number" && (item.level || 0) < min;
+    }
+    function overMax(item, slot) {
+        const max = (cfg.maxWorn || {})[item.name];
+        if (typeof max !== "number") return false;
+        const slots = character.slots || {};
+        return Object.keys(slots).filter(function (sl) { return sl !== slot && slots[sl] && slots[sl].name === item.name; }).length >= max;
+    }
+    function equipBlocked(item, slot) { return belowMin(item) || overMax(item, slot) || isLuckOnly(item.name); }
+
+    // ---- luck swap (classes.<ctype>.luckSwap; priest, 2026-11-22 player decision) --------------------------
+    // The INT gear in normal fights; right before Absorb Sins (luck catch, classes/priest.js) the luck pieces go on with
+    // ONE equip_batch call (one server round trip), and backMs after the last catch the worn pieces come back. While the
+    // luck gear is on, the equip pass and the wish report pause (the merchant keeps seeing the normal gear), and the
+    // swapped-out pieces stay in the bag. The best copy of each luck piece is never handed to the merchant.
+    const LS = ((config.classes || {})[character.ctype] || {}).luckSwap || null;
+    let luck = null;      // { until, back: [{ slot, name, level }] } while the luck gear is on
+    let lockedUntil = 0;  // equip pass and wish report pause until then
+    function luckNames() { return LS && LS.enabled ? (LS.items || []) : []; }
+    // Luck pieces that are only worn by the swap (not the Wanderer's pieces, which are normal gear until replaced).
+    function isLuckOnly(name) {
+        if (!luckNames().includes(name)) return false;
+        const steps = chainOf(name);
+        return !!(steps && steps.carry);
+    }
+    function bestBagIndex(name, skip) {
+        let best = -1;
+        character.items.forEach(function (it, i) {
+            if (!it || it.name !== name || (skip && skip.includes(i))) return;
+            if (best === -1 || (it.level || 0) > (character.items[best].level || 0)) best = i;
+        });
+        return best;
+    }
+    function luckOn(ms) {
+        const names = luckNames();
+        if (!names.length) return false;
+        const batch = [], back = [];
+        names.forEach(function (name) {
+            const def = G.items[name];
+            const slots = def && SLOTS_BY_TYPE[def.type];
+            if (!slots || !usable(def)) return;
+            if (slots.some(function (sl) { return character.slots && character.slots[sl] && character.slots[sl].name === name; })) return; // on already
+            const num = bestBagIndex(name, batch.map(function (b) { return b.num; }));
+            if (num === -1) return; // not there yet
+            const slot = slots[slots.length - 1]; // ring2 / earring2 for the paired slots
+            if (batch.some(function (b) { return b.slot === slot; })) return;
+            const was = character.slots && character.slots[slot];
+            batch.push({ num: num, slot: slot });
+            back.push({ slot: slot, name: was ? was.name : null, level: was ? (was.level || 0) : 0 });
+        });
+        if (batch.length) {
+            quiet(equip_batch(batch));
+            if (!luck) util.log("gear", "luck gear on: " + batch.map(function (b) { return character.items[b.num].name; }).join(", "), "white");
+        }
+        if (!batch.length && !luck) return false;
+        luck = { until: Date.now() + (ms || LS.backMs || 3000), back: (luck ? luck.back : []).concat(back) };
+        lockedUntil = luck.until + 2000;
+        return true;
+    }
+    function luckBack() {
+        const batch = [], used = [];
+        luck.back.forEach(function (b) {
+            if (!b.name) return; // the slot was empty: the luck piece stays (nothing to put back)
+            let num = -1;
+            character.items.forEach(function (it, i) {
+                if (num === -1 && it && it.name === b.name && (it.level || 0) === b.level && !used.includes(i)) num = i;
+            });
+            if (num === -1) return;
+            used.push(num);
+            batch.push({ num: num, slot: b.slot });
+        });
+        if (batch.length) quiet(equip_batch(batch));
+        luck = null;
+        lockedUntil = Date.now() + 1500; // the bag settles before the next equip pass
+    }
+    function quiet(p) { if (p && typeof p.catch === "function") p.catch(function () {}); return p; }
     function usable(def) {
         if (NO_EQUIP.has(def)) return false;
         const cls = G.classes[character.ctype] || {};
@@ -700,6 +785,8 @@ module.exports = function createGear(ctx) {
                 return i && i.name === usualWeapons[s].name && (i.level || 0) >= usualWeapons[s].level;
             })) usualWeapons = null; // back in our usual weapons
         }
+        if (luck && Date.now() >= luck.until) luckBack();
+        if (Date.now() < lockedUntil) return; // luck swap: no equip pass, no wish report (they would undo or misreport it)
         sendWishes(); // reports our usual weapons during a hold
         const key = bagKey();
         if (key !== lastBag) trackBag();
@@ -737,6 +824,9 @@ module.exports = function createGear(ctx) {
     }
     // Items the supply module must not hand to the merchant.
     function isReserved(item) {
+        // Luck swap: the best copy of each luck piece, and what was taken off for it, stay in the bag.
+        if (luckNames().includes(item.name) && bestBagIndex(item.name) !== -1 && character.items[bestBagIndex(item.name)] === item) return true;
+        if (luck && luck.back.some(function (b) { return b.name === item.name && b.level === (item.level || 0); })) return true;
         if (swapSword(item)) return true;
         if (pairPart(item)) return true; // half of a weapon pair that beats our two-hander
         if (wishes.some(function (w) { return w.name === item.name && (item.level || 0) >= w.level; })) return true;
@@ -788,5 +878,6 @@ module.exports = function createGear(ctx) {
         return equipRows.rows.some(function (r) { return r.action.name === item.name && (r.action.level || 0) === (item.level || 0); });
     }
 
-    return { tick: tick, isReserved: isReserved, holdWeapons: holdWeapons, weaponsHeld: weaponsHeld };
+    return { tick: tick, isReserved: isReserved, holdWeapons: holdWeapons, weaponsHeld: weaponsHeld, luckOn: luckOn,
+        luckActive: function () { return !!luck; } };
 };

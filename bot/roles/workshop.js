@@ -156,13 +156,49 @@ module.exports = function createWorkshop(ctx) {
         ((cfg.wishes || {})[fighter] || []).forEach(function (w) {
             if (G.items[w.name] && !list.some(function (x) { return x.name === w.name && x.level >= w.level; })) list.push(w);
         });
-        return list.map(function (w) { return withMainStat(fighter, w); })
+        return list.map(function (w) { return withMainStat(fighter, fromTheBack(fighter, w)); })
             // Rings and earrings come in pairs: the second copy is not held back by the
             // 6 h redelivery pause (player decision 2026-11-17).
             .filter(function (w) {
                 const t = G.items[w.name] && G.items[w.name].type;
                 return t === "ring" || t === "earring" || (w.count || 1) > 1 || !recentlyDelivered(fighter, w);
             });
+    }
+
+    // Class chains from the back (2026-11-22, player decision - like the weapon lists): a fighter wishes the first step
+    // of a gearPlan chain it has not reached. When we hold a copy (any level) of a LATER item of that chain, that one is
+    // worked on instead - the furthest such item, at its first step's level (a Dracul's Attire +0 in the bank: Attire +7
+    // while the warrior still wishes Rugged). Paused there (blocked): one item further to the front. The fighter takes
+    // the delivered piece as the further chain step.
+    const backMemo = {}; // fighter|name|level -> { at, w } (wishList runs often; 2 s is fresh enough)
+    function fromTheBack(fighter, w) {
+        const mk = fighter + "|" + w.name + "|" + (w.level || 0);
+        const m = backMemo[mk];
+        if (m && Date.now() - m.at < 2000) return m.w;
+        const r = fromTheBackNow(fighter, w);
+        backMemo[mk] = { at: Date.now(), w: r };
+        return r;
+    }
+    function fromTheBackNow(fighter, w) {
+        const plan = config.gearPlan;
+        const cls = fighterClass(fighter);
+        if (!plan || !plan.chainsFor || !cls || !G.classes[cls] || w.count > 1) return w;
+        const chain = plan.chainsFor(cls, G.classes[cls].main_stat).find(function (e) {
+            return e && e.steps && !e.carry && e.steps.some(function (st) { return st.name === w.name && (st.level || 0) === (w.level || 0); });
+        });
+        if (!chain) return w;
+        const steps = chain.steps;
+        const at = steps.findIndex(function (st) { return st.name === w.name && (st.level || 0) === (w.level || 0); });
+        const now = Date.now();
+        for (let j = steps.length - 1; j > at; j--) {
+            const name = steps[j].name;
+            if (name === w.name || !G.items[name] || !unlockedCopies(name).length) continue;
+            const first = steps.find(function (st, i) { return i > at && st.name === name; });
+            const sub = { name: name, level: first.level || 0, full: true };
+            if ((blockedUntil[key(fighter, withMainStat(fighter, sub))] || 0) > now) continue; // can't right now: step back
+            return sub;
+        }
+        return w;
     }
 
     // Armor that can carry a stat always gets the fighter's main stat (str/int/dex),
@@ -729,11 +765,50 @@ module.exports = function createWorkshop(ctx) {
         await retrieve(banked);
     }
 
-    // Returns { ok: true } after crafting, or { ok: false, missing: [{ name, level, need }] }.
+    // Shared materials (2026-11-22, gear plan v2): a recipe that is no weapon waits while the material's weapon goals
+    // (materialGoals) are open - essence of fire goes to the fire weapons first; and workshop.materialOrder
+    // lists who gets a material first (essence of ether: Thundergrips, Moonshard, Wind Belt) - a recipe waits while an
+    // item before it is still wished by a fighter. Returns why it waits, or null.
+    function materialHold(name, recipe) {
+        for (const it of recipe.items || []) {
+            const mat = it[1];
+            if (G.items[name] && G.items[name].type !== "weapon") {
+                const m = allMaterials().find(function (x) { return x.mat === mat; });
+                if (m && m.goalState().all.length) return mat + " goes to the weapon goals first";
+            }
+            const order = (cfg.materialOrder || {})[mat];
+            const at = order ? order.indexOf(name) : -1;
+            if (at > 0) {
+                const first = order.slice(0, at).find(function (n) {
+                    return fighters().some(function (f) { return wishList(f).some(function (w) { return w.name === n; }); });
+                });
+                if (first) return mat + " kept for " + first;
+            }
+        }
+        return null;
+    }
+    // A missing ingredient at a level (hunter gloves +6, INT ring +2 ...) we can build ourselves: an upgradeable item with
+    // a lower copy, a shop or a token offer; a compound item with enough lower copies (3 per level).
+    function ingredientBuildable(name, level) {
+        const def = G.items[name];
+        if (!def || level <= 0) return false;
+        if (def.upgrade) return totalCopies(name, function (l) { return l < level; }) > 0 || !!sellerOf(name) || !!tokenOffer(name);
+        if (def.compound) {
+            let units = 0;
+            for (let l = 0; l < level; l++) units += (bagCopies(name, l).length + bankCopies(name, l).length) * Math.pow(3, l);
+            return units >= Math.pow(3, level);
+        }
+        return false;
+    }
+
+    // Returns { ok: true } after crafting, or { ok: false, missing: [{ name, level, need }] }, or
+    // { ok: false, working: true } after a step on a missing ingredient (the next round goes on).
     async function craftItem(k, name) {
         const recipe = G.craft[name];
         const npc = crafterOf(name);
         if (!recipe || !npc) return { ok: false, missing: [] };
+        const hold = materialHold(name, recipe);
+        if (hold) throw { reason: hold };
         const missing = [];
         recipe.items.forEach(function (it) {
             const q = it[0], ing = it[1], level = it[2] || 0;
@@ -743,6 +818,13 @@ module.exports = function createWorkshop(ctx) {
         // Only shop items at +0 can be bought: the rest must be found or farmed.
         const buyable = missing.filter(function (m) { return m.level === 0 && sellerOf(m.name); });
         const farmable = missing.filter(function (m) { return buyable.indexOf(m) === -1; });
+        // Only leveled ingredients we can build are missing (2026-11-22): build one of them first - one step per round.
+        if (farmable.length && farmable.every(function (m) { return ingredientBuildable(m.name, m.level); })) {
+            const m = farmable[0];
+            util.log("workshop", "building " + m.name + " +" + m.level + " for " + G.items[name].name, "white");
+            await develop("_ing", { name: m.name, level: m.level }, { budgetKey: k, replaceable: !!sellerOf(m.name), spare: true, minChance: 0 });
+            return { ok: false, working: true };
+        }
         if (farmable.length) return { ok: false, missing: farmable };
         for (const m of buyable) {
             const amount = m.need - m.have;
@@ -918,7 +1000,7 @@ module.exports = function createWorkshop(ctx) {
         // Craftable (e.g. Orb of Beginnings at Cole): make another +0 copy.
         if (crafterOf(w.name) && copiesMissing(w.name, w.level) > 0) {
             const r = await craftItem(k, w.name);
-            if (r.ok) return false; // the next round compounds or crafts again
+            if (r.ok || r.working) return false; // the next round compounds or crafts again
             util.log("workshop", "can't craft " + w.name + " yet - missing " +
                 r.missing.map(function (m) { return (m.need - m.have) + "x " + m.name; }).join(", "), "orange");
             r.missing.forEach(function (m) { noteIngredientShortage(m.name, m.level, m.need, w.name); });
@@ -1648,6 +1730,16 @@ module.exports = function createWorkshop(ctx) {
     async function buyWithTokens(name) {
         const offer = tokenOffer(name);
         if (!offer) return false;
+        // Token order (workshop.tokenOrder, 2026-11-22 player decision): a purchase waits while an item listed before it
+        // is still wished - Fun Tokens go to the Rabbit's Foot (one buy, a big step) before the Shield M (many buys).
+        const order = (cfg.tokenOrder || {})[offer.token];
+        const at = order ? order.indexOf(name) : -1;
+        if (at > 0) {
+            const first = order.slice(0, at).find(function (n) {
+                return fighters().some(function (f) { return wishList(f).some(function (w) { return w.name === n; }); });
+            });
+            if (first) throw { reason: offer.token + " kept for " + first };
+        }
         // A fighter already wears one (e.g. a Hunter piece stopped below its wished level):
         // we never upgrade worn gear, and a second copy would only burn tokens.
         const wearer = Object.keys(worn).find(function (f) {
@@ -1878,6 +1970,22 @@ module.exports = function createWorkshop(ctx) {
     // opts.replaceable overrides the shop check (e.g. a spare we hold many copies of);
     // opts.spare: no stronger scrolls and no grace farming for this item;
     // opts.minChance overrides the risk tier; opts.budgetKey spends from another budget.
+    // Upgrade tries per day for "item:level" (workshop.dailyTries, 2026-11-22: Dracul's Attire +8 at most 3 a day).
+    const TRY_KEY = "workshop_tries:" + character.name;
+    const tries = (function () { try { return get(TRY_KEY) || {}; } catch (e) { return {}; } })();
+    function tryAllowed(name, level) {
+        const max = (cfg.dailyTries || {})[name + ":" + level];
+        if (typeof max !== "number") return true;
+        const list = (tries[name + ":" + level] || []).filter(function (t) { return Date.now() - t < 24 * 60 * 60 * 1000; });
+        return list.length < max;
+    }
+    function noteTry(name, level) {
+        const k = name + ":" + level;
+        if (typeof (cfg.dailyTries || {})[k] !== "number") return;
+        tries[k] = (tries[k] || []).filter(function (t) { return Date.now() - t < 24 * 60 * 60 * 1000; }).concat([Date.now()]);
+        try { set(TRY_KEY, tries); } catch (e) { /* storage unavailable */ }
+    }
+
     async function develop(fighter, w, opts) {
         const k = (opts && opts.budgetKey) || key(fighter, w);
         const def = G.items[w.name];
@@ -1910,6 +2018,7 @@ module.exports = function createWorkshop(ctx) {
                 pay(k, def.g);
             } else if (crafterOf(w.name) && !(opts && opts.noCraft)) {
                 const r = await craftItem(k, w.name);
+                if (r.working) return false; // an ingredient got a step: on with it next round
                 if (!r.ok) {
                     util.log("workshop", "can't craft " + w.name + " yet - missing " +
                         r.missing.map(function (m) { return (m.need - m.have) + "x " + m.name; }).join(", "), "orange");
@@ -2013,8 +2122,10 @@ module.exports = function createWorkshop(ctx) {
                 scroll = better.scroll;
                 chance = better.chance;
             }
+            if (!tryAllowed(w.name, level + 1)) throw { reason: "daily tries for " + w.name + " +" + (level + 1) + " used" };
             await boost("massproduction");
             const result = await upgrade(locate(), bagIndex(scroll, 0));
+            noteTry(w.name, level + 1);
             if (result.success) {
                 util.log("workshop", w.name + " is now +" + result.level + " (" + pct(chance) + ", " + scroll + ")", "green");
                 index = result.num !== undefined ? result.num : index;
@@ -2227,6 +2338,14 @@ module.exports = function createWorkshop(ctx) {
                         list.push({ fighter: f, slot: slot, name: spare || craft ? w.name : map[w.name], stat: statOf(def), weapon: null, level: target, noCraft: !craft });
                         return;
                     }
+                }
+                // Per-piece caps (gearGoals.capBy, 2026-11-22): once the whole team is through the stages, this worn shop
+                // piece goes on to its own cap (the ranger's coat to +9).
+                const cap = ((g.capBy || {})[fighterClass(f)] || {})[slot];
+                if (cap && team === null && def && def.upgrade && sellerOf(w.name) && (w.level || 0) >= finalStage() && (w.level || 0) < cap) {
+                    const cl = classes[f] && G.classes[classes[f]];
+                    list.push({ fighter: f, slot: slot, name: w.name, stat: def.stat ? (w.stat || (cfg.mainStatOnArmor && cl ? cl.main_stat : null)) : null, weapon: null, level: cap });
+                    return;
                 }
                 if (!target || !def || !def.upgrade || !sellerOf(w.name) || (w.level || 0) < g.fromLevel || (w.level || 0) >= target) return;
                 // A drop weapon is being readied for this fighter: its shop weapon stays as it is.
