@@ -7,12 +7,22 @@
 //   3. loot
 //   4. party management   -> invites / accept / leave wrong party
 //   4b. gear              -> send equipment wishes, equip upgrades
+//   4c. Cavalry           -> cavalryTick: walk to a grown pack and call it
+//   4d. rage zones        -> leaveRageZone (out of a failing zone), then
+//                            keepClearOfZones (out to travel.rageMargin);
+//                            path walks treat rage boxes as walls
 //   5. supply             -> merchant handover / pickup / self-resupply
 //   5a. events            -> join events, travel to / search world bosses
 //   5b. hunts             -> Daisy trips, turn in / take Monster Hunts
-//   6. formation          -> members stay within the leash of the leader
+//   6. formation          -> members follow the leader (party.keepUp) and
+//                            the leader waits for the team (busyStep)
+//   6b. kiting            -> kiteStep keeps us off monsters we can outrun
+//   6c. toHealer          -> a hurt member walks into the healer's range;
+//                            coverMembers: a healer leader stays with a
+//                            member under attack
 //   7. class support      -> e.g. Priest heals, Mage energizes
 //   8. combat             -> pick target, class skills, basic attack, move
+//                            (kiting / party spacing)
 //
 // Class modules provide: name, survive(), support(), fight(target), and
 // optionally move(target) – called while walking (target null on a route);
@@ -567,7 +577,6 @@ module.exports = function createFighter(ctx, cls) {
         }
         return best;
     }
-    // Walkable straight line between two points (not only from where we stand).
     // Party spacing (player request 2026-11-18): with a tank class near, ranged fighters stay out of
     // the melee reach of the monsters around - priest, ranger and warrior stood on one spot at the
     // booboos and some went for the ranged ones. Monsters reaching farther than we shoot (booboos,
@@ -621,6 +630,7 @@ module.exports = function createFighter(ctx, cls) {
         util.status("keeping distance from " + near.mtype, "white");
         return true;
     }
+    // Walkable straight line between two points (not only from where we stand).
     // This frame's can_move: the one with the rage walls (2026-11-22 review: kite and escape points used the page's
     // copy and could lie in a rage zone).
     function canMoveFrom(x1, y1, x2, y2) {
@@ -1374,8 +1384,9 @@ module.exports = function createFighter(ctx, cls) {
     // A path walk (smart_move) plans its route without knowing rage zones - the priest walked right through the big
     // booboo zone on his way out. Detours after the fact (the route guard, removed 2026-11-22) went round in circles
     // (the next plan crossed the zone again), and three fighters died at the booboo zones on the way past. So the CODE frame's own can_move - the one smart_move's path search (bfs) asks
-    // for every step, and can_move_to too - refuses a step that ends in, or passes through, a rage box the team can't
-    // take, grown by travel.rageMargin. A step that STARTS inside that grown box is always allowed: whoever stands there
+    // for every step, and can_move_to too - refuses a step that ends in, or passes through, a rage box, grown by
+    // travel.rageMargin. Every rage box is a wall except the walk's goal zone and our farm target's zones the team
+    // can take. A step that STARTS inside that grown box is always allowed: whoever stands there
     // can walk out. Only this frame's copy is wrapped (the game's data stays as it is); installed once per page.
     // Walls with a fallback (2026-11-22): priest and warrior stood in the strip between the mummy zone and the big
     // booboo zone (each +100 px) - with the walls only 90 grid cells were reachable, without them 7111, and every walk
@@ -1560,8 +1571,9 @@ module.exports = function createFighter(ctx, cls) {
 
     // Rage zones (2026-11-22, targeting.zoneAt): standing in one whose whole spawn we can't take, we
     // step out - waiting, resting, a handover or a stopped walk there pulled all 5 booboos. Not while a
-    // path walk passes through (the game's route; waypoints keep us off the worst maps), and not for a
-    // member whose leader farms that very spawn.
+    // path walk only passes through (the game's route; waypoints keep us off the worst maps) - a walk
+    // that ends in the zone is stopped, and a member's walk into a failing zone is stopped on its map.
+    // Members too (no exception for the leader's farm spawn any more, see below).
     let rageLogged = 0;
     function leaveRageZone() {
         if (!targeting.rageZoneHere) return false;

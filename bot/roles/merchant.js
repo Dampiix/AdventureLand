@@ -6,7 +6,8 @@
 //     items never; upgraded ones only up to the entry's maxLevel)
 //   - bag running full -> store everything else in the bank
 //     (config.merchantRole.bank), never buying new bank packs
-//   - keep a potion stock (config.merchantRole.stock), never spending
+//   - keep a potion stock (config.merchantRole.stockPerPotion, built only
+//     from stockFromGold gold), never spending
 //     below goldReserve (a share of our gold, so a fresh merchant still works)
 //   - work on the fighters' equipment wishes (bot_workshop)
 // Delivery (a fighter sent a "pickup" request):
@@ -239,7 +240,8 @@ module.exports = function createMerchant(ctx) {
             util.log("merchant", "sell order: " + q + "x " + o.item + lvlText(o.item, level) + " at " + o.price, "white");
         });
     }
-    // Surplus of a market sell item (above "keep"), counted over bag, bank and listings.
+    // Surplus of a market sell item (above "keep"), counted over bag and bank (workshop.ownedCount;
+    // listings not included).
     function marketSurplus(name, level) {
         const o = ((config.market || {}).sell || []).find(function (s) { return s.item === name && (s.level || 0) === (level || 0); });
         return o ? workshop.ownedCount(name) - (o.keep || 0) : 0;

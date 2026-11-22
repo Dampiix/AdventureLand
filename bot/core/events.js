@@ -39,8 +39,6 @@ module.exports = function createEvents(ctx) {
         });
         return stored;
     })();
-    // Bosses on config.events.farmBosses are hunted nonstop: the next search comes after
-    // farmBossEveryMs instead of searchEveryMs (the Phoenix respawns ~32 s after its death).
     // Roaming bosses we fight when one is in sight (ours or a member's): the searched ones plus
     // config.events.engage - not searched any more, still taken when met (player decision 2026-11-21).
     function watched() {
@@ -54,6 +52,8 @@ module.exports = function createEvents(ctx) {
     function everyMs(name) {
         return (rcfg.enabled && rcfg.bosses && rcfg.bosses[name]) || cfg.searchEveryMs;
     }
+    // Bosses on config.events.farmBosses are hunted nonstop: the next search comes after
+    // farmBossEveryMs instead of searchEveryMs (the Phoenix respawns ~32 s after its death).
     function searchLater(name) {
         const nonstop = (cfg.farmBosses || []).includes(name);
         nextSearchAt[name] = Date.now() + (nonstop ? (cfg.farmBossEveryMs || 60 * 1000) : everyMs(name));
@@ -556,7 +556,8 @@ module.exports = function createEvents(ctx) {
 
     // One runner per boss (player decision 2026-11-21): the leader sends one fighter to the spawn
     // areas of a runner boss while the rest of the team farms on. It kills a solo boss itself, a strong
-    // one it reports (bosssight) and holds until the team is there (targeting.holdFor).
+    // one it reports (bosssight) and holds until the team is there when holdsFor says so
+    // (events.holdForTeam or events.holdFor - both off / [] now).
     let runnerJob = null; // leader: { id, name, who, at }
     // The last runner walking back to us after its job: not waited for either (2026-11-21: the priest
     // stopped three times for the warrior on its way back from Dracul and Green Jr.).
@@ -985,9 +986,7 @@ module.exports = function createEvents(ctx) {
     return {
         tick: tick,
         current: function () { return current; },
-        // A roaming boss is in sight (ours or a member's): the leader goes to it, no team wait.
-        // Checked live: the team wait runs before tick(), so `current` stays stale while waiting
-        // (2026-11-20: the priest waited 45 s for the warrior with the Phoenix reported).
+        // Leader: a parallel (split) boss search is under way - the members walk their own areas, no team wait.
         splitSearching: function () { return !!(split && searching); },
         // Leader: not waited for - the runner on a job, and the nonstop runner between its laps too.
         runnerOut: function () {
@@ -1010,6 +1009,9 @@ module.exports = function createEvents(ctx) {
         },
         soloOk: soloOk,         // targeting.holdBoss: too strong for me alone -> hold for the team
         bossBusy: bossBusy,     // fighter.busyStep: no Daisy trips during a boss fight
+        // A roaming boss is in sight (ours or a member's): the leader goes to it, no team wait.
+        // Checked live: the team wait runs before tick(), so `current` stays stale while waiting
+        // (2026-11-20: the priest waited 45 s for the warrior with the Phoenix reported).
         engaging: function () { return !!(current && current.sighted) || (leads && !!visibleBoss()); },
         teamStats: teamStats, // leader: own stats + fresh member reports
     };

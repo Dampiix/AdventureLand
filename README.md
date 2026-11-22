@@ -79,7 +79,7 @@ Type these in the chat box of a game client that runs the bot. The game passes u
 | `/jr`, `/greenjr`, `/mvampire` | leader | The same for Jr., Green Jr. and Dracul. In the party phase a runner searches them; in solo it only lifts the pause. |
 | `/search <boss>` | leader | The same for any watched boss (default `phoenix`). Aliases: `phönix`, `phonix` → phoenix · `vampire`, `vampir`, `dracul` → mvampire · `gjr` → greenjr. |
 | `/agitate off\|swords\|splash\|chain\|splashstream\|config` | warrior | The warrior's Agitate mode, kept across restarts (`agitate_mode:<name>`). `config` goes back to the config's choice. Solo only: in a party the automatic decision applies. |
-| `/dps` | leader or solo fighter | Print the damage meter now (damage per second per member over the last 5 min). |
+| `/dps` | leader or solo fighter | Print the damage meter now ([§16](#16-party-play)). |
 | `/safety [map]` | leader | Log every member's guide verdict and the team model's verdict for every monster on the map. |
 
 Boss commands answer in chat with `[bot] …` (for example `only the leader (X) searches`).
@@ -340,7 +340,7 @@ Only `main.js` calls `require_code()`. Every other module is a factory that rece
 The fighter loop runs every `tickMs` (250 ms). Each pass writes the heartbeat `dmpx_beat:<name>`. Order of one tick:
 
 1. **Death:** while dead nothing else runs ([§22](#22-death-handling)).
-2. **Damage meter** (leader or solo): logs `[dps]` every 5 min (`meter`).
+2. **Damage meter** (leader or solo): see [§16](#16-party-play).
 3. **Survival:** the class's `survive()` (for example the priest's self-heal), otherwise the potion logic ([§9](#9-potions-resting-and-survival)).
 4. Class `always()` (for example the warrior's Charge and sword swap).
 5. **Chests** ([§16](#16-party-play)).
@@ -378,7 +378,7 @@ HP and MP potions share one cooldown. Potion size is `"auto"`: `hpot1`/`mpot1` o
 7. `potionWhenMissing`: HP potion once a whole one fits.
 8. `mpTopUp`: MP potion once half an MP potion is missing.
 
-**With a healer** (a living priest within 600 px, or we are the priest), the `combat.withHealer` values apply: HP potions only below 60 %, and no top-ups. Exception: losing ≥ 6 % of max HP per second over ~3 s brings back the solo rules.
+**With a healer** (a living priest within 600 px, or we are the priest), `combat.withHealer` overrides only `potionHpBelow` (60 %) and `potionWhenMissing` (off): HP potions only below 60 % (step 5) or 30 % (step 2), and no HP top-ups (steps 3 and 7 are off). The MP rules stay: step 4 still gives MP first (with `hpWhenFits` on, at any HP above 30 %), and `mpTopUp` still tops MP up. Exception: losing ≥ 6 % of max HP per second over ~3 s brings back the solo rules.
 
 **Resting** (solo only, `combat.recover`):
 - Starts after a fight below 50 % HP or MP. While resting, the fighter pulls nothing new and drinks up to 80 % HP and MP, for at most 90 s.
@@ -438,11 +438,11 @@ The bot never pulls what it can't survive. Several checks work together.
 **Isolation** (`targeting.isolation`). Monsters that join fights (aggro and rage ≥ 0.3) are pulled only when no other free one stands within 120 px of the target or of our way there. Otherwise the leader waits at a watch point outside the spawn box (`waiting for a lone X`).
 
 **Spot check from the edge** (`targeting.spotCheck`, v1.201.0). Whoever picks the spot (solo, leader) stops at its edge before walking in:
-- The edge is the spawn box (the rage box if the spot has one) plus the monster's range + 50 px, between 150 and 450 px.
+- The edge is the spawn box (the rage box if the spot has one) plus the monster's range + 50 px, kept between `margin` and `maxMargin`. Both are 150 px now, so the edge is always 150 px out: monsters only join on contact or in their rage box, and from 450 px the 4-booboo spawn was out of sight.
 - It watches for 3 s (`checking the X spot`) and judges what is in sight:
   - **aggressive kinds** (aggro and rage ≥ 0.3, or a rage zone): all free ones come at once, so the pack check runs with the strongest of them (team model as leader, own hits and sustain solo). There is no "harmless" shortcut, because 20 single hits say nothing about 3 booboos at 1.2 hits/s each;
   - **passive kinds:** at least one of them passes the live check, and the largest group of free ones standing close (chained within `groupGap` 60 px, edge to edge) passes the pack check as one pull (v1.213.0). One at a time each X-scorpion passed ("6 of 6 fine", levels 10-11); the warrior's splash pulled 6 and he died.
-- **Fails:** the spot is blocked like a too-strong spot (until the Cavalry is ready, or like a crowded one without the Cavalry). Log: `X too strong here (spot check: ...)`.
+- **Fails:** that spot is blocked as too strong and the next spawn of the kind is tried ([§12](#12-crowded-taken-and-too-strong-spots)). Log: `X spot <map> <x>,<y> too strong (...) - trying another X spot`.
 - **Passes:** `spot check X: OK - ...`. No new check until we leave the map or the target changes.
 - While the check is open, no free monster of the kind is picked and the warrior doesn't Agitate. Monsters on us are still fought.
 
@@ -474,7 +474,7 @@ Normal aggro is different: a monster with aggro only attacks a player who passes
 - attack drops to 60/40/20 %;
 - speed drops by 20/40/70/80/90/100.
 
-The solo pack checks count the attack loss when a pull goes over our courage. Since v1.203.1 the team model counts it for the tank too; fighters report their courage with their stats. The escape uses the real (slower) speed while scared. The warrior has pure courage 2, so 3 booboos already scare him.
+The solo pack checks count the attack loss when a pull goes over our courage. Since v1.203.1 the team model counts it for the tank too; fighters report their courage with their stats. The escape uses the real (slower) speed while scared. The warrior has pure courage 2, so 3 booboos already scare him. **Fear guard:** no new monster is pulled while the attackers of its damage type already reach our courage.
 
 **Learned hit factor** (`targeting.hitFactor`, v1.201.0). Every hit a fighter takes is compared with the formula (attack × damage multiplier of our armor/resistance minus its piercing):
 - Per monster kind, from 8 hits on, all checks multiply its hits by real ÷ predicted damage (at least 1, at most 5).
@@ -483,11 +483,9 @@ The solo pack checks count the attack loss when a pull goes over our courage. Si
 - Mobbed hits (with `mobbing`) are not learned, because the mobbing model covers them.
 - Why: iceroamers hit for 337–365 where the formula says about 150, after Agitate pulled four of them. That turned out to be mobbing, so the factor is now only a safety net.
 
-**Fear guard.** No new monster is pulled while the attackers of its damage type already reach our courage.
-
 **Damage return.** Melee classes (warrior, paladin, rogue) never hit monsters with `dreturn` ≥ 20 (`targeting.melee`).
 
-**Deaths.** A death blocks the monster that killed us for 1 h (stored across restarts).
+**Deaths:** see [§22](#22-death-handling).
 
 ## 12. Crowded, taken and too-strong spots
 
@@ -500,8 +498,9 @@ The solo pack checks count the attack loss when a pull goes over our courage. Si
 - No free target for 90 s, or idle 70 % of a 3-min window, makes the spot crowded.
 - The guide's next choice is then used for 60 min. The block doubles on each repeat within a day, up to 6 h.
 
-**Too strong.**
-- Grown monsters that fail the safety check block the spot until the Cavalry is ready to reset it ([§15](#15-cavalry-tracktrix)).
+**Too strong** (v1.206.1).
+- **One spot:** a spot that fails the [spot check](#11-safety-checks) is blocked on its own until the Cavalry is ready: at least 10 min, in memory only (without the Cavalry: `crowdedForMs`). The next spawn of the kind is tried.
+- **The whole kind:** when every spot of a kind fails, or the grown monsters in sight all fail the safety check, the kind is blocked until the Cavalry is ready to reset it ([§15](#15-cavalry-tracktrix)) (`dmpx_strong_spots`, log `X too strong here (...)`), and a hunt on it is skipped ("every X spot taken or too strong"). Without the Cavalry the kind is skipped like a crowded spot instead.
 
 ## 13. Picking the next monster
 
@@ -534,16 +533,9 @@ A single attacker that can't be kited switches kiting off. The warrior (range 38
 
 **Spacing** (party, `party.spacing`). Ranged non-tanks keep out of the monsters' melee reach (their range + 50) while a tank is near.
 
-**Too-strong spots** (v1.206.1). A spot that fails the spot check is blocked on its own, until the Cavalry is ready (at least 10 min, in memory only). The next spawn of the kind is tried. Only when every spot of a kind fails is the kind blocked (`dmpx_strong_spots`), and a hunt on it is skipped ("every X spot taken or too strong").
+**Too-strong spots:** see [§12](#12-crowded-taken-and-too-strong-spots).
 
 ## 15. Cavalry (Tracktrix)
-
-**Hunt reset** (v1.208.0). An open hunt held back only by too-strong spots, with the Cavalry ready, works like this:
-- The Cavalry resets the spot of that kind that the team could take with **fresh level-1 monsters**: the whole spawn at once where it comes at once, checked by the team model or the solo pack check.
-- The team calls from just outside a rage box, never from inside.
-- After the reset the spot is free again, and the hunt is done there.
-- With nothing of level 3+ at the spot after 20 s, the spot check decides as it is.
-- Log: `Cavalry ready: reset at the X spot ... for the hunt`.
 
 The Tracktrix (`tracker`, kept in every fighter's bag) calls the Cavalry. It is strong while the account's highest level is below 80.
 
@@ -558,6 +550,13 @@ The Tracktrix (`tracker`, kept in every fighter's bag) calls the Cavalry. It is 
   3. It calls there, or when stuck, or when attacked.
 - **Guard:** no call while another player fights a monster in reach. Every other kind in reach must pass the safety check.
 - **Afterwards:** a successful reset clears the spot's crowded, strong and death blocks.
+
+**Hunt reset** (v1.208.0). An open hunt held back only by too-strong spots, with the Cavalry ready, works like this:
+- The Cavalry resets the spot of that kind that the team could take with **fresh level-1 monsters**: the whole spawn at once where it comes at once, checked by the team model or the solo pack check.
+- The team calls from just outside a rage box, never from inside.
+- After the reset the spot is free again, and the hunt is done there.
+- With nothing of level 3+ at the spot after 20 s, the spot check decides as it is.
+- Log: `Cavalry ready: reset at the X spot ... for the hunt`.
 
 **Plans** (`cavalryPlan`). A too-strong or crowded first farm target is reset as soon as the Cavalry is ready. `cavalry.targets` (empty) would name spots to nuke for their loot.
 
@@ -585,7 +584,7 @@ It does not wait:
 
 **Chest opener** (`party.chestOpener`). The chest's gold uses the opener's gold bonus, so the fighter with the highest `goldm` opens. The others open only when it is dead, out of sight, more than 400 px away, or after 10 s.
 
-**Damage meter** (`meter`). The leader logs the team's real damage per second per member every 5 min; `/dps` prints it now.
+**Damage meter** (`meter`). The leader (or a solo fighter) logs `[dps]`: the real damage per second per member over the last 5 min (`windowMs`), from the game's hit events, every 5 min (`everyMs`). `/dps` prints it now.
 
 ## 17. Events and world bosses
 
@@ -659,7 +658,7 @@ Items that can't be bought come before XP when they are worth more (`drops`).
 |---|---|---|
 | cape | Cape +0 (40 Leather) | all |
 | shoes | Winged Boots +7 | all |
-| offhand | Quiver +0 → +7 | ranger |
+| offhand | Quiver +0 → +7 → +8 | ranger |
 | orb | orbg +0 → +1 → Orb of {stat} (alt: Loaded Die) | all |
 | ring / earring / amulet | {stat} piece +2 → +4 | all |
 | belt | {stat} belt +0 → +4 (alts: Wind Belt, Knife Belt) | all |
@@ -711,10 +710,10 @@ While the merchant walks over, the fighter keeps farming and sends its position 
 ## 22. Death handling
 
 On death the fighter logs the last 10 s of hits (`[death] last 10 s: …`).
-- **Blame:** the monster kind that dealt the most damage is blocked as a farm target for 1 h. A member reports it to the leader.
+- **Blame:** the monster kind that dealt the most damage is blocked as a farm target for 1 h, stored across restarts (`dmpx_farm_experience`). A member reports it to the leader.
 - **Respawn:** tried every 5 s. A priest about to revive us holds the respawn for 30 s.
-- **Bosses:** a death near a boss pauses that boss for 3 h ([§17](#17-events-and-world-bosses)).
-- **Warrior Agitate:** a death within 90 s of an Agitate denies Agitate on that kind for 2 h.
+- **Bosses:** see [§17](#17-events-and-world-bosses) (pause after a death).
+- **Warrior Agitate:** see [§23](#warrior-classeswarrior) (Safety).
 
 ## 23. Classes and skills
 
@@ -738,7 +737,7 @@ Every skill checks its level, weapon type, MP and cooldown. Most keep an MP rese
 - **Splash without Agitate** (`splashOnlyFrom` 3): with 3+ on him the Lolipops go on even where Agitate is off - since v1.213.0 only when he survives what the splash would pull: those on him plus every free monster chained within the splash radius + `splashPullSlack` (40 px), three rounds deep. Party: the team model (healing counts); solo: the pack check's safe count. Log: `no splash: it would pull N (...)`.
 - **Not on the way** (v1.213.1): while a path walk runs (an event call, a spot change, following the leader) the splash weapons come off at once and don't go on again - they slow us down, and leaving the Giant Scorpions for the Phoenix with the scorpions behind him, the warrior defended himself with the Lolipops past the Fire Spirits. Log: `splash weapons off: on the way`.
 - **Stream mode:** Agitate on cooldown, with at most 5 monsters on us (fewer at low HP), walking to clumps.
-- **Safety:** after three low-HP moments in 10 min it pulls fewer. A death denies the kind for 2 h.
+- **Safety:** after three low-HP moments in 10 min it pulls fewer. A death within 90 s of an Agitate denies Agitate on that kind for 2 h (`deathDenyMs`).
 - **Party escape** (`agitate.partyEscape`, v1.207.0): in a party the warrior runs too, but only when the live check says he dies within 8 s. The check includes the healing of every healer in reach (heal/s × `mobbing.healShare` 0.8). It applies with a mob (more than 3 on him, below 70 % HP) or below 30 % HP; low HP the priest covers doesn't count. All monsters follow him, the mobbing combo runs out after 5 s without a hit, and the priest heals meanwhile. Escape steps stay within the healer's reach where they can. The escape ends when he is back at 60 % HP and the combo has run out.
 - **Protective Agitate** (party, v1.207.0): with 3+ monsters on allies, Agitate only when the team model (mobbing, fear, healing) says the warrior can hold **everything** Agitate would take (all within 320 px plus those already on him). Otherwise Taunt takes them one by one. Log: `no protective Agitate: N would be on us (...)`.
 - **Team stats:** every fighter sends its stats to every other one each minute, not only to the leader (v1.207.0). The warrior's live check needs the priest's healing.
@@ -1057,8 +1056,7 @@ The leader uses it to weigh drop spots ([§19](#19-drop-farming)).
 | `cavalry.targets` | Empty: no nuking for loot. |
 | `hunts.enabled` | Off during the warrior's solo phase. |
 | `combat.dangerShare` | Not in config; the code default (1) applies. |
-| `classes.warrior.agitate.partyOnMe` | Mentioned in a comment, not read by the code. |
-| `party.leash` | Only the warrior's Agitate reads it. |
+| `party.leash` | No follow or kite leash any more. Read only by the warrior's Agitate (gap steps, stream walks, catching up) and by the rage-zone check: a member with the leader within 300 px judges a zone with the team model ([§11](#11-safety-checks)). |
 | Fixed thresholds | Priest Curse (5 hits), paladin Smash (2 hits) and Guardian's Oath (own HP > 50 %) are in the code, not the config. |
 | Market buy orders | A `market.buy` order needs gold ≥ one unit's price, not the whole quantity. |
-| Auto compounding | Does not check wishes: any compound item below +3 with 3 spare copies is combined. |
+| Auto compounding | Does not check wishes: any compound item below +3 with 3 spare copies (beyond `compound.keep`, not Vitality Earrings held for buyers) is combined. |

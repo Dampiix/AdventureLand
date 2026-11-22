@@ -101,7 +101,7 @@ module.exports = function createGear(ctx) {
     // chain that reached its step level (e.g. +7) is equipped over what is worn, and the
     // merchant delivers such a wish only complete (full), never at a lower level.
     function classChains() {
-        // Paused for every class while the shop gear goes to +9 (player decision 2026-11-16).
+        // classWishesEnabled: false pauses them for every class (used 2026-11-16 while the shop gear went to +9; on now).
         if (cfg.classWishesEnabled === false) return [];
         // From the gear plan (config.gearPlan, 2026-11-19); the old per-class table as a fallback.
         const plan = config.gearPlan;
@@ -154,7 +154,7 @@ module.exports = function createGear(ctx) {
     function shopGearDone() {
         const goals = config.workshop && config.workshop.gearGoals;
         if (!goals || !goals.enabled) return true;
-        // Armor counts as done at the last stage (e.g. +8), the mainhand at upTo (+7).
+        // Armor counts as done at the last stage (e.g. +8), the mainhand (and a dual-wield offhand) at upTo (8 now).
         const lastStage = goals.stages && goals.stages.length ? Math.max.apply(null, goals.stages) : (goals.upTo || 7);
         return (goals.slots || []).every(function (s) {
             const w = character.slots && character.slots[s];
@@ -183,15 +183,14 @@ module.exports = function createGear(ctx) {
             return !!w && (w.level || 0) >= whenWorn[slot];
         });
     }
-    // Wish for a carried chain: the first step no copy in the bag reaches yet.
-    // Finished copies of a carried chain in the bag.
-    // Worn copies count too: a class mode (warrior Agitate) wears the carried maces for a
+    // Copies of a carried chain we hold: the bag, and worn copies too: a class mode (warrior Agitate) wears the carried maces for a
     // while, and the wish report sent right after the pull asked the merchant for two more
     // green Lolipops +7 (2026-11-18).
     function carriedItems() {
         const worn = Object.keys(character.slots || {}).map(function (s) { return character.slots[s]; });
         return character.items.concat(worn).filter(Boolean);
     }
+    // Finished copies of a carried chain in the bag (or worn).
     function carriedDone(steps) {
         return carriedItems().filter(function (item) { return chainProgress(steps, item) >= steps.length; }).length;
     }
@@ -202,6 +201,7 @@ module.exports = function createGear(ctx) {
         const preferred = chainOf(steps.insteadOf);
         return Math.max(0, steps.count - (preferred && preferred.carry ? carriedDone(preferred) : 0));
     }
+    // Wish for a carried chain: the first step no copy in the bag reaches yet.
     function carryWish(steps) {
         if (steps.whenWorn && !wornReaches(steps.whenWorn)) return null;
         // Finished copies in the bag; below the needed count the next copy is wished.
@@ -503,8 +503,6 @@ module.exports = function createGear(ctx) {
         if (["shield", "source", "quiver", "misc_offhand"].includes(def.type)) return !!(cls.offhand || {})[def.type];
         return true;
     }
-    // A bag weapon clearly stronger in our hands than the worn one (same rule as the
-    // merchant's config.workshop.betterWeapons).
     // Two one-handed weapons over a two-handed one (2026-11-18, rogue: Stingers +7/+5 vs
     // Fireblade +7). pairInBag: the best main/off pair in the bag when it beats the worn
     // two-hander; pairPart: a one-hander worth keeping for such a pair (two like it would win).
@@ -534,6 +532,8 @@ module.exports = function createGear(ctx) {
         if (!bar || !(oneHander(item, "mainhand") || oneHander(item, "offhand"))) return false;
         return util.weaponPower(item.name, item.level || 0, character.ctype) * 1.7 > bar; // as main + 0.7 as offhand
     }
+    // A bag weapon clearly stronger in our hands than the worn one (same rule as the
+    // merchant's config.workshop.betterWeapons).
     function strongerWeapon(item) {
         const def = G.items[item.name];
         if (!def || def.type !== "weapon" || !usable(def) || isCarry(item.name)) return false;
@@ -710,7 +710,6 @@ module.exports = function createGear(ctx) {
         }
     }
 
-    // Items the supply module must not hand to the merchant.
     // An equivalent piece (gearPlan.equivalent, e.g. Wanderer's Cap for the Helmet) that replaces
     // the worn one: at least its level, and the worn stat scroll is not lost.
     function equivalentOf(item, worn) {
@@ -736,6 +735,7 @@ module.exports = function createGear(ctx) {
         const better = all.filter(function (i) { return i !== item && (i.level || 0) > (item.level || 0); }).length;
         return better < (sw.count || 2);
     }
+    // Items the supply module must not hand to the merchant.
     function isReserved(item) {
         if (swapSword(item)) return true;
         if (pairPart(item)) return true; // half of a weapon pair that beats our two-hander

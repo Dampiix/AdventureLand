@@ -8,18 +8,23 @@
 //   3. develop: take the best lower copy (bag/bank) or buy a +0 copy from
 //               an NPC, then upgrade it step by step at Cue
 // Rules (config.workshop): only steps with a previewed success chance of at
-// least the risk tier's chance (config.workshop.risk: shop items no floor,
-// compounds 35 %, token/drop items 50 %; a higher scroll grade is
+// least the risk tier's chance (config.workshop.risk - all floors 0 since
+// 2026-11-19; a higher scroll grade is
 // tried when the normal one falls short), never spend below the gold reserve,
 // at most budgetPerWish
 // per wish (a safety cap; all gear spending comes out of the gear pot since 2026-11-19), no offerings, no shells. Upgradeable items are upgraded step by
 // step; compound items (rings, earrings, books, ...) are built from three
 // matching copies per level out of bag and bank (copies can't be bought).
-// Without open wishes, spare compound items are combined up to
-// config.workshop.compound.autoUpTo (same chance/budget rules), spare copies
-// are upgraded (config.workshop.stock), the fighters' worn gear is pushed to
+// Without open wishes (and every gearGoals.everyMs while wishes are open),
+// spare compound items are combined up to
+// config.workshop.compound.autoUpTo (same chance/budget rules), drop weapons
+// are worked on (gearPlan.weapons lists / betterWeapons), box armor is
+// upgraded, the fighters' worn gear is pushed to
 // config.workshop.gearGoals.upTo with an income-based budget, then
 // boxes/gems/seashells from config.workshop.exchange.items are exchanged.
+// Weapons made from a material (fire weapons from the Phoenix's essence,
+// Of-the-Dead from Bones) go through materialGoals first; spare drop copies
+// are dismantled into that material (config.dismantle).
 // We only ever work on our own copies – worn gear is never risked.
 // Finished items are handed over on the next delivery; the fighter gets a
 // "ready" ping so it calls the merchant right away.
@@ -1441,8 +1446,6 @@ module.exports = function createWorkshop(ctx) {
         comms.send(config.leader, "drops", { list: list });
     }
 
-    // Without open wishes: combine spare accessories/books up to autoUpTo.
-    // Keeps the bank tidy (3 -> 1) and prepares stronger copies for later.
     // Items sold into players' buy orders by level (market.sellTo, player decision 2026-11-20 -
     // Vitality earrings: +0 sold while someone pays, else compounded to +2 for stock): a level
     // with its own rule is held while a buyer at minPrice was seen in the last demandHours
@@ -1462,6 +1465,9 @@ module.exports = function createWorkshop(ctx) {
         return Date.now() - last < (rule.demandHours || 3) * 60 * 60 * 1000;
     }
 
+    // Combine spare accessories/books up to autoUpTo - without open wishes, and also while
+    // wishes are open (with a tight bank, and with the gear-goal steps every gearGoals.everyMs).
+    // Keeps the bank tidy (3 -> 1) and prepares stronger copies for later.
     async function autoCompound() {
         if (!cfg.compound.auto) return false;
         const counts = {};
@@ -1509,9 +1515,6 @@ module.exports = function createWorkshop(ctx) {
         return util.findItemIndex(function (i) { return i.name === name && (i.q || 1) >= need; });
     }
 
-    // A wished item that only comes out of something we hold (e.g. Rugged armor from
-    // Armor Boxes): open one batch of that source. Sources listed in
-    // config.workshop.exchange.onDemand only, while the bank keeps room for the rewards.
     // We hold an on-demand box (exchange.onDemand) that gives `name`: it comes from
     // opening those, not from farming (2026-11-17: the warrior farmed bats for a Rugged
     // coat while 109 armor boxes waited in the bank behind a full bank).
@@ -1526,6 +1529,9 @@ module.exports = function createWorkshop(ctx) {
         });
     }
 
+    // A wished item that only comes out of something we hold (e.g. Rugged armor from
+    // Armor Boxes): open one batch of that source. Sources listed in
+    // config.workshop.exchange.onDemand only, while the bank keeps room for the rewards.
     async function openSourceFor(name) {
         const ex = cfg.exchange || {};
         const sources = (ex.onDemand || []).filter(function (src) {
@@ -2016,12 +2022,12 @@ module.exports = function createWorkshop(ctx) {
     // ---- gear goals -------------------------------------------------------------
     //
     // config.workshop.gearGoals: stronger copies of what the fighters wear.
-    // Shop armor is pushed to upTo whatever the chance: a failure costs only gold
-    // and raises the grace for that level (shared by every item), a success is a
-    // finished piece. A weapon is only tried from a spare copy at upTo-1, once
-    // grace has raised its previewed chance to the rule's minChance (armor
-    // failures at the same level do that). Finished copies get the fighter's stat
-    // scroll and are delivered; spending follows the income budget above.
+    // Shop armor and shop weapons go through gearGoals.stages (team-wide) up to upTo
+    // whatever the chance: a failure costs only gold, a success is a finished piece.
+    // Drop-weapon rules (gearGoals.weapons: a spare copy at upTo-1 once grace raised
+    // its chance to minChance) are off - the list is empty and grace is disabled;
+    // drop weapons go through materialGoals and gearPlan.weapons. Finished copies get
+    // the fighter's stat scroll and are delivered; spending follows the income budget above.
 
     const goalSentAt = {};      // "fighter:slot" -> delivered at (until the new worn report arrives)
     const weaponWaitUntil = {}; // weapon name -> timestamp (chance too low, waiting for grace)
@@ -2032,9 +2038,6 @@ module.exports = function createWorkshop(ctx) {
         return !!(cfg.gearGoals && cfg.gearGoals.enabled);
     }
 
-    // What each fighter should get, in team order (leader first).
-    // The shop weapon to build for a fighter that wears a drop weapon, or null: the
-    // class's starting weapon (staff, mace, bow), if at upTo it beats the worn one.
     // "Weapon done" for the full +7 gate: the worn weapon is at gearGoals.upTo, or at
     // least as strong as the class's shop weapon at upTo (a fire weapon at +5 can be).
     function weaponAtGoal(f) {
@@ -2048,6 +2051,8 @@ module.exports = function createWorkshop(ctx) {
         return util.weaponPower(m.name, m.level || 0, ctype) >= util.weaponPower(name, cfg.gearGoals.upTo, ctype);
     }
 
+    // The shop weapon to build for a fighter that wears a drop weapon, or null: the
+    // class's starting weapon (staff, mace, bow), if at upTo it beats the worn one.
     function shopWeaponGoal(f) {
         const m = worn[f] && worn[f].mainhand;
         const ctype = classes[f];
@@ -2167,6 +2172,7 @@ module.exports = function createWorkshop(ctx) {
     function goalNeeds() {
         return goalNeedsAll().filter(function (n) { return Date.now() - (goalSentAt[n.fighter + ":" + n.slot] || 0) > 15 * 60 * 1000; });
     }
+    // What each fighter should get, in team order (leader first).
     function goalNeedsAll() {
         const g = cfg.gearGoals;
         const list = [];
@@ -2178,7 +2184,7 @@ module.exports = function createWorkshop(ctx) {
             const stage = own === null ? null : Math.min(own, team); // team-wide stages (2026-11-20)
             // A drop weapon in hand (e.g. a Phoenix weapon): the class's shop weapon at
             // upTo may beat it – build that, the fighter switches, and the drop weapon is
-            // then upgraded until it wins again (betterWeapons). Player idea 2026-11-15.
+            // then upgraded until it wins again (weapon lists / material goals). Player idea 2026-11-15.
             const shopWeapon = shopWeaponGoal(f);
             if (shopWeapon) list.push({ fighter: f, slot: "mainhand", name: shopWeapon, stat: null, weapon: null, level: g.upTo });
             g.slots.forEach(function (slot) {
@@ -2342,7 +2348,6 @@ module.exports = function createWorkshop(ctx) {
             b.hours.toFixed(1) + " h, spent " + kGold(b.spent) + ")", "orange");
     }
 
-    // Apply the fighter's stat scroll (str/int/dex) to a finished copy.
     // Apply a stat scroll (str/int/dex) to the bag copy at `index`; spends from budget key k.
     async function applyStat(index, stat, k) {
         const budgetKey = k || GOALS;
@@ -2654,9 +2659,11 @@ module.exports = function createWorkshop(ctx) {
 
     // ---- better weapons (drops) -------------------------------------------------
     //
-    // config.workshop.betterWeapons: drop weapons (e.g. Phoenix) are compared with the
-    // fighters' worn weapons. A copy that is already stronger goes out; otherwise the best
-    // copy is upgraded to the first level that beats the worn weapon.
+    // config.workshop.betterWeapons: drop weapons are compared with the fighters' worn
+    // weapons. A copy that is already stronger goes out; otherwise the best copy is upgraded
+    // to the first level that beats the worn weapon. Classes with a gearPlan.weapons list are
+    // planned by it (listPlans); weapons made from a material (the Phoenix's fire weapons from
+    // essence, Of-the-Dead from Bones) are left to the material goals, spare copies are dismantled.
 
 
     // Can fighter f wield this weapon (a two-handed one only with an empty offhand)?
@@ -2665,13 +2672,7 @@ module.exports = function createWorkshop(ctx) {
         return !util.isDoublehand(name, classes[f]) || !(worn[f] && worn[f].offhand);
     }
 
-    // { fighter, name, need } per drop weapon we hold: the fighter it helps most and the
-    // first level (<= maxLevel) at which it beats that fighter's worn weapon.
-    // Weapon lists (config.gearPlan.weapons, player decision 2026-11-21): per fighter one plan - from the
-    // back of its class list, the first item we can work on: we hold a copy (any level, not blocked) that
-    // beats the fighter's weaker worn weapon at some level up to its cap. A fire weapon (essence goals)
-    // whose essence goal is being worked on ends the search there; deferred or none: on to the front.
-    // The shop weapon at the front is left to the gear goals.
+    // Upgrade cap of a list weapon (gearPlan.weaponCaps, else its default, else 7).
     function weaponCap(name) {
         const caps = (config.gearPlan && config.gearPlan.weaponCaps) || {};
         return caps[name] !== undefined ? caps[name] : (caps.default !== undefined ? caps.default : 7);
@@ -2685,6 +2686,11 @@ module.exports = function createWorkshop(ctx) {
         if (dual && pw(off) < pw(eq.mainhand)) return { slot: "offhand", power: pw(off) };
         return { slot: "mainhand", power: pw(eq.mainhand) };
     }
+    // Weapon lists (config.gearPlan.weapons, player decision 2026-11-21): per fighter one plan - from the
+    // back of its class list, the first item we can work on: we hold a copy (any level, not blocked) or can
+    // craft one that beats the fighter's weaker worn weapon at some level up to its cap. Items made from a
+    // material are skipped (the material goals handle them, 2026-11-22). The shop weapon at the front is
+    // left to the gear goals.
     function listPlans() {
         const lists = (config.gearPlan && config.gearPlan.weapons) || {};
         const bw = cfg.betterWeapons || {};
@@ -2718,6 +2724,9 @@ module.exports = function createWorkshop(ctx) {
         });
         return plans;
     }
+    // { fighter, name, need, slot } per drop weapon we hold: the list plans, plus for classes without a
+    // list, per betterWeapons name, the fighter it beats soonest and the first level (<= maxLevel) at which
+    // it beats that fighter's worn weapon.
     function weaponPlans() {
         const bw = cfg.betterWeapons;
         if (!bw || !bw.enabled) return [];
@@ -3116,8 +3125,6 @@ module.exports = function createWorkshop(ctx) {
     // the copy then goes out through the usual deliveries.
     let nextPontyAt = Date.now() + 60 * 1000;
     let bestPerGold = 0; // % power per gold of our best gold-only upgrade (value report)
-    // % more power for fighter f if item (assumed with f's main-stat scroll when it takes one)
-    // replaces the weakest worn piece of its slot type; null when f can't use it.
     // Weapon types a fighter really uses (player decision 2026-11-20): the ones its class's gear
     // plan names (config.gearPlan.classes, every mode and hand) plus what it wears now. The game
     // lets a warrior hold a bow, so two bows from Ponty were bought "for" the dual-wielding
@@ -3133,6 +3140,8 @@ module.exports = function createWorkshop(ctx) {
         ["mainhand", "offhand"].forEach(function (s) { const w = (worn[f] || {})[s]; if (w) add(w.name); });
         return Object.keys(out).length ? out : null;
     }
+    // % more power for fighter f if item (assumed with f's main-stat scroll when it takes one)
+    // replaces the weakest worn piece of its slot type; null when f can't use it.
     function gainFor(f, item) {
         const v = fighterValues[f], b = v && v.base, def = G.items[item.name];
         if (!b || !def || Date.now() - v.at > 60 * 60 * 1000) return null;
@@ -3282,11 +3291,6 @@ module.exports = function createWorkshop(ctx) {
         for (let l = from + 1; l <= target; l++) p *= c.steps[l];
         return p;
     }
-    // Gold our own way to name +level would cost (Infinity: needs drops we can't time or price).
-    // Drop hours count at the opportunity cost (player decision 2026-11-20): the team gold per
-    // hour we give up on the drop spot against the spot we really farm (leader, dropCosts) -
-    // 0 when the drop spot pays as well. Was our whole gold/hour of the last 24 h, which a
-    // 45M token sale inflated to ~2M/h (orbg buy order at 9.9M).
     // Gold of one craft's ingredients (2026-11-21): an NPC sells it - its price; else our standing
     // market.buy price; else unknown (Infinity). The craft cost alone was 0 for the Wanderer's set, so
     // Ponty's +0 copies (8k-29k) were always "dearer than making it" and skipped without a word -
@@ -3301,6 +3305,11 @@ module.exports = function createWorkshop(ctx) {
             return o ? sum + q * o.price : Infinity;
         }, 0);
     }
+    // Gold our own way to name +level would cost (Infinity: needs drops we can't time or price).
+    // Drop hours count at the opportunity cost (player decision 2026-11-20): the team gold per
+    // hour we give up on the drop spot against the spot we really farm (leader, dropCosts) -
+    // 0 when the drop spot pays as well. Was our whole gold/hour of the last 24 h, which a
+    // 45M token sale inflated to ~2M/h (orbg buy order at 9.9M).
     function ownCost(name, level) {
         const def = G.items[name];
         const c = def.compound ? compoundCost(name, level) : upgradeCost(name, level);
@@ -3331,14 +3340,13 @@ module.exports = function createWorkshop(ctx) {
         util.log("workshop", "bought " + (n > 1 ? n + "x " : "") + name + " +" + level + " via buy order for " + Math.round(total / 1000) + "k (gear pot)", "green");
         noteBought({ kind: "order", item: name + " +" + level, price: total, q: n || 1 });
     }
-    // Paid from the gear pot (gearGoals budget) since 2026-11-19 (player decision): buying replaces
-    // building, so both come out of one pot; at most ponty.maxShareOfPot of it per purchase.
-    // Buy orders for what we wish (player idea 2026-11-19, market.wishOrders): one copy of every
-    // wished item / gear goal at its level, priced at our own expected cost - not for plain NPC
-    // stock (+0 shop items). Funded and within the pot share; gone once we have such a copy.
+    // No copy at that level or higher held or worn yet.
     function needsCopy(name, level) {
         return !copyAtLeast(name, level) && wornLevel(name) < level;
     }
+    // Buy orders for what we wish (player idea 2026-11-19, market.wishOrders): one copy of every
+    // wished item / gear goal at its level, priced at our own expected cost - not for plain NPC
+    // stock (+0 shop items). Funded and within the pot share; gone once we have such a copy.
     function wishBuyOrders() {
         const wo = (config.market && config.market.wishOrders) || {};
         if (!wo.enabled || !bankSnapshot) return [];
@@ -3359,8 +3367,10 @@ module.exports = function createWorkshop(ctx) {
         });
         return out.slice(0, wo.max || 8);
     }
-    // force: a Ponty round visit (merchantRole.pontyRound) - no timer, and it reports what it saw.
     let lastPontyVisit = null; // { items, bought }
+    // Paid from the gear pot (gearGoals budget) since 2026-11-19 (player decision): buying replaces
+    // building, so both come out of one pot; at most ponty.maxShareOfPot of it per purchase.
+    // force: a Ponty round visit (merchantRole.pontyRound) - no timer, and it reports what it saw.
     async function shopPonty(force) {
         const pc = (config.market && config.market.ponty) || {};
         if (!pc.enabled || (!force && Date.now() < nextPontyAt) || character.esize < 3 || !bankSnapshot) return false;

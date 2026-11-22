@@ -1,5 +1,7 @@
 // =====================================================================
-// bot_util – small stateless helpers shared by all modules.
+// bot_util – small helpers shared by all modules. Most are stateless; some keep
+// module state: hit factors, mobbing combo, journal buffer, status line, stand
+// opening, heartbeat.
 // =====================================================================
 
 function hpRatio() { return character.hp / character.max_hp; }
@@ -316,10 +318,6 @@ function distanceTo(point) {
     return Math.hypot(character.x - p.x, character.y - p.y);
 }
 
-// Walk straight to an entity when possible, pathfind otherwise.
-// Walk somewhere with smart_move; a merchant stand is closed first and we wait until the
-// server confirms it - with the stand open we crawl at speed 10 (the merchant walked to
-// the bank with his stand on, 2026-11-17).
 // Opening goes through openStand: a stand that was just asked to open does not show in
 // character.stand until the server answers - a walk right after it (the fishing trip
 // after keepStand) used to leave with the stand opening on the way (2026-11-17).
@@ -330,6 +328,9 @@ function openStand(num) {
     if (p && p.catch) p.catch(function () { /* the next round tries again */ });
     return p;
 }
+// Walk somewhere with smart_move; a merchant stand is closed first and we wait until the
+// server confirms it - with the stand open we crawl at speed 10 (the merchant walked to
+// the bank with his stand on, 2026-11-17).
 async function walk(dest) {
     while (!character.stand && Date.now() - standOpenAt < 3000) await sleep(100);
     for (let attempt = 0; attempt < 3 && character.stand; attempt++) {
@@ -342,10 +343,6 @@ async function walk(dest) {
     return smart_move(dest);
 }
 
-// Inside a bank map with its packs loaded. Outside, character.bank is {} (not undefined),
-// and right after entering the server sends the packs a moment later. A bank read in
-// either state saw no packs, took the bank for empty and full and stopped the exchanges
-// ("bank full!", 2026-11-18, walks cut short by a pickup call).
 // The Town teleport is channeling (3 s). The server drops every channel on an equip - and a
 // potion is drunk through equip (server.js "equip": player.c = {}) - so a potion or a gear swap
 // in that time cancels the teleport (player report 2026-11-18).
@@ -353,6 +350,10 @@ function townChannel() {
     return !!(character.c && character.c.town);
 }
 
+// Inside a bank map with its packs loaded. Outside, character.bank is {} (not undefined),
+// and right after entering the server sends the packs a moment later. A bank read in
+// either state saw no packs, took the bank for empty and full and stopped the exchanges
+// ("bank full!", 2026-11-18, walks cut short by a pickup call).
 function bankLoaded() {
     return /^bank/.test(character.map) &&
         Object.keys(character.bank || {}).some(function (p) { return /^items\d+$/.test(p); });
@@ -482,10 +483,6 @@ function isDoublehand(name, ctype) {
     return !!(def && (cls.doublehand || {})[def.wtype] && !(cls.mainhand || {})[def.wtype]);
 }
 
-// Seconds per kill for the whole team on one of the guide's routes. The guide plans
-// for the leader alone: `seconds` is its kill time, `cycle` adds waiting for
-// respawns. The team kills `speedup` times as fast, but never faster than the spot
-// respawns. null without a usable route.
 // Waypoint before a smart_move (config.travel.via, 2026-11-21): { spookytown: "halloween" } - a map
 // reached through a dangerous one is walked to via a safe map (the Vampire Rats in level1 killed the
 // ranger twice on its way to Spooky Town). Resolves at once when no waypoint applies.
@@ -516,6 +513,10 @@ function kiteRisk(def, live, me) {
     return k.farmRisk;
 }
 
+// Seconds per kill for the whole team on one of the guide's routes. The guide plans
+// for the leader alone: `seconds` is its kill time, `cycle` adds waiting for
+// respawns. The team kills `speedup` times as fast, but never faster than the spot
+// respawns. null without a usable route.
 function teamCycle(route, speedup) {
     if (!route || !(route.cycle > 0)) return null;
     const kill = (route.seconds > 0 ? route.seconds : route.cycle) + 1.5;

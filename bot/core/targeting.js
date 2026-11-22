@@ -3,22 +3,31 @@
 //
 // Farm choice, in order:
 //   1. a live event / world boss (bot_events)
-//   2. an open, safe Monster Hunt of any party fighter (bot_hunts)
-//   3. per-character or global farm setting (config.characters[name].farm,
-//      config.targeting.farm)
-//   4. a drop route for an item the merchant is missing (bot_drops)
-//   5. the game's progression guide: get_progression().choices
-//      (top safe farm routes for this character's current gear)
-//   6. config.targeting.fallback
-// Party members use the leader's farm target instead.
+//   2. members: the leader's farm target - "waiting for the leader" until
+//      it is known (no own choice right after a restart)
+//   3. an open, safe Monster Hunt of any party fighter (bot_hunts)
+//   4. a drop route for an item the merchant is missing (bot_drops; only
+//      without a configured farm target)
+//   5. the Cavalry plan (reset a too-strong spot / nuke cavalry.targets)
+//   6. per-character or global farm setting (config.characters[name].farm,
+//      config.targeting.farm; a list: the first one not blocked)
+//   7. the game's progression guide (fromProgression: routes safe for the
+//      whole team, best XP first)
+//   8. config.targeting.fallback
 //
-// Target choice:
+// Target choice (pick):
+//   all:           a rare monster in sight (targeting.rare) first
 //   leader / solo: current target > monster attacking a party member
-//                  > nearest free farm monster
+//                  > nearest free farm monster, after the spot check from
+//                    the edge (spotGate)
 //   party member:  current target > monster attacking a party member
 //                  > own monster when the farm target is easy (party.spread)
 //                  > the leader's target – otherwise members never open fights,
 //                  so the tank keeps the aggro
+//   then the guards: mobbing (no 4th monster on one of us), fear (courage),
+//   and bosses held for the team.
+// Safety: team model / live level checks, lone pulls, rage zones (a whole
+// spawn comes at once - judged as one pull, failing zones are kept out of).
 // =====================================================================
 
 module.exports = function createTargeting(ctx) {
@@ -311,8 +320,9 @@ module.exports = function createTargeting(ctx) {
     // base XP, +5% attack on growing spawns / +12.5% elsewhere per level, a bit faster).
     // All checks above use level-1 stats, so a monster above config.targeting.live.fromLevel
     // is checked again with its real stats before we pull it: the team model when it is
-    // on (leader), else its damage per second must stay within live.tolerance of the
-    // level-1 monster's. Monsters already on us are always fought.
+    // on, else ownCheck (party) or soloCheck (alone). Only while the team stats are missing
+    // does its attack rate have to stay within live.waitTolerance of the level-1 monster's.
+    // Monsters already on us are always fought.
     const lcfg = cfg.live || {};
     const liveChecked = {}; // entity id -> { level, ok, at }
     const liveLogged = {};  // "type:level" -> last log
@@ -852,10 +862,7 @@ module.exports = function createTargeting(ctx) {
         util.log("target", seen.length + " " + type + " in sight, none picked: " + (parts.join(", ") || "no reason found"), "orange");
     }
     // We see monsters of this type but none stands alone: hold position until one does,
-    // instead of walking on into the pack.
-    // Returns "lone" (only packs in sight), "strong" (only ones above our level check in
-    // sight – skipped, but walking on towards the spawn's middle ran the team into the
-    // level-12 White Wolves, 2026-11-17) or null (walk on).
+    // instead of walking on into the pack (waitForLone below).
     // Where to wait for a lone one (player request 2026-11-19): just outside the edge of the
     // nearest spawn box of the kind on our map, isolation.watchMargin px out - close enough to see
     // the whole box, far enough not to draw aggro. Null when no box of it is on this map.
@@ -881,6 +888,9 @@ module.exports = function createTargeting(ctx) {
         });
         return best;
     }
+    // Returns "lone" (only packs in sight), "strong" (only ones above our level check in
+    // sight – skipped, but walking on towards the spawn's middle ran the team into the
+    // level-12 White Wolves, 2026-11-17) or null (walk on).
     function waitForLone(type) {
         if (!icfg.enabled) return null;
         let why = null;
@@ -1172,8 +1182,6 @@ module.exports = function createTargeting(ctx) {
         return who ? "not safe for " + who : null;
     }
 
-    // The guide's farm choices (up to three safe routes, best first) that are safe
-    // for the whole team, skipping monsters whose spot was recently found crowded.
     // The guide's computed XP per second for a route: the monster's XP over the route's cycle
     // (player decision 2026-11-18, "nur Rechnung"). A route the guide has observed carries the
     // measured XP instead - with Agitate and the Welcome Back bonus in it goo showed 1426 XP/s
@@ -1182,9 +1190,6 @@ module.exports = function createTargeting(ctx) {
         const d = r && G.monsters[r.monster];
         return d && r.cycle > 0 ? (d.xp || 0) / r.cycle : ((r && r.xp) || 0);
     }
-    // The team's XP ranking - the same list the farm pick walks (guide routes by XP/s, every
-    // monster the team may take), crowded spots not left out. Monster names, best first; null
-    // while the guide has no routes. Cached 60 s. For hunts.xpTop (player decision 2026-11-20).
     // Routes we can walk to (2026-11-21): the guide also lists monsters that only live in an instance
     // (a4 = Orlok in the crypt) - the leader picked it after the squigtoads were taken on EU IV, and
     // every route to "a4" failed ("Unrecognized location").
@@ -1202,6 +1207,9 @@ module.exports = function createTargeting(ctx) {
         }
         return walkableSeen[r.monster];
     }
+    // The team's XP ranking - the same list the farm pick walks (guide routes by XP/s, every
+    // monster the team may take), crowded spots not left out. Monster names, best first; null
+    // while the guide has no routes. Cached 60 s. For hunts.xpTop (player decision 2026-11-20).
     let rankCache = null;
     function teamXpRanking() {
         if (rankCache && Date.now() - rankCache.at < 60 * 1000) return rankCache.list;
@@ -1220,6 +1228,8 @@ module.exports = function createTargeting(ctx) {
         return list;
     }
 
+    // The guide's farm choices (up to three safe routes, best first) that are safe
+    // for the whole team, skipping monsters whose spot was recently found crowded.
     function fromProgression() {
         let list = [];
         let spare = []; // other safe routes, for when every choice is crowded
@@ -1649,7 +1659,6 @@ module.exports = function createTargeting(ctx) {
         return !!(def && def.cooperative);
     }
 
-    // A target stays valid while it is visible, alive and not fighting someone else.
     // ---- doomed targets (player decision 2026-11-20, from earthiverse's bot) ---------
     // Every attack the server announces ("action": attacker, target, raw damage, flight time)
     // is noted until its "hit" lands. A monster the damage already in the air will kill is
@@ -1677,8 +1686,7 @@ module.exports = function createTargeting(ctx) {
         PAGE.socket.on("action", PAGE.__dmpxActFn);
         PAGE.socket.on("hit", PAGE.__dmpxActHitFn);
     } catch (e) { /* no socket */ }
-    // The game's damage multiplier for armor/resistance (server formula, as ALClient's Tools).
-    // Will the damage already on its way kill this monster?
+    // Will the damage already on its way kill this monster? (armor/resistance via util.damageMultiplier)
     function doomed(t) {
         const fl = PAGE.__dmpxInflight;
         if (!t || !fl) return false;
@@ -1708,6 +1716,7 @@ module.exports = function createTargeting(ctx) {
         return true;
     }
 
+    // A target stays valid while it is visible, alive and not fighting someone else.
     function isValid(t) {
         if (!t || !t.visible || t.dead || t.type !== "monster") return false;
         if (util.tooSpiky(config, t)) return false; // melee vs. damage return: our own hit kills us
@@ -1830,10 +1839,7 @@ module.exports = function createTargeting(ctx) {
     function holdBossQuiet(t) {
         return !!t && party.enabled && !teamAt(t) && (tooStrongAlone(t) || (holdsFor(t.mtype) && !t.target && bossList().includes(t.mtype)));
     }
-    // Fear guard (earthiverse's courage check, player decision 2026-11-21): no new free monster while
-    // the attackers of its damage type on us already reach our courage for it - fear would cut our
-    // attack to 60/40/20 %. Monsters already on us or a member are fought as usual.
-    let fearLogged = 0;
+    let fearLogged = 0; // last fear-guard log (see pick)
     // ---- mobbing guard and live danger (2026-11-22, see util.mobbing) ----------------
     // More than 3 monsters on one of us multiply every hit on that one. So no new free monster while
     // one of our fighters already has mobbing.maxOnOne (3) on it - unless the new one hits so hard that
@@ -1903,6 +1909,10 @@ module.exports = function createTargeting(ctx) {
         const net = dps - sustain;
         return { dps: dps, sustain: sustain, healing: healing, ttd: net > 0 ? me.hp / net : Infinity, onMe: on.length, mult: maxMult };
     }
+    // The next target (pickInner), then the guards: the mobbing guard, and the fear guard (earthiverse's
+    // courage check, player decision 2026-11-21): no new free monster while the attackers of its damage
+    // type on us already reach our courage for it - fear would cut our attack to 60/40/20 %. Monsters
+    // already on us or a member are fought as usual. Last, a boss held for the team (holdBoss).
     function pick(farmTarget) {
         const t = pickInner(farmTarget);
         if (t && mobGuard(t)) {

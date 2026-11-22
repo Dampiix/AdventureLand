@@ -1,7 +1,7 @@
 // =====================================================================
 // bot_main – entry point for EVERY character (slot "bot_main").
 //
-// Run it on the leader (DmpxPalTank) in the client. The leader starts the
+// Run it on the team's leader in the client. The leader starts the
 // other characters of the current phase as CODE-only characters in the
 // same client, each running this same slot. Every character looks itself
 // up in bot_config and loads its role:

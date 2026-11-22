@@ -1,16 +1,17 @@
 // =====================================================================
 // bot_class_warrior – Warrior skills.
-//   survive: Hard Shell (lvl 60, 480 MP) when HP gets low while physical
-//            monsters hit us
+//   survive: Hard Shell (lvl 60, 480 MP) when the predicted next physical
+//            hits on us x hardShell.factor reach our HP
+//   escape:  run from a losing fight, solo and in a party (partyEscape)
 //   support: Taunt (40 MP, 3 s, range 200) pulls a monster off a party
 //            member when it hits hard or the member is hurt;
 //            Agitate (lvl 68, 420 MP) taunts everything nearby when several
 //            monsters are on other members; War Cry (lvl 70) on sturdy fights
 //   fight:   Cleave (lvl 52, axe/scythe) when several monsters stand around
 //            us, Stomp (lvl 52, basher) when several attack the team
-//   move:    Charge (+30 speed, 3.2 s, 40 s cooldown, no MP) on longer walks
-//            and chases; Dash (120 MP) closes the last gap to a target when
-//            the straight line is free
+//   move:    Charge (+30 speed, 3.2 s, 40 s cooldown, no MP) whenever we walk;
+//            Dash (120 MP, a hop towards a monster in a fight) only with
+//            dash.enabled (off in the config)
 // Solo, support only protects the warrior itself (nothing to taunt off).
 // =====================================================================
 
@@ -127,7 +128,7 @@ module.exports = function createWarrior(ctx) {
     // Mode: "off" (single targets), "swords" (Agitate, usual weapons - pull everything, kill one
     // by one, no walking) or "splash" (Agitate with the splash weapons). From the config
     // (enabled + weapons "keep"/"splash"), or switched at runtime with the chat command
-    // "/agitate off|swords|splash|config" (kept across restarts; for A/B tests, 2026-11-18).
+    // "/agitate off|swords|splash|chain|splashstream|config" (kept across restarts; for A/B tests, 2026-11-18).
     const MODE_KEY = "agitate_mode:" + character.name;
     let modeCache = { at: 0, v: null }, lastMode = null;
     function agOverride() { agMode(); return !!modeCache.v; }
@@ -347,7 +348,6 @@ module.exports = function createWarrior(ctx) {
         auto.type = type; auto.mode = mode; auto.why = why;
         return mode;
     }
-    // The current type's safe count, for the stream limit (null = no automatic cap).
     // Other kinds pulled along: each must pass the safety check itself (cached 10 s).
     const kindCache = {};
     function kindOk(type) {
@@ -357,7 +357,8 @@ module.exports = function createWarrior(ctx) {
         kindCache[type] = { at: Date.now(), ok: ok };
         return ok;
     }
-    // The safe count for what is in reach now: the most careful of all kinds there.
+    // The current type's safe count, for the stream limit (null = no automatic cap): for what is
+    // in reach now, the most careful of all kinds there.
     function autoCap() {
         if (ag.monsters !== "auto" || !auto.type) return null;
         const kinds = {};
@@ -694,7 +695,7 @@ module.exports = function createWarrior(ctx) {
 
     let lastAgitate = { at: 0, type: null };
 
-    // Escape (solo, any mode; 2026-11-18 after three deaths at the bats): below escapeHp with
+    // Escape (solo and in a party - see escapeTick; 2026-11-18 after three deaths at the bats): below escapeHp with
     // monsters on us that are all slower than we are, run - and keep running - away from them;
     // no swings meanwhile (monsters drop a chase that gets too long). Then the normal rest heals
     // us up. Cornered (no free step) or facing faster monsters: fight on with Hard Shell and potions.
@@ -707,9 +708,6 @@ module.exports = function createWarrior(ctx) {
     function reachOf(e) {
         return Math.max(ag.escapeClear || 250, (e.range || (G.monsters[e.mtype] || {}).range || 0) + (ag.escapeMargin || 100));
     }
-    // A step away from them, all around (2026-11-22: in the bat cave five directions within 70° of
-    // "straight away" at 200 px were all blocked - "cornered" four times, then dead). 16 directions,
-    // 200/120/70 px; the step that leaves the most room to the nearest of them wins.
     // Protective Agitate (2026-11-22): Agitate takes EVERY monster within 320 px, not only those on our allies.
     // Only when the team model (mobbing, fear, the priest's healing) says we can hold all of them at once -
     // the ones already on us included; otherwise Taunt takes them one by one. Logged once a minute.
@@ -772,6 +770,10 @@ module.exports = function createWarrior(ctx) {
             return boxes.some(function (b) { return x >= b[0] && x <= b[2] && y >= b[1] && y <= b[3]; });
         };
     }
+    // A step away from them, all around (2026-11-22: in the bat cave five directions within 70° of
+    // "straight away" at 200 px were all blocked - "cornered" four times, then dead). 16 directions,
+    // 200/120/70 px; the step that leaves the most room to the nearest of them wins. Steps out of the
+    // healer's reach or towards other dangers (escapeDangers) only count as a last resort.
     function escapeStep(list) {
         const me = util.xy(character);
         const pts = list.map(util.xy);
@@ -1276,7 +1278,7 @@ module.exports = function createWarrior(ctx) {
         },
 
         support: function () {
-            if (escapeTick()) return true; // solo: run from a losing fight
+            if (escapeTick()) return true; // solo and party: run from a losing fight
             // In a party the protective Taunt/Agitate for allies comes first, then the stream.
             if (!ctx.party.enabled && packTick()) return true; // Agitate pack mode (solo)
             if (ctx.party.enabled && onOthers().length === 0 && packTick()) return true;

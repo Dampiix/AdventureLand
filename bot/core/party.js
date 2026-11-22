@@ -5,8 +5,10 @@
 // Leader:  invites missing members, broadcasts its position, farm target
 //          and current target to the others every few seconds.
 // Members: accept invites from the leader only, leave any other party,
-//          follow the leader (same map, within the leash range) and
-//          assist instead of opening fights themselves.
+//          follow the leader to its map and route end (no distance leash
+//          any more, see keepUp) and assist instead of opening fights
+//          themselves. party.leash is still read by the warrior (Agitate
+//          stays near the leader) and by targeting's rage-zone verdict.
 // =====================================================================
 
 module.exports = function createParty(ctx) {

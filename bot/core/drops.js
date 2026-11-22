@@ -8,7 +8,9 @@
 // (get_progression with an item goal): the guide answers with the best safe
 // farm route for that drop and the expected time. Items come first: if a
 // route needs at most config.drops.maxHoursPerCopy per copy, the team farms
-// there (fastest item first) instead of the guide's XP spot. Events, hunts
+// there (the route with the best XP first; with drops.byValue the spot whose
+// XP + gear value per hour beats the XP spot, valuePick) instead of the
+// guide's XP spot. Events, hunts
 // and a configured farm target still come first.
 // =====================================================================
 
@@ -25,7 +27,7 @@ module.exports = function createDrops(ctx) {
     const saved = (function () { try { return get(NEEDS_KEY) || {}; } catch (e) { return {}; } })();
     let needs = saved.list || [];
     let needsAt = saved.at || 0;
-    let routes = [];         // [{ name, copies, monster, map, perCopy }] fastest first
+    let routes = [];         // [{ name, copies, monster, map, perCopy }] best XP first
     let nextCheckAt = 0;
     let lastPick = "";
     const slowLogged = {};   // item -> last "too slow" log
@@ -415,7 +417,6 @@ module.exports = function createDrops(ctx) {
         return seconds < 3600 ? Math.round(seconds / 60) + " min" : (seconds / 3600).toFixed(1) + " h";
     }
 
-    // Leader: the drop route to farm now, or null. isCrowded(monster) skips busy spots.
     // Stage 3: power per hour of each drop spot (the team's XP value scaled by the spot's XP rate,
     // plus the best wish per needed item that drops there) against the best XP spot.
     let lastValueLog = 0, lastValueKey = "";
@@ -462,6 +463,7 @@ module.exports = function createDrops(ctx) {
         return routes.find(function (r) { return r.monster === best.monster && r.name === names[0]; }) || null;
     }
 
+    // Leader: the drop route to farm now, or null. isCrowded(monster) skips busy spots.
     function target(isCrowded) {
         if (!cfg.enabled || !leads) return null;
         if (Date.now() >= nextCheckAt) check();
