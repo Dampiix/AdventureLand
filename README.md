@@ -3,7 +3,7 @@
 One bot for a whole Adventure Land team: up to three fighters and one merchant, all running the same code.
 The fighters farm, hunt bosses and level up; the merchant supplies them, sells, banks, trades with other players and upgrades their gear.
 
-> **Version:** `1.215.0` (`bot/config.js` → `version`) · **Teams:** `Dmpx…` (main account) and `Viz…` (second account) · **Code:** `bot/` → in-game CODE slots 20–39
+> **Version:** `1.216.0` (`bot/config.js` → `version`) · **Teams:** `Dmpx…` (main account) and `Viz…` (second account) · **Code:** `bot/` → in-game CODE slots 20–39
 
 ## Repository
 
@@ -739,6 +739,7 @@ Every skill checks its level, weapon type, MP and cooldown. Most keep an MP rese
 - **Not on the way** (v1.213.1): while a path walk runs (an event call, a spot change, following the leader) the splash weapons come off at once and don't go on again - they slow us down, and leaving the Giant Scorpions for the Phoenix with the scorpions behind him, the warrior defended himself with the Lolipops past the Fire Spirits. Log: `splash weapons off: on the way`.
 - **Stream mode:** Agitate on cooldown, with at most 5 monsters on us (fewer at low HP), walking to clumps.
 - **Safety:** after three low-HP moments in 10 min it pulls fewer. A death within 90 s of an Agitate denies Agitate on that kind for 2 h (`deathDenyMs`).
+- **Escape triggers since v1.216.0** (solo and party), besides low HP and the mob check: **real HP loss** - the HP actually lost over the last `escapeLossSec` (3 s; every hit, burn, heal and potion included) would kill him within 8 s; or a **monster rejected even alone** - one on him that the team model (party) or the pack check (solo) rejects as a single monster, e.g. a Fire Spirit ("abilities: burn"). Bosses never count as rejected. Why: a Fire Spirit pulled into the Giant Scorpions by another player killed him with "1 on me" - 17,262 damage in 10 s from stacking burn, which the hit formula doesn't know. The usual speed rule stays: he only runs from monsters slower than him.
 - **Party escape** (`agitate.partyEscape`, v1.207.0): in a party the warrior runs too, but only when the live check says he dies within 8 s. The check includes the healing of every healer in reach (heal/s × `mobbing.healShare` 0.8). It applies with a mob (more than 3 on him, below 70 % HP) or below 30 % HP; low HP the priest covers doesn't count. All monsters follow him, the mobbing combo runs out after 5 s without a hit, and the priest heals meanwhile. Escape steps stay within the healer's reach where they can. The escape ends when he is back at 60 % HP and the combo has run out.
 - **Protective Agitate** (party, v1.207.0): with 3+ monsters on allies, Agitate only when the team model (mobbing, fear, healing) says the warrior can hold **everything** Agitate would take (all within 320 px plus those already on him). Otherwise Taunt takes them one by one. Log: `no protective Agitate: N would be on us (...)`.
 - **Team stats:** every fighter sends its stats to every other one each minute, not only to the leader (v1.207.0). The warrior's live check needs the priest's healing.
@@ -848,12 +849,10 @@ The merchant ticks every second.
 **Stand** (`merchantRole.stand`, `config.market`). With a stand in the bag, the merchant keeps it open at home. It keeps the stand open for Merrit's hourly Market Parcels.
 - **Buy orders** (`market.buy`) cover what is missing up to `want` (bag + bank counted). Examples: Bee Wings, Crab Claws, Essence of Fire, Lolipop Maces, crossbow.
 - **Wish orders** (`market.wishOrders`): one copy of each wished item at 1.2 × our own cost, at most 20 % of the gear pot and 8 orders. A fill is booked only when the item really arrives.
-- **Sell orders** (`market.sell`): Leather, Snake Fangs, Monster Tokens (1M, keep 20, at most 20 listed).
+- **Sell orders** (`market.sell`): Leather, Snake Fangs. Monster Tokens are no longer sold (v1.215.1): they are saved for the Monster Hunter armor sets at Daisy (53 per class). Fun Tokens neither (v1.215.2, player decision).
 
 **Trade trips** (`market.sellTo`, every 20 min). The merchant scans every stand on every server:
 - **Sell:** into the best buy order at `minPrice` or more for anything above `keep`:
-  - Monster Tokens 700k+;
-  - Fun Tokens 1M+;
   - Vitality Earrings +0 500k+ / +2 8M+.
 - **Buy** (`buyFromPlayers`): what Ponty would buy, under the same price rules.
 - **Trip:** take the items out of the bank → hop to that server → walk to the stand and trade → hop home.

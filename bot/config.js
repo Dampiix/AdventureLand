@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.215.0",
+    version: "1.216.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -74,9 +74,8 @@ module.exports = {
         sell: [
             { item: "leather",       price:  120000, keep: 0 }, // a player buys at 100k
             { item: "snakefang",     price: 3500000, keep: 0 }, // a player buys at 3M
-            // Monster Tokens at our own stand too (player decision 2026-11-20): 1M, under the cheapest
-            // ask on the market (1.1M); max 20 at a time - the rest stays for buy orders (sellTo, 700k+).
-            { item: "monstertoken",  price: 1000000, keep: 20, max: 20 },
+            // Monster Tokens are no longer sold (player decision 2026-11-22): they are saved for the Monster
+            // Hunter armor sets at Daisy (53 tokens per class). Was: 1M at our stand, max 20 at a time.
         ],
         // Selling into other players' buy orders on any server (player decision 2026-11-20): every
         // scanEveryMs the game's merchant list is checked; a buy order at minPrice or more for
@@ -97,8 +96,8 @@ module.exports = {
                 // buyers: Ploob 900k, EadroSell 700k), Fun Tokens added (bids 1-1.5M, nothing in the Fun
                 // Token shop is worth it for us). Void Thread and Bat Wings are kept: the rogue's Knife
                 // Belt (Fan of Knives) needs them.
-                { item: "monstertoken", minPrice: 700000, keep: 20 },
-                { item: "funtoken", minPrice: 1000000, keep: 0 },
+                // Monster Tokens: not sold any more (2026-11-22, saved for the Monster Hunter sets).
+                // Fun Tokens: not sold any more either (player decision 2026-11-22).
                 // Vitality earrings by level (player decision 2026-11-20; Phoenix drop, 12 %): +0 sold while
                 // a buyer pays 500k+; without one for demandHours the workshop compounds them (+1 in
                 // between is never sold) up to +2, the highest level here - stock for +2 buyers (10-15M).
@@ -673,9 +672,12 @@ module.exports = {
                 deathDenyMs: 2 * 60 * 60 * 1000, // auto: no Agitate on a kind for this long after dying to it
                 // Escape from a losing fight (slower monsters only; in a party see partyEscape): solo it starts below escapeHp, lasts while anyone is on
                 // us and can reach us (its range + escapeMargin, at least escapeClear) or we are below escapeUntilHp; at most escapeMaxMs.
+                // escapeLossSec (2026-11-22): the escape also starts when the HP really lost over this many seconds (burn, every
+                // hit, heals and potions included) would kill us within escapeTtdSec, or when a monster on us is rejected by the
+                // team model / pack check even alone (a Fire Spirit's stacking burn killed the warrior with "1 on me").
                 // escapeKeepOff (2026-11-22): escape points keep free dangerous monsters' range + this (at least 150 px) and
                 // other aggressive spawns' boxes + this clear - twice the warrior ran into the Fire Spirits by the Giant Scorpions.
-                escapeHp: 0.3, escapeUntilHp: 0.6, escapeMaxMs: 45000, escapeClear: 250, escapeMargin: 100, escapeStep: 200, escapeKeepOff: 80,
+                escapeHp: 0.3, escapeUntilHp: 0.6, escapeMaxMs: 45000, escapeClear: 250, escapeMargin: 100, escapeStep: 200, escapeKeepOff: 80, escapeLossSec: 3,
                 // Mobbing (more than 3 on us): escape already below escapeMobHp when the live combo kills us within
                 // escapeTtdSec; no new Agitate while it would within mobStopTtdSec (2026-11-22).
                 escapeMobHp: 0.7, escapeTtdSec: 8, mobStopTtdSec: 20,

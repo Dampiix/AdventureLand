@@ -813,12 +813,49 @@ module.exports = function createWarrior(ctx) {
     // keep up he runs too - they all follow him, the mobbing combo runs out after 5 s without a hit, and the
     // priest heals him meanwhile (the step stays within the healer's range where it can). Only when the live
     // check - healing included - says we die within escapeTtdSec, never just for low HP the priest covers.
+    // Our real HP over the last seconds (2026-11-22): one Fire Spirit (stacking burn, 1,726 damage/s) killed the
+    // warrior at the Giant Scorpions - the live check works with the hit formula, knows no burn and saw "1 on us".
+    // The HP we really lose (every hit, burn, heal and potion included) tells the time until death directly.
+    const hpHist = [];
+    function noteHp() {
+        const now = Date.now();
+        if (!hpHist.length || now - hpHist[hpHist.length - 1].t >= 250) hpHist.push({ t: now, hp: character.hp });
+        while (hpHist.length && now - hpHist[0].t > 6000) hpHist.shift();
+    }
+    // Seconds until death at the HP loss of the last escapeLossSec (Infinity while we hold or gain), and the loss/s.
+    function lossTtd() {
+        const now = Date.now(), win = (ag.escapeLossSec || 3) * 1000;
+        const old = hpHist.find(function (x) { return now - x.t <= win; });
+        if (!old || now - old.t < win * 0.6) return { ttd: Infinity, rate: 0 };
+        const rate = (old.hp - character.hp) / ((now - old.t) / 1000);
+        return rate > 0 ? { ttd: character.hp / rate, rate: rate } : { ttd: Infinity, rate: rate };
+    }
+    // A monster on us that the team model (party) or our pack check (solo) rejects even alone (2026-11-22): the Fire
+    // Spirit has a burn ability - nothing we should stand and fight. Cached 10 s per monster.
+    const rejectCache = {};
+    function rejectedAlone(m) {
+        // Bosses are fought on purpose (the boss checks decide there): never "rejected" here.
+        const ev = ctx.config.events || {};
+        if ((G.monsters[m.mtype] || {}).cooperative || (ev.search || []).concat(ev.engage || []).includes(m.mtype)) return null;
+        const c = rejectCache[m.id];
+        if (c && Date.now() - c.at < 10 * 1000) return c.why;
+        let v = null;
+        if (ctx.party.enabled && ctx.targeting.teamVerdict) {
+            v = ctx.targeting.teamVerdict(m.mtype, m, { pull: 1 });
+            if (!v.ok && /waiting for the team|not in yet|no team stats/.test(v.why || "")) v = null;
+        }
+        if (!v && ctx.targeting.packVerdict) v = ctx.targeting.packVerdict(m, 1);
+        const why = v && !v.ok ? (v.why || "rejected") : null;
+        rejectCache[m.id] = { at: Date.now(), why: why };
+        return why;
+    }
     function escapeTick() {
         const inParty = ctx.party.enabled;
         if (inParty && ag.partyEscape === false) return false;
         const now = Date.now();
         const on = onMe();
         speedRef = Math.max(speedRef, character.speed || 0);
+        noteHp();
         if (!esc.on) {
             if (!on.length || now < (esc.retryAt || 0)) return false;
             // Also above escapeHp when a mob (more than 3 on us, util.mobbing) would kill us within
@@ -829,7 +866,16 @@ module.exports = function createWarrior(ctx) {
                 const dz = ctx.targeting.liveDanger ? ctx.targeting.liveDanger() : null;
                 if (dz && dz.ttd < (ag.escapeTtdSec || 8)) mobbed = dz;
             }
-            if (inParty ? !mobbed : (!low && !mobbed)) return false;
+            // A (2026-11-22): the HP we really lose would kill us within escapeTtdSec - whatever the formula says.
+            const loss = lossTtd();
+            const losing = loss.ttd < (ag.escapeTtdSec || 8) ? loss : null;
+            // B (2026-11-22): a monster on us the checks reject even alone - away from it at once (when it is slower).
+            let rejected = null;
+            for (const m of on) {
+                const why = rejectedAlone(m);
+                if (why) { rejected = { m: m, why: why }; break; }
+            }
+            if (inParty ? !(mobbed || losing || rejected) : (!low && !mobbed && !losing && !rejected)) return false;
             // Scared (fear, 2026-11-22): the server takes 20/40/70+ off our speed - then our real speed counts.
             const mySpeed = character.fear ? Math.min(speedRef, character.speed || 0) : speedRef;
             if (on.some(function (m) { return (m.speed || (G.monsters[m.mtype] || {}).speed || 0) >= mySpeed * 0.8; })) return false;
@@ -837,7 +883,9 @@ module.exports = function createWarrior(ctx) {
             esc.start = now;
             util.log("warrior", "escaping at " + Math.round(util.hpRatio() * 100) + "% HP from " + on.length + "x " + on[0].mtype +
                 (mobbed ? " (" + (mobbed.mult > 1 ? "mobbed x" + mobbed.mult.toFixed(1) + ", " : "") + Math.round(mobbed.dps) + " dmg/s vs " +
-                    Math.round(mobbed.sustain) + " healed/s - dead in ~" + Math.round(mobbed.ttd) + " s)" : ""), "red");
+                    Math.round(mobbed.sustain) + " healed/s - dead in ~" + Math.round(mobbed.ttd) + " s)"
+                : losing ? " (losing " + Math.round(losing.rate) + " HP/s for real - dead in ~" + Math.round(losing.ttd) + " s)"
+                : rejected ? " (" + rejected.m.mtype + " rejected even alone: " + rejected.why + ")" : ""), "red");
         }
         const inReach = on.filter(function (e) { return util.distanceTo(e) < reachOf(e); });
         // Healed: back at escapeUntilHp and the mobbing combo has run out (5 s without a mobbed hit).
