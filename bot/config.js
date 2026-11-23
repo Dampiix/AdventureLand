@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.222.0",
+    version: "1.223.5",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -103,7 +103,7 @@ module.exports = {
                 // between is never sold) up to +2, the highest level here - stock for +2 buyers (10-15M).
                 { item: "vitearring", level: 0, minPrice: 500000, keep: 0, demandHours: 3 },
                 // keep 1 (2026-11-22, gear plan v2): the priest's Clover Stud is crafted from an Earring of Vitality +2.
-                { item: "vitearring", level: 2, minPrice: 8000000, keep: 1 },
+                { item: "vitearring", level: 2, minPrice: 8000000, keep: 2 }, // two Clover Studs (2026-11-23)
             ],
         },
         // Buy orders for what we wish (player idea 2026-11-19): one copy of every wished item / gear
@@ -437,6 +437,9 @@ module.exports = {
         // farms its XP spots instead of bees and snakes. 0 = every safe hunt.
         // 2026-11-22: 0 for a while (every safe hunt), back to 5 the same evening (player).
         xpTop: 5,
+        // ...or the hunt monster drops something the merchant misses - a wished item or a craft ingredient, any chance
+        // (dropHunts, 2026-11-23, player decision: every percent beats not farming it; Monster Tokens on top).
+        dropHunts: true,
         minRemainingMs: 2 * 60 * 1000,   // skip hunts about to expire
         teamSpeedup: 2,                  // the team kills ~2x as fast as the leader alone (time check)
         visitCooldownMs: 10 * 60 * 1000, // at most one Daisy trip per 10 min
@@ -683,7 +686,8 @@ module.exports = {
             // (luck catch) the priest puts these on with one equip_batch call - Shield M, Rabbit's Foot, the five Wanderer's
             // pieces (set bonus +16 luck) and a Clover Stud - and changes back backMs after the last catch (core/gear.js).
             // Pieces it does not have yet are skipped; the best copy of each stays in its bag.
-            luckSwap: { enabled: true, items: ["mshield", "rabbitsfoot", "wcap", "wattire", "wbreeches", "wgloves", "wshoes", "cloverstud"], backMs: 3000 },
+            // Two Clover Studs (2026-11-23, player decision): one for each earring slot - a piece listed twice fills both slots.
+            luckSwap: { enabled: true, items: ["mshield", "rabbitsfoot", "wcap", "wattire", "wbreeches", "wgloves", "wshoes", "cloverstud", "cloverstud"], backMs: 3000 },
             // Dark Blessing (lvl 70): +25% party damage for 8 s on targets needing sturdyHits+
             // of our hits, and on bosses.
             darkBlessing: { enabled: true, sturdyHits: 10 },
@@ -1061,7 +1065,7 @@ module.exports = {
             // for the luck catch. The Wanderer's pieces are the chains above (kept in the bag once something else is worn).
             { slot: "orb", item: "rabbitsfoot", to: 0, carry: true, for: "priest", how: "120 Fun Tokens" },
             { slot: "offhand", item: "mshield", to: 7, carry: true, for: "priest", how: "10 Fun Tokens (after the Rabbit's Foot: workshop.tokenOrder)" },
-            { slot: "earring", item: "cloverstud", to: 0, carry: true, for: "priest", how: "craft: vit earring +2 + verdant core + 40 ash leaf + 40 spores + 5 green slime" },
+            { slot: "earring", item: "cloverstud", to: 0, carry: true, count: 2, for: "priest", how: "craft: vit earring +2 + verdant core + 40 ash leaf + 40 spores + 5 green slime (x2, one per earring slot)" },
             // Ranger AoE (gear plan v2): Poucher and Alloy Quiver are held in the bag for a later AoE mode.
             { slot: "mainhand", item: "pouchbow", to: 7, carry: true, for: "ranger", how: "craft: bow + Pouch of Poof" },
             { slot: "offhand", item: "alloyquiver", to: 0, carry: true, for: "ranger", how: "drop: targetrons 1:4,000" },
@@ -1189,7 +1193,7 @@ module.exports = {
         deliveryBatchMs: 10 * 60 * 1000, // finish the open wishes first; a ready item waits at most this long
         giveUpForMs: 60 * 60 * 1000,  // after a stop (risk/no source/wish budget used up) retry in an hour
         retryAfterBudgetMs: 10 * 60 * 1000, // ...but only 10 min when we merely lack gold right now (or the bag is full)
-        bagReserve: 8,                // copies come out of the bank only while this many bag slots stay free (pickups)
+        bagReserve: 2,                // copies come out of the bank only while this many bag slots stay free (8 -> 2 on 2026-11-23: the merchant banks before every pickup anyway)
         bankScanEveryMs: 10 * 60 * 1000,
         // Value report (stage 1, player request 2026-11-19): logs gain, cost and gain per hour of
         // every open wish plus the fighters' XP value - no decisions are made from it yet.
@@ -1497,6 +1501,9 @@ module.exports = {
         // New bank packs are never bought automatically.
         bank: {
             whenFreeBelow: 6,
+            // Below this many free bag slots the workshop's idle stock (copies waiting for a compound/upgrade) is banked
+            // as well; the workshop takes it out again when it works on it (2026-11-23, player decision).
+            stockFreeBelow: 15,
             // Before each pickup: bank first while fewer slots are free (store only, workshop copies too;
             // 2026-11-22: back-to-back pickups failed with send_no_space). 0 = off.
             beforePickupFree: 12,

@@ -3,7 +3,7 @@
 One bot for a whole Adventure Land team: up to three fighters and one merchant, all running the same code.
 The fighters farm, hunt bosses and level up; the merchant supplies them, sells, banks, trades with other players and upgrades their gear.
 
-> **Version:** `1.222.0` (`bot/config.js` → `version`) · **Teams:** `Dmpx…` (main account) and `Viz…` (second account) · **Code:** `bot/` → in-game CODE slots 20–39
+> **Version:** `1.223.5` (`bot/config.js` → `version`) · **Teams:** `Dmpx…` (main account) and `Viz…` (second account) · **Code:** `bot/` → in-game CODE slots 20–39
 
 ## Repository
 
@@ -619,6 +619,8 @@ A visible boss is checked with its live stats (bosses grow).
 - **On a find:** the runner reports it and the team comes. Like the Phoenix, the runner opens the fight alone when its solo boss check (kiting included) passes; otherwise it holds outside the boss's spawn box until the team is there (`holdFor` is empty since v1.209.2).
 - **Nonstop:** `farmBosses` would make the runner hunt a boss nonstop (off).
 
+**Drop hunts** (`hunts.dropHunts`, v1.223.0, player decision). A Monster Hunt is taken when its monster is among the top `xpTop` XP spots **or** drops something on the merchant's shortage list - a wished item or a craft ingredient (all entries, not only the 8 the drop routes look at), any chance - from the monster's own drop table and, since v1.223.1, the map drops of every map it spawns on (stat rings in winterland/winter_cave, amulets in halloween, belts in spookytown, through the "open" tables). Safety and time checks stay. Log: `hunt bee taken for its drops: beewings (1.0 %, 60 missing) (XP rank #37)`.
+
 **Giga Crab** (`events.policy.crabxx: "always"`, v1.222.0, player decision). Daily, 40 min, on the main beach; `join("crabxx")` puts us at main -1000,1700 (`joinSpot`: counts as joined within 600 px). 960k HP, **16,000 physical every 3.3 s** (one hit kills priest or ranger, ~9,600 on the warrior), speed 80 while it has a target, rage 0 (keeps its target). While Huge Crabs live it takes 1 damage per hit (`"1hp"`). Our rules:
 - **Go** only while the boss check passes for its Huge Crabs (`joinNeeds: { crabxx: "crabx" }`; 4,200 HP, 240 physical).
 - **Targets** (`joinTypes`): Huge Crabs and the Giga Crab - the Giga Crab only while a **foreign** player holds it and it takes damage (`foreignOnly: { crabxx: "1hp" }`: never free, never on one of us, never while `1hp`). A Giga Crab on one of us is never hit either.
@@ -694,14 +696,14 @@ Items that can't be bought come before XP when they are worth more (`drops`).
 | gloves | Wanderer's Gloves +8 → Fiery Gloves +7 → +8 | priest |
 | gloves | Thundergrips +7 → +8 (crafted from hunter gloves +6) | ranger |
 | carried | 2 orange Lolipop Maces +7 (green ones stand in) | warrior |
-| carried | Shield M +7, Rabbit's Foot, Clover Stud (luck swap set) | priest |
+| carried | Shield M +7, Rabbit's Foot, 2x Clover Stud (luck swap set) | priest |
 | carried | Poucher +7, Alloy Quiver (held for a later AoE mode) | ranger |
 
 **From the back** (v1.219.1, like the weapon lists): when the merchant holds a copy of a later item of a fighter's chain (a Dracul's Attire +0 in the bank), it works on that one at its first step's level instead of the wished earlier step; paused there, one item further to the front. **Tokens** (`workshop.tokenOrder`): Fun Tokens go to the Rabbit's Foot before the Shield M. **Fire weapons** go to +8 (`materialGoals` essence of fire `upTo: 8`, `gearPlan.weaponCaps`) before essence goes to the Fiery Gloves or Ember Seals.
 
 Crafted compound pieces (seals, Moonshard, Wind Belt) are wished at **+2**: the first level that beats the worn +4 piece (+2 = 9 crafted copies). Weapons per class (`gearPlan.weapons`): the ranger's list is Bow → Hunting Bow → Fire Bow → Crossbow.
 
-**Luck swap** (priest, `classes.priest.luckSwap`, v1.219.0): the priest wears its INT gear; right before Absorb Sins (luck catch) it puts on Shield M, Rabbit's Foot, the five Wanderer's pieces (+16 luck) and a Clover Stud with one `equip_batch` call, and changes back 3 s after the last catch. Meanwhile the equip pass and the wish report pause; the best copy of each luck piece and the swapped-out gear stay in the bag.
+**Luck swap** (priest, `classes.priest.luckSwap`, v1.219.0): the priest wears its INT gear; right before Absorb Sins (luck catch) it puts on Shield M, Rabbit's Foot, the five Wanderer's pieces (+16 luck) and two Clover Studs (one per earring slot, v1.223.2) with one `equip_batch` call, and changes back 3 s after the last catch. Meanwhile the equip pass and the wish report pause; the best copies of each luck piece (as many as listed) and the swapped-out gear stay in the bag.
 
 **Limits** (`gear.minLevel`, `gear.maxWorn`): Dracul's Attire and Heavy Underarmor are never put on below +7; at most one Zapper is worn.
 
@@ -882,7 +884,7 @@ The merchant ticks every second.
 - **Wanderer's pieces** are sold only when no non-tank can still use the copy.
 
 **Banking.**
-- **When:** fewer than 6 free bag slots (`bank.whenFreeBelow`), or 30 min since the last visit. Before every pickup too, while fewer than 12 slots are free (`bank.beforePickupFree`, v1.217.8: store only, workshop copies included) - back-to-back pickups (Ponty-round prep) used to fail with `send_no_space`. The workshop takes copies out of the bank only while 8 slots stay free (`workshop.bagReserve`, v1.217.9); a job stopped by a full bag tries again after 10 min, not an hour.
+- **When:** fewer than 6 free bag slots (`bank.whenFreeBelow`), or 30 min since the last visit. Before every pickup too, while fewer than 12 slots are free (`bank.beforePickupFree`, v1.217.8: store only, workshop copies included) - back-to-back pickups (Ponty-round prep) used to fail with `send_no_space`. Below 15 free slots (`bank.stockFreeBelow`, v1.223.3) the workshop's idle stock (copies waiting for a compound or upgrade) is banked too; the workshop takes it out again when it works on it. The workshop takes copies out of the bank only while 2 slots stay free (`workshop.bagReserve`, 8 until v1.223.3 - the bank-before-pickup rule covers pickups); a job stopped by a full bag tries again after 10 min, not an hour.
 - **What stays in the bag:** sellable items, finished gear-goal copies, potions, `bank.keep` items (scrolls, stand, rod, Tracktrix …), copies waiting to be dismantled, and reserved items unless the bag is tight.
 - **Junk:** after a visit, sellable junk is taken back out of the bank and sold.
 - **New bank packs are never bought.**

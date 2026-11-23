@@ -159,6 +159,41 @@ module.exports = function createHunts(ctx) {
     // 2026-11-20): a fresh account hunts its beginner monsters - they are its best XP anyway - and
     // stops once it outgrows them (bees, snakes and goos kept a level-54 team from its XP spots).
     // Skipped hunts run out; Daisy hands out the next one. No ranking yet (guide not ready): allowed.
+    // ...or for monsters that drop something the merchant misses (hunts.dropHunts, 2026-11-23, player decision): a
+    // wished item or a craft ingredient on its shortage list (all entries, not only the guide's 8), any drop chance -
+    // "every percent is better than not farming it", and the hunt brings Monster Tokens on top. Safety and time
+    // checks stay (target()).
+    // Map drops count too (v1.223.1): every monster on a map can drop from G.drops.maps[map] - the stat rings
+    // (winterland, winter_cave), amulets (halloween) and belts (spookytown) come only that way, through "open"
+    // tables (statring etc.: one of its items at random, so the chance is split between them).
+    function dropWorth(monster) {
+        if (cfg.dropHunts === false || !ctx.drops || !ctx.drops.needs) return null;
+        const needs = ctx.drops.needs();
+        const hits = [];
+        function add(item, chance, where) {
+            const n = needs.find(function (x) { return x.name === item; });
+            if (n && !hits.some(function (h) { return h.name === n.name; })) hits.push({ name: n.name, copies: n.copies, chance: chance, where: where });
+        }
+        function scan(table, where) {
+            (table || []).forEach(function (d) {
+                if (!d || d[1] === "cxjar") return;
+                if (d[1] === "open") {
+                    const sub = (G.drops && G.drops[d[2]]) || [];
+                    const total = sub.reduce(function (s, x) { return s + (x[0] || 0); }, 0) || 1;
+                    sub.forEach(function (x) { if (x && x[1] !== "open" && x[1] !== "cxjar") add(x[1], d[0] * (x[0] || 0) / total, where); });
+                    return;
+                }
+                add(d[1], d[0], where);
+            });
+        }
+        scan(G.drops && G.drops.monsters && G.drops.monsters[monster], null);
+        Object.keys(G.maps).forEach(function (map) {
+            const def = G.maps[map];
+            if (!def || def.ignore || def.instance || !(def.monsters || []).some(function (p) { return p.type === monster; })) return;
+            scan(G.drops && G.drops.maps && G.drops.maps[map], map);
+        });
+        return hits.length ? hits : null;
+    }
     const rankLogged = {};
     function inXpTop(monster) {
         const n = cfg.xpTop;
@@ -166,11 +201,24 @@ module.exports = function createHunts(ctx) {
         const list = ctx.targeting && ctx.targeting.xpRanking ? ctx.targeting.xpRanking() : null;
         if (!list) return true;
         const rank = list.indexOf(monster);
-        const ok = rank !== -1 && rank < n;
-        if (!ok && !rankLogged[monster]) {
-            util.log("hunt", monster + " hunt skipped: not among the top " + n + " XP spots (" + (rank === -1 ? "not listed" : "#" + (rank + 1)) + "; top: " + list.slice(0, n).join(", ") + ")", "white");
+        let ok = rank !== -1 && rank < n;
+        let why = null;
+        if (!ok) {
+            const drops = dropWorth(monster);
+            if (drops) {
+                ok = true;
+                why = drops.map(function (h) {
+                    const pct = h.chance * 100;
+                    return h.name + " (" + (pct >= 1 ? pct.toFixed(1) : pct >= 0.01 ? pct.toFixed(2) : pct.toExponential(1)) + " %" + (h.where ? " " + h.where + " map drop" : "") + ", " + h.copies + " missing)";
+                }).join(", ");
+            }
         }
-        rankLogged[monster] = !ok;
+        const state = ok ? (why ? "drop" : "xp") : "skip";
+        if (rankLogged[monster] !== state) {
+            if (state === "skip") util.log("hunt", monster + " hunt skipped: not among the top " + n + " XP spots (" + (rank === -1 ? "not listed" : "#" + (rank + 1)) + "; top: " + list.slice(0, n).join(", ") + ") and drops nothing we miss", "white");
+            else if (state === "drop") util.log("hunt", monster + " hunt taken for its drops: " + why + " (XP rank " + (rank === -1 ? "not listed" : "#" + (rank + 1)) + ")", "yellow");
+        }
+        rankLogged[monster] = state;
         return ok;
     }
 

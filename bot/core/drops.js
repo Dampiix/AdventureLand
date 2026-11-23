@@ -27,6 +27,9 @@ module.exports = function createDrops(ctx) {
     const saved = (function () { try { return get(NEEDS_KEY) || {}; } catch (e) { return {}; } })();
     let needs = saved.list || [];
     let needsAt = saved.at || 0;
+    // The merchant's whole list (needs keeps only the first 8 for the guide's routes): hunts check every entry
+    // against the drop table (hunts.dropWorth, 2026-11-23).
+    let allNeeds = saved.all || needs.slice();
     let routes = [];         // [{ name, copies, monster, map, perCopy }] best XP first
     let nextCheckAt = 0;
     let lastPick = "";
@@ -34,9 +37,10 @@ module.exports = function createDrops(ctx) {
 
     comms.on("drops", function (data, from) {
         if (from !== config.merchant) return;
-        needs = (data.list || []).filter(function (n) { return n && G.items[n.name] && n.copies > 0; }).slice(0, 8);
+        allNeeds = (data.list || []).filter(function (n) { return n && G.items[n.name] && n.copies > 0; });
+        needs = allNeeds.slice(0, 8);
         needsAt = Date.now();
-        try { set(NEEDS_KEY, { list: needs, at: needsAt }); } catch (e) { /* storage unavailable */ }
+        try { set(NEEDS_KEY, { list: needs, all: allNeeds, at: needsAt }); } catch (e) { /* storage unavailable */ }
         nextCheckAt = 0; // re-evaluate right away
     });
 
@@ -515,5 +519,9 @@ module.exports = function createDrops(ctx) {
         return { monster: pick.monster, map: pick.map, source: "drop " + pick.name };
     }
 
-    return { target: target };
+    return {
+        target: target,
+        // Every item the merchant misses right now: [{ name, copies }] (wishes, craft ingredients, drops.want).
+        needs: function () { return allNeeds.slice(); },
+    };
 };

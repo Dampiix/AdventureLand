@@ -81,7 +81,9 @@ module.exports = function createEvents(ctx) {
         let ing = null;
         try {
             const s = get("dmpx_cipher_stock");
-            if (s && s.choice && s.choice.at === win.at && Date.now() - (s.at || 0) < 15 * 60 * 1000) ing = s.choice.ingredient;
+            // The live round's start carries milliseconds (…200568), the schedule's does not (…200000): same round
+            // within 5 min (v1.223.4 - after the Snowman the leader fell back to embercoal, "no report").
+            if (s && s.choice && Math.abs(s.choice.at - win.at) < 5 * 60 * 1000 && Date.now() - (s.at || 0) < 15 * 60 * 1000) ing = s.choice.ingredient;
         } catch (e) { /* storage unavailable */ }
         const ingredient = ing || wcfg.fallback || "embercoal";
         const list = ((wcfg.spots || {})[ingredient] || []).slice();

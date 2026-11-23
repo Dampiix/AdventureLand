@@ -536,22 +536,30 @@ module.exports = function createGear(ctx) {
         });
         return best;
     }
+    // How often a luck piece is listed (2026-11-23: two Clover Studs, one for each earring slot).
+    function luckCount(name) { return luckNames().filter(function (n) { return n === name; }).length; }
     function luckOn(ms) {
         const names = luckNames();
         if (!names.length) return false;
         const batch = [], back = [];
-        names.forEach(function (name) {
+        names.filter(function (n, i) { return names.indexOf(n) === i; }).forEach(function (name) {
             const def = G.items[name];
             const slots = def && SLOTS_BY_TYPE[def.type];
             if (!slots || !usable(def)) return;
-            if (slots.some(function (sl) { return character.slots && character.slots[sl] && character.slots[sl].name === name; })) return; // on already
-            const num = bestBagIndex(name, batch.map(function (b) { return b.num; }));
-            if (num === -1) return; // not there yet
-            const slot = slots[slots.length - 1]; // ring2 / earring2 for the paired slots
-            if (batch.some(function (b) { return b.slot === slot; })) return;
-            const was = character.slots && character.slots[slot];
-            batch.push({ num: num, slot: slot });
-            back.push({ slot: slot, name: was ? was.name : null, level: was ? (was.level || 0) : 0 });
+            const wearing = function (sl) { return !!(character.slots && character.slots[sl] && character.slots[sl].name === name); };
+            // Listed twice: both paired slots (earring2 first, then earring1); once: the last slot (ring2 / earring2).
+            let need = Math.min(luckCount(name), slots.length) - slots.filter(wearing).length;
+            const free = slots.slice().reverse().filter(function (sl) { return !wearing(sl); });
+            for (const slot of free) {
+                if (need <= 0) break;
+                if (batch.some(function (b) { return b.slot === slot; })) continue;
+                const num = bestBagIndex(name, batch.map(function (b) { return b.num; }));
+                if (num === -1) break; // not there yet
+                const was = character.slots && character.slots[slot];
+                batch.push({ num: num, slot: slot });
+                back.push({ slot: slot, name: was ? was.name : null, level: was ? (was.level || 0) : 0 });
+                need--;
+            }
         });
         if (batch.length) {
             quiet(equip_batch(batch));
@@ -824,8 +832,15 @@ module.exports = function createGear(ctx) {
     }
     // Items the supply module must not hand to the merchant.
     function isReserved(item) {
-        // Luck swap: the best copy of each luck piece, and what was taken off for it, stay in the bag.
-        if (luckNames().includes(item.name) && bestBagIndex(item.name) !== -1 && character.items[bestBagIndex(item.name)] === item) return true;
+        // Luck swap: the best copies of each luck piece (as many as listed), and what was taken off for them, stay in the bag.
+        // Copies we wear already count (v1.223.5): the priest wears the Wanderer's cap and shoes +8 - the +0 copies it
+        // found stayed in its bag for nothing and never went to the merchant.
+        if (luckNames().includes(item.name)) {
+            const keep = [];
+            const worn = Object.keys(character.slots || {}).filter(function (sl) { return character.slots[sl] && character.slots[sl].name === item.name; }).length;
+            for (let k = 0; k < luckCount(item.name) - worn; k++) { const i = bestBagIndex(item.name, keep); if (i === -1) break; keep.push(i); }
+            if (keep.some(function (i) { return character.items[i] === item; })) return true;
+        }
         if (luck && luck.back.some(function (b) { return b.name === item.name && b.level === (item.level || 0); })) return true;
         if (swapSword(item)) return true;
         if (pairPart(item)) return true; // half of a weapon pair that beats our two-hander

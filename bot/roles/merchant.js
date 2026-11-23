@@ -706,10 +706,14 @@ module.exports = function createMerchant(ctx) {
     async function bankIfNeeded() {
         if (Date.now() < nextBankTripAt) return;
         // Visit when the bag is running full, or every 30 min to clear junk out of the bank.
-        const due = character.esize < m.bank.whenFreeBelow || Date.now() - lastBankVisit > 30 * 60 * 1000;
+        // Idle workshop stock (2026-11-23, player decision): below bank.stockFreeBelow free slots the jewellery and
+        // other copies waiting for their compound/upgrade go to the bank too - the workshop takes them out again when
+        // it works on them (retrieve). The bag was full of rings, amulets and belts while the bank had 49 free slots.
+        const stockFree = m.bank.stockFreeBelow || 0;
+        const due = character.esize < m.bank.whenFreeBelow || character.esize < stockFree || Date.now() - lastBankVisit > 30 * 60 * 1000;
         if (!due) return;
         lastBankVisit = Date.now();
-        const stored = await bankTrip();
+        const stored = await bankTrip(false, stockFree || undefined);
         // Nothing fit: don't run back and forth – try again in 10 minutes.
         nextBankTripAt = Date.now() + (stored ? 60 * 1000 : 10 * 60 * 1000);
     }
