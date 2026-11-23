@@ -672,7 +672,7 @@ module.exports = function createGear(ctx) {
     let usualWeapons = null;
     function isSplashWeapon(i) {
         const def = i && G.items[i.name];
-        return !!(def && def.type === "weapon" && def.explosion > 0);
+        return !!(def && def.type === "weapon" && (def.explosion > 0 || def.blast > 0)); // blast: the mage's Blaster (2026-11-23)
     }
     // Our usual weapon for a slot: what we wear there, unless that is a splash weapon (a mode's
     // weapon, e.g. after a restart mid-mode) - then the strongest other bag weapon for it.

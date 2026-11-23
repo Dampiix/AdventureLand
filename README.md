@@ -3,7 +3,7 @@
 One bot for a whole Adventure Land team: up to three fighters and one merchant, all running the same code.
 The fighters farm, hunt bosses and level up; the merchant supplies them, sells, banks, trades with other players and upgrades their gear.
 
-> **Version:** `1.224.4` (`bot/config.js` → `version`) · **Teams:** `Dmpx…` (main account) and `Viz…` (second account) · **Code:** `bot/` → in-game CODE slots 20–39
+> **Version:** `1.224.6` (`bot/config.js` → `version`) · **Teams:** `Dmpx…` (main account) and `Viz…` (second account) · **Code:** `bot/` → in-game CODE slots 20–39
 
 ## Repository
 
@@ -839,7 +839,7 @@ Weapon swaps (maces, swords, and the usual weapons back when the hold ends) chan
   - Guardian's Oath on allies below 50 %;
   - Cleansing Light;
   - Smash on targets needing 2+ hits.
-- **Mage:** Energize to members below 40 % MP; Mana Burst is off.
+- **Mage:** Energize to members below 40 % MP; Mana Burst is off. **Blaster mode** (v1.224.6, `classes.mage.blaster`): the carried Blaster (great staff, blast splash, +160 MP per attack, both hands) goes on with one `equip_batch` while at least 2 other monsters stand within its blast radius (blast / 3.6 px) of the target and MP is above 50 %. Staff and book come back in one batch after 4 s without a pack, below 20 % MP, or on the way. The Blaster is a carried wish at +0 (`to: 0`), so the workshop never upgrades it - the player does, with a Primling per step. Weapon list: staff → Fiery Staff.
 
 ## 24. Merchant: the main loop
 
@@ -1038,8 +1038,8 @@ A delivered wish is not fulfilled again for 6 h (rings and earrings excepted).
   - Vitality Earrings are held at +0 while buyers pay 500k+, and compounded no higher than +2.
 - **Exchanges** (`workshop.exchange`):
   - Seashells and Leather are exchanged, 10 at a time, while 8+ bag slots are free.
-  - Gems and Market Parcels are held (`hold`).
-  - Armor Boxes are opened only when a wished Rugged piece can come out (3 at a time, bank with 10+ free slots).
+  - Gems, Market Parcels and (since v1.224.5) Armor Boxes are held (`hold`): stockpiled for Band of Fury and Heavy armor later.
+  - Without the hold, Armor Boxes open only when a wished Rugged piece can come out (3 at a time, bank with 10+ free slots).
 - **Rugged spares** (`boxArmor`): while a Rugged piece is wished, spare copies are upgraded towards +8. Once a piece is held at +8, or (v1.224.0) nobody wears or wishes it, its +0 copies are sold.
 - **Dismantling** (`dismantle`):
   - +0 copies on `dismantle.names` are dismantled at Leo into their material: Fiery weapons → Essence of Fire; Mace, Bow, Dagger and Staff of the Dead → Bones.

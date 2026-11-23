@@ -212,7 +212,8 @@ const CLASSES = {
             { slot: "Cape", steps: [["cape", 0, B, "exchange: 40 leather · wish open"]] },
             { slot: "Rings ×2", steps: [
                 ["ringsj", 2, B, "stand-in", { now: 2 }],
-                ["dexring", 2, B, "compound"], ["dexring", 3, B, "", { now: 3 }], ["dexring", 4, B, "item stages · stays DEX, no Tri-Stones"]],
+                ["dexring", 2, B, "compound"], ["dexring", 3, B, "", { now: 3 }], ["dexring", 4, B, "item stages · stays DEX, no Tri-Stones"],
+                ["venomband", 2, P, "craft: DEX ring +2 + verdant core + 12 poison + 4 snake fangs · long-term step (2026-11-23)"]],
               alts: [["suckerpunch", null, B, "drop: crabs · replaces any ring at any time"]] },
             { slot: "Earrings ×2", steps: [
                 ["dexearring", 2, B, "compound", { now: "2 / 2" }], ["dexearring", 3, B, ""], ["dexearring", 4, B, "item stages"]] },
@@ -224,6 +225,88 @@ const CLASSES = {
             { slot: "Elixir", steps: [["elixirdex0", null, P, "main-stat elixir, 12 h · seashell exchange (20 shells → 1 basic elixir)"]] },
         ],
     },
+    // Mage (2026-11-23): next character, levelled solo with Lone Wolf to 65. The priest's INT path plus the Blaster.
+    mage: {
+        color: "#7fb2ff", stat: "INT", who: "not created yet", role: "magic damage · Energize · later Reflective Shield on the tank, Magiport boss runner",
+        slots: [
+            { slot: "Main hand", steps: [
+                ["staff", 8, B, "NPC shop · gear goals · no +8 staff left (it went into the Blaster)"],
+                ["firestaff", 7, P, "essence of fire · needs a mage list in gearPlan.weapons"],
+                ["firestaff", 9, P, "community goal"]] },
+            { slot: "AoE (carried)", steps: [
+                ["gstaff", 3, P, "Blaster · crafted 2026-11-23 · +1…+3 each with a Primling (100 %), no +4 (max 88 %) · great staff: +160 MP per attack, both hands → only for Agitate packs, mode switch like the Lolipops (not built)"]],
+              alts: [["sparkstaff", null, F, "Spark Staff · Sparkbot 1:8,000 · weaker than the Blaster"]] },
+            { slot: "Offhand", steps: [
+                ["wbook0", 2, P, "Book of Knowledge · 4 in the bank (2× +2, 2× +0) · bats 1:250"],
+                ["wbook0", 4, P, "compound"]],
+              alts: [["wbook1", null, F, "Book of Secrets · INT 16, VIT 6"]] },
+            { slot: "Orb", steps: [
+                ["orbg", 0, B, "craft"], ["orbg", 1, B, ""], ["orbofint", 0, B, "craft (Cole)"]],
+              alts: [["cave_loaded_die", null, P, "craft: 10 Cave Amber + 8 seashells + 2 reef glass"]] },
+            { slot: "Helmet", steps: [
+                shopArmor("helmet"),
+                ["mmhat", 7, P, "Hat of the Hunter Mage · 7 Monster Tokens (5 left) · resistance piercing 40 · the only Hunter piece"]] },
+            { slot: "Chest", steps: [shopArmor("coat")] },
+            { slot: "Pants", steps: [shopArmor("pants")],
+              alts: [["starkillers", null, F, "Star Killer's · armor boxes (held), Halloween candy, xmagex 1:500"]] },
+            { slot: "Gloves", steps: [
+                shopArmor("gloves"),
+                ["fierygloves", 7, P, "craft like the priest's: gloves + 20 feathers + 2 essence of fire"]],
+              alts: [["supermittens", null, F, "event · when better"]] },
+            { slot: "Shoes", steps: [shopArmor("shoes"), ["wingedboots", 7, B, "craft: shoes + 20 magical feathers"]] },
+            { slot: "Cape", steps: [["cape", 0, B, "exchange: 40 leather"]], alts: [["ecape", null, F, "Fluffy Blanket · Easter"]] },
+            { slot: "Rings ×2", steps: [
+                ["intring", 2, B, "Winterland drops · compound"], ["intring", 3, B, ""], ["intring", 4, B, "item stages"],
+                ["glacierseal", 2, P, "craft like the priest's · shares frost cores and essence of frost"]],
+              alts: [["cring", null, F, "Ring of the Crypt · crypt bats only"]] },
+            { slot: "Earrings ×2", steps: [
+                ["intearring", 2, B, "compound"], ["intearring", 3, B, ""], ["intearring", 4, B, "item stages"],
+                ["moonshardearring", 2, P, "craft like the priest's · void thread shared with priest and rogue"]] },
+            { slot: "Amulet", steps: [
+                ["intamulet", 2, B, ""], ["intamulet", 3, B, ""], ["intamulet", 4, B, "item stages"],
+                ["t2intamulet", null, P, "Amulet of the Fierce Mage · gem fragments"]] },
+            { slot: "Belt", steps: [["intbelt", 0, B, "Spooky Town map drop"], ["intbelt", 2, B, ""], ["intbelt", 4, B, "item stages"]] },
+        ],
+    },
+    // Rogue (2026-11-23): the end-end goal, after the mage - a mass farmer that one-shots a spot with Fan of Knives.
+    rogue: {
+        color: "#c58cff", stat: "DEX", who: "not created yet", role: "mass farmer (Fan of Knives, 1-2 hits) · own spot · group in an emergency",
+        slots: [
+            { slot: "Both hands", steps: [
+                ["cclaw", 8, P, "Crab Claw ×2 · bought 2026-11-23 (15.2M each) · fist weapon, armor piercing"],
+                ["daggerofthedead", 7, P, "bones (material goals)"],
+                ["hdagger", null, F, "Dagger of Hallowing · rogue only · Jr. / Green Jr. 0.1 %"],
+                ["vdagger", null, F, "Vampiric Dagger · crypt"]],
+              note: "No rapier: +70 % attack speed, but the daggers hit harder - what counts for 1-2 hits." },
+            { slot: "Belt", steps: [
+                ["dexbelt", 0, B, "Spooky Town map drop"], ["dexbelt", 2, B, ""],
+                ["knifebelt", 0, P, "craft: DEX belt +2 + 30 spider silk + 8 void thread + 20 bat wings + 12 poison + 350k · unlocks Fan of Knives"]] },
+            { slot: "Gloves", steps: [
+                shopArmor("gloves"),
+                ["fierygloves", 7, P, "stand-in · +2 attack speed"],
+                ["hexweavegloves", 7, P, "must: skill MP −20 % · craft: 50 witch parcels + gold ingot + 100 spider silk + 4M (Witch's Cipher)"]] },
+            { slot: "Helmet", steps: [shopArmor("helmet"), ["fury", null, P, "Band of Fury · armor boxes (held for a later batch)"]] },
+            { slot: "Chest", steps: [shopArmor("coat")],
+              alts: [["tshirt9", null, F, "Manasteal · T-Shirt Roll 0.24 %"], ["cave_ambercoat", null, F, "Amberweave · luck, MP, evasion · endgame"]] },
+            { slot: "Pants", steps: [
+                shopArmor("pants"),
+                ["reedpants", 7, P, "craft: pants +6 + 20 frog tongues (squigtoads 0.25 %) + 4 lotus flowers (frogs 0.25 %) + 40 ash leaf + 100k · first farm test"]],
+              alts: [["fallen", null, F, "Fallen Master · Halloween bosses"]] },
+            { slot: "Shoes", steps: [shopArmor("shoes"), ["wingedboots", 7, B, "craft: shoes + 20 magical feathers"]] },
+            { slot: "Cape", steps: [["cape", 0, B, "exchange: 40 leather"]] },
+            { slot: "Rings ×2", steps: [
+                ["dexring", 2, B, "compound"], ["dexring", 3, B, ""], ["dexring", 4, B, "item stages"],
+                ["venomband", 2, P, "craft: DEX ring +2 + verdant core + 12 poison + 4 snake fangs · long-term step"]],
+              alts: [["suckerpunch", null, F, "crabs · replaces any ring"]] },
+            { slot: "Amulet", steps: [
+                ["dexamulet", 2, B, ""],
+                ["gloampendant", 0, P, "craft: DEX amulet +2 + 30 void thread + 80 bat wings + 6 essence of ether + 6.4M · 250 MP, skill MP −6 %"]] },
+            { slot: "Earrings ×2", steps: [["cloverstud", 0, P, "×2 · solo luck · craft like the priest's (a verdant core each)"]],
+              alts: [["dexearring", 4, P, "group play · mode swap (not built)"]] },
+            { slot: "Orb", steps: [["rabbitsfoot", 0, P, "solo luck · a second one, 120 Fun Tokens"]],
+              alts: [["cave_loaded_die", null, P, "group play · crit"]] },
+        ],
+    },
 };
 
 const RULES_BOT = [
@@ -233,26 +316,28 @@ const RULES_BOT = [
     "Weapons per class from the back of the list: the best item we hold a copy of goes up to +7. Fire weapons from essence of fire, the \"of the Dead\" weapons from bones.",
     "Shop, craft and farmable drops are wished and pursued. Event and boss items (\"found\") are worn when we have them, never chased.",
     "A missing item has a stand-in (green Lolipop for the orange one). A worn alternative pauses its slot's ladder.",
-    "Wanderer's set in parallel with the shop armor for non-tanks (drops and Ponty only). The priest opens the chests and wishes it actively: 4 pieces with the cap = +10 % gold, full set = +16 luck.",
+    "Wanderer's set only for the priest (v1.224.0): he opens the chests and catches the luck - 4 pieces with the cap = +10 % gold, full set = +16 luck. Once his Wanderer goals are done, spare copies are sold.",
     "Winged Boots to +7. Elixirs off.",
+    "Priest luck swap (v1.219.0): right before Absorb Sins one equip_batch puts on the luck pieces he has (Wanderer's set, later Shield M, Rabbit's Foot, 2 Clover Studs) and changes back 3 s after the last catch. The warrior's weapon swaps use one equip_batch too (v1.223.6).",
 ];
 const RULES_PLAN = [
     "First a permanently reachable base for every slot; event items come on top later.",
-    "No Monster Hunter sets (except the ranger gloves as the Thundergrips base). Monster Tokens and Fun Tokens are saved, not sold - Fun Tokens for Shield M (10) and Rabbit's Foot (120).",
+    "No Monster Hunter sets - except the ranger gloves (Thundergrips base) and the mage hat (resistance piercing 40). Fun Tokens are saved for Shield M (10) and two Rabbit's Feet (priest, rogue; 120 each). 50 Monster Tokens were sold on 2026-11-23 (1M each); 5 left.",
     "Luck: drops roll with the luck of the monster's target at death. The priest's luck catch (Absorb Sins) lets ~88 % of kills die on him - luck gear belongs on the priest.",
     "Warrior: Rugged set to +8. Dracul's Attire only from +7 (no stat drop below +7), then slowly to +8.",
-    "Ranger: Hunting Bow → Fire Bow → Crossbow; Poucher + Alloy Quiver for AoE, carried like the warrior's Lolipops. Agile Quiver is the quiver end goal (no Storm Quiver). Sucker Punch (ranger only) replaces any ring at any time.",
-    "Priest luck swap: INT gear in normal fights; right before Absorb Sins (equip_batch, one server call) he puts on Shield M, Rabbit's Foot, the 5 Wanderer's pieces (+16 luck) and a Clover Stud, and changes back afterwards.",
+    "Ranger: Hunting Bow → Fire Bow → Crossbow; Poucher + Alloy Quiver for AoE, carried like the warrior's Lolipops. Agile Quiver is the quiver end goal (no Storm Quiver). Sucker Punch (ranger and rogue) replaces any ring at any time.",
+    "2026-11-23: a long farm goal between two steps beats \"no upgrade until the rare drop\" - it is an idle game. So the Venom Band comes between the DEX rings and the Sucker Punch, for ranger and rogue.",
+    "Mage (next character, solo to 65): the priest's INT path - Fiery Staff, Book of Knowledge, Moonshard, Glacier Seal, Fiery Gloves, T2 amulet; both compete for void thread, frost cores and essences. Hunter Mage Hat for resistance piercing. The Blaster +3 only for Agitate packs (165 MP per attack).",
+    "Rogue (end-end goal, after the mage): daggers, Knife Belt, Hexweave Gloves (must), Reed Pants, Gloam Pendant, shop chest. Solo luck: 2 Clover Studs + Rabbit's Foot; group play: DEX earrings + Loaded Die (mode swap, not built).",
+    "Path B (idea, not for now): a +0 Wanderer swap set in the bag and the armor straight from shop +8 to Heavy (no Rugged) - for a new priest, once the swap is shown to be fast enough.",
     "Elixirs: the main-stat elixir for warrior (STR) and ranger (DEX), Liquid Luck for the priest - all the time, never swapped. Seashells: frogs 16 %, squigtoads 5 % (or buy). Built after the gear plan.",
-    "Super Mittens are an alternative for every class when found. Earrings of Vitality +2 are kept for the Clover Stud (sold today).",
     "Essence of ether is the shared bottleneck: Moonshard 4, Wind Belt 4, Thundergrips 12 - we hold 9 (gargoyles, booboos 0.5 %).",
-    "Skeletor drops armor boxes (~5.9 % with luck) and weapon boxes (~2.3 %) on the side - a bonus, not a plan.",
-    "Not planned: Belt of Hallowed Trials (for now), Wooden Shield, Amulet of MP, Ring of Luck (drop ~7 in 10M), Storm Quiver, Venom Band, Beastmantle, Starcloak, Black Cat Bell. Djinn Crown untested.",
+    "Not planned: Belt of Hallowed Trials (for now), Wooden Shield, Amulet of MP, Ring of Luck (drop ~7 in 10M), Storm Quiver, Beastmantle, Starcloak, Black Cat Bell. Djinn Crown untested. Verdant cores (Venom Band, Clover Stud) come from Ents or 1:3,000 Sprawlings - not event-only.",
 ];
 const OPEN = [
     "Priest: Shield M in the swap set or worn all the time?",
     "Priest rings: a second Zapper? Better than an INT ring +4; next to Glacier Seals only a sidegrade.",
-    "Build: luck swap, per-piece armor caps (ranger chest +9), Hunting Bow and Crossbow into the ranger's weapon list, Dracul's Attire and Heavy Underarmor off gear.noEquip, keep Earrings of Vitality +2, elixirs.",
+    "Build: per-piece armor caps (ranger chest +9), Hunting Bow and Crossbow into the ranger's weapon list, Dracul's Attire and Heavy Underarmor off gear.noEquip, elixirs; for the mage a weapon list and the Blaster mode switch.",
 ];
 
 // ---- rendering --------------------------------------------------------------
@@ -267,7 +352,7 @@ const arrow = `<div class="ar">→</div>`;
 const plus = `<div class="ar">+</div>`;
 function classPage(key) {
     const c = CLASSES[key];
-    const rows = c.slots.map((s) => `<tr${s.set ? ' class="setrow"' : ""}><td class="sl">${esc(s.slot)}</td><td><div class="ladder">${s.steps.map(step).join(s.set ? plus : arrow)}</div></td><td><div class="col">${(s.alts || []).map(step).join("") || '<span class="dash">–</span>'}</div></td></tr>`).join("");
+    const rows = c.slots.map((s) => `<tr${s.set ? ' class="setrow"' : ""}><td class="sl">${esc(s.slot)}</td><td><div class="ladder">${s.steps.map(step).join(s.set ? plus : arrow)}</div>${s.note && !s.set ? `<div class="snote">${esc(s.note)}</div>` : ""}</td><td><div class="col">${(s.alts || []).map(step).join("") || '<span class="dash">–</span>'}</div></td></tr>`).join("");
     return `<section class="page cls2" style="--acc:${c.color}">
     <div class="ttl"><h2>${key[0].toUpperCase() + key.slice(1)}</h2><span class="tag">${c.stat}</span><span class="role">${esc(c.role)}</span><span class="ours">${c.who}</span></div>
     <table class="rules r2"><tr><th></th><th>Ladder (left to right)</th><th>Alternatives / when found</th></tr>${rows}</table></section>`;
@@ -279,10 +364,10 @@ const legend = `<div class="lg">
   <div><span class="sw2 found"></span><b>Found</b> worn when we have it, never chased</div>
   <div><span class="now">worn +X</span> what the fighter wears now</div></div>`;
 const cover = `<section class="page cover"><h1>Gear Plan <span class="dr">v2</span></h1>
-<p class="lead">Every class, every slot: what the bot does today (bot/config.js) merged with the decisions of 2026-11-22 that are not built yet, and what each fighter wears now. Once the open points are settled, this goes into config.gearPlan.</p>
+<p class="lead">Every class, every slot: what the bot does today (bot/config.js) merged with the decisions of 2026-11-22 and 2026-11-23 that are not built yet (mage and rogue added), and what each fighter wears now. Once the open points are settled, this goes into config.gearPlan.</p>
 ${legend}
 <div class="two"><div><h3>How the bot works today</h3><ol class="pr sm">${RULES_BOT.map((p) => `<li>${esc(p)}</li>`).join("")}</ol></div>
-<div><h3>Decided 2026-11-22 (not built yet)</h3><ol class="pr sm">${RULES_PLAN.map((p) => `<li>${esc(p)}</li>`).join("")}</ol>
+<div><h3>Decided 2026-11-22 / 23 (not built yet)</h3><ol class="pr sm">${RULES_PLAN.map((p) => `<li>${esc(p)}</li>`).join("")}</ol>
 <h3>Open points</h3><ol class="pr sm open">${OPEN.map((p) => `<li>${esc(p)}</li>`).join("")}</ol></div></div>
 <p class="src">In the bot since v1.219.0 (2026-11-22) · bot v${esc(config.version)} · worn gear read live · icons and names: Adventure Land game data v${G.version}</p></section>`;
 
@@ -317,10 +402,11 @@ table.r2 td { padding: 1px 5px; }
 .pr.sm { font-size: 10.5px; line-height: 1.35; }
 .pr.sm li { margin-bottom: 2px; }
 .pr.open li::marker { color: #e05f5f; }
+.snote { font-size: 8px; color: #9aa3b5; margin-top: 1px; }
 `;
 
-// One block per class, in this order (rogue, mage and paladin follow when we play them).
-const ORDER = ["warrior", "priest", "ranger"];
+// One block per class, in this order (mage and rogue added 2026-11-23; paladin follows when we play it).
+const ORDER = ["warrior", "priest", "ranger", "mage", "rogue"];
 const body = [cover, ...ORDER.map(classPage)].join("\n");
 for (const s of usedSets) await sheet(s);
 const css = await readFile(path.join(dir, "gear-plan.css"), "utf8");

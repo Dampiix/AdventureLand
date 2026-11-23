@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.224.4",
+    version: "1.224.6",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -821,6 +821,11 @@ module.exports = {
             energizeAbove: 0.6,             // only give mana while we have more than this
             energizeBelow: 0.4,             // to a member below this MP ratio
             useBurst: false,                // Mana Burst empties the whole MP pool
+            // Blaster mode (v1.224.6, player decision 2026-11-23), like the warrior's Lolipops: the Blaster (great staff,
+            // blast splash, +160 MP per attack, both hands) goes on only for a pack - at least minNeighbours other monsters
+            // within its blast radius (blast / 3.6 px) of our target - while MP is above minMp. Back to staff + book after
+            // keepMs without a pack, below offMp, or on the way.
+            blaster: { enabled: true, names: ["gstaff"], minNeighbours: 2, minMp: 0.5, offMp: 0.2, keepMs: 4000, holdMs: 60000 },
         },
     },
 
@@ -997,6 +1002,7 @@ module.exports = {
             priest: ["staff", "firestaff", "staffofthedead"],
             ranger: ["bow", "hbow", "firebow", "crossbow"], // gear plan v2: Hunting Bow and Crossbow
             rogue: ["stinger", "daggerofthedead"],
+            mage: ["staff", "firestaff"], // 2026-11-23: the Blaster is carried for packs (wishes below), not on this list
         },
         // Highest level the list items are upgraded to (per item, else default).
         weaponCaps: { default: 7, fireblade: 8, firestaff: 8, firebow: 8 }, // fire weapons +8 since 2026-11-22 (player decision)
@@ -1083,6 +1089,9 @@ module.exports = {
             // Warrior Agitate mode: two orange Lolipop Maces carried in the bag; green ones stand in.
             { slot: "mainhand", item: "ololipop", to: 7, carry: true, count: 2, for: "warrior", how: "drop: Jr." },
             { slot: "mainhand", item: "glolipop", to: 7, carry: true, count: 2, insteadOf: "ololipop", for: "warrior", how: "drop: Green Jr." },
+            // Mage pack mode (2026-11-23): the Blaster is carried, never worn by the equip pass (classes.mage.blaster). to: 0 - the
+            // player upgrades it by hand with a Primling per step; the workshop must not try it with plain scrolls.
+            { slot: "mainhand", item: "gstaff", to: 0, carry: true, for: "mage", how: "craft: staff +8 + Essence of Greed (crafted 2026-11-23)" },
         ],
         // Not wished: worn when we have them and the valuation rates them higher.
         found: {
@@ -1135,7 +1144,7 @@ module.exports = {
             mage: {
                 modes: {
                     single: { mainhand: [["staff", 8], ["firestaff", 9]], offhand: [["wbook0", 4]] },
-                    aoe: { mainhand: [["firestaff", 9], ["sparkstaff", null, "found"]], offhand: [["wbook0", 4]] },
+                    aoe: { mainhand: [["gstaff", 3, "craft"], ["sparkstaff", null, "found"]], offhand: [] }, // the Blaster takes both hands
                 },
             },
             paladin: {
@@ -1373,7 +1382,8 @@ module.exports = {
             // list for the big batch.
             // armorbox off the list 2026-11-18 (player decision): the boxes open on demand again
             // for the warrior's Rugged pants1/shoes1 +7.
-            hold: ["gem0", "gem1", "marketparcel"], // + Merrit's parcels (collected first, 2026-11-17)
+            // armorbox back on the list 2026-11-23 (player decision): stockpiled again (Band of Fury, Heavy armor later).
+            hold: ["gem0", "gem1", "marketparcel", "armorbox"], // + Merrit's parcels (collected first, 2026-11-17)
             batch: 10,     // exchanges per round, so deliveries are not delayed for long
             keepFree: 8,   // stop while fewer bag slots are free (rewards need room)
         },
