@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.223.6",
+    version: "1.224.4",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -922,7 +922,7 @@ module.exports = {
             "Item stages: an item goes up level by level across the team - e.g. STR rings +4 are wished only once every STR-ring wish at +3 is fulfilled. Different items never block each other.",
             "A worn alternative pauses the ladder of its slot: while e.g. a Loaded Die is worn, no class orb is built.",
             "Shop weapons stop at +8 and only while no better copy is there (a worn Fiery Blade +7 already beats a Blade +8: 54 + burn vs 50). Above that the fire weapon ladder is the way up.",
-            "Wanderer's set: each piece has the stats of the shop piece of its slot plus a little (cap +120 HP, attire +80 MP, breeches +1 speed) and the set bonus (2: +200 HP, 3: +100 MP, 4: +10% gold, 5: +16 luck). A dropped piece is built to the worn shop piece's level and replaces it, then runs with the armor goals in parallel - a horizontal upgrade, never crafted, never ahead of real upgrades. Not for tanks on the Rugged set. Exception: the chest opener (priest) wishes its pieces actively (2026-11-20).",
+            "Wanderer's set: each piece has the stats of the shop piece of its slot plus a little (cap +120 HP, attire +80 MP, breeches +1 speed) and the set bonus (2: +200 HP, 3: +100 MP, 4: +10% gold, 5: +16 luck). Only the chest opener (priest) runs it (2026-11-23): it wishes its pieces actively (2026-11-20); once its Wanderer goals are done, spare copies are sold.",
         ],
         decisions: {
             "2026-11-19": [
@@ -944,12 +944,17 @@ module.exports = {
                 "Stages are team-wide: everyone's shop gear to +7, then everyone to +8.",
                 "Weapon wishes and Ponty finds only for the weapon types of the class's plan.",
             ],
+            "2026-11-23": [
+                "Wanderer's set only for the priest (chest opener, luck catch); spare copies are sold once its goals are done.",
+                "Rugged +0 copies nobody wears and nobody wishes are sold (e.g. Rugged Coats after the warrior's Dracul's Attire).",
+            ],
         },
         groups: {
             physical: ["warrior", "ranger", "rogue", "paladin"],
             caster: ["mage", "priest"],
             tank: ["warrior", "paladin"],
             nontank: ["ranger", "priest", "rogue", "mage"],
+            opener: ["priest"], // the chest opener and luck catcher: the only class on the Wanderer's set (2026-11-23)
         },
         // Class wish chains for one class ({ name, level } or { steps: [...], replace, anytime, ... }); used by core/gear.js classChains.
         chainsFor: function (ctype, mainStat) {
@@ -1005,7 +1010,10 @@ module.exports = {
         // to the worn shop piece's level and replaces it, then goes up instead of it; without a spare
         // copy the shop piece goes higher and takes the slot back. Copies nobody can use any more
         // (all at the last stage) are sold.
-        parallel: "nontank",
+        // "nontank" -> "opener" on 2026-11-23 (player decision): only the priest (chest opener, luck catch) runs the
+        // Wanderer's pieces. For the ranger every copy counted as wanted - 6 Wanderer's Gloves +0 sat in the full bank.
+        // Once the priest's Wanderer goals are done, the spare copies are sold.
+        parallel: "opener",
         // ...and crafted, but only when every ingredient is in stock (player decision 2026-11-19 -
         // never a reason to farm; standing buy orders in market.buy keep the materials coming).
         craftFromStock: ["wcap", "wattire", "wbreeches", "wgloves", "wshoes"],
@@ -1324,6 +1332,9 @@ module.exports = {
             // would cap everything ever spent on gear goals.
             budget: {
                 incomeShare: 0.7, // transferAbove removed 2026-11-19 (direct booking, player decision)
+                // 2026-11-23 (player decision): 10M for 24 h - the pot was empty and the bank full of +0 earrings to compound.
+                // Raised to 30M the same day: the night's 95.5M gear spending exceeded the 24 h share, the 10M left 0k free.
+                extra: { amount: 30000000, until: "2026-11-24T16:00:00Z" },
                 // Optional (the old ones expired and were removed 2026-11-22):
                 //   extra: { amount, until } - a player-granted amount on top until that time (counts against
                 //          the last 24 h of spending);
@@ -1343,6 +1354,10 @@ module.exports = {
             // ranger's belt and the base of the rogue's Knife Belt (2026-11-18): a try at +3 only
             // with five spare ones.
             keep: { "dexbelt:2": 2 },
+            // Tidy-up (2026-11-23, player decision): an auto-compound step that costs at most this never waits for a pot -
+            // with the gear pot empty the bank filled up with +0 earrings. 50k covers the 6.4k scroll that takes
+            // jewellery up to +2 (~35k a +2 earring on average); from +2 the 240k scroll pays from the gear pot as before.
+            tidyMaxCost: 50000,
         },
         // Exchange (approved 2026-11-15: everything except seasonal items).
         exchange: {
@@ -1458,7 +1473,8 @@ module.exports = {
             // gloomfeather, verdantspore - none of them is ever sold). They drop only during the event's gathering
             // phase and don't spoil, so the stock is kept for the cauldron and the Witch's recipes.
             "rattail", "smush",
-            "cclaw",   // Crab Claw (fist weapon, 12 attack) - player decision 2026-11-17
+            // cclaw off the list 2026-11-23 (player decision): the Crab Claw is the rogue's first weapon (gear plan).
+            "dawnwardaegis", // Skeletor drop, paladin-only shield - 9 copies filled the bank (2026-11-23, player decision)
             "vitscroll", "lspores", // VIT stat scrolls (we use STR/INT/DEX; the shop sells them), Large Spores - 2026-11-17
             // Rugged and Heavy armor (armor boxes) are no longer sold since the fresh start:
             // craft bases (Oathplate, Resolute Sallet, class boots) and upgrades (2026-11-16).
@@ -1494,6 +1510,9 @@ module.exports = {
             testAt: null,                      // one extra round at this ISO time (the first test ran 2026-11-20 16:47Z)
             prepMaxMs: 8 * 60 * 1000, hopTimeoutMs: 2 * 60 * 1000,
         },
+        // Workshop rhythm (v1.224.4, player decision 2026-11-23): after a round that did something the next one comes after
+        // this; a round that only found locked jobs tries the next at once; 30 s only when there is nothing to do.
+        workshopFastMs: 3000,
         // Skill ingredients go to the class that uses them on every delivery.
         classItems: { priest: ["essenceoflife"], ranger: ["poison"] },
         // Bank: when the bag runs low on space, everything that is neither sold

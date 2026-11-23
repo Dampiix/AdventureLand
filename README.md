@@ -3,7 +3,7 @@
 One bot for a whole Adventure Land team: up to three fighters and one merchant, all running the same code.
 The fighters farm, hunt bosses and level up; the merchant supplies them, sells, banks, trades with other players and upgrades their gear.
 
-> **Version:** `1.223.6` (`bot/config.js` → `version`) · **Teams:** `Dmpx…` (main account) and `Viz…` (second account) · **Code:** `bot/` → in-game CODE slots 20–39
+> **Version:** `1.224.4` (`bot/config.js` → `version`) · **Teams:** `Dmpx…` (main account) and `Viz…` (second account) · **Code:** `bot/` → in-game CODE slots 20–39
 
 ## Repository
 
@@ -227,6 +227,7 @@ A running bot keeps most of these in memory and writes them back on every change
 | Key | Holds | Clearing it… |
 |---|---|---|
 | `dmpx_ponty_round:<merchant>` | Running Ponty round | aborts a stuck round |
+| `workshop_blocks:<merchant>` | Workshop jobs paused after a stop (until time) | retries every paused job at once |
 | `dmpx_trade_trip:<merchant>` | Running trade trip | aborts a stuck trip |
 | `dmpx_ponty_force` | `/ponty` request | cancels the request |
 | `dmpx_hop_request:<merchant>` | Server hop request | — |
@@ -883,7 +884,7 @@ The merchant ticks every second.
   - `merchantRole.sellList` entries up to their `maxLevel`;
   - outgrown potion sizes;
   - with `sellBuyable`, anything an NPC sells, at +0 (except consumables and scrolls).
-- **Wanderer's pieces** are sold only when no non-tank can still use the copy.
+- **Wanderer's pieces** are sold once the priest's Wanderer goals are done (v1.224.0: only the priest runs the set).
 
 **Banking.**
 - **When:** fewer than 6 free bag slots (`bank.whenFreeBelow`), or 30 min since the last visit. Before every pickup too, while fewer than 12 slots are free (`bank.beforePickupFree`, v1.217.8: store only, workshop copies included) - back-to-back pickups (Ponty-round prep) used to fail with `send_no_space`. Below 15 free slots (`bank.stockFreeBelow`, v1.223.3) the workshop's idle stock (copies waiting for a compound or upgrade) is banked too; the workshop takes it out again when it works on it. The workshop takes copies out of the bank only while 2 slots stay free (`workshop.bagReserve`, 8 until v1.223.3 - the bank-before-pickup rule covers pickups); a job stopped by a full bag tries again after 10 min, not an hour.
@@ -919,6 +920,8 @@ The merchant ticks every second.
 3. **Home:** log `Ponty round done in N min: …` and append the round to `dmpx_ponty_round_log`.
 
 **Home server** = the server in the leader's heartbeat. A merchant restarted elsewhere asks to hop home.
+
+**Leader needed** (v1.224.1): the leader's client makes the hops, so a round starts only while the leader's heartbeat is under 2 min old (`leaderFreshMs`). Without it the slot stays due for the first half hour. A leader that goes offline during the prep drops the round. Before that, a merchant running alone hung on its first hop.
 
 Ponty is also checked at home every 20 min (`market.ponty.everyMs`).
 
@@ -975,18 +978,20 @@ A delivered wish is not fulfilled again for 6 h (rings and earrings excepted).
 - **Per-piece caps** (`capBy`, v1.219.0): once the whole team is through the stages, a listed worn shop piece goes on to its own cap - the ranger's coat to +9.
 - **Shop pieces** are re-buyable, so every attempt is made. Finished copies get the fighter's main-stat scroll and are delivered; the old piece comes back as a base.
 - **Shop weapon goal:** a fighter wearing a drop weapon gets its class's shop weapon built to +8 if that would beat the drop weapon.
-- **Off-plan armor** (v1.206.0). An armor slot that is **empty** or holds a piece **outside the class's gear plan** gets the plan's next step. The plan here means: shop piece, Wanderer's equivalents for non-tanks, wish chains with their alternatives, and found items.
+- **Off-plan armor** (v1.206.0). An armor slot that is **empty** or holds a piece **outside the class's gear plan** gets the plan's next step. The plan here means: shop piece, Wanderer's equivalents for the priest, wish chains with their alternatives, and found items.
   - A wish chain with `replace` (Rugged for tanks, Wanderer's for the priest) already does this.
   - Otherwise the shop piece is built at the current stage with the main stat. A fighter whose shop armor is done (all at the last stage) uses the team stage, or the last one (v1.210.8; before, the ranger with all pieces at +8 got nothing for his chest). Only if it is at least as good as the worn piece in main stat and in armor + resistance, and better in one.
   - Log: `VizRng chest: tshirt1 +3 is outside the gear plan - building coat +8 dex`.
   - Why: the ranger's lucky T-Shirt +3 (9 DEX, nothing else) kept the gear goals from ever building his Coat +8 (12 DEX, 12 armor, 10 resistance).
-- **Wanderer's set** (`gearPlan.equivalent`, non-tanks):
-  - A Wanderer's piece is built at least to the level of the worn shop piece of its slot (or to the stage) and replaces it. Example: the ranger's helmet +7 → Wanderer's Cap +7 (DEX).
+- **Wanderer's set** (`gearPlan.equivalent`, `gearPlan.parallel: "opener"` = the priest only since v1.224.0):
+  - A Wanderer's piece is built at least to the level of the worn shop piece of its slot (or to the stage) and replaces it. Example: the priest's helmet +7 → Wanderer's Cap +7 (INT).
   - From then on it is upgraded instead of the shop piece.
   - Pieces are crafted from stock only when every ingredient is in the bank (`craftFromStock`).
-  - Tanks wear the Rugged set instead.
+  - The other classes stay on shop armor, the tanks on the Rugged set.
 - **Stat scrolls:** a copy whose stat another fighter wishes for is never re-scrolled.
 - **Pot empty:** `gear goals wait for income …`, retry in 15 min.
+- **Stopped jobs** (no copies, a missing ingredient, too risky) wait an hour (`giveUpForMs`), lacking gold or bag space 10 min. Since v1.224.3 the locks survive a restart (`workshop_blocks:<merchant>`).
+- **Rhythm** (v1.224.4, `merchantRole.workshopFastMs`): a round that did something (bag or bank changed) is followed after 3 s; a round that only found locked jobs tries the next one at once (up to 8 in a row); the 30 s chore interval only when there is nothing to do. The merchant still goes back to its stand after every round.
 
 ## 30. Workshop: weapons and material goals
 
@@ -1029,12 +1034,13 @@ A delivered wish is not fulfilled again for 6 h (rings and earrings excepted).
 - **Compounding** (`workshop.compound`):
   - Wished rings, earrings, amulets, belts and books are built from three copies per level.
   - Without wishes, spare copies are combined up to +3 (`autoUpTo`), keeping `keep` copies (2 DEX belts +2).
+  - Tidy-up (v1.224.2): an auto-compound step costing at most `tidyMaxCost` (50k) never waits for a pot (jewellery up to +2 with the 6.4k scroll). The +2 → +3 step (240k scroll) still pays from the gear pot.
   - Vitality Earrings are held at +0 while buyers pay 500k+, and compounded no higher than +2.
 - **Exchanges** (`workshop.exchange`):
   - Seashells and Leather are exchanged, 10 at a time, while 8+ bag slots are free.
   - Gems and Market Parcels are held (`hold`).
   - Armor Boxes are opened only when a wished Rugged piece can come out (3 at a time, bank with 10+ free slots).
-- **Rugged spares** (`boxArmor`): while a Rugged piece is wished, spare copies are upgraded towards +7.
+- **Rugged spares** (`boxArmor`): while a Rugged piece is wished, spare copies are upgraded towards +8. Once a piece is held at +8, or (v1.224.0) nobody wears or wishes it, its +0 copies are sold.
 - **Dismantling** (`dismantle`):
   - +0 copies on `dismantle.names` are dismantled at Leo into their material: Fiery weapons → Essence of Fire; Mace, Bow, Dagger and Staff of the Dead → Bones.
   - Never dismantled: worn, wished, earmarked, locked or protected copies, or copies a material goal needs.
@@ -1100,7 +1106,7 @@ The leader uses it to weigh drop spots ([§19](#19-drop-farming)).
 | `workshop.bruteForce` | Only its `incomeShare` is left: the ladder pot that pays the material goals. The weapon ladder and the stock upgrades were removed in v1.212.0 (all their items are on `dismantle.names`). |
 | `workshop.grace` | Off; all risk floors are 0, so every step is tried. |
 | `betterWeapons.names` | Only used for classes without a weapon list (all four of ours have one). |
-| `gearGoals.budget.extra`, `bruteForce.extra` | Not set; the pots run on income only. Add `{ amount, until }` for a one-off. |
+| `gearGoals.budget.extra` | 30M until 2026-11-24 16:00 UTC (v1.224.1, player decision: compound the +0 earrings; 10M was eaten by the 24 h deficit). `bruteForce.extra` not set. |
 | `classes.warrior.dash` | Off. |
 | `events.farmBosses` | Empty: no nonstop boss hunting. |
 | `cavalry.targets` | Empty: no nuking for loot. |

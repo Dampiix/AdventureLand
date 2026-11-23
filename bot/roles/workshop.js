@@ -48,7 +48,30 @@ module.exports = function createWorkshop(ctx) {
         return {};
     })();
     const spent = {};       // wish key -> gold spent
-    const blockedUntil = {}; // wish key -> timestamp (gave up for a while)
+    // wish key -> timestamp (gave up for a while). Kept across restarts (v1.224.3, player decision 2026-11-23): three merchant
+    // restarts in 15 min cleared every 1-hour lock, and the Orb of Strength / Winged Boots tries came back each time.
+    const BLOCKS_KEY = "workshop_blocks:" + character.name;
+    let blockSets = 0; // locks set so far - a round that only set locks found nothing to do (work() below)
+    const blockedUntil = (function () {
+        const now = Date.now();
+        const t = {};
+        try {
+            const saved = get(BLOCKS_KEY) || {};
+            Object.keys(saved).forEach(function (k) { if (saved[k] > now) t[k] = saved[k]; });
+        } catch (e) { /* storage unavailable */ }
+        return new Proxy(t, {
+            set: function (obj, k, v) {
+                obj[k] = v;
+                if (v > Date.now()) blockSets++;
+                try {
+                    const n = Date.now(), out = {};
+                    Object.keys(obj).forEach(function (x) { if (obj[x] > n) out[x] = obj[x]; });
+                    set(BLOCKS_KEY, out);
+                } catch (e) { /* storage unavailable */ }
+                return true;
+            },
+        });
+    })();
     const reachedOnly = {}; // wish key -> level we stopped at (too risky to go on) – delivered as is
     let graceSince = Date.now(); // start of the current 24 h grace budget window
     // Kept across restarts (2026-11-20): on a Ponty round the merchant starts on another server
@@ -519,6 +542,9 @@ module.exports = function createWorkshop(ctx) {
         const reserve = util.goldAmount(config.merchantRole.goldReserve);
         const floor = k.indexOf("_own:") === 0 ? reserve : Math.max(reserve, keepGold());
         if (character.gold - amount < floor) return false;
+        // Tidy-up (v1.224.2, player decision 2026-11-23): an auto-compound step costing at most compound.tidyMaxCost
+        // never waits for a pot - three bank slots become one for a 6.4k scroll (jewellery up to +2).
+        if (k.indexOf("auto:") === 0 && amount <= ((cfg.compound || {}).tidyMaxCost || 0)) return true;
         if (k === GOALS) return goalBudget().allowed >= amount;
         if (k === LADDER) return ladderBudget().allowed >= amount;
         if ((spent[k] || 0) + amount > budgetFor(k)) return false; // safety cap per wish
@@ -3886,6 +3912,14 @@ module.exports = function createWorkshop(ctx) {
         const b = cfg.boxArmor;
         if (!b || !item || !(b.names || []).includes(item.name) || (item.level || 0) >= b.upTo) return false;
         if (fighters().some(function (f) { return wishList(f).some(function (w) { return w.name === item.name; }); })) return false;
+        // A +0 copy of a piece nobody wears and nobody wishes (2026-11-23, player decision): the warrior went from the Rugged
+        // Coat +7 on to Dracul's Attire, so no Coat is ever built to upTo - four +0 copies sat in the full bank.
+        // Only once every fighter's gear is known; higher copies stay (they cost upgrades).
+        if (!(item.level || 0) && config.team.fighters.every(function (f) { return !!worn[f]; }) &&
+            !config.team.fighters.some(function (f) {
+                const eq = worn[f] || {};
+                return Object.keys(eq).some(function (s) { return eq[s] && eq[s].name === item.name; });
+            })) return true;
         const wornDone = config.team.fighters.some(function (f) {
             const eq = worn[f] || {};
             return Object.keys(eq).some(function (s) { return eq[s] && eq[s].name === item.name && (eq[s].level || 0) >= b.upTo; });
@@ -3893,7 +3927,23 @@ module.exports = function createWorkshop(ctx) {
         return wornDone || unlockedCopies(item.name).some(function (l) { return l >= b.upTo; });
     }
 
+    // One workshop round and what it came to (v1.224.4, player decision 2026-11-23 - between two upgrades the merchant
+    // stood idle for 30 s per job it found it couldn't do):
+    //   "did"     - bag or bank changed: the merchant's next round comes after a few seconds;
+    //   "blocked" - only new locks (no copies, missing ingredient, too risky ...): the next job is tried at once;
+    //   "idle"    - nothing to do: the merchant's usual 30 s.
     async function work() {
+        const state = function () {
+            // Not the gold: stand sales and fighters' gold would count as work. Every purchase changes the bag anyway.
+            return character.items.map(function (i) { return i ? i.name + ":" + (i.level || 0) + ":" + (i.q || 1) : "-"; }).join(",") +
+                "|" + (bankSnapshot ? bankSnapshot.at : 0);
+        };
+        const before = state(), sets = blockSets;
+        await workRound();
+        if (state() !== before) return "did";
+        return blockSets > sets ? "blocked" : "idle";
+    }
+    async function workRound() {
         if (!cfg.enabled) return;
 
         // Ping fighters that have finished items waiting.

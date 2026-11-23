@@ -759,6 +759,19 @@ module.exports = function createMerchant(ctx) {
         const slot = now.toDateString() + " " + now.getHours();
         return last === slot ? null : slot;
     }
+    // The leader's client makes the hops (main.js startHopWatcher): no round without a fresh leader heartbeat
+    // (v1.224.1, player decision 2026-11-23 - the merchant ran alone, its round asked for hops nobody made and it hung).
+    let leaderMissLogAt = 0;
+    function leaderOnline() {
+        let b = null;
+        try { b = get("dmpx_beat:" + config.leader); } catch (e) { /* storage unavailable */ }
+        const ok = !!(b && b.at && Date.now() - b.at < (prc.leaderFreshMs || 2 * 60 * 1000));
+        if (!ok && Date.now() - leaderMissLogAt > 30 * 60 * 1000) {
+            leaderMissLogAt = Date.now();
+            util.log("merchant", "Ponty round waits: the leader " + config.leader + " is offline (it makes the hops)", "yellow");
+        }
+        return ok;
+    }
     // True while the round holds the merchant (normal work skipped).
     async function pontyRound() {
         if (!prc.enabled) return false;
@@ -771,6 +784,7 @@ module.exports = function createMerchant(ctx) {
                 if (!req || req.to !== home || Date.now() - req.at > 3 * 60 * 1000) requestHop(home);
                 return true;
             }
+            if (!leaderOnline()) return false; // before dueSlot: the slot stays due for the leader's return (first half hour)
             const slot = dueSlot();
             if (!slot) return false;
             const servers = (prc.servers || []).map(function (s) { return s.join(" "); }).filter(function (s) { return s !== home; });
@@ -786,6 +800,8 @@ module.exports = function createMerchant(ctx) {
         if (st.phase === "prep") {
             const settled = Date.now() - st.at > (prc.prepSettleMs || 20 * 1000) && requests.size === 0;
             if (!settled && Date.now() - st.at < (prc.prepMaxMs || 8 * 60 * 1000)) { saveRound(st); return false; }
+            // Still at home: the leader went offline during the prep - drop the round instead of a hop nobody makes.
+            if (!leaderOnline()) { util.log("merchant", "Ponty round dropped: the leader is offline", "yellow"); saveRound(null); return false; }
             await goHome();
             await sellJunk();
             // Store only (2026-11-22 review): a full bank trip ends by taking junk and stand items out of the bank -
@@ -1172,7 +1188,11 @@ module.exports = function createMerchant(ctx) {
                 nextChoresAt = Date.now() + 30 * 1000;
                 await sellJunk();
                 await bankIfNeeded();
-                await workshop.work();
+                // v1.224.4 (player decision 2026-11-23): a round that only found locked jobs tries the next one at once,
+                // a round that did something is followed after workshopFastMs - the 30 s only when there is nothing to do.
+                let wr = await workshop.work();
+                for (let n = 0; wr === "blocked" && n < 8; n++) wr = await workshop.work();
+                if (wr === "did" || wr === "blocked") nextChoresAt = Date.now() + (m.workshopFastMs || 3000);
                 await goHome();
                 await restock();
             }
