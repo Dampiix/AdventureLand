@@ -3,7 +3,7 @@
 One bot for a whole Adventure Land team: up to three fighters and one merchant, all running the same code.
 The fighters farm, hunt bosses and level up; the merchant supplies them, sells, banks, trades with other players and upgrades their gear.
 
-> **Version:** `1.223.5` (`bot/config.js` → `version`) · **Teams:** `Dmpx…` (main account) and `Viz…` (second account) · **Code:** `bot/` → in-game CODE slots 20–39
+> **Version:** `1.223.6` (`bot/config.js` → `version`) · **Teams:** `Dmpx…` (main account) and `Viz…` (second account) · **Code:** `bot/` → in-game CODE slots 20–39
 
 ## Repository
 
@@ -796,6 +796,8 @@ Every skill checks its level, weapon type, MP and cooldown. Most keep an MP rese
 - quick targets (≤ 5 hits) get the two best Swords of the Dead, because burn needs ~5 s and never procs on the killing hit;
 - longer fights, bosses and events bring the blades back;
 - the swords stay reserved in the bag.
+
+Weapon swaps (maces, swords, and the usual weapons back when the hold ends) change both hands with one `equip_batch` call (v1.223.6).
 
 ### Priest (`classes.priest`)
 

@@ -705,6 +705,46 @@ module.exports = function createGear(ctx) {
     function weaponsHeld() {
         return Date.now() < heldUntil;
     }
+    // Several pieces in ONE server call (v1.223.6, player request): the warrior's weapon swaps change both hands at once.
+    // The server answers per entry; a string entry is a piece that did not go on.
+    async function equipBatch(batch) {
+        const r = await equip_batch(batch);
+        const failed = ((r && r.slots) || []).filter(function (s) { return typeof s === "string"; });
+        if (failed.length) util.log("gear", "equip_batch: " + failed.join(", "), "orange");
+        return r;
+    }
+    // The usual weapons back in ONE equip_batch call once a weapon hold ends (v1.223.6, player request): the equip pass
+    // put them on one per pass, 3 s apart. A copy of the remembered name, at least the remembered level (and stat).
+    // A remembered weapon that is gone (sold, upgraded away) drops the memory: the equip pass picks the rest.
+    function restoreUsual() {
+        const batch = [], used = [];
+        let missing = false;
+        ["mainhand", "offhand"].forEach(function (s) {
+            const u = usualWeapons[s];
+            if (!u) return;
+            const worn = character.slots && character.slots[s];
+            if (worn && worn.name === u.name && (worn.level || 0) >= u.level) return; // on already
+            let num = -1;
+            character.items.forEach(function (it, k) {
+                if (!it || it.name !== u.name || (it.level || 0) < u.level || used.includes(k)) return;
+                if (u.stat && it.stat_type !== u.stat) return;
+                if (num === -1 || (it.level || 0) > (character.items[num].level || 0)) num = k;
+            });
+            if (num === -1) { missing = true; return; }
+            used.push(num);
+            batch.push({ num: num, slot: s });
+        });
+        if (missing) usualWeapons = null;
+        if (!batch.length) return false;
+        equipBatch(batch).then(function () {
+            util.log("gear", "usual weapons back: " + batch.map(function (b) {
+                const i = character.slots && character.slots[b.slot]; return b.slot + " " + (i ? i.name + " +" + (i.level || 0) : "-");
+            }).join(", "), "green");
+        }).catch(function (e) { util.log("gear", "usual weapons back: " + util.errReason(e), "orange"); });
+        nextEquipAt = Date.now() + 1500; // the bag settles before the next equip pass
+        lastBag = "";
+        return true;
+    }
 
     // ---- value (stage 1, player request 2026-11-19) ----------------------------------
     // Power = attack x attack speed (priest healing scales with attack as well). Server:
@@ -795,6 +835,7 @@ module.exports = function createGear(ctx) {
         }
         if (luck && Date.now() >= luck.until) luckBack();
         if (Date.now() < lockedUntil) return; // luck swap: no equip pass, no wish report (they would undo or misreport it)
+        if (!held && usualWeapons && !equipping && Date.now() >= nextEquipAt && !util.townChannel() && restoreUsual()) return;
         sendWishes(); // reports our usual weapons during a hold
         const key = bagKey();
         if (key !== lastBag) trackBag();
@@ -893,6 +934,6 @@ module.exports = function createGear(ctx) {
         return equipRows.rows.some(function (r) { return r.action.name === item.name && (r.action.level || 0) === (item.level || 0); });
     }
 
-    return { tick: tick, isReserved: isReserved, holdWeapons: holdWeapons, weaponsHeld: weaponsHeld, luckOn: luckOn,
+    return { tick: tick, isReserved: isReserved, holdWeapons: holdWeapons, weaponsHeld: weaponsHeld, luckOn: luckOn, equipBatch: equipBatch,
         luckActive: function () { return !!luck; } };
 };

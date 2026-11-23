@@ -446,11 +446,15 @@ module.exports = function createWarrior(ctx) {
         pack.busy = true;
         try {
             ctx.gear.holdWeapons(ag.holdMs || 10 * 60 * 1000);
-            let w = splashWeapons();
-            if (w[0]) await equip(w[0].num, "mainhand");
-            w = splashWeapons(); // the bag changed: look again
+            // Both maces in ONE equip_batch call (v1.223.6, player request): before, the mainhand went on, the warrior
+            // waited for the server, and only then the offhand. Each swapped-out weapon lands on its mace's bag slot,
+            // so the second index stays valid.
+            const w = splashWeapons();
             const off = character.slots && character.slots.offhand;
-            if (w[0] && (!off || G.items[off.name].type === "weapon")) await equip(w[0].num, "offhand");
+            const batch = [];
+            if (w[0]) batch.push({ num: w[0].num, slot: "mainhand" });
+            if (w[1] && (!off || G.items[off.name].type === "weapon")) batch.push({ num: w[1].num, slot: "offhand" });
+            if (batch.length) await ctx.gear.equipBatch(batch);
             util.log("warrior", "splash weapons on: " + ["mainhand", "offhand"].map(function (s) {
                 const i = character.slots[s]; return i ? i.name + " +" + (i.level || 0) : "-";
             }).join(", ") + " (splash radius " + Math.round(splashRadius()) + " px)", "yellow");
@@ -1395,10 +1399,12 @@ module.exports = function createWarrior(ctx) {
     async function putOn(list, why) {
         swordBusy = true;
         try {
-            if (list[0]) await equip(list[0].num, "mainhand");
-            const rest = quickSwords();
+            // Both swords in ONE equip_batch call (v1.223.6, like the maces).
             const off = character.slots && character.slots.offhand;
-            if (rest[0] && (!off || G.items[off.name].type === "weapon")) await equip(rest[0].num, "offhand");
+            const batch = [];
+            if (list[0]) batch.push({ num: list[0].num, slot: "mainhand" });
+            if (list[1] && (!off || G.items[off.name].type === "weapon")) batch.push({ num: list[1].num, slot: "offhand" });
+            if (batch.length) await ctx.gear.equipBatch(batch);
             util.log("warrior", why + ": " + ["mainhand", "offhand"].map(function (s) {
                 const i = character.slots[s]; return i ? i.name + " +" + (i.level || 0) : "-";
             }).join(", "), "yellow");
