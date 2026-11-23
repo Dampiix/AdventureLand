@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.224.6",
+    version: "1.229.1",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -47,7 +47,15 @@ module.exports = {
         // Party again 2026-11-21 (late evening, player): the team clears the grown CGoos (level 26) in the
         // arena (targeting.farm "cgoo"), then the warrior goes solo again.
         // Solo again 2026-11-21 (night): the warrior alone with Lone Wolf (no fixed farm target).
-        { name: "viz", leader: "VizPri", fighters: ["VizPri", "VizWar", "VizRng"], solo: [], merchant: "VizMerch", farm: {} },
+        // Solo 2026-11-23 (player decision): the new mage VizMage levels alone with Lone Wolf x Welcome Back to ~65, Daisy hunts off.
+        // Party again: leader "VizPri", phase "party", hunts on (VizMage stays in the fighter list; the leader starts at most
+        // three fighters - drop one from the list or add it to solo when the party plays without the mage).
+        // Party 2026-11-23 20:00 local for the Goo Brawl only; VizMage solo again right after (player decision).
+        // Party again: leader "VizPri", solo ["VizMage"], phase "party", hunts on, bosses "always", farmBosses [].
+        // Party 2026-11-23 22:00 local (player decision): priest, warrior and mage for a one-hour XP test - the mage solo made
+        // about as much XP as one member of the party; if the party gives the mage the same, the others come along. The
+        // ranger stays out (solo list, not started). Hunts stay off, bosses on, no fixed farm target.
+        { name: "viz", leader: "VizPri", fighters: ["VizPri", "VizWar", "VizMage", "VizRng"], solo: ["VizRng"], merchant: "VizMerch", farm: {} },
     ],
 
     // Market stand (player decision 2026-11-17): what the merchant buys and sells at his stand.
@@ -65,6 +73,9 @@ module.exports = {
             { item: "spores",        price:    360, want: 200 },
             { item: "gslime",        price:     60, want: 100 },
             { item: "frogt",         price:     10, want: 10  },
+            // Seashells for the elixirs (v1.229.0, player decision 2026-11-23): 900 each up to 3,000 held (~20 of each main-stat
+            // elixir need ~2,100 on average, 2,900 in 99 % of the cases). Players sell at 600-720, Ponty at 960.
+            { item: "seashell",      price:    900, want: 3000 },
             { item: "essenceoffire", price: 140000, want: 10 }, // = a fire weapon (+ shop weapon, 20k at Leo)
             { item: "ololipop",      price: 150000, want: 4  }, // orange Lolipop Mace (a player pays 300k)
             { item: "glolipop",      price:  80000, want: 4  }, // green one as a stand-in
@@ -208,7 +219,7 @@ module.exports = {
 
     // "solo":  only the leader fights (Lone Wolf bonus); the merchant still supports it.
     // "party": all fighters form a party around the leader.
-    phase: "party", // 2026-11-22 morning: party again after the warrior's solo night (VizWar 61 -> 69)
+    phase: "party", // 2026-11-23 22:00 local: priest, warrior, mage (one-hour test against the mage solo)
 
     party: {
         followDistance: 80,   // members idle within this distance of the leader
@@ -275,7 +286,9 @@ module.exports = {
         policy: {
             snowman: "always",          // holiday season world boss, 1,200 HP
             goobrawl: "always",         // daily goo fight
-            phoenix: "always",          // roaming coop boss, weak hits, 180k XP, fire weapons
+            // Bosses "never" during VizMage's solo run (2026-11-23): not searched, not engaged when seen - except the Phoenix
+            // (nonstop, farmBosses). "always" again with the party (mvampire, fvampire, jr, greenjr, skeletor).
+            phoenix: "always",          // roaming coop boss, weak hits, 180k XP, fire weapons - back on for VizMage (2026-11-23, player decision: farm it solo, staff + book)
             // Dracul (cave, bat area; player request 2026-11-16): 240k HP, 245 magical hits,
             // 200k XP, respawns ~18 min after death at one of two cave spots. Drops firestaff
             // 5%, int/str/dex earrings 10% each, Dracul's Attire 3%, void thread 10%. Not
@@ -386,6 +399,7 @@ module.exports = {
             bosses: { mvampire: 20 * 60 * 1000, fvampire: 25 * 60 * 1000, jr: 60 * 60 * 1000, greenjr: 60 * 60 * 1000, skeletor: 20 * 60 * 1000 },
             // Player decision 2026-11-21 (EU IV, grown bosses): no solo kills - Jr. and Green Jr. are held for
             // the team like Dracul (holdFor). Was ["jr", "greenjr"].
+            // Stays [] (2026-11-23, player decision): Jr. waits for the team - since v1.228.1 the mage runner magiports it over.
             solo: [],
             maxMs: 8 * 60 * 1000,
             killMs: 3 * 60 * 1000,
@@ -406,7 +420,11 @@ module.exports = {
         respawnFactor: 0.72,
         // Bosses hunted nonstop: searched again after farmBossEveryMs (player option
         // 2026-11-16; Phoenix: weapons and earrings, about half the XP/h of crocs).
-        farmBosses: [],                 // ["phoenix"] = nonstop Phoenix hunt by the runner alone; off again 2026-11-21 (the ranger is slower than the Phoenix charge, back to team searches)
+        // VizMage solo (2026-11-23, player decision): nonstop Phoenix with Staff of the Dead + book. Was [] since 2026-11-21
+        // (the ranger is slower than the Phoenix charge, back to team searches).
+        // [] again 2026-11-23 evening (player decision): VizMage farms XP first - the Phoenix is searched by the merchant and
+        // fought when found, no nonstop hunt (too much competition on EU IV, the mage still too weak for fast kills).
+        farmBosses: [],
         // 10 s (player decision 2026-11-17): with 60 s (core/events.js's default when unset) the warrior seldom
         // even reached his farm spot; now he goes straight back on the round after a kill or an empty search.
         farmBossEveryMs: 10 * 1000,
@@ -428,7 +446,7 @@ module.exports = {
 
     // Monster Hunts (Daisy). Unsafe hunts are left to expire.
     hunts: {
-        enabled: true, // on again 2026-11-22 with the party (player); off for the warrior's solo run 2026-11-21 evening
+        enabled: false, // off for VizMage's solo run 2026-11-23; stays off in the party test 2026-11-23 22:00 local (player decision)
         minLevel: 20,                    // only once every fighter has this level (Daisy ignores our level)
         allow: [],                       // always hunt these, even if the guide calls them unsafe
         deny: [],                        // never hunt these
@@ -484,7 +502,9 @@ module.exports = {
         // drop spot worth more). Set a monster or a list here only to test or for a drop outside
         // the wish list. (Overnight 2026-11-19 it was ["mummy", "booboo", "stoneworm"].)
         // 2026-11-21 (late evening, player): "cgoo" - the team clears the grown CGoos in the arena; back to null after.
-        farm: null, // a list (2026-11-19): the first one not too strong/crowded; null = the guide picks. 2026-11-22: "bat" for the luck-catch test, back to null after
+        // 2026-11-23 evening (player decision): VizMage farms the Huge Crabs solo (Lone Wolf x Welcome Back luck, Sucker Punch hope).
+        // Back to null for the guide's pick.
+        farm: null, // 2026-11-23 22:00 local: party, the guide picks (crabx only for the solo mage). A list (2026-11-19): the first one not too strong/crowded; null = the guide picks
         fallback: "goo",          // used when the progression guide has no answer
         // Rare monsters attacked first when in sight (player decision 2026-11-20): golden bat
         // (24k HP, attack 50, gold), cutebee (300 HP, 99.9 avoidance), tiny pinky (5.6k HP, attack
@@ -595,10 +615,14 @@ module.exports = {
 
     // Cavalry (Tracktrix): emergency rescue and resetting grown farm spots (2026-11-18).
     // Strong only while the account's highest level is below 80.
+    // reset false (v1.227.3, player decision 2026-11-23): no reset just because monsters at the farm target have grown -
+    // a grown monster that passes the spot check is worth more (the monster level multiplies the drop chance, XP and
+    // gold grow too), so the Cavalry is wasted on it. It is called only in an emergency, for a spot the spot check
+    // blocked as too strong (cavalry plan) and for a hunt held back by such spots.
     // targets (2026-11-19): spots nuked whenever the Cavalry is ready and the first farm target is
     // fine (loot at high level, e.g. dinos for bones); with the first farm target too strong the
     // Cavalry resets that one instead. Then back to the farm list.
-    cavalry: { enabled: true, emergencyHpBelow: 0.35, emergencyOnMe: 1, reset: true, resetFromLevel: 5, resetMinCount: 2,
+    cavalry: { enabled: true, emergencyHpBelow: 0.35, emergencyOnMe: 1, reset: false, resetFromLevel: 5, resetMinCount: 2,
         targets: [], planStayMs: 100 * 1000, planMaxMs: 10 * 60 * 1000,
         foreignClear: 420, planMinCount: 5, resetPackMin: 5 }, // resetPackMin (2026-11-21): a reset waits for this many grown ones in reach (or all in sight), walking towards them // planMinCount: a plan call waits for this many of the kind in reach (or all in sight) // no reset/nuke call with another kind of level-3+ monster this close (the fairy, 2026-11-19)
 
@@ -614,7 +638,9 @@ module.exports = {
         // the middle of the boss's spawn area.
         // farmRisk/farmSpeedRatio/farmRangeMargin (player decision 2026-11-21): in the farm checks a kiteable monster
         // (util.kiteRisk) hits with farmRisk of its damage - a residual risk, never 0.
-        kite: { enabled: true, margin: 30, extra: 50, rangeSlack: 10, slack: 15, maxSpeedRatio: 0.99, anchorRadius: 280, everyMs: 250, avoidRadius: 120,
+        // farmAnchor (v1.225.1, player report 2026-11-23): kiting a normal monster may leave its spawn area, but not by more than
+        // farmAnchorMargin px from the box - the new mage kited Porcupines far from their spot.
+        kite: { enabled: true, margin: 30, extra: 50, rangeSlack: 10, slack: 15, maxSpeedRatio: 0.99, anchorRadius: 280, farmAnchor: true, farmAnchorMargin: 250, everyMs: 250, avoidRadius: 120,
             // foreignMargin (2026-11-22): kite, escape and spacing points stay this far beyond the reach of monsters of
             // other kinds than the farm target (Fire Spirits, range 280, next to the Giant Scorpions).
             foreignMargin: 50,
@@ -818,14 +844,37 @@ module.exports = {
             },
         },
         mage: {
-            energizeAbove: 0.6,             // only give mana while we have more than this
+            energizeAbove: 0.6,             // only give mana while we have more than this (and keep this share)
             energizeBelow: 0.4,             // to a member below this MP ratio
+            // Energize speed burst (v1.225.7): else 1 MP on the strongest fighting damage dealer (solo: ourselves, cast when our
+            // next attack is due within burstLeadMs) for +80 % attack speed for 0.8 s. energize: false switches Energize off.
+            burstLeadMs: 250,
+            // Reflective Shield (level 60, v1.225.7): on whoever takes the most magical attack (at least reflectMinAttack), if
+            // our MP stays above reflectKeepMp after the 540-MP cast. reflect: false switches it off.
+            reflectMinAttack: 100, reflectKeepMp: 0.25,
             useBurst: false,                // Mana Burst empties the whole MP pool
             // Blaster mode (v1.224.6, player decision 2026-11-23), like the warrior's Lolipops: the Blaster (great staff,
             // blast splash, +160 MP per attack, both hands) goes on only for a pack - at least minNeighbours other monsters
             // within its blast radius (blast / 3.6 px) of our target - while MP is above minMp. Back to staff + book after
             // keepMs without a pack, below offMp, or on the way.
-            blaster: { enabled: true, names: ["gstaff"], minNeighbours: 2, minMp: 0.5, offMp: 0.2, keepMs: 4000, holdMs: 60000 },
+            // singleTarget (v1.224.7, player decision): worn all the time while it beats the best staff + book on one target by
+            // singleMargin - MP is kept up with potions (one 400-MP potion per ~2 Blaster attacks).
+            blaster: { enabled: true, names: ["gstaff"], minNeighbours: 2, minMp: 0.5, offMp: 0.2, keepMs: 4000, holdMs: 60000, singleTarget: true, singleMargin: 0.03,
+                // aim (v1.225.6): with the Blaster in hand, shoot the monster of the same kind in range with the most others in its blast radius
+                aim: true,
+                // blockMs (v1.225.8): a shot whose blast would hit a free boss or a monster we can't kite (faster, longer reach,
+                // abilities) is never fired with the Blaster - another safe target of the same kind, else staff + book this long
+                blockMs: 6000,
+                // fearMax (v1.225.9): a blast may pull at most courage + this many per damage type (those on us included), and only
+                // as many as the solo pack check allows - like the warrior's Lolipops (the mage died terrified at the Squigs)
+                fearMax: 0 },
+            // Magiport (v1.228.1, player decision 2026-11-23): at a boss the team fights (we found it as the runner), pull the
+            // fighters still on their way to us - tank first, healer last - while keepMp of our MP stays for the fight
+            // (900 MP each). Members farther than minDist px, we within bossRange px of the boss (800: the runner holds where it spotted it); tries per member and boss,
+            // retryMs apart. The members accept only our port during a boss fight (core/events.js). Bosses only for now;
+            // a member that died could be pulled back later. graceMs (v1.228.3): the distance is judged on live positions (party info
+            // lags behind); a member not in sight counts as far only after the boss has been in our sight this long.
+            magiport: { enabled: true, keepMp: 0.3, minDist: 600, bossRange: 800, tries: 3, retryMs: 8000, graceMs: 4000 },
         },
     },
 
@@ -836,6 +885,25 @@ module.exports = {
         target: 300,       // fighters get topped up to this many of each
         requestBelow: 100, // ask the merchant for more below this
         selfBuyBelow: 20,  // walk to town and buy yourself below this (merchant missing)
+    },
+
+    // Elixirs (v1.229.0, player decision 2026-11-23). One elixir per class: the priest (luck catcher) drinks Liquid
+    // Luck (+16 luck, 12 h, 240k at Warin in the Wanderers' Inn); the others their main stat at tier 0 (+6, 12 h) from
+    // the Seashell exchange - tiers 1/2 and VIT stay in the bank. A fighter carries `carry` of its own elixir (asked for
+    // with every pickup, never handed over) and drinks one when none works or its own runs out within drinkBeforeMs -
+    // the same elixir again extends the running one (server: + duration, the rest kept at 97.5 %); another elixir
+    // that works (e.g. a tier 1 drunk by hand) is left to run out.
+    // Merchant: keeps the team's elixirs in its bag (never banked, banked ones are taken out) and refills:
+    //   buy:      bought from an NPC - below min (bag + bank) it buys up to max, gold above merchantRole.goldReserve only
+    //   exchange: Seashells are exchanged once a stat elixir of the team is below min, until every one is at refill;
+    //             sourceKeep Seashells stay (Loaded Die: 8 each)
+    elixirs: {
+        enabled: true,
+        byClass: { priest: "elixirluck", mage: "elixirint0", warrior: "elixirstr0", ranger: "elixirdex0", rogue: "elixirdex0", paladin: "elixirstr0" },
+        carry: 4,                           // per fighter in the bag: 2 days
+        drinkBeforeMs: 10 * 60 * 1000,
+        buy: { elixirluck: { min: 10, max: 30 } },
+        exchange: { source: "seashell", min: 6, refill: 20, sourceKeep: 40 },
     },
 
     // Fighter side of the item/gold flow
@@ -1002,7 +1070,11 @@ module.exports = {
             priest: ["staff", "firestaff", "staffofthedead"],
             ranger: ["bow", "hbow", "firebow", "crossbow"], // gear plan v2: Hunting Bow and Crossbow
             rogue: ["stinger", "daggerofthedead"],
-            mage: ["staff", "firestaff"], // 2026-11-23: the Blaster is carried for packs (wishes below), not on this list
+            // 2026-11-23: the Blaster is carried for packs (wishes below), not on this list. Staff of the Dead like the priest's
+            // (one +6 in the bank) - the single-target weapon for bosses and when the Blaster must not fire.
+            // Order fixed the same day (player): for the mage burn counts (the priest's heal never procs it), so the Fiery
+            // Staff beats the Staff of the Dead at every level (+7: ~89 vs ~82) and is the end of the list.
+            mage: ["staff", "staffofthedead", "firestaff"],
         },
         // Highest level the list items are upgraded to (per item, else default).
         weaponCaps: { default: 7, fireblade: 8, firestaff: 8, firebow: 8 }, // fire weapons +8 since 2026-11-22 (player decision)
@@ -1107,7 +1179,8 @@ module.exports = {
             belt: [],
             orb: [{ item: "rabbitsfoot", for: "priest" }],
         },
-        elixirs: { off: true, note: "Not used for now (player decision 2026-11-19).", options: [{ item: "pumpkinspice", for: "physical" }, { item: "elixirluck", for: "priest" }] },
+        // Documentation only - the bot follows config.elixirs (v1.229.0) since 2026-11-23.
+        elixirs: { off: true, note: "Superseded by config.elixirs (2026-11-23): Liquid Luck for the priest, main stat tier 0 for the others.", options: [{ item: "pumpkinspice", for: "physical" }, { item: "elixirluck", for: "priest" }] },
         // Weapons per class, left to right = better. The levels and the other classes are documentation
         // for the PDF; which weapon is made and upgraded follows gearPlan.weapons and materialGoals.
         // Read by the bot (workshop usedWeaponTypes, since 2026-11-20): the weapon types named here (plus
@@ -1209,6 +1282,11 @@ module.exports = {
         mainStatOnArmor: true,        // wished armor always gets the class's main stat scroll
         deliveryBatchMs: 10 * 60 * 1000, // finish the open wishes first; a ready item waits at most this long
         giveUpForMs: 60 * 60 * 1000,  // after a stop (risk/no source/wish budget used up) retry in an hour
+        // Only fighters playing now are planned for (v1.225.0, player decision 2026-11-23): heartbeat fresher than this.
+        onlineMs: 10 * 60 * 1000,
+        // Main stat on every delivery (v1.226.2, player decision 2026-11-23): an item with a stat slot goes out only with the
+        // receiver's main stat; the scrolls (1 at grade 0, 10 at grade 1) skip the pots up to maxCost.
+        statOnDelivery: { enabled: true, maxCost: 100000 },
         retryAfterBudgetMs: 10 * 60 * 1000, // ...but only 10 min when we merely lack gold right now (or the bag is full)
         bagReserve: 2,                // copies come out of the bank only while this many bag slots stay free (8 -> 2 on 2026-11-23: the merchant banks before every pickup anyway)
         bankScanEveryMs: 10 * 60 * 1000,
@@ -1240,12 +1318,13 @@ module.exports = {
             // stacks still needed are built (measured gain per stack). A success resets them.
             maxFodderChance: 0.5,
             batch: 5,                // helmets prepared at once, then attempted back to back
+            extra: { amount: 10000000, until: "2026-11-24T18:40:00Z" }, // 2026-11-23: 10M like every pot (grace itself is off)
         },
         // Ladder pot (player decision 2026-11-17): its own share of the last 24 h of income - it scales with
         // the account and is not stopped by the gear goals. The weapon ladder it was made for is gone
         // (2026-11-22: all its weapons are on the dismantle list); it pays the material goals now
         // (materialGoals ... budget: "ladder"). Optional extra: { amount, until } on top.
-        bruteForce: { incomeShare: 0.25 },
+        bruteForce: { incomeShare: 0.25, extra: { amount: 10000000, until: "2026-11-24T18:40:00Z" } }, // 10M for 24 h after the reset (2026-11-23)
         // Box armor (player decision 2026-11-17): while a fighter wishes any Rugged piece,
         // every spare copy from the armor boxes is upgraded towards upTo at once - failures
         // free bank slots and the next chain pieces are ready early (the bank has ~19 free
@@ -1341,9 +1420,10 @@ module.exports = {
             // would cap everything ever spent on gear goals.
             budget: {
                 incomeShare: 0.7, // transferAbove removed 2026-11-19 (direct booking, player decision)
-                // 2026-11-23 (player decision): 10M for 24 h - the pot was empty and the bank full of +0 earrings to compound.
-                // Raised to 30M the same day: the night's 95.5M gear spending exceeded the 24 h share, the 10M left 0k free.
-                extra: { amount: 30000000, until: "2026-11-24T16:00:00Z" },
+                // 2026-11-23 18:38 UTC (player decision): every pot back to 0 (resetAt) after the day's extra spending (Fiery Staff
+                // 30M, Primlings), then 10M per pot for 24 h. (Before: 10M, then 30M extra until 2026-11-24 16:00.)
+                resetAt: "2026-11-23T18:38:00Z",
+                extra: { amount: 10000000, until: "2026-11-24T18:40:00Z" },
                 // Optional (the old ones expired and were removed 2026-11-22):
                 //   extra: { amount, until } - a player-granted amount on top until that time (counts against
                 //          the last 24 h of spending);
@@ -1373,6 +1453,10 @@ module.exports = {
             enabled: true,
             // armor boxes stopped 2026-11-15 (their rewards only filled the bank);
             // leather (40 -> mostly a Cape) added 2026-11-16 for the cape class wish
+            // seashell off 2026-11-23 (player decision, v1.227.4): 20 shells (16k G value) give one random basic
+            // elixir, ~90 % the weakest tier (~8.3k average value) - shells are collected in the bank instead.
+            // seashell back 2026-11-23 (player decision, v1.229.0) for the elixirs: exchanged only while config.elixirs.exchange
+            // says a stat elixir of the team is short (below min, then up to refill).
             items: ["gem0", "gem1", "seashell", "leather"],
             // Opened only when a wished item comes out of them (Rugged armor), a few at a
             // time and only while the bank has room for the other rewards (2026-11-16).
@@ -1516,7 +1600,9 @@ module.exports = {
             // attacked there). The home server is skipped automatically.
             servers: [["EU", "I"], ["EU", "II"], ["EU", "III"], ["EU", "IV"], ["US", "I"], ["US", "II"], ["US", "III"], ["US", "IV"], ["US", "V"], ["ASIA", "I"], ["ASIA", "II"],
                 ["EU", "PVP"], ["US", "PVP"]],
-            everyHours: 1,                     // every full hour local time (player decision 2026-11-21: a round takes ~5 min; was 3)
+            // 3 again 2026-11-23 (player decision, v1.228.4): hourly rounds hopped a lot and mostly bought nothing - the hour
+            // before had taken what we wanted; every hop also ends a Lost and Found (Ron) access.
+            everyHours: 3,                     // every third full hour local time (0, 3, 6 ... o'clock); was 1 since 2026-11-21
             testAt: null,                      // one extra round at this ISO time (the first test ran 2026-11-20 16:47Z)
             prepMaxMs: 8 * 60 * 1000, hopTimeoutMs: 2 * 60 * 1000,
         },

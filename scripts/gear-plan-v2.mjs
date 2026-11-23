@@ -227,17 +227,18 @@ const CLASSES = {
     },
     // Mage (2026-11-23): next character, levelled solo with Lone Wolf to 65. The priest's INT path plus the Blaster.
     mage: {
-        color: "#7fb2ff", stat: "INT", who: "not created yet", role: "magic damage · Energize · later Reflective Shield on the tank, Magiport boss runner",
+        color: "#7fb2ff", stat: "INT", who: "VizMage", role: "magic damage · Energize · Reflective Shield on the tank from 60 · later Magiport boss runner",
         slots: [
             { slot: "Main hand", steps: [
-                ["staff", 8, B, "NPC shop · gear goals · no +8 staff left (it went into the Blaster)"],
-                ["firestaff", 7, P, "essence of fire · needs a mage list in gearPlan.weapons"],
-                ["firestaff", 9, P, "community goal"]] },
+                ["staff", 8, B, "NPC shop · gear goals"],
+                ["staffofthedead", 7, B, "bones (material goals) · only when it beats the worn staff - no burn, so it stays behind the Fiery Staff"],
+                ["firestaff", 7, B, "essence of fire · end of the list: with burn the best (+7 ~89 vs ~82) · +6 bought 2026-11-23", { now: 6 }],
+                ["firestaff", 8, B, "fire weapon cap"]] },
             { slot: "AoE (carried)", steps: [
-                ["gstaff", 3, P, "Blaster · crafted 2026-11-23 · +1…+3 each with a Primling (100 %), no +4 (max 88 %) · great staff: +160 MP per attack, both hands → only for Agitate packs, mode switch like the Lolipops (not built)"]],
+                ["gstaff", 3, B, "Blaster · carried · on for packs (2+ others in its blast radius) within the pull limit, never near bosses or monsters faster than us; on one target only while it beats staff + book · +160 MP per attack, both hands · +1…+3 by hand with a Primling each, no +4 (max 88 %) · +3 in the bag"]],
               alts: [["sparkstaff", null, F, "Spark Staff · Sparkbot 1:8,000 · weaker than the Blaster"]] },
             { slot: "Offhand", steps: [
-                ["wbook0", 2, P, "Book of Knowledge · 4 in the bank (2× +2, 2× +0) · bats 1:250"],
+                ["wbook0", 2, B, "Book of Knowledge · worn with the staff, the best one stays in the bag next to the Blaster · bats 1:250", { now: 2 }],
                 ["wbook0", 4, P, "compound"]],
               alts: [["wbook1", null, F, "Book of Secrets · INT 16, VIT 6"]] },
             { slot: "Orb", steps: [
@@ -327,7 +328,7 @@ const RULES_PLAN = [
     "Warrior: Rugged set to +8. Dracul's Attire only from +7 (no stat drop below +7), then slowly to +8.",
     "Ranger: Hunting Bow → Fire Bow → Crossbow; Poucher + Alloy Quiver for AoE, carried like the warrior's Lolipops. Agile Quiver is the quiver end goal (no Storm Quiver). Sucker Punch (ranger and rogue) replaces any ring at any time.",
     "2026-11-23: a long farm goal between two steps beats \"no upgrade until the rare drop\" - it is an idle game. So the Venom Band comes between the DEX rings and the Sucker Punch, for ranger and rogue.",
-    "Mage (next character, solo to 65): the priest's INT path - Fiery Staff, Book of Knowledge, Moonshard, Glacier Seal, Fiery Gloves, T2 amulet; both compete for void thread, frost cores and essences. Hunter Mage Hat for resistance piercing. The Blaster +3 only for Agitate packs (165 MP per attack).",
+    "Mage (next character, solo to 65): the priest's INT path - Fiery Staff, Book of Knowledge, Moonshard, Glacier Seal, Fiery Gloves, T2 amulet; both compete for void thread, frost cores and essences. Hunter Mage Hat for resistance piercing. Weapon list staff → Staff of the Dead → Fiery Staff (burn counts for the mage). Blaster mode built (v1.224.6-v1.226.4): packs, never near bosses, within the pull limit.",
     "Rogue (end-end goal, after the mage): daggers, Knife Belt, Hexweave Gloves (must), Reed Pants, Gloam Pendant, shop chest. Solo luck: 2 Clover Studs + Rabbit's Foot; group play: DEX earrings + Loaded Die (mode swap, not built).",
     "Path B (idea, not for now): a +0 Wanderer swap set in the bag and the armor straight from shop +8 to Heavy (no Rugged) - for a new priest, once the swap is shown to be fast enough.",
     "Elixirs: the main-stat elixir for warrior (STR) and ranger (DEX), Liquid Luck for the priest - all the time, never swapped. Seashells: frogs 16 %, squigtoads 5 % (or buy). Built after the gear plan.",
@@ -337,7 +338,7 @@ const RULES_PLAN = [
 const OPEN = [
     "Priest: Shield M in the swap set or worn all the time?",
     "Priest rings: a second Zapper? Better than an INT ring +4; next to Glacier Seals only a sidegrade.",
-    "Build: per-piece armor caps (ranger chest +9), Hunting Bow and Crossbow into the ranger's weapon list, Dracul's Attire and Heavy Underarmor off gear.noEquip, elixirs; for the mage a weapon list and the Blaster mode switch.",
+    "Build: per-piece armor caps (ranger chest +9), Hunting Bow and Crossbow into the ranger's weapon list, Dracul's Attire and Heavy Underarmor off gear.noEquip, elixirs.",
 ];
 
 // ---- rendering --------------------------------------------------------------

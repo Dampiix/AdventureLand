@@ -233,9 +233,24 @@ module.exports = function createWorkshop(ctx) {
         return cls && cls.main_stat ? Object.assign({}, w, { stat: cls.main_stat }) : w;
     }
 
-    function fighters() {
+    // Fighters playing now (v1.225.0, player decision 2026-11-23): nothing is built in the background for characters that are
+    // not played. A fighter counts as online while its heartbeat ("dmpx_beat:<name>", every 10 s) is fresher than
+    // workshop.onlineMs. Planning - wishes, gear and material goals, weapons, Ponty buys, deliveries - serves only them;
+    // protection (what is reserved, never sold or re-scrolled) still counts every fighter (allFighters, config.team.fighters).
+    const onlineCache = {};
+    function isOnline(f) {
+        const c = onlineCache[f];
+        if (c && Date.now() - c.t < 5000) return c.v;
+        let v = true;
+        try { const b = get("dmpx_beat:" + f); v = !!(b && b.at && Date.now() - b.at < (cfg.onlineMs || 10 * 60 * 1000)); } catch (e) { /* storage unavailable: count it */ }
+        onlineCache[f] = { t: Date.now(), v: v };
+        return v;
+    }
+    function activeTeam() { return ((config.team && config.team.fighters) || []).filter(isOnline); }
+    function allFighters() {
         return Object.keys(Object.assign({}, wishes, cfg.wishes || {}));
     }
+    function fighters() { return allFighters().filter(isOnline); }
 
     // The level a wish is fulfilled at: the wished one, or where we had to stop.
     function targetLevel(fighter, w) {
@@ -336,7 +351,7 @@ module.exports = function createWorkshop(ctx) {
     // one pair of pants between STR (warrior) and INT (priest) at 8k a scroll (2026-11-19).
     function statReserved(stat, name, fighter) {
         if (!stat) return false;
-        return fighters().some(function (f) {
+        return allFighters().some(function (f) {
             return f !== fighter && wishList(f).some(function (w) { return w.name === name && w.stat === stat; });
         });
     }
@@ -400,7 +415,7 @@ module.exports = function createWorkshop(ctx) {
     function isReserved(item) {
         if (equivalentWanted(item)) return true;
         if (activeEarmarks().some(function (e) { return e.name === item.name && (item.level || 0) >= e.level; })) return true;
-        return fighters().some(function (f) {
+        return allFighters().some(function (f) {
             return wishList(f).some(function (w) { return w.name === item.name; });
         });
     }
@@ -423,11 +438,19 @@ module.exports = function createWorkshop(ctx) {
         return list;
     }
 
+    // An item with a stat slot that still lacks the fighter's main stat stays here until statBeforeDelivery put it on.
+    function lacksMainStat(fighter, item) {
+        if ((cfg.statOnDelivery || {}).enabled === false) return false;
+        const def = item && G.items[item.name];
+        const main = classes[fighter] && G.classes[classes[fighter]] && G.classes[classes[fighter]].main_stat;
+        return !!(def && def.stat && main && item.stat_type !== main);
+    }
     async function handOver(fighter) {
         for (const w of readyFor(fighter)) {
             const index = wishIndex(w, targetLevel(fighter, w));
             if (index === -1) continue;
             const item = character.items[index];
+            if (lacksMainStat(fighter, item)) continue;
             await send_item(fighter, index, 1);
             util.log("workshop", "delivered " + item.name + " +" + (item.level || 0) + " to " + fighter, "green");
             markDelivered(fighter, w);
@@ -440,7 +463,7 @@ module.exports = function createWorkshop(ctx) {
         // Finished gear-goal copies (indexes stay valid: sending only empties a slot).
         for (const a of goalReadyFor(fighter)) {
             const item = character.items[a.index];
-            if (!item || item.name !== a.need.name) continue;
+            if (!item || item.name !== a.need.name || lacksMainStat(fighter, item)) continue;
             await send_item(fighter, a.index, 1);
             goalSentAt[fighter + ":" + a.need.slot] = Date.now();
             util.log("workshop", "delivered " + item.name + " +" + (item.level || 0) + " to " + fighter + " (gear goal)", "green");
@@ -545,6 +568,8 @@ module.exports = function createWorkshop(ctx) {
         // Tidy-up (v1.224.2, player decision 2026-11-23): an auto-compound step costing at most compound.tidyMaxCost
         // never waits for a pot - three bank slots become one for a 6.4k scroll (jewellery up to +2).
         if (k.indexOf("auto:") === 0 && amount <= ((cfg.compound || {}).tidyMaxCost || 0)) return true;
+        // Main stat before a hand-over (v1.226.2): the scrolls are cheap, no pot needed up to statOnDelivery.maxCost.
+        if (k.indexOf("_stat:") === 0 && amount <= ((cfg.statOnDelivery || {}).maxCost || 0)) return true;
         if (k === GOALS) return goalBudget().allowed >= amount;
         if (k === LADDER) return ladderBudget().allowed >= amount;
         if ((spent[k] || 0) + amount > budgetFor(k)) return false; // safety cap per wish
@@ -1241,7 +1266,7 @@ module.exports = function createWorkshop(ctx) {
             if (MG.auto === false) return [];
             const names = items();
             const out = [];
-            config.team.fighters.forEach(function (f) {
+            activeTeam().forEach(function (f) {
                 const cls = fighterClass(f);
                 const eq = worn[f];
                 if (!cls || !eq) return;
@@ -1264,7 +1289,7 @@ module.exports = function createWorkshop(ctx) {
                     names.forEach(function (name) {
                         if (slot === "mainhand") {
                             if (!util.weaponPower(name, 0, cls)) return;
-                            if (util.isDoublehand(name, cls) && eq.offhand) return;
+                            if (util.isDoublehand(name, cls) && realOffhand(eq)) return;
                         } else if (!(G.classes[cls].offhand || {})[G.items[name].wtype]) return;
                         const p = util.weaponPower(name, goalLevel(name), cls);
                         if (p > bestPower) { best = name; bestPower = p; }
@@ -1688,6 +1713,49 @@ module.exports = function createWorkshop(ctx) {
         return false;
     }
 
+    // ---- elixirs from the exchange (v1.229.0, config.elixirs) ----------------------------------------------------
+    // The team's stat elixirs that come out of the elixir source (Seashells -> basic elixir box): one per class in the
+    // team (byClass), only those the source can give. Short: one of them below min (bag + bank) starts a refill that runs
+    // until every one is at refill (in memory - a restart in between waits for the next one below min).
+    function elixirExchange() { return ((config.elixirs || {}).exchange) || {}; }
+    function teamStatElixirs() {
+        const el = config.elixirs || {};
+        const src = elixirExchange().source;
+        const table = src && G.drops[src] ? G.drops[src] : null;
+        const fromSource = function (it) {
+            if (!table) return false;
+            return table.some(function (d) {
+                if (!d) return false;
+                if (d[1] === it) return true;
+                return d[1] === "open" && Array.isArray(G.drops[d[2]]) && G.drops[d[2]].some(function (x) { return x && x[1] === it; });
+            });
+        };
+        const out = [];
+        ((config.team && config.team.fighters) || []).forEach(function (f) {
+            const ctype = classes[f];
+            const it = ctype && (el.byClass || {})[ctype];
+            if (it && G.items[it] && fromSource(it) && !out.includes(it)) out.push(it);
+        });
+        return out;
+    }
+    let elixirRefill = false;
+    function elixirsShort() {
+        const el = config.elixirs || {};
+        const exc = elixirExchange();
+        if (!el.enabled || !exc.source) return false;
+        const list = teamStatElixirs();
+        if (!list.length) return false;
+        if (list.some(function (it) { return ownedCount(it) < (exc.min || 6); })) {
+            if (!elixirRefill) util.log("workshop", "elixirs short (" + list.map(function (it) { return it + " " + ownedCount(it); }).join(", ") + ") - exchanging " + exc.source + " until " + (exc.refill || 20) + " each", "yellow");
+            elixirRefill = true;
+        }
+        if (elixirRefill && list.every(function (it) { return ownedCount(it) >= (exc.refill || 20); })) {
+            util.log("workshop", "elixir refill done (" + list.map(function (it) { return it + " " + ownedCount(it); }).join(", ") + ")", "green");
+            elixirRefill = false;
+        }
+        return elixirRefill;
+    }
+
     // Without wishes or compound work: exchange boxes, gems, seashells ...
     // (config.workshop.exchange.items) in batches while the bag has room.
     async function autoExchange() {
@@ -1705,6 +1773,12 @@ module.exports = function createWorkshop(ctx) {
             if ((ex.hold || []).includes(name)) continue; // hoarded for a later batch
             const need = def.e || 1;
             if (character.esize < ex.keepFree) return false;
+            // The elixir source (Seashells, v1.229.0): only while a stat elixir of the team is short, and never below
+            // sourceKeep (Loaded Die).
+            const elixirSource = elixirExchange().source === name;
+            if (elixirSource && !elixirsShort()) continue;
+            const sourceLeft = function () { return ownedCount(name) - (elixirExchange().sourceKeep || 0); };
+            if (elixirSource && sourceLeft() < need) continue;
 
             if (exchangeStack(name, need) === -1) {
                 const banked = bankSnapshot && bankSnapshot.items.find(function (b) { return b.name === name && b.q >= need; });
@@ -1721,6 +1795,7 @@ module.exports = function createWorkshop(ctx) {
 
             const rewards = [];
             while (rewards.length < ex.batch && character.esize >= ex.keepFree) {
+                if (elixirSource && (!elixirsShort() || sourceLeft() < need)) break;
                 const index = exchangeStack(name, need);
                 if (index === -1) break;
                 try {
@@ -2230,7 +2305,7 @@ module.exports = function createWorkshop(ctx) {
     // because the fighters are worked on in team order. The lowest stage any fighter is on.
     function teamStage() {
         let low = null;
-        config.team.fighters.forEach(function (f) {
+        activeTeam().forEach(function (f) {
             const s = armorStage(f);
             if (s !== null && (low === null || s < low)) low = s;
         });
@@ -2320,7 +2395,7 @@ module.exports = function createWorkshop(ctx) {
         const g = cfg.gearGoals;
         const list = [];
         const team = teamStage();
-        config.team.fighters.forEach(function (f) {
+        activeTeam().forEach(function (f) {
             const eq = worn[f];
             if (!eq) return;
             const own = armorStage(f);
@@ -2499,6 +2574,35 @@ module.exports = function createWorkshop(ctx) {
             b.hours.toFixed(1) + " h, spent " + kGold(b.spent) + ")", "orange");
     }
 
+    // Main stat before every hand-over (v1.226.2, player decision 2026-11-23): an item with a stat slot goes to a fighter
+    // only with that fighter's main stat - none or a wrong one gets the stat scroll first (1 scroll at grade 0, 10 at grade
+    // 1). The cost is no reason to skip it (statOnDelivery.maxCost bypasses the pots). One item per workshop round.
+    async function statBeforeDelivery() {
+        const sc = cfg.statOnDelivery || {};
+        if (sc.enabled === false) return false;
+        const who = fighters().concat(activeEarmarks().map(function (e) { return e.fighter; })).filter(function (f, i, a) { return a.indexOf(f) === i && isOnline(f); });
+        for (const f of who) {
+            const main = classes[f] && G.classes[classes[f]] && G.classes[classes[f]].main_stat;
+            if (!main) continue;
+            const idxs = readyFor(f).map(function (w) { return wishIndex(w, targetLevel(f, w)); })
+                .concat(goalReadyFor(f).map(function (a) { return a.index; }));
+            for (const index of idxs) {
+                const it = character.items[index], def = it && G.items[it.name];
+                if (!it || !def || !def.stat || it.l || it.stat_type === main) continue;
+                const k = "_stat:" + it.name;
+                if ((blockedUntil[k] || 0) > Date.now()) continue;
+                try {
+                    util.status(main + " scroll for " + it.name + " (" + f + ")", "orange");
+                    await applyStat(index, main, k);
+                    return true;
+                } catch (e) {
+                    blockedUntil[k] = Date.now() + pauseAfter(k, util.errReason(e));
+                    util.log("workshop", "no " + main + " for " + it.name + " +" + (it.level || 0) + " (" + f + "): " + util.errReason(e), "orange");
+                }
+            }
+        }
+        return false;
+    }
     // Apply a stat scroll (str/int/dex) to the bag copy at `index`; spends from budget key k.
     async function applyStat(index, stat, k) {
         const budgetKey = k || GOALS;
@@ -2664,11 +2768,11 @@ module.exports = function createWorkshop(ctx) {
     }
 
     function fillEmptySlots() {
-        const fightersList = config.team.fighters.filter(function (f) { return worn[f] && classes[f]; });
+        const fightersList = activeTeam().filter(function (f) { return worn[f] && classes[f]; });
         if (!fightersList.length) return;
         // Copies we hold, minus those already earmarked.
         const wished = {};
-        fighters().forEach(function (f) { wishList(f).forEach(function (w) { wished[w.name] = true; }); });
+        allFighters().forEach(function (f) { wishList(f).forEach(function (w) { wished[w.name] = true; }); });
         const pool = [];
         character.items.forEach(function (it) { if (it && !it.l && !it.p && !wished[it.name]) pool.push({ name: it.name, level: it.level || 0, stat: it.stat_type || null }); });
         (bankSnapshot ? bankSnapshot.items : []).forEach(function (b) { if (!wished[b.name]) pool.push({ name: b.name, level: b.level, stat: b.stat || null }); });
@@ -2782,7 +2886,7 @@ module.exports = function createWorkshop(ctx) {
                 const def = w && G.items[w.name];
                 if (!def || earmarks[f + "|" + w.name]) return;
                 if (Date.now() - (filledAt[f + "|" + def.type] || 0) < 10 * 60 * 1000) return;
-                const others = fighters().some(function (o) { return o !== f && wishList(o).some(function (x) { return x.name === w.name; }); });
+                const others = allFighters().some(function (o) { return o !== f && wishList(o).some(function (x) { return x.name === w.name; }); });
                 if (others) return;
                 // Scroll stats (player rule 2026-11-18): never a copy with another main stat than
                 // the fighter's; a worn piece with a wrong stat is replaced by one with the right
@@ -2820,7 +2924,12 @@ module.exports = function createWorkshop(ctx) {
     // Can fighter f wield this weapon (a two-handed one only with an empty offhand)?
     function canWield(f, name) {
         if (!classes[f] || !util.weaponPower(name, 0, classes[f])) return false;
-        return !util.isDoublehand(name, classes[f]) || !(worn[f] && worn[f].offhand);
+        return !util.isDoublehand(name, classes[f]) || !realOffhand(worn[f]);
+    }
+    // The worn offhand, not the "_twohand" marker a fighter reports next to a two-hander (gear.js worn(), 2026-11-23).
+    function realOffhand(eq) {
+        const o = eq && eq.offhand;
+        return o && o.name !== "_twohand" ? o : null;
     }
 
     // Upgrade cap of a list weapon (gearPlan.weaponCaps, else its default, else 7).
@@ -2848,7 +2957,7 @@ module.exports = function createWorkshop(ctx) {
         const material = materialItems(); // the material goals' items (fire, Of-the-Dead)
         const plans = [];
         const now = Date.now();
-        config.team.fighters.forEach(function (f) {
+        activeTeam().forEach(function (f) {
             const list = lists[classes[f]];
             if (!list || !worn[f]) return;
             const hand = weakerHand(f);
@@ -2895,7 +3004,7 @@ module.exports = function createWorkshop(ctx) {
             const craftable = (bw.craft || []).includes(name) && !!crafterOf(name);
             if (!G.items[name] || (!unlockedCopies(name).length && !buyable && !craftable)) return;
             let plan = null;
-            config.team.fighters.forEach(function (f) {
+            activeTeam().forEach(function (f) {
                 if (!worn[f] || !canWield(f, name) || lists[classes[f]]) return;
                 const m = worn[f].mainhand;
                 // Already in the main hand: dual wield classes get a second copy for the offhand
@@ -3358,7 +3467,7 @@ module.exports = function createWorkshop(ctx) {
         const lists = (config.gearPlan && config.gearPlan.weapons) || {};
         const material = materialOnlyItems(); // fire weapons: made from essence, not bought as bases
         const out = [];
-        config.team.fighters.forEach(function (f) {
+        activeTeam().forEach(function (f) {
             const list = lists[classes[f]];
             if (!list || !worn[f]) return;
             const eq = worn[f];
@@ -3911,7 +4020,7 @@ module.exports = function createWorkshop(ctx) {
     function isDoneBoxArmor(item) {
         const b = cfg.boxArmor;
         if (!b || !item || !(b.names || []).includes(item.name) || (item.level || 0) >= b.upTo) return false;
-        if (fighters().some(function (f) { return wishList(f).some(function (w) { return w.name === item.name; }); })) return false;
+        if (allFighters().some(function (f) { return wishList(f).some(function (w) { return w.name === item.name; }); })) return false;
         // A +0 copy of a piece nobody wears and nobody wishes (2026-11-23, player decision): the warrior went from the Rugged
         // Coat +7 on to Dracul's Attire, so no Coat is ever built to upTo - four +0 copies sat in the full bank.
         // Only once every fighter's gear is known; higher copies stay (they cost upgrades).
@@ -3976,6 +4085,7 @@ module.exports = function createWorkshop(ctx) {
         }
 
         if (await workOwnWishes()) return; // the merchant's own stand and tools come first
+        if (await statBeforeDelivery()) return; // ready items get the receiver's main stat first (v1.226.2)
         if (await dismantleDrops()) return; // spare drop weapons into material (config.dismantle)
         if (await stockOneEach()) return;
         if (await shopPonty()) return; // Ponty: wished items cheaper than making them (market.ponty)

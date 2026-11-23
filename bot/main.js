@@ -28,6 +28,7 @@ let botComms = null;
 let botParty = null;
 let botSupply = null;
 let botTargeting = null;
+let botEvents = null; // on_magiport (v1.228.1)
 
 function noClassModule() {
     return {
@@ -175,6 +176,7 @@ function startBot() {
         botParty = ctx.party;
         ctx.hunts = require_code("bot_hunts")(ctx);
         ctx.events = require_code("bot_events")(ctx);
+        botEvents = ctx.events;
         installChatCommands(ctx);
         ctx.drops = require_code("bot_drops")(ctx);
         const classSlot = BOT_CLASS_SLOTS[character.ctype];
@@ -363,6 +365,12 @@ function startHopWatcher() {
 // Called by the game when a party invite arrives – bot_party only accepts the leader
 function on_party_invite(name) {
     if (botParty) botParty.onInvite(name);
+}
+
+// Called by the game when a mage wants to magiport us (PvE: consent) - bot_events accepts only our own mage during a
+// boss fight (v1.228.1).
+function on_magiport(name) {
+    if (botEvents && botEvents.acceptMagiport) botEvents.acceptMagiport(name);
 }
 
 // Chat commands typed in this character's client, e.g. "/pickup".

@@ -49,9 +49,33 @@ module.exports = function createSupply(ctx) {
         return { hp: util.countItem(n.hp), mp: util.countItem(n.mp) };
     }
 
+    // ---- elixirs (v1.229.0, config.elixirs) --------------------------------------------------------------------------
+    // Our class's elixir: carried (never handed over), asked for with every pickup up to `carry`, and drunk when none
+    // works or ours runs out within drinkBeforeMs (the same one again extends it). Another elixir that works is left alone.
+    const el = config.elixirs || {};
+    function ownElixir() {
+        const it = el.enabled ? (el.byClass || {})[character.ctype] : null;
+        return it && G.items[it] ? it : null;
+    }
+    let elixirTryAt = 0;
+    function drinkElixir() {
+        const it = ownElixir();
+        if (!it || character.rip || Date.now() < elixirTryAt) return;
+        const cur = character.slots && character.slots.elixir;
+        const left = cur && cur.expires ? new Date(cur.expires).getTime() - Date.now() : 0;
+        if (cur && left > 0 && (cur.name !== it || left > (el.drinkBeforeMs || 10 * 60 * 1000))) return;
+        const index = util.findItemIndex(function (i) { return i.name === it && !i.l; });
+        if (index === -1) return;
+        elixirTryAt = Date.now() + 30 * 1000;
+        Promise.resolve(equip(index))
+            .then(function () { util.log("supply", "drank " + G.items[it].name + (cur && left > 0 ? " (extends the running one)" : ""), "green"); })
+            .catch(function (e) { util.log("supply", "could not drink " + G.items[it].name + ": " + util.errReason(e), "orange"); });
+    }
+
     function isHandover(item) {
         if (!item) return false;
         if (s.keep.includes(item.name)) return false;
+        if (item.name === ownElixir()) return false; // our elixir stays with us
         if (((s.keepByClass || {})[character.ctype] || []).includes(item.name)) return false;
         if (ctx.gear && ctx.gear.isReserved(item)) return false; // wished gear stays with us
         const def = G.items[item.name];
@@ -124,14 +148,17 @@ module.exports = function createSupply(ctx) {
         lastRequest = Date.now();
         followUntil = lastRequest + (s.followMs || 5 * 60 * 1000);
         if (!pendingSince) pendingSince = lastRequest;
+        const want = {
+            [util.potionNames(p).hp]: Math.max(0, p.target - c.hp),
+            [util.potionNames(p).mp]: Math.max(0, p.target - c.mp),
+        };
+        const elixir = ownElixir();
+        if (elixir) want[elixir] = Math.max(0, (el.carry || 4) - util.countItem(elixir));
         comms.send(merchant, "pickup", {
             map: character.map,
             x: Math.round(character.x),
             y: Math.round(character.y),
-            want: {
-                [util.potionNames(p).hp]: Math.max(0, p.target - c.hp),
-                [util.potionNames(p).mp]: Math.max(0, p.target - c.mp),
-            },
+            want: want,
         });
     }
 
@@ -158,6 +185,7 @@ module.exports = function createSupply(ctx) {
     }
 
     function tick() {
+        drinkElixir();
         if (busy) return "busy";
         // Stand still while items go over: walking or chasing out of range cut handovers
         // short (2026-11-17). Potions still run (they come before this in the tick).

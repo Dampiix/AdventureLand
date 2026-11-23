@@ -61,12 +61,55 @@ module.exports = function createDrops(ctx) {
         return m && route.cycle > 0 ? (m.xp || 0) / route.cycle : 0;
     }
 
-    // Solo with Lone Wolf the bonus loot roll scales with our (full) contribution and the
-    // extra luck: our own table estimates count that in. Party shares vary – no bonus there.
+    // Luck on the drop chance (v1.227.0, player decision 2026-11-23; server: roll_monster_drops and
+    // node/logic/encouragement.js of kaansoral/adventureland_mongodb). Every roll is chance x luckm x monster level;
+    // the encouragement bonus (Welcome Back, Lone Wolf: character.encouragement.totals.luck) is one extra roll per
+    // contributor with contribution share x (bonus - 1) and that contributor's full luckm. Solo exactly
+    // luckm x bonus (Lone Wolf x Welcome Back = 9 now); the party below (the party bonus is Welcome Back only).
+    // The guide's drop rates are the plain table values (checked:
+    // frog tongue 0.0025 = table), so this factor applies to every route - the guide's and our own. Monster level 1.
+    // Party (v1.227.5, player decision 2026-11-23): the exact sum instead of leader luck x bonus -
+    //   normal roll: the luck of the monster's target at death (kill log by target, last 10 min: the luck catcher's
+    //                share and the tank's), plus
+    //   bonus rolls: (bonus - 1) x each member's contribution share x its own luck (damage meter, last 5 min).
+    // Members report their luckm with the goldm message (fighter.js); a member without a fresh report counts 1.
+    // Heal points count as contribution on the server too, the meter sees damage only - the priest's bonus share
+    // comes out a little small (the estimate errs low).
+    function luckOfMember(name) {
+        if (name === character.name) return Math.max(1, character.luckm || 1);
+        const r = ctx.memberLuck && ctx.memberLuck[name];
+        return r && Date.now() - r.at < 5 * 60 * 1000 ? Math.max(1, r.l) : 1;
+    }
+    function partyLuck(bonus) {
+        const team = ctx.party.memberNames().filter(function (n) { return n !== config.merchant; });
+        const now = Date.now();
+        const mean = team.reduce(function (s, n) { return s + luckOfMember(n); }, 0) / Math.max(1, team.length);
+        // Normal roll: kills of ours by target (no target: the team's mean luck).
+        let kills = 0, normal = 0;
+        (parent.__dmpxKills || []).forEach(function (k) {
+            if (now - k.t > 10 * 60 * 1000 || (k.target && !team.includes(k.target))) return;
+            kills++;
+            normal += k.target ? luckOfMember(k.target) : mean;
+        });
+        normal = kills >= 10 ? normal / kills : luckOfMember(character.name);
+        // Bonus rolls: damage shares (equal shares while the meter has too little).
+        const dmg = {};
+        let total = 0;
+        (parent.__dmpxDps || []).forEach(function (h) {
+            if (now - h.t > 5 * 60 * 1000 || !team.includes(h.who)) return;
+            dmg[h.who] = (dmg[h.who] || 0) + h.dmg;
+            total += h.dmg;
+        });
+        const extra = total > 0
+            ? team.reduce(function (s, n) { return s + (dmg[n] || 0) / total * luckOfMember(n); }, 0)
+            : mean;
+        return normal + (bonus - 1) * extra;
+    }
     function luckFactor() {
-        if (ctx.party && ctx.party.enabled) return 1;
         const t = character.encouragement && character.encouragement.totals;
-        return t && t.luck > 1 ? t.luck : 1;
+        const bonus = t && t.luck > 1 ? t.luck : 1;
+        if (ctx.party && ctx.party.enabled && ctx.party.memberNames && ctx.party.memberNames().length > 1) return partyLuck(bonus);
+        return Math.max(1, character.luckm || 1) * bonus;
     }
 
     // Every farm route for one missing item, fastest first ([] = none): the guide's routes
@@ -81,6 +124,7 @@ module.exports = function createDrops(ctx) {
             return null;
         }
         const list = [];
+        const luck = luckFactor(); // the guide counts no luck at all (v1.227.0)
         const consider = function (a) {
             if (!a || a.kind !== "farm" || !a.route || a.blocked || !G.monsters[a.route.monster]) return;
             // The guide's plain XP row (no item, no rate) says nothing about this drop.
@@ -88,9 +132,9 @@ module.exports = function createDrops(ctx) {
             // Seconds per copy: the team's kill cycle divided by the drop rate (guide's own
             // numbers; one roll per kill, however many of us hit it).
             const cycle = teamCycle(a.route);
-            const perCopy = a.rate > 0 && cycle
+            const perCopy = (a.rate > 0 && cycle
                 ? cycle / a.rate
-                : a.meanSeconds * (cycle && a.route.cycle > 0 ? cycle / a.route.cycle : 1) / Math.max(1, need.copies);
+                : a.meanSeconds * (cycle && a.route.cycle > 0 ? cycle / a.route.cycle : 1) / Math.max(1, need.copies)) / luck;
             list.push({ monster: a.route.monster, map: a.route.map, perCopy: perCopy, xp: xpRate(a.route) });
         };
         (advice && advice.rows || []).forEach(function (row) {
@@ -182,7 +226,9 @@ module.exports = function createDrops(ctx) {
             const rate = ((rates[r.monster] || 0) + (mapRates[r.map] || 0)) * luck;
             // The guide's own "safe" (for the leader alone) is not needed once the team model judges spots.
             const teamModel = ctx.targeting && ctx.targeting.teamModelOn && ctx.targeting.teamModelOn();
-            if (!(rate > 0) || !(r.cycle > 0) || (r.safe !== true && !teamModel) || !teamSafe(r.monster)) return;
+            // isTeamSafe also knows our own solo check (targeting.soloRouteSafe, v1.226.8) - the guide's "safe" alone would
+            // keep e.g. the Huge Crabs out solo.
+            if (!(rate > 0) || !(r.cycle > 0) || (r.safe !== true && !teamModel && !teamSafe(r.monster)) || !teamSafe(r.monster)) return;
             out.push({ monster: r.monster, map: r.map, perCopy: teamCycle(r) / rate, xp: xpRate(r) });
         });
         return out.sort(function (a, b) { return a.perCopy - b.perCopy; });

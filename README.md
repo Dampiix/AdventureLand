@@ -3,7 +3,7 @@
 One bot for a whole Adventure Land team: up to three fighters and one merchant, all running the same code.
 The fighters farm, hunt bosses and level up; the merchant supplies them, sells, banks, trades with other players and upgrades their gear.
 
-> **Version:** `1.224.6` (`bot/config.js` → `version`) · **Teams:** `Dmpx…` (main account) and `Viz…` (second account) · **Code:** `bot/` → in-game CODE slots 20–39
+> **Version:** `1.229.1` (`bot/config.js` → `version`) · **Teams:** `Dmpx…` (main account) and `Viz…` (second account) · **Code:** `bot/` → in-game CODE slots 20–39
 
 ## Repository
 
@@ -189,7 +189,7 @@ All settings live in [`config.js`](bot/config.js) (slot 21 `bot_config`). The co
 | Sell into other players' buy orders | `market.sellTo.items: [{ item, level, minPrice, keep }]` |
 | Buy from other players' stands | `market.sellTo.buyFromPlayers` |
 | Ponty buying rules | `market.ponty` (`maxShareOfOwn` 1.2, `maxShareOfPot` 0.2) |
-| Ponty rounds over all servers | `merchantRole.pontyRound.enabled`, `everyHours` (1) |
+| Ponty rounds over all servers | `merchantRole.pontyRound.enabled`, `everyHours` (3) |
 | What the merchant sells to NPCs | `merchantRole.sellList`, `merchantRole.sellBuyable` |
 | What stays in the bag at the bank | `merchantRole.bank.keep` |
 | Share of income for gear | `workshop.gearGoals.budget.incomeShare` (0.7) |
@@ -530,6 +530,8 @@ Monsters fought by other players are never taken, except cooperative ones (Phoen
 - **Circle radius:** its speed + its range + 50, at most our range − 10.
 - **Avoid:** points near free monsters (120 px), and points within the reach of monsters of other kinds than the farm target + 50 px (`kite.foreignMargin`, v1.218.0 - Fire Spirits, range 280, next to the Giant Scorpions). Escape points too.
 - **Bosses:** kiting stays within 280 px of the boss's spawn area.
+- **Solo spot safety** (v1.226.8, `targeting.soloOwnCheck`): alone, a route the guide calls unsafe is taken when our own solo check passes for the level-1 monster - we survive `live.ownHits` of its hits and the fight costs at most `live.soloHpUse` of our HP, a monster we can kite hitting with the residual risk only (the guide knows no kiting: it kept the mage off the Huge Crabs, speed 8). No bosses, no special abilities. The pack check (spot check, Agitate, splash) counts a kiteable monster the same way since v1.227.1 (two Huge Crabs together had blocked the spot). A Cavalry reset that finds nothing of level 3+ at the spot (any reset since v1.227.2, before only hunt resets) lifts the too-strong block after 20 s and lets the spot check judge again; no new reset for that monster for 10 min.
+- **Normal monsters** (v1.225.2, `kite.farmAnchor`): kiting may leave the spawn area, but stays within 250 px of the monster's nearest spawn box (`farmAnchorMargin`) - room to kite, not far away. Without it the new mage kited Porcupines far from their spot.
 - **Cornered:** the fighter looks for an escape point; if there is none, it stands and fights.
 
 A single attacker that can't be kited switches kiting off. The warrior (range 38) never kites. Check a monster's `charge` in `G.monsters` before tuning: the Phoenix charges at 65, faster than a ranger.
@@ -544,7 +546,7 @@ The Tracktrix (`tracker`, kept in every fighter's bag) calls the Cavalry. It is 
 
 **Emergency** (`cavalry.emergencyHpBelow` 0.35). Below 35 % HP with a level-3+ monster on us, the Cavalry is called at once.
 
-**Reset of a grown spot** (`cavalry.reset`):
+**Reset of a grown spot** (`cavalry.reset`, **off since v1.227.3**, player decision 2026-11-23): grown monsters that pass the spot check are worth more (the monster level multiplies the drop chance, XP and gold grow too), so the Cavalry is no longer spent on them. It is still called in an emergency, for a spot the spot check blocked as too strong (planned reset, below) and for a hunt held back by such spots. With the switch on again:
 - **Who:** the spot picker, not during events.
 - **What counts:** grown farm monsters, level ≥ 5.
 - **How:**
@@ -593,7 +595,7 @@ It does not wait:
 
 ## 17. Events and world bosses
 
-`server.status` tells which events are live; `events.observe` logs every change (`[event] live now: …`). `events.policy` decides per event (`"always"` / `"never"`). An event counts only when every fighter has reached `events.minLevel` and the boss check (below) says the team can win.
+`server.status` tells which events are live; `events.observe` logs every change (`[event] live now: …`). `events.policy` decides per event (`"always"` / `"never"`). A boss on `"never"` is neither searched nor engaged when seen (VizMage's solo run since v1.225.3: both Draculs, Jr., Green Jr., Skeletor; the Phoenix is on again since v1.226.0 - searched by the merchant, not hunted nonstop since v1.226.7). An event counts only when every fighter has reached `events.minLevel` and the boss check (below) says the team can win.
 
 **Event kinds.**
 - **Join events** (Goo Brawl, Graveyard): every fighter joins and takes its own nearest wave monster.
@@ -660,7 +662,7 @@ The hunt expiring first wins.
 Items that can't be bought come before XP when they are worth more (`drops`).
 
 1. **What is missing.** The merchant reports, every 5 min, the wished items it lacks copies for, plus `drops.want` (50 Armor Boxes).
-2. **Routes.** The leader asks its guide and the game's drop tables where each item drops. Only team-safe routes that take at most `maxHoursPerCopy` (4 h) per copy are kept. Bosses are excluded.
+2. **Routes.** The leader asks its guide and the game's drop tables where each item drops. Only team-safe routes that take at most `maxHoursPerCopy` (4 h) per copy are kept. Bosses are excluded. **Luck** (v1.227.0): every route's chance counts `luckm` × the encouragement luck bonus (`character.encouragement.totals.luck`: Welcome Back, Lone Wolf). Server: each roll is chance × luckm × monster level; the bonus is one extra roll per contributor with share × (bonus − 1) and his full luckm - solo exactly luckm × bonus. In the party (v1.227.5) the sum is counted exactly: the normal roll with the luck of each kill's target at death (kill log, last 10 min - the luck catcher's share), plus (bonus − 1) × each member's damage share (meter, last 5 min) × its own luckm; members report their luckm with the goldm message. Heal points, which the server counts as contribution too, are not in the meter, so the estimate errs slightly low. The guide's rates are the plain table values, so the factor applies to its routes too (before only our own table routes, and only solo).
 3. **By value** (`byValue`). The leader compares the XP spot with each drop spot: XP value plus gear value (the wish's gain per hour). A drop spot must be worth `valueSwitch` (1.2 ×) the current choice to switch.
    - Log: `[drops] value: XP spot X%/h vs <monster> Y%/h -> …`.
 4. **Spot gold** (`spotGold`). Every fighter measures its loot gold per farm target over 3 h, but only while the whole team farms together. The merchant prices buy orders from these numbers ([§32](#32-money-pots-budgets-and-prices)).
@@ -748,6 +750,24 @@ While the merchant walks over, the fighter keeps farming and sends its position 
 - every item stack except `supply.keep` (Tracktrix), class items (priest: Essence of Life, ranger: Poison Sack), reserved gear and current potions.
 
 **Self-buying.** Below 20 potions with no merchant answer for 3 min, the fighter walks to town and buys up to 300.
+
+**Elixirs** (v1.229.0, `config.elixirs`, player decision 2026-11-23):
+- **One elixir per class** (`byClass`):
+  - priest: Liquid Luck (+16 luck, 12 h);
+  - mage: INT, warrior: STR, ranger/rogue: DEX, each at tier 0 (+6, 12 h).
+  - Tiers 1/2 and VIT stay in the bank.
+- **Fighter:**
+  - carries `carry` (4, two days) of its own elixir, asked for with every pickup and never handed over;
+  - drinks one when none works or its own runs out within 10 min. The same elixir again extends the running one (server: + duration, the rest kept at 97.5 %).
+  - Another elixir that works, such as a tier 1 drunk by hand, is left to run out.
+- **Merchant:**
+  - keeps the team's elixirs in its bag (never banked; banked ones come out on the next bank trip) and hands them out with the potions.
+  - **Liquid Luck** (`buy.elixirluck`): below 10 in bag + bank, it walks to Warin (Wanderers' Inn; since v1.229.1 to the map's spawn point nearest to the seller - Warin stands behind his bar) and buys up to 30 at 240k each, with gold above `merchantRole.goldReserve` only.
+  - **Stat elixirs** (`exchange`): once one of the team's stat elixirs is below 6, Seashells are exchanged until every one is at 20 (~2,100 Seashells on average, 2,900 in 99 % of the cases).
+  - 40 Seashells always stay for Loaded Dice.
+- **Seashells:**
+  - a standing buy order at the stand: 900 each, up to 3,000 held (`market.buy`);
+  - buying from players and Ponty (both up to 960) is a later step. Ponty sells whole stacks only.
 
 ## 22. Death handling
 
@@ -839,7 +859,7 @@ Weapon swaps (maces, swords, and the usual weapons back when the hold ends) chan
   - Guardian's Oath on allies below 50 %;
   - Cleansing Light;
   - Smash on targets needing 2+ hits.
-- **Mage:** Energize to members below 40 % MP; Mana Burst is off. **Blaster mode** (v1.224.6, `classes.mage.blaster`): the carried Blaster (great staff, blast splash, +160 MP per attack, both hands) goes on with one `equip_batch` while at least 2 other monsters stand within its blast radius (blast / 3.6 px) of the target and MP is above 50 %. Staff and book come back in one batch after 4 s without a pack, below 20 % MP, or on the way. The Blaster is a carried wish at +0 (`to: 0`), so the workshop never upgrades it - the player does, with a Primling per step. Weapon list: staff → Fiery Staff.
+- **Mage:** **Energize** (v1.225.7; costs no MP itself, hands over the MP passed and gives +80 % attack speed for 0.8 s, cooldown 4 s): MP to a member below 40 % while the mage keeps 60 %; else a 1-MP speed burst on the strongest fighting damage dealer - solo on itself, cast right before its next attack. **Reflective Shield** (level 60, 540 MP, cooldown 30 s): +20 % chance to bounce magical hits for 5 s, on whoever takes the most magical attack (at least 100), while the mage keeps 25 % MP. Mana Burst is off. **Blaster mode** (v1.224.6, `classes.mage.blaster`): the carried Blaster (great staff, blast splash, +160 MP per attack, both hands) goes on with one `equip_batch` while at least 2 other monsters stand within its blast radius (blast / 3.6 px) of the target and MP is above 50 %. Staff and book come back in one batch after 4 s without a pack, below 20 % MP, or on the way. Since v1.224.7 (`singleTarget`) it stays on all the time while it beats the best staff + book on one target (weapon power: attack × class frequency × burn, against the staff × the book's INT share; 3 % margin) - MP is kept up with potions, only below 20 % the staff comes back. The Blaster is a carried wish at +0 (`to: 0`), so the workshop never upgrades it - the player does, with a Primling per step. Weapon list: staff → Staff of the Dead → Fiery Staff (v1.226.4: with burn the Fiery Staff is the better one for the mage). Next to a two-hander the offhand counts as taken (v1.225.4): no book wishes, no book put on, and the merchant gets an "_twohand" marker instead of an empty offhand - it had brought book after book. The best book stays in the mage's bag for staff + book (v1.225.5); spare books go back to the merchant. **Blaster aim** (v1.225.6, `blaster.aim`): with the Blaster in hand it shoots the monster of the target's kind in range that has the most others within the blast radius (not another player's, never the Giga Crab). **Splash safety** (v1.225.8): a Blaster shot whose blast would hit a free boss or a monster the mage can't kite (faster, longer reach, abilities) is never fired - another safe target of the same kind, else staff + book for 6 s (`blockMs`); without a staff in the bag the shot waits. The blast had pulled a roaming Phoenix at the Crocs. **Pull limit** (v1.225.9): the monsters a blast would hit (free ones within its radius) plus those already on the mage must stay within his courage per damage type (`fearMax` 0) and pass the solo pack check - like the warrior's Lolipops. The mage had died terrified at the Squigs with 5-6 on him. **Bosses and the staff line** (v1.226.0): against a boss the mage always fights with staff + book, whatever is stronger. Weapon list: staff → Staff of the Dead → Fiery Staff (v1.226.4: with burn the Fiery Staff is the better one for the mage). While the carried Blaster is in hand the mage reports its single-target loadout (best other one-hander and book in the bag, or an empty hand) and keeps that staff and book, so the merchant still builds and delivers the staff line. No Blaster during a boss event or with a boss within 400 px; putting it on takes the book off first - the game refuses a two-hander next to an offhand (v1.226.1). A mode's weapon (splash or carried) is never remembered as the usual weapon, and a refused restore drops the memory - the gear module had kept putting the Blaster back during a Phoenix fight. **Magiport** (v1.228.1, `classes.mage.magiport`): at a boss the team fights (the leader's boss event; the mage found it as the runner or got there first, boss within 800 px) the mage pulls the fighters still on their way (farther than 600 px by their live position; one not in sight counts as far once the boss has been in sight for 4 s - v1.228.3, the lagging party info had pulled the team right next to the mage at the cave exit) to itself - the tank first, the healer last - for 900 MP each, only while 30 % of its MP stays for the fight; up to 3 tries per member and boss, 8 s apart. The members accept a port (`on_magiport` in main.js → `events.acceptMagiport`) only from a team fighter in the party while the team fights a boss (not a join event, not a runner's solo kill) and stop their walk first; anything else is declined with a log line.
 
 ## 24. Merchant: the main loop
 
@@ -910,7 +930,7 @@ The merchant ticks every second.
 
 ## 27. Ponty rounds over all servers
 
-`merchantRole.pontyRound`: every full hour (`everyHours: 1`, in minutes 0–29), or on `/ponty`.
+`merchantRole.pontyRound`: every third full hour local time (`everyHours: 3` since v1.228.4 - hourly rounds mostly bought nothing and every hop ends a Lost and Found access; in minutes 0–29), or on `/ponty`.
 
 1. **Prep:** call every fighter for a pickup and serve them; then sell, bank and leave.
 2. **Travel:** hop to each server in `servers` (EU, US, ASIA, PvP; the home server is skipped). On each server:
@@ -992,6 +1012,8 @@ A delivered wish is not fulfilled again for 6 h (rings and earrings excepted).
 - **Pot empty:** `gear goals wait for income …`, retry in 15 min.
 - **Stopped jobs** (no copies, a missing ingredient, too risky) wait an hour (`giveUpForMs`), lacking gold or bag space 10 min. Since v1.224.3 the locks survive a restart (`workshop_blocks:<merchant>`).
 - **Rhythm** (v1.224.4, `merchantRole.workshopFastMs`): a round that did something (bag or bank changed) is followed after 3 s; a round that only found locked jobs tries the next one at once (up to 8 in a row); the 30 s chore interval only when there is nothing to do. The merchant still goes back to its stand after every round.
+- **Online fighters only** (v1.225.0, `workshop.onlineMs` 10 min): wishes, gear and material goals, weapon plans, Ponty buys and deliveries serve only fighters whose heartbeat is fresh - nothing is built in the background for characters that are not played. What is reserved or never sold still counts every fighter.
+- **Main stat on every delivery** (v1.226.2, `workshop.statOnDelivery`): an item with a stat slot goes to a fighter only with that fighter's main stat - none or a wrong one gets the stat scroll first; up to 100k of scrolls need no pot. Until then the item is not handed over.
 
 ## 30. Workshop: weapons and material goals
 
@@ -1003,6 +1025,7 @@ A delivered wish is not fulfilled again for 6 h (rings and earrings excepted).
 | priest | Staff → Fiery Staff → Staff of the Dead |
 | ranger | Bow → Firebow |
 | rogue | Stinger → Dagger of the Dead |
+| mage | Staff → Staff of the Dead → Fiery Staff (burn counts for the mage, v1.226.4) |
 
 **Planner.** The planner walks each list **from the back**. It takes the first item it can work on that, at most at its cap (`weaponCaps` 7), beats the fighter's weaker weapon hand by 3 % (`betterWeapons.margin`). Shop weapons are left to the gear goals; fire and Dead weapons to the material goals.
 
@@ -1037,7 +1060,7 @@ A delivered wish is not fulfilled again for 6 h (rings and earrings excepted).
   - Tidy-up (v1.224.2): an auto-compound step costing at most `tidyMaxCost` (50k) never waits for a pot (jewellery up to +2 with the 6.4k scroll). The +2 → +3 step (240k scroll) still pays from the gear pot.
   - Vitality Earrings are held at +0 while buyers pay 500k+, and compounded no higher than +2.
 - **Exchanges** (`workshop.exchange`):
-  - Seashells and Leather are exchanged, 10 at a time, while 8+ bag slots are free.
+  - Leather is exchanged, 10 at a time, while 8+ bag slots are free. Seashells (off in v1.227.4, back in v1.229.0) only while a stat elixir of the team is short - see Elixirs in §21; 40 always stay for Loaded Dice.
   - Gems, Market Parcels and (since v1.224.5) Armor Boxes are held (`hold`): stockpiled for Band of Fury and Heavy armor later.
   - Without the hold, Armor Boxes open only when a wished Rugged piece can come out (3 at a time, bank with 10+ free slots).
 - **Rugged spares** (`boxArmor`): while a Rugged piece is wished, spare copies are upgraded towards +8. Once a piece is held at +8, or (v1.224.0) nobody wears or wishes it, its +0 copies are sold.
@@ -1106,7 +1129,7 @@ The leader uses it to weigh drop spots ([§19](#19-drop-farming)).
 | `workshop.bruteForce` | Only its `incomeShare` is left: the ladder pot that pays the material goals. The weapon ladder and the stock upgrades were removed in v1.212.0 (all their items are on `dismantle.names`). |
 | `workshop.grace` | Off; all risk floors are 0, so every step is tried. |
 | `betterWeapons.names` | Only used for classes without a weapon list (all four of ours have one). |
-| `gearGoals.budget.extra` | 30M until 2026-11-24 16:00 UTC (v1.224.1, player decision: compound the +0 earrings; 10M was eaten by the 24 h deficit). `bruteForce.extra` not set. |
+| `gearGoals.budget.extra`, `bruteForce.extra`, `grace.extra` | All pots reset to 0 at 2026-11-23 18:38 UTC (`budget.resetAt`), then 10M each until 2026-11-24 18:40 UTC (v1.226.3, player decision). |
 | `classes.warrior.dash` | Off. |
 | `events.farmBosses` | Empty: no nonstop boss hunting. |
 | `cavalry.targets` | Empty: no nuking for loot. |

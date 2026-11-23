@@ -522,6 +522,31 @@ module.exports = function createFighter(ctx, cls) {
         });
         return best;
     }
+    // Farm anchor (v1.225.1, player report 2026-11-23): kiting a normal monster may leave its spawn area, but not far - the
+    // new mage kited the Porcupines far away from their spot. Allowed: within kite.farmAnchorMargin px (250) of the nearest
+    // spawn box of its kind on our map, so there is room to kite around it. kite.farmAnchor false switches it off.
+    function farmAnchor(m) {
+        const k = config.combat.kite || {};
+        if (k.farmAnchor === false) return null;
+        const map = G.maps[character.map];
+        let best = null, bestD = Infinity;
+        ((map && map.monsters) || []).forEach(function (pack) {
+            if (pack.type !== m.mtype) return;
+            util.spawnBoxes(pack, character.map).forEach(function (b) {
+                const d = boxDist(b, m.x, m.y);
+                if (d < bestD) { bestD = d; best = { box: b, margin: k.farmAnchorMargin || 250 }; }
+            });
+        });
+        return best;
+    }
+    function boxDist(b, x, y) {
+        return Math.hypot(Math.max(b[0] - x, 0, x - b[2]), Math.max(b[1] - y, 0, y - b[3]));
+    }
+    // Distance of a point from an anchor's allowed area (0 inside): boss anchors are a circle around a middle, farm
+    // anchors a spawn box with a margin.
+    function anchorOut(a, x, y, R) {
+        return a.box ? Math.max(0, boxDist(a.box, x, y) - a.margin) : Math.max(0, Math.hypot(x - a.x, y - a.y) - R);
+    }
     function goTo(p) {
         // A direct step in the middle of a path walk: end the walk first (2026-11-21: the priest's
         // spacing steps broke its path walk in the arena every second - "Lost the path..." spam).
@@ -574,10 +599,10 @@ module.exports = function createFighter(ctx, cls) {
         const aim = target && target !== threat ? util.xy(target) : null;
         const okBase = function (x, y) { return !aim || Math.hypot(x - aim.x, y - aim.y) <= myRange * 0.95; };
         const okFree = function (x, y) { return okBase(x, y) && !free.some(function (q) { return Math.hypot(q.x - x, q.y - y) < (k.avoidRadius || 120); }); };
-        const anchor = bossAnchor(threat);
+        const anchor = bossAnchor(threat) || farmAnchor(threat);
         const R = k.anchorRadius || 280;
-        const inAnchor = function (ok) { return function (x, y) { return ok(x, y) && (!anchor || Math.hypot(x - anchor.x, y - anchor.y) <= R); }; };
-        const toAnchor = anchor ? function (x, y) { return Math.hypot(x - anchor.x, y - anchor.y); } : null;
+        const inAnchor = function (ok) { return function (x, y) { return ok(x, y) && (!anchor || anchorOut(anchor, x, y, R) === 0); }; };
+        const toAnchor = anchor ? function (x, y) { return anchor.box ? boxDist(anchor.box, x, y) : Math.hypot(x - anchor.x, y - anchor.y); } : null;
         // Out of foreign kinds' reach first (2026-11-22, Fire Spirits next to the scorpions).
         const skip = [threat, target];
         const okSafe = function (x, y) { return okFree(x, y) && !inForeignReach(x, y, skip); };
@@ -1241,9 +1266,13 @@ module.exports = function createFighter(ctx, cls) {
     let leaderOpener = null; // { name, at } - the leader's choice (members follow it)
     let lastStuckLog = 0;
     const chestSeen = {}; // chest id -> first time we saw it
+    // The members' luck multipliers ride along (v1.227.5): the leader's drop estimate weighs each member's own luck
+    // (drops.luckFactor - party drop rolls use the luck of the monster's target and of every contributor).
+    const luckOf = ctx.memberLuck = ctx.memberLuck || {}; // fighter -> { l, at }
     ctx.comms.on("goldm", function (data, from) {
         if (!data || typeof data.g !== "number" || !((config.team && config.team.fighters) || []).includes(from)) return;
         goldOf[from] = { g: data.g, at: Date.now() };
+        if (typeof data.l === "number") luckOf[from] = { l: data.l, at: Date.now() };
     });
     // One decision for the whole team (2026-11-20): every fighter choosing on its own from
     // reports up to a minute old disagreed when a gold bonus changed - the priest saw another
@@ -1267,7 +1296,7 @@ module.exports = function createFighter(ctx, cls) {
         }
         if (now - lastGoldSend < 30 * 1000) return;
         lastGoldSend = now;
-        if (!party.isLeader && config.leader && others.includes(config.leader)) ctx.comms.send(config.leader, "goldm", { g: character.goldm || 1 });
+        if (!party.isLeader && config.leader && others.includes(config.leader)) ctx.comms.send(config.leader, "goldm", { g: character.goldm || 1, l: character.luckm || 1 });
     }
     // Members: the leader's choice while it is fresh; the leader (or without it): our own.
     function chestOpener() {

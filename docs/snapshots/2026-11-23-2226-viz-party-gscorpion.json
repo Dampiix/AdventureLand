@@ -1,0 +1,16 @@
+{
+  "at": "2026-11-23T22:26:06.397Z",
+  "purpose": "Viz party (VizPri, VizWar, VizMage) at the Giant Scorpions - end of the one-hour XP test (start: 2026-11-23-2125-viz-party-gscorpion.json)",
+  "bot": "1.228.3",
+  "VizPri": { "level": 67, "xp": 56032761, "max_xp": 170000000, "gold": 175083 },
+  "VizWar": { "level": 72, "xp": 199987673, "max_xp": 420000000, "gold": 321939 },
+  "VizMage": { "level": 57, "xp": 769680, "max_xp": 25000000, "gold": 254162 },
+  "comparison": {
+    "minutes": 60.3,
+    "xp_per_hour": { "VizPri": 31640000, "VizWar": 30990000, "VizMage": 42300000, "team": 104930000 },
+    "VizMage_solo_crabx_xp_per_hour": 20930000,
+    "VizMage_halves": { "first_35_min_per_hour": 48500000, "last_25_min_per_hour": 33800000 },
+    "events": "Phoenix and Dracul fights (Dracul and a contested Phoenix 'gone without a kill seen' near 2-3 % HP), one magiport to the Phoenix, several restarts of single bots (magiport fixes)",
+    "dps_team": "about 4,200/s at the scorpions (VizWar ~1,830, VizMage ~1,790, VizPri ~600), 36-42 kills per 5 min"
+  }
+}

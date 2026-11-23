@@ -329,6 +329,43 @@ module.exports = function createTargeting(ctx) {
         return { ok: true, why: tank.name + " tanks " + pull + " (" + tankHits.toFixed(1) + " volleys, " + Math.round(incoming) + " dmg/s vs " + Math.round(healing) + " healing/s" + mobWhy + ")" };
     }
 
+    // Solo safety of our own (v1.226.8, player decision 2026-11-23): the guide's "safe" knows no kiting - it marked the
+    // Huge Crabs unsafe for the mage (240 per hit, but speed 8: they never reach a ranged fighter). Alone (no party) a route
+    // the guide calls unsafe is taken when our solo check passes for the level-1 monster: we survive live.ownHits of its hits
+    // and the whole fight costs at most live.soloHpUse of our HP - a monster we can kite (util.kiteRisk) hits with the
+    // residual risk only. No bosses, no special abilities. targeting.soloOwnCheck false switches it off.
+    const soloSafeCache = {};
+    function soloRouteSafe(monster) {
+        if (party.enabled || cfg.soloOwnCheck === false) return false;
+        const c = soloSafeCache[monster];
+        if (c && Date.now() - c.at < 60 * 1000) return c.ok;
+        const def = G.monsters[monster];
+        let ok = false;
+        if (def && !def.cooperative && !bossList().includes(monster) && !(def.abilities && Object.keys(def.abilities).length)) {
+            const lc = cfg.live || {};
+            const me = util.combatStats();
+            const kite = util.kiteRisk(def, null, { speed: character.speed, range: character.range });
+            const d = util.defenseVs(me, def.damage_type, def);
+            const hit = (def.attack || 0) * 1.1 * util.damageMultiplier(d) * util.hitFactor(monster) * kite;
+            if (me.max_hp / Math.max(1, hit) >= (lc.ownHits || 6)) {
+                const pull = (def.aggro || 0) >= 1 ? Math.max(1, densePack(monster)) : 1;
+                let sustain = potionHps() * hpPotionShare(0, me);
+                if (me.ctype === "priest") sustain += (me.heal || me.attack || 0) * (me.frequency || 1) * 0.5;
+                const myDef = util.defenseVs(def, me.damage_type, me);
+                const fearMult = util.fearMult(Math.max(0, pull - util.courageOf(def.damage_type || "physical")));
+                const myDps = Math.max(1, (me.attack || 0) * fearMult * (me.frequency || 1) * util.damageMultiplier(myDef));
+                sustain += myDps * ((character.lifesteal || 0) / 100);
+                const killSec = (def.hp || 1) * pull / myDps;
+                const freq = def.frequency || 1;
+                const mob = util.mobbing(def.attack || 0, pull, pull * freq, killSec);
+                const incoming = hit * freq * pull * mob.avg;
+                ok = Math.max(0, incoming - sustain) * killSec <= me.max_hp * (lc.soloHpUse || 0.5);
+            }
+        }
+        soloSafeCache[monster] = { at: Date.now(), ok: ok };
+        return ok;
+    }
+
     // ---- monster levels ---------------------------------------------------------
     // Monsters nobody attacks gain levels over time (game source: +50% base HP, +100%
     // base XP, +5% attack on growing spawns / +12.5% elsewhere per level, a bit faster).
@@ -432,6 +469,7 @@ module.exports = function createTargeting(ctx) {
     // Spots the spot check found too strong (2026-11-22): "map:x:y" -> until. Only that spot - a booboo hunt
     // sent the team to the 5-booboo spawn the team can't take while the 4-booboo one is fine.
     const strongSpotUntil = {};
+    const noResetUntil = {}; // monster -> no Cavalry reset planned before (reset found nothing grown, v1.227.2)
     let lastSpot = null;
     function spotKey(s) { return s.map + ":" + s.x + ":" + s.y; }
     function strangersNear(p, r) {
@@ -639,7 +677,11 @@ module.exports = function createTargeting(ctx) {
         const d = util.defenseVs(me, def.damage_type, def);
         const att = e.attack || def.attack || 0;
         const freq = e.frequency || def.frequency || 1;
-        const hit = att * 1.1 * util.damageMultiplier(d) * util.hitFactor(e.mtype);
+        // Kiteable for us (v1.227.1, util.kiteRisk: slower than us, shorter reach, no abilities): its hits count with the
+        // residual risk only, like the solo check - two Huge Crabs (speed 8) standing together blocked the mage's spot
+        // ("I survive 5.5 of their combined hits"). Melee fighters and the warrior's pulls are never kiteable (factor 1).
+        const hit = att * 1.1 * util.damageMultiplier(d) * util.hitFactor(e.mtype) *
+            util.kiteRisk(def, e, { speed: character.speed, range: character.range });
         let sustain = potionHps() * hpPotionShare(opts.mpPerSec || 0, me);
         if (me.ctype === "priest") sustain += (me.heal || me.attack || 0) * (me.frequency || 1) * 0.5;
         const myDef = util.defenseVs(def, me.damage_type, me);
@@ -1158,6 +1200,7 @@ module.exports = function createTargeting(ctx) {
         let unlisted = 0; // fighters whose guide doesn't know the monster
         if (own) {
             if (!own.listed.has(monster)) unlisted++;
+            else if (soloRouteSafe(monster)) { /* alone: our own solo check (with kiting) overrides the guide (v1.226.8) */ }
             else if (!own.safe.has(monster) || (!proven && !own.sure.has(monster))) return character.name;
         }
         const now = Date.now();
@@ -1244,7 +1287,7 @@ module.exports = function createTargeting(ctx) {
         const model = teamModelOn();
         const seen = {};
         const list = advice.routes
-            .filter(function (r) { return r && G.monsters[r.monster] && walkable(r) && (model || r.safe) && !lastingObjector(r.monster, own); })
+            .filter(function (r) { return r && G.monsters[r.monster] && walkable(r) && (model || r.safe || soloRouteSafe(r.monster)) && !lastingObjector(r.monster, own); })
             .sort(function (a, b) { return calcXp(b) - calcXp(a); })
             .filter(function (r) { if (seen[r.monster]) return false; seen[r.monster] = true; return true; })
             .map(function (r) { return r.monster; });
@@ -1283,7 +1326,7 @@ module.exports = function createTargeting(ctx) {
             // XP - a level-71 warrior on his own got goo, irritated goo and poisio.
             const seenRaw = {};
             const ranked = Array.isArray(advice.routes) ? advice.routes
-                .filter(function (r) { return r && r.safe && G.monsters[r.monster] && walkable(r); })
+                .filter(function (r) { return r && (r.safe || soloRouteSafe(r.monster)) && G.monsters[r.monster] && walkable(r); })
                 .sort(function (a, b) { return calcXp(b) - calcXp(a); })
                 .filter(function (r) { if (seenRaw[r.monster]) return false; seenRaw[r.monster] = true; return true; })
                 .slice(0, 3)
@@ -1602,10 +1645,14 @@ module.exports = function createTargeting(ctx) {
         if (cavPlan) {
             const called = cavalryCalledAt();
             let done = called > cavPlan.since && now - called > (cv.planStayMs || 100 * 1000);
-            // Hunt reset: at the spot with nothing of level 3+ there, there is nothing to reset - the spot check
-            // judges it again as it is (2026-11-22).
-            if (!done && cavPlan.hunt && cavPlan.spot && character.map === cavPlan.spot.map && !(called > cavPlan.since)) {
-                const box = spotBox(cavPlan.monster, cavPlan.spot);
+            // Any reset: at the spot with nothing of level 3+ there, there is nothing to reset - the spot check
+            // judges it again as it is (2026-11-22 for hunts, v1.227.2 for every reset: the solo mage stood among
+            // level-1 Huge Crabs for minutes, "none picked: on another player's spot", because the reset kept the
+            // too-strong block on the spot it was meant to clear). Without a spot of its own the plan uses the
+            // spot we farm there (lastSpot).
+            const planSpot = cavPlan.spot || (lastSpot && lastSpot.type === cavPlan.monster ? lastSpot : null);
+            if (!done && cavPlan.mode === "reset" && planSpot && character.map === planSpot.map && !(called > cavPlan.since)) {
+                const box = spotBox(cavPlan.monster, planSpot);
                 if (box && boxDist(util.xy(character), box.b) <= 200) {
                     const near = [box.b[0] - 200, box.b[1] - 200, box.b[2] + 200, box.b[3] + 200];
                     const grown = Object.values(parent.entities || {}).some(function (e) {
@@ -1613,7 +1660,10 @@ module.exports = function createTargeting(ctx) {
                     });
                     if (!grown && now - cavPlan.since > 20 * 1000) {
                         util.log("target", "cavalry reset at " + cavPlan.monster + ": nothing of level 3+ there - the spot check decides", "white");
-                        delete strongSpotUntil[spotKey(cavPlan.spot)];
+                        delete strongSpotUntil[spotKey(planSpot)];
+                        // No new reset here for 10 min: should the spot check block it again, the ready Cavalry
+                        // would plan the same pointless reset every 20 s.
+                        noResetUntil[cavPlan.monster] = now + 10 * 60 * 1000;
                         cavPlan = null;
                         nextPickAt = 0;
                         return null;
@@ -1654,14 +1704,14 @@ module.exports = function createTargeting(ctx) {
             // Guide list: the best too-strong spot that ranks above where we farm now.
             const rank = teamXpRanking() || [];
             const cur = farm ? rank.indexOf(farm.monster) : -1;
-            const m = rank.find(function (x) { return strongSpots[x] && !allSpotsTaken(x, true) && !recentDeath(x); });
+            const m = rank.find(function (x) { return strongSpots[x] && !allSpotsTaken(x, true) && !recentDeath(x) && !(noResetUntil[x] > now); });
             if (m && (cur === -1 || rank.indexOf(m) < cur)) cavPlan = { monster: m, mode: "reset", since: now };
             if (cavPlan) util.log("target", "Cavalry ready: reset at " + cavPlan.monster + " (too strong before)", "yellow");
             return cavPlan ? { monster: cavPlan.monster, source: "cavalry " + cavPlan.mode } : null;
         }
         // The first target skipped as too strong OR closed by a death (player decision 2026-11-19):
         // the Cavalry resets it, then it is farmed again.
-        if ((crowdedUntil[list[0]] > now || recentDeath(list[0])) && !allSpotsTaken(list[0], true)) cavPlan = { monster: list[0], mode: "reset", since: now };
+        if ((crowdedUntil[list[0]] > now || recentDeath(list[0])) && !allSpotsTaken(list[0], true) && !(noResetUntil[list[0]] > now)) cavPlan = { monster: list[0], mode: "reset", since: now };
         // Nuke only while we actually farm the first target (fighting there within the last
         // minute) - arriving at grown booboos must lead to their reset, not to the dinos.
         else if (!farmBlocked(list[0]) && farm && farm.monster === list[0] && now - lastFoundAt < 60 * 1000) {

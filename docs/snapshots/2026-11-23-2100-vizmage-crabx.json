@@ -1,0 +1,19 @@
+{
+  "at": "2026-11-23T21:00:39.344Z",
+  "purpose": "VizMage solo at the Huge Crabs (fixed farm target crabx) - end of the one-hour XP measurement (start: 2026-11-23-2000-vizmage-crabx.json)",
+  "bot": "1.227.5",
+  "VizMage": {
+    "level": 53,
+    "xp": 10904984,
+    "max_xp": 11000000,
+    "map": "main"
+  },
+  "comparison": {
+    "minutes": 60.3,
+    "xp_gained": 21038758,
+    "xp_per_hour": 20930000,
+    "previous_xp_per_hour": 18980000,
+    "lost_time": "about 6 min idle at the crabs (Cavalry reset jam, fixed in v1.227.2), two Phoenix chases (~4 and ~6 min, no kill seen), three restarts",
+    "dps_at_the_crabs": "about 830-880 damage/s, 53-59 kills per 5 min"
+  }
+}

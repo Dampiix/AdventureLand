@@ -1,0 +1,15 @@
+{
+  "at": "2026-11-23T19:16:11.442Z",
+  "purpose": "VizMage solo start (Lone Wolf + Welcome Back, Phoenix only when the merchant finds it) - measure XP/h and kills over one hour",
+  "bot": "1.226.7",
+  "VizMage": {
+    "level": 49,
+    "xp": 3054698,
+    "max_xp": 4700000,
+    "gold": 10000,
+    "map": "main",
+    "mainhand": ["firestaff", 6],
+    "buffs": ["mluck", "encouragement_lonewolf", "encouragement_returning"],
+    "kills": { "goo": 105, "porcupine": 21, "bee": 28, "croc": 14, "squig": 4, "tortoise": 5, "frog": 1, "squigtoad": 10, "phoenix": 5, "arcticbee": 14 }
+  }
+}

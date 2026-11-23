@@ -1,0 +1,13 @@
+{
+  "at": "2026-11-23T20:00:23.243Z",
+  "purpose": "VizMage solo at the Huge Crabs (fixed farm target crabx) - start of a one-hour XP measurement",
+  "bot": "1.226.9",
+  "VizMage": {
+    "level": 51,
+    "xp": 6066226,
+    "max_xp": 7200000,
+    "gold": 10000,
+    "map": "main",
+    "kills": { "goo": 105, "porcupine": 21, "bee": 28, "croc": 167, "squig": 4, "tortoise": 8, "frog": 1, "squigtoad": 16, "phoenix": 7, "arcticbee": 14, "crabx": 1 }
+  }
+}

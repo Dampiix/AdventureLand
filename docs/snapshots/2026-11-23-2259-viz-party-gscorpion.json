@@ -1,0 +1,14 @@
+{
+  "at": "2026-11-23T22:59:03.967Z",
+  "purpose": "Viz party at the Giant Scorpions - second window, 33 min after 2026-11-23-2226-viz-party-gscorpion.json",
+  "bot": "1.228.4",
+  "VizPri": { "level": 67, "xp": 71701094, "max_xp": 170000000 },
+  "VizWar": { "level": 72, "xp": 215434057, "max_xp": 420000000 },
+  "VizMage": { "level": 57, "xp": 22644101, "max_xp": 25000000 },
+  "comparison": {
+    "minutes": 33.0,
+    "xp_per_hour": { "VizPri": 28500000, "VizWar": 28100000, "VizMage": 39800000, "team": 96400000 },
+    "events": "two Phoenix trips to a Phoenix fought by other players (Buka007, Victim; 'gone without a kill seen' at 1-5 % HP), one magiport to it",
+    "dps_team": "4,385-4,574/s in the clean 5-min windows (VizWar ~2,100, VizMage ~1,700-2,000, VizPri ~600), 40-43 kills per 5 min"
+  }
+}

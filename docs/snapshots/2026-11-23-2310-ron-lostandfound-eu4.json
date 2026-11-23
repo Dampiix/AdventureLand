@@ -1,0 +1,18 @@
+{
+  "at": "2026-11-23T22:10:03.814Z",
+  "purpose": "First look at Ron (Lost and Found, woffice) on EU IV after a 1M donation by VizMerch (manual, by the player)",
+  "price_rule": "client render_item: price = calculate_item_value(item) x 4 x q; calculate_item_value of a +0 item = 0.6 x G -> 2.4 x G (Ponty: x2 -> 1.2 x G)",
+  "listing_fields": ["name", "level", "rid"],
+  "entries": 98,
+  "notable": [
+    { "item": "frankypants", "name": "Franky Pants", "level": 0, "copies": 6, "price_each": 1872000, "note": "tier 3 pants, armor 35, resistance 21, stat 3 (+1/level), vit 6, speed 1; rare grade from +0 (grades 0,0,9,10)" },
+    { "item": "horsecape", "name": "Horse Leather Cape", "level": 0, "copies": 1, "price_each": 3840000 },
+    { "item": "vitscroll", "name": "Vitality Scroll", "q": 254, "price_each": 19200, "note": "one stack, about 4.9M for all" },
+    { "item": "gem0", "name": "Raw Emerald", "q": 4, "price_each": 576000 },
+    { "item": "candy1", "name": "Candy", "q": 36, "price_each": 57600 },
+    { "item": "ringsj", "name": "Ring of Small Joys", "level": 0, "copies": 5, "price_each": 57600, "note": "1 str/int/dex, 5 resistance" },
+    { "item": "gemfragment", "name": "Gem Fragment", "q": 3, "price_each": 76800 }
+  ],
+  "rest": "Wanderer's pieces +0 (many, 16k-58k), Pumpkin Heads, Green Pumpkin Heads, Quivers, Crab Claws (weapon), Mushroom/Slime Staffs, Stingers, Belts and Amulets of HP, Swifty, and big material stacks (seashell 3517, beewings 3090, reefglass 2015, crabclaw 325, spores 209, drapes 77, whiteegg 74, rattail 51, smush 14, rfangs 6, frogt 2, sstinger 2)",
+  "rare_list_hits": []
+}

@@ -1,0 +1,9 @@
+{
+  "at": "2026-11-23T21:25:48.514Z",
+  "purpose": "Viz party (VizPri, VizWar, VizMage) at the Giant Scorpions - start of a one-hour XP test against VizMage solo (20.9M XP/h at the Huge Crabs, 2026-11-23-2100-vizmage-crabx.json)",
+  "bot": "1.228.2",
+  "party": ["VizPri", "VizWar", "VizMage"],
+  "VizPri": { "level": 67, "xp": 24235742, "max_xp": 170000000, "gold": 49924, "map": "desertland" },
+  "VizWar": { "level": 72, "xp": 168839961, "max_xp": 420000000, "gold": 106077, "map": "desertland" },
+  "VizMage": { "level": 54, "xp": 7252867, "max_xp": 13000000, "gold": 64202, "map": "desertland", "mainhand": "firestaff" }
+}

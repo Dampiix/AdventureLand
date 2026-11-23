@@ -73,6 +73,9 @@ module.exports = function createGear(ctx) {
             if (G.items[req.name].type === "weapon" && ["mainhand", "offhand"].some(function (s) {
                 return isSplashWeapon(character.slots && character.slots[s]);
             })) return;
+            // A two-hander in hand (the mage's Blaster): no wishes for an offhand-only piece (books, shields, quivers) -
+            // the guide saw an empty offhand and asked for book after book (2026-11-23).
+            if (twoHanded() && (SLOTS_BY_TYPE[G.items[req.name].type] || []).every(function (s) { return s === "offhand"; })) return;
             const level = req.level || 0;
             if (seen[req.name] !== undefined && seen[req.name] >= level) return;
             seen[req.name] = level;
@@ -325,6 +328,31 @@ module.exports = function createGear(ctx) {
             taken.push(u.num);
             out[s] = { name: u.item.name, level: u.item.level || 0, stat: u.item.stat_type || null };
         });
+        // A carried two-hander still reported for the main hand (the mage's Blaster, no other weapon in the bag): report the
+        // single-target loadout instead - the best other one-hander and the best book in the bag, or nothing - so the
+        // merchant builds and delivers the staff line (Staff of the Dead) although the Blaster is stronger (v1.226.0,
+        // player decision 2026-11-23: staff + book for bosses and whenever the Blaster must not fire).
+        const om = out.mainhand;
+        if (om && isCarry(om.name) && util.isDoublehand(om.name, character.ctype)) {
+            let w = null, wPow = 0, b = null, bVal = -1;
+            character.items.forEach(function (it) {
+                const d = it && G.items[it.name];
+                if (!d || isCarry(it.name)) return;
+                if (d.type === "weapon" && !util.isDoublehand(it.name, character.ctype)) {
+                    const p = util.weaponPower(it.name, it.level || 0, character.ctype);
+                    if (p > wPow) { wPow = p; w = it; }
+                } else if (d.type === "source" && bookValue(it) > bVal) { bVal = bookValue(it); b = it; }
+            });
+            if (w) out.mainhand = { name: w.name, level: w.level || 0, stat: w.stat_type || null }; else delete out.mainhand;
+            if (!out.offhand || out.offhand.name === "_twohand") {
+                if (b) out.offhand = { name: b.name, level: b.level || 0, stat: null }; else delete out.offhand;
+            }
+            return out;
+        }
+        // A two-hander in hand and nothing reported for the offhand (the mage's Blaster): the offhand counts as taken. The
+        // merchant saw an empty offhand and brought book after book (2026-11-23). "_twohand" is no item - every check
+        // that looks the name up in G.items skips it.
+        if (!out.offhand && twoHanded()) out.offhand = { name: "_twohand", level: 0, stat: null };
         return out;
     }
 
@@ -645,7 +673,40 @@ module.exports = function createGear(ctx) {
             const m = character.slots && character.slots.mainhand;
             if (!(m && util.isDoublehand(m.name, character.ctype))) slots.push("offhand");
         }
-        return slots;
+        // Next to a two-hander nothing goes into the offhand (a book would push the Blaster off, 2026-11-23).
+        return twoHanded() ? slots.filter(function (s) { return s !== "offhand"; }) : slots;
+    }
+    function twoHanded() {
+        const m = character.slots && character.slots.mainhand;
+        return !!(m && util.isDoublehand(m.name, character.ctype));
+    }
+    // The best offhand book stays in the bag while a two-hander is in hand (v1.225.5, player decision 2026-11-23): the mage
+    // needs it for staff + book when the Blaster comes off. Only that one; spare books go to the merchant.
+    function bookValue(it) {
+        const d = it && G.items[it.name];
+        return d ? (d.int || 0) + ((d.compound || {}).int || 0) * (it.level || 0) : 0;
+    }
+    // ...and the best other one-handed weapon (v1.226.0): the Staff of the Dead for bosses and blocked Blaster shots.
+    function keptStaff(item) {
+        const def = item && G.items[item.name];
+        if (!def || def.type !== "weapon" || isCarry(item.name) || util.isDoublehand(item.name, character.ctype) || !twoHanded()) return false;
+        let best = null, bestPow = 0;
+        character.items.forEach(function (it) {
+            const d = it && G.items[it.name];
+            if (!d || d.type !== "weapon" || isCarry(it.name) || util.isDoublehand(it.name, character.ctype)) return;
+            const p = util.weaponPower(it.name, it.level || 0, character.ctype);
+            if (p > bestPow) { bestPow = p; best = it; }
+        });
+        return best === item;
+    }
+    function keptBook(item) {
+        const def = item && G.items[item.name];
+        if (!def || def.type !== "source" || !twoHanded() || (character.slots && character.slots.offhand)) return false;
+        let best = null;
+        character.items.forEach(function (it) {
+            if (it && G.items[it.name] && G.items[it.name].type === "source" && (!best || bookValue(it) > bookValue(best))) best = it;
+        });
+        return best === item;
     }
     // A bag weapon clearly stronger than the weapon in our offhand (dual wield).
     function strongerOffhand(item) {
@@ -694,7 +755,10 @@ module.exports = function createGear(ctx) {
             const taken = [];
             ["mainhand", "offhand"].forEach(function (s) {
                 const u = usualFor(s, taken);
-                if (!u) return;
+                // Never a mode's weapon as the usual one (v1.226.1): the mage held the Blaster with no staff in the bag, the
+                // Blaster became "usual", and after the staff came the gear module kept trying to put the Blaster back
+                // ("Unequip your offhand item to use this two-handed weapon" all through the Phoenix fight).
+                if (!u || isSplashWeapon(u.item) || isCarry(u.item.name)) return;
                 if (u.num >= 0) taken.push(u.num);
                 usualWeapons[s] = { name: u.item.name, level: u.item.level || 0, stat: u.item.stat_type || null };
             });
@@ -736,11 +800,13 @@ module.exports = function createGear(ctx) {
         });
         if (missing) usualWeapons = null;
         if (!batch.length) return false;
-        equipBatch(batch).then(function () {
+        equipBatch(batch).then(function (r) {
+            // A piece the game refused (cant_equip): forget the remembered set instead of retrying it every 1.5 s (v1.226.1).
+            if (((r && r.slots) || []).some(function (x) { return typeof x === "string"; })) { usualWeapons = null; return; }
             util.log("gear", "usual weapons back: " + batch.map(function (b) {
                 const i = character.slots && character.slots[b.slot]; return b.slot + " " + (i ? i.name + " +" + (i.level || 0) : "-");
             }).join(", "), "green");
-        }).catch(function (e) { util.log("gear", "usual weapons back: " + util.errReason(e), "orange"); });
+        }).catch(function (e) { usualWeapons = null; util.log("gear", "usual weapons back: " + util.errReason(e), "orange"); });
         nextEquipAt = Date.now() + 1500; // the bag settles before the next equip pass
         lastBag = "";
         return true;
@@ -885,6 +951,7 @@ module.exports = function createGear(ctx) {
         if (luck && luck.back.some(function (b) { return b.name === item.name && b.level === (item.level || 0); })) return true;
         if (swapSword(item)) return true;
         if (pairPart(item)) return true; // half of a weapon pair that beats our two-hander
+        if (keptBook(item) || keptStaff(item)) return true;
         if (wishes.some(function (w) { return w.name === item.name && (item.level || 0) >= w.level; })) return true;
         const carried = chainOf(item.name);
         // A finished carried piece – a stand-in only while the preferred copies are missing.

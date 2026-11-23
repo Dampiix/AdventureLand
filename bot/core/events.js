@@ -1159,5 +1159,25 @@ module.exports = function createEvents(ctx) {
         publishScoutPlan: publishScoutPlan, // fighter.busyStep: every tick, before the team wait and supply can take it
         cipherFarm: cipherFarm,             // targeting.currentFarm: the Witch's Cipher ingredient spot list, or null
         cipherActive: cipherActive,         // fighter.busyStep: no Daisy trips in the gathering window
+        acceptMagiport: acceptMagiport,     // main.js on_magiport
     };
+
+    // Magiport consent (v1.228.1, player decision 2026-11-23): the game asks us (on_magiport) when a mage pulls us to
+    // it. Accepted only from a team fighter in our party while the team fights a boss (the leader's boss event, not a
+    // join event or a runner's solo kill) and we are alive - a stale, foreign or out-of-fight port is declined
+    // (no answer). Our walk to the boss is stopped first, the port puts us next to the mage (classes/mage.js).
+    function acceptMagiport(name) {
+        const mcfg = ((config.classes || {}).mage || {}).magiport || {};
+        const fighters = (config.team && config.team.fighters) || [];
+        const why = !mcfg.enabled ? "magiport off" : name === character.name ? "own" : !fighters.includes(name) ? "not one of our fighters" :
+            !party.inParty(name) ? "not in our party" : character.rip ? "dead" : !current || !current.monster || current.join || current.solo ? "no boss fight" : null;
+        if (why) {
+            util.log("event", "magiport from " + name + " declined: " + why, "orange");
+            return;
+        }
+        try { stop(); } catch (e) { /* not walking */ }
+        accept_magiport(name)
+            .then(function () { util.log("event", "magiported to " + name + " for " + current.name, "green"); })
+            .catch(function (e) { util.log("event", "magiport from " + name + " failed: " + util.errReason(e), "orange"); });
+    }
 };

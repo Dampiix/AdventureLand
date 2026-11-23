@@ -1,0 +1,19 @@
+{
+  "at": "2026-11-23T19:58:53.932Z",
+  "purpose": "VizMage solo, end of the first measurement (start: 2026-11-23-1916-vizmage-solo.json), before the switch to Huge Crabs",
+  "bot": "1.226.9",
+  "VizMage": {
+    "level": 51,
+    "xp": 6066226,
+    "max_xp": 7200000,
+    "gold": 10000,
+    "mainhand": ["firestaff", 7],
+    "kills": { "goo": 105, "porcupine": 21, "bee": 28, "croc": 167, "squig": 4, "tortoise": 8, "frog": 1, "squigtoad": 16, "phoenix": 7, "arcticbee": 14, "crabx": 1 }
+  },
+  "comparison": {
+    "minutes": 42.7,
+    "xp_gained": 13511528,
+    "xp_per_hour": 18980000,
+    "kills": { "croc": 153, "squigtoad": 6, "tortoise": 3, "phoenix": 2, "crabx": 1 }
+  }
+}

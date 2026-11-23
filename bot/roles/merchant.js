@@ -59,6 +59,8 @@ module.exports = function createMerchant(ctx) {
         return Object.keys(want || {}).every(function (name) {
             const need = want[name] || 0;
             if (need <= 0 || !G.items[name]) return true;
+            if (G.items[name].type !== "pot") return true; // elixirs (v1.229.0) come when we have them - not a potion question
+
             return util.countItem(name) + Math.floor(spendable / G.items[name].g) >= need / 2;
         });
     }
@@ -478,6 +480,65 @@ module.exports = function createMerchant(ctx) {
         }
     }
 
+    // ---- elixirs (v1.229.0, config.elixirs) ------------------------------------------------------------------------
+    // The elixirs our team drinks (one per class in config.team.fighters, classes as the fighters reported them).
+    function teamElixirs() {
+        const el = config.elixirs || {};
+        if (!el.enabled) return [];
+        const out = [];
+        ((config.team && config.team.fighters) || []).forEach(function (f) {
+            const ctype = workshop.classOf ? workshop.classOf(f) : null;
+            const it = ctype && (el.byClass || {})[ctype];
+            if (it && G.items[it] && !out.includes(it)) out.push(it);
+        });
+        return out;
+    }
+    // NPC-bought elixirs (elixirs.buy, Liquid Luck at Warin): below min (bag + bank) the merchant walks to the seller
+    // and buys up to max, with gold above goldReserve only.
+    const elixirPoorLog = {};
+    function sellerNpc(name) {
+        for (const mapName of ["main"].concat(Object.keys(G.maps).filter(function (x) { return x !== "main"; }))) {
+            const map = G.maps[mapName];
+            if (!map || map.ignore || map.instance) continue;
+            const npc = (map.npcs || []).find(function (n) { return n.position && G.npcs[n.id] && (G.npcs[n.id].items || []).includes(name); });
+            if (npc) return { id: npc.id, map: mapName, x: npc.position[0], y: npc.position[1] };
+        }
+        return null;
+    }
+    async function elixirChores() {
+        const el = config.elixirs || {};
+        if (!el.enabled) return;
+        const team = teamElixirs();
+        for (const name of Object.keys(el.buy || {})) {
+            const rule = el.buy[name] || {};
+            if (!team.includes(name) || !G.items[name]) continue;
+            const owned = workshop.ownedCount(name);
+            if (owned >= (rule.min || 1)) continue;
+            const price = G.items[name].g;
+            const spendable = Math.max(0, character.gold - util.goldAmount(m.goldReserve));
+            const amount = Math.min((rule.max || rule.min || 1) - owned, Math.floor(spendable / price));
+            if (amount < 1) {
+                if (Date.now() - (elixirPoorLog[name] || 0) > 30 * 60 * 1000) {
+                    elixirPoorLog[name] = Date.now();
+                    util.log("merchant", "only " + owned + " " + G.items[name].name + " left - not enough gold above the reserve for one (" + Math.round(price / 1000) + "k)", "orange");
+                }
+                continue;
+            }
+            if (character.esize < 1 && util.findItemIndex(function (i) { return i.name === name; }) === -1) continue;
+            const npc = sellerNpc(name);
+            if (!npc) continue;
+            util.status("buying " + G.items[name].name, "yellow");
+            util.log("merchant", "buying " + amount + " " + G.items[name].name + " at " + (G.npcs[npc.id].name || npc.id) + " (" + npc.map + ") for " + Math.round(amount * price / 1000) + "k - " + owned + " left", "yellow");
+            // Where to stand (v1.229.1): Warin stands behind his bar - a point 20 px below him was "Path not found!".
+            // The map's spawn point nearest to the NPC (within 300 px, the shop reach is 400) is walkable by definition.
+            const spawn = ((G.maps[npc.map] || {}).spawns || []).map(function (s) { return { x: s[0], y: s[1], d: Math.hypot(s[0] - npc.x, s[1] - npc.y) }; })
+                .filter(function (s) { return s.d <= 300; }).sort(function (a, b) { return a.d - b.d; })[0];
+            await util.walk(spawn ? { map: npc.map, x: spawn.x, y: spawn.y } : { map: npc.map, x: npc.x, y: npc.y + 20 });
+            await buy(name, amount);
+            util.log("merchant", "bought " + amount + " " + G.items[name].name, "green");
+        }
+    }
+
     async function giveTo(name, want) {
         for (const potion of Object.keys(want || {})) {
             let missing = want[potion];
@@ -601,6 +662,7 @@ module.exports = function createMerchant(ctx) {
         if (!item || isSellable(item) || workshop.isGoalFinished(item)) return false;
         if (workshop.isReserved(item) && !(tight && tight() && !(keep && keep.has(index)))) return false;
         if (G.items[item.name] && G.items[item.name].type === "pot") return false; // potion stock stays with us
+        if (teamElixirs().includes(item.name)) return false; // the team's elixirs stay with us for the pickups (v1.229.0)
         if (m.bank.keep.includes(item.name)) return false;
         if (marketSurplus(item.name, item.level) > 0) return false; // waits for a slot in the stand
         if (workshop.waitsForDismantle(item)) return false;           // goes to Leo, not the bank
@@ -641,7 +703,19 @@ module.exports = function createMerchant(ctx) {
             }
         }
         util.log("merchant", "banked " + stored + " stacks" + (full ? " - bank is full, a new pack is needed" : ""), full ? "orange" : "green");
-        if (stored && workshop.refreshBank) workshop.refreshBank(); // the workshop counts the bank from its snapshot
+        // The team's elixirs come out of the bank into the bag (v1.229.0): exchange rewards and older stock land there.
+        let elixirsTaken = 0;
+        for (const pack of Object.keys(character.bank || {})) {
+            if (!/^items\d+$/.test(pack)) continue;
+            const items = character.bank[pack] || [];
+            for (let i = 0; i < items.length; i++) {
+                if (!items[i] || !teamElixirs().includes(items[i].name)) continue;
+                if (character.esize <= 3 && util.findItemIndex(function (b) { return b.name === items[i].name; }) === -1) break;
+                try { await bank_retrieve(pack, i); elixirsTaken++; } catch (e) { util.log("merchant", "could not take " + items[i].name + " from the bank: " + util.errReason(e), "orange"); }
+            }
+        }
+        if (elixirsTaken) util.log("merchant", "took " + elixirsTaken + " elixir stacks out of the bank for the team", "green");
+        if ((stored || elixirsTaken) && workshop.refreshBank) workshop.refreshBank(); // the workshop counts the bank from its snapshot
         if (!storeOnly) await takeSellablesFromBank();
         return stored;
     }
@@ -1195,6 +1269,8 @@ module.exports = function createMerchant(ctx) {
                 if (wr === "did" || wr === "blocked") nextChoresAt = Date.now() + (m.workshopFastMs || 3000);
                 await goHome();
                 await restock();
+                try { await elixirChores(); } catch (e) { util.log("merchant", "elixir purchase: " + util.errReason(e), "orange"); }
+                await goHome();
             }
             if (fishingDue()) {
                 await fish();
