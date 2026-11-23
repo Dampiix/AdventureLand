@@ -1,0 +1,60 @@
+{
+  "account": "viz",
+  "taken": "2026-11-23T03:30:11Z",
+  "compareWith": "2026-11-22-2238-viz-night-start.json (21:38Z)",
+  "note": "Snapshot right after deploying bot v1.219.6 (03:28Z): Agitate steps clear of other kinds first (live, any target but us, reach + 80 px), the Agitate death block names the killer's kind (not the farm kind), and on the way every fighter only fights back against the farm kind (other kinds without rage are passed). The wrong gscorpion Agitate block (until 05:12Z) was deleted. VizMerch was OFFLINE at 03:30-03:32Z (not in a Ponty round, code not running) - its values are from 02:27Z. Night 21:38-03:30Z: gold -46 M (Ponty/player buys ~19 M, the rest mostly scroll2 for Rugged/Fireblade +8 tries), essence of fire used up (fireblade +8 never succeeded), Dracul's Attire +7 and Rugged gloves +8 reached, Poucher +7 done.",
+  "botVersion": { "VizPri": "1.219.6", "VizWar": "1.219.6", "VizRng": "1.219.6", "VizMerch": "1.219.1 (offline at the snapshot)" },
+  "characters": {
+    "VizPri": {
+      "level": 65, "xp": 25150265, "max_xp": 120000000, "gold": 16703, "map": "main",
+      "stats": { "hp": 5331, "mp": 4700, "attack": 741, "heal": 1763, "armor": 110, "resistance": 237, "frequency": 0.943, "goldm": 1.15, "luckm": 1.22, "xpm": 2.66, "speed": 52 },
+      "conditions": { "encouragement_returning": "6779 min left (~2026-11-27 20:30Z)", "mluck": "45 min", "mlifesteal": "53 min", "halloween0": "1289 min", "halloween1": "1205 min", "coop": "12 min" },
+      "worn": { "mainhand": "staffofthedead+7", "offhand": "wbook0+2", "orb": "orbg+1", "helmet": "wcap+8:int", "chest": "wattire+8:int", "pants": "pants+8:int", "shoes": "wshoes+8:int", "gloves": "gloves+8:int", "ring1": "intring+3", "ring2": "intring+2", "earring1": "intearring+3", "earring2": "intearring+3", "amulet": "intamulet+2", "belt": "intbelt+2" },
+      "bag": ["tracker", "mpot1 x219", "hpot1 x299", "ringsj+0", "intearring+0", "stormfeather x6"], "freeBag": 36,
+      "sinceNightStart": "+1 level, ~100.3 M XP in 5 h 52 min (~17 M/h)"
+    },
+    "VizWar": {
+      "level": 71, "xp": 179109740, "max_xp": 350000000, "gold": 30838, "map": "main",
+      "stats": { "hp": 10483, "mp": 1210, "attack": 1354, "armor": 413, "resistance": 197, "frequency": 1.017, "goldm": 1.1, "luckm": 1.17, "xpm": 2.16, "speed": 73, "note": "fire blades on (attack 1354), no Hard Shell (armor 413)" },
+      "worn": { "mainhand": "fireblade+7", "offhand": "fireblade+7", "orb": "orbg+1", "helmet": "helmet1+7:str", "chest": "mcape+7:str (NEW, Dracul's Attire)", "pants": "pants1+7:str", "shoes": "shoes1+7:str", "gloves": "gloves1+8:str (NEW, first Rugged +8)", "ring1": "strring+3", "ring2": "strring+2", "earring1": "strearring+3", "earring2": "strearring+3", "amulet": "stramulet+4", "belt": "strbelt+3 (NEW)", "cape": "cape+0:str" },
+      "bag": ["tracker", "mpot1 x286", "hpot1 x279", "ololipop+7 x2", "stormfeather x14", "hpamulet+0", "vitscroll x2", "strearring+0", "firestaff+0"], "freeBag": 32,
+      "sinceNightStart": "~138.3 M XP in 5 h 52 min (~23.6 M/h)"
+    },
+    "VizRng": {
+      "level": 68, "xp": 26701827, "max_xp": 200000000, "gold": 22116, "map": "cave",
+      "stats": { "hp": 3968, "mp": 1310, "attack": 1087, "armor": 120, "resistance": 174, "frequency": 1.186, "goldm": 1.15, "luckm": 1.22, "xpm": 2.66, "speed": 66 },
+      "worn": { "mainhand": "firebow+7", "offhand": "quiver+8", "orb": "orbg+1", "helmet": "helmet+8:dex", "chest": "coat+8:dex", "pants": "pants+8:dex", "shoes": "wshoes+8:dex", "gloves": "gloves+8:dex", "ring1": "ringsj+2", "ring2": "dexring+3", "earring1": "dexearring+3 (NEW)", "earring2": "dexearring+2", "amulet": "dexamulet+3", "belt": "dexbelt+2" },
+      "bag": ["tracker", "mpot1 x173", "hpot1 x292", "pouchbow+7 (NEW, Poucher done, carried for the AoE mode)", "embercore", "ringsj+0", "vitscroll", "intearring+0", "strearring+0", "dexearring+0", "stormfeather x3"], "freeBag": 31,
+      "sinceNightStart": "+1 level, ~179.3 M XP in 5 h 52 min (~30.6 M/h)"
+    },
+    "VizMerch": {
+      "seenAt": "2026-11-23T02:27Z values (offline at the snapshot)",
+      "level": 55, "xp": 1138945, "max_xp": 16000000, "gold": 120529639, "map": "main", "freeBag": 8,
+      "bag": ["hpot1 x839", "mpot1 x486", "stand0", "scroll1 x3", "scroll0", "cscroll0", "wgloves+0", "leather", "dexamulet+2", "dexamulet+3", "intamulet+2", "intamulet+1", "dexring+1", "strring+1", "strring+0 x2", "intring+1", "strearring+3 x2", "strearring+1 x2", "strearring+0 x3", "intearring+3", "intearring+2", "intearring+1", "dexearring+2", "dexearring+1 x2", "dexearring+0", "intbelt+2 x2", "dexbelt+0"],
+      "night": {
+        "goldChange": "166.7 M -> 120.5 M (-46.2 M by 02:27Z)",
+        "spends": "43.7 M buys/other (of which ~18.9 M Ponty and players: pants1+5 4.5 M, intamulet+2 5.0 M, strbelt+3 2.24 M, pants1+0 2x 400k, mcape+0 2x 576k, many Rugged +0..+4, wbreeches/wgloves +0), 11.2 M ladder upgrades; credits 8.7 M",
+        "essenceOfFire": "used up (bank 30 -> 0); workshop_essence_used fireblade:8 = 49, fire weapons still +7"
+      }
+    }
+  },
+  "bank": {
+    "source": "saved account snapshot read at 03:30Z (not live)", "gold": 1000, "freeSlots": 58, "of": 168,
+    "items": { "stormfeather": 2342, "gem1": 942, "crabclaw": 300, "marketparcel": 74, "gem0": 55, "monstertoken": 53, "drapes": 47, "spores": 45, "beewings": 36, "bwing": 31, "voidthread": 29, "candycane": 23, "embercore": 22, "ashleaf": 20, "cscale": 19, "shadowstone": 18, "pstem": 16, "carrot": 13, "gslime": 13, "candy0": 13, "candy1": 13, "ascale": 10, "essenceofether": 9, "seashell": 7, "reefglass": 6, "frogt": 5, "bfur": 5, "weaponbox": 4, "rfangs": 4, "verdantspore": 4, "gemfragment": 4, "frostcore": 3, "forscroll": 3, "ijx": 3, "feather0": 3, "dstones": 2, "mistletoe": 2, "gloomfeather": 2, "cryptkey": 1, "offeringp": 1, "elixirvit0": 1, "elixirstr0": 1, "elixirint0": 1, "essenceoffire": 0, "armorbox": 0, "funtoken": 0, "mcape": 0 },
+    "gear": ["coat1+7:str (the warrior's old chest)", "blade+8 x2", "bow+8", "staff+8", "staffofthedead+6", "glolipop+7", "glolipop+0 x5", "ololipop+0 x5", "dawnwardaegis+0 x6", "sword+0 x2", "t2bow+3", "tshirt1+3", "quiver+7", "shoes+8:str", "shoes+8:dex", "shoes+7:dex", "coat1+0 x2", "wbook0+2 x2", "wbook0+0 x2", "orbg+0", "stramulet+3", "stramulet+2 x2", "stramulet+1", "stramulet+0", "intamulet+0", "dexamulet+0", "strbelt+1", "dexbelt+2", "dexbelt+1 x2", "dexbelt+0", "intbelt+0", "strring+1", "dexring+1", "dexring+0", "intring+1", "intring+0 x2", "strearring+0 x2", "intearring+0", "dexearring+2", "vitearring+2", "vitearring+0 x2"]
+  },
+  "gold": { "VizPri": 16703, "VizWar": 30838, "VizRng": 22116, "bank": 1000, "merchant": "120529639 (02:27Z)", "total": "~120.6 M" },
+  "night": {
+    "deaths": [
+      "22:26Z VizWar - Fire Spirits (gscorpion, right after arriving)",
+      "22:55Z VizWar + VizRng, 22:56Z VizRng again - Fire Spirits",
+      "00:16Z VizWar + VizRng, 00:18Z VizRng, 00:19Z VizWar - Fire Spirits",
+      "02:44Z VizPri - ent (desertland)",
+      "03:12Z VizWar - 2 Fire Spirits (7 on him after an Agitate; Agitate then blocked gscorpion until 05:12Z - deleted at 03:28Z)",
+      "note: VizPri's journal only reaches back to 00:32Z (400 lines)"
+    ],
+    "bosses": "Phoenix found very often, Skeletor 5x (levels 1-3, often '1 already fighting'), Ms./Mr. Vampire, Jr./Green Jr. searched; kills not countable - most end as 'gone without a kill seen' at 0-5 % HP (known bug)",
+    "gear": ["Dracul's Attire +7 on the warrior (7 of 8 Attire +0 used up, 2 more bought)", "Rugged gloves +8 on the warrior (between 02:27Z and 03:30Z)", "strbelt+3 (warrior), dexearring+3 (ranger)", "Poucher +7 (ranger bag)", "fire weapons +8: none - 49 essence of fire spent on fireblade +8"]
+  },
+  "open": ["VizMerch offline since before 03:30Z - needs a restart by the player", "v1.219.6 changes not yet observed in game", "Cleave/Stomp still hit free monsters of other kinds", "the workshop spending (Rugged/fire weapons +8) needs limits"]
+}

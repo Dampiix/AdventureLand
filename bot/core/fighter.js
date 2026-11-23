@@ -188,7 +188,6 @@ module.exports = function createFighter(ctx, cls) {
             deathReported = true;
             try { logDeathAnalysis(); } catch (e) { /* analysis only */ }
             if (ctx.events && ctx.events.onOwnDeath) { try { ctx.events.onOwnDeath(); } catch (e) { /* report only */ } }
-            if (cls.onDeath) { try { cls.onDeath(); } catch (e) { /* class hook only */ } }
             // Blame the killer, not the farm target: a death on the way (e.g. vampire rats at
             // the underground entrance on the way to the CGoos) must not close the farm spot.
             // Monsters on us first, else the nearest one close by; the farm target only when
@@ -212,6 +211,8 @@ module.exports = function createFighter(ctx, cls) {
             });
             const killer = Object.keys(dealt).sort(function (a, b) { return dealt[b] - dealt[a]; })[0] || null;
             const monster = killer || (onMe ? onMe.mtype : close ? close.mtype : farmNear ? farmType : null);
+            // The class hook gets the same killer (2026-11-23: the warrior's Agitate block named the farm target).
+            if (cls.onDeath) { try { cls.onDeath(monster); } catch (e) { /* class hook only */ } }
             if (monster) {
                 // A member reports to the leader and notes it itself as well: farming on its own
                 // (detached) it picks with its own records (2026-11-18: the warrior died three
@@ -779,6 +780,20 @@ module.exports = function createFighter(ctx, cls) {
             const spot0 = targeting.spotFor(farm.monster, farm.map);
             return !(spot0 && spot0.map === character.map && util.distanceTo(spot0) < (pt.spotRadius || 400));
         }
+        const ours = [character.name].concat(party.enabled ? party.memberNames() : []);
+        const attackers = Object.values(parent.entities || {}).filter(function (e) {
+            return e && e.type === "monster" && !e.dead && e.target && ours.includes(e.target);
+        });
+        // On the way we only fight back against the farm kind (2026-11-23, player decision). Server rule (node/server.js):
+        // a monster without rage hits a passer-by in front of it but never takes up the chase - only our own hit, a taunt
+        // or Agitate makes it follow, and with rage 0 it gives up 20 s after our last hit. So other kinds without rage
+        // are passed by every fighter (members too, leader present or not), at any HP and any speed - hitting a Fire
+        // Spirit (84k HP, 280 px reach) back is what keeps it on us. Not at the spot (spotRadius), never bosses (above).
+        const noChase = function (e) { return e.mtype !== farm.monster && !(((G.monsters[e.mtype] || {}).rage || 0) > 0); };
+        const spotNow = targeting.spotFor(farm.monster, farm.map);
+        const arrivedNow = !!spotNow && spotNow.map === character.map && util.distanceTo(spotNow) < (pt.spotRadius || 400);
+        // Only when something hits us or ours (a free one the pick chose - a rare monster - stays as before).
+        if (!arrivedNow && (attackers.length || target.target) && noChase(target) && attackers.every(noChase)) return true;
         // Members follow the leader - unless the leader is gone already (another map, or beyond party.farmRadius):
         // then they pass slow attackers too instead of fighting them for leaveAfterMs (2026-11-22, player decision).
         if (party.enabled && party.isMember && !party.detached() && !leaderGone()) return false;
@@ -786,10 +801,6 @@ module.exports = function createFighter(ctx, cls) {
         const spot = targeting.spotFor(farm.monster, farm.map);
         if (spot && spot.map === character.map && util.distanceTo(spot) < (pt.spotRadius || 400)) return false; // arrived
         const mine = character.speed || 0;
-        const ours = [character.name].concat(party.enabled ? party.memberNames() : []);
-        const attackers = Object.values(parent.entities || {}).filter(function (e) {
-            return e && e.type === "monster" && !e.dead && e.target && ours.includes(e.target);
-        });
         if (!attackers.length && !target.target) return false; // a free one: just don't pull it (pick decides)
         return attackers.every(function (e) {
             return e.mtype !== farm.monster && (e.speed || (G.monsters[e.mtype] || {}).speed || 0) < mine * (pt.speedShare || 0.8);
@@ -1757,12 +1768,16 @@ module.exports = function createFighter(ctx, cls) {
 
     // True while something else than the fight decides where we go this tick.
     function busyStep() {
+        // The merchant's boss-search plan goes out every tick (v1.220.4): the team wait and supply trips skip events.tick().
+        if (ctx.events.publishScoutPlan) { try { ctx.events.publishScoutPlan(); } catch (e) { /* plan only */ } }
         if (waitForTeam()) return true;
         if (supply.tick() === "busy") return true;
         if (ctx.events.tick() === "busy") return true;
         // No Daisy trips during events or a boss fight (a paused boss too, 2026-11-21); one on its
         // way is stopped.
-        if (ctx.events.bossBusy()) ctx.hunts.abort();
+        // Nor in the Witch's Cipher gathering window (2026-11-23, player decision).
+        const cipherOn = !!(ctx.events.cipherActive && ctx.events.cipherActive());
+        if (ctx.events.bossBusy() || cipherOn) ctx.hunts.abort();
         else if (!ctx.events.current() && ctx.hunts.tick() === "busy") return true;
         const ev = ctx.events.current();
         if (ev && ev.solo) return false; // runner fighting its solo boss away from the team (events runner)

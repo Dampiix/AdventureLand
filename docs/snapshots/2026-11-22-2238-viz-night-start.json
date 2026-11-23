@@ -1,0 +1,47 @@
+{
+  "account": "viz",
+  "taken": "2026-11-22T21:38:00Z",
+  "note": "Start of the night with gear plan v2 (bot v1.219.5, party: VizPri leader, VizWar, VizRng; VizMerch). New since the last snapshot: luck catch (priest Absorb Sins, ~88 % of kills die on the priest), gear plan v2 chains (Rugged +8, Dracul's Attire +7/+8 with 3 tries a day, Fiery Gloves, Thundergrips, seals/Moonshard/Wind Belt at +2, ranger coat +9), chains worked on from the back, Fun Tokens for the Rabbit's Foot first, fire weapons to +8 before gloves/seals, priest luck swap, Skeletor on the boss list, bank before every pickup, workshop bag reserve 8, pickups every 20 min, Fire Spirit fixes (Agitate, kite/spacing distance), Vampire Rat walls in level1, all spot blocks cleared at 21:15Z. Compare in the morning: levels/XP per hour, deaths (journal 'died while farming'), gold, Rugged +8 / Attire +7 / fire weapons +8 progress, what the merchant bought (Ponty, players), luck swap lines, Skeletor kills, bank space.",
+  "botVersion": { "VizPri": "1.219.5", "VizWar": "1.219.5", "VizRng": "1.219.5", "VizMerch": "1.219.1 (workshop/merchant code of v1.219.x; later deploys were fighter-only)" },
+  "characters": {
+    "VizPri": {
+      "level": 64, "xp": 24836648, "max_xp": 100000000, "gold": 32915, "map": "desertland", "server": "EU IV",
+      "stats": { "hp": 5085, "mp": 4630, "attack": 697, "heal": 1744, "armor": 109, "resistance": 237, "frequency": 0.934, "goldm": 1.1, "luckm": 1.17, "xpm": 2.16, "speed": 52 },
+      "conditions": { "encouragement_returning": "7131 min left (~2026-11-27 20:30Z)", "mluck": "57 min", "mlifesteal": "54 min", "halloween0": "1641 min", "monsterhunt": "mole x22 (skipped: not in the top 5)" },
+      "worn": { "mainhand": "staffofthedead+7", "offhand": "wbook0+2", "orb": "orbg+1", "helmet": "wcap+8:int", "chest": "wattire+8:int", "pants": "pants+8:int", "shoes": "wshoes+8:int", "gloves": "gloves+8:int", "ring1": "intring+3", "ring2": "intring+2", "earring1": "intearring+3", "earring2": "intearring+3", "amulet": "intamulet+2", "belt": "intbelt+2" },
+      "bag": ["tracker", "mpot1 x253", "hpot1 x298"], "freeBag": 39,
+      "wishes": ["cape+0", "wingedboots+7", "orbofint+0", "intring+3", "intearring+4", "intamulet+3", "intbelt+3", "wbreeches+8", "wgloves+8", "rabbitsfoot+0", "mshield+7", "cloverstud+0"]
+    },
+    "VizWar": {
+      "level": 71, "xp": 40803694, "max_xp": 350000000, "gold": 58475, "map": "desertland",
+      "stats": { "hp": 10915, "mp": 1190, "attack": 1025, "armor": 1219, "resistance": 193, "frequency": 0.877, "goldm": 1.1, "luckm": 1.17, "xpm": 2.16, "note": "Hard Shell was on at the snapshot (armor/speed)" },
+      "worn": { "mainhand": "ololipop+7 (Agitate splash mode)", "offhand": "ololipop+7", "orb": "orbg+1", "helmet": "helmet1+7:str", "chest": "coat1+7:str", "pants": "pants1+7:str", "shoes": "shoes1+7:str", "gloves": "gloves1+7:str", "ring1": "strring+3", "ring2": "strring+2", "earring1": "strearring+3", "earring2": "strearring+3", "amulet": "stramulet+4", "belt": "strbelt+2", "cape": "cape+0:str" },
+      "bag": ["tracker", "mpot1 x288", "hpot1 x275", "fireblade+7 x2 (usual weapons)"], "freeBag": 37,
+      "hunt": "stoneworm x303 (skipped)",
+      "wishes": ["orbofstr+0", "strring+3", "strearring+4", "strbelt+3", "helmet1+8:str", "pants1+8:str", "gloves1+8:str", "mcape+7:str", "shoes1+8:str"]
+    },
+    "VizRng": {
+      "level": 67, "xp": 17382538, "max_xp": 170000000, "gold": 10530, "map": "cave",
+      "stats": { "hp": 3793, "mp": 1270, "attack": 1063, "armor": 119, "resistance": 173, "frequency": 1.173, "goldm": 1.15, "luckm": 1.22, "xpm": 2.66, "speed": 66 },
+      "worn": { "mainhand": "firebow+7", "offhand": "quiver+8", "orb": "orbg+1", "helmet": "helmet+8:dex", "chest": "coat+8:dex", "pants": "pants+8:dex", "shoes": "wshoes+8:dex", "gloves": "gloves+8:dex", "ring1": "ringsj+2", "ring2": "dexring+3", "earring1": "dexearring+2", "earring2": "dexearring+2", "amulet": "dexamulet+3", "belt": "dexbelt+2" },
+      "bag": ["tracker", "mpot1 x267", "hpot1 x292"], "freeBag": 39,
+      "hunt": "frog x1 (skipped)",
+      "wishes": ["cape+0", "wingedboots+7", "orbofdex+0", "dexring+2", "dexearring+3", "dexamulet+4", "dexbelt+3", "thundergrips+7", "pouchbow+7", "alloyquiver+0"]
+    },
+    "VizMerch": {
+      "level": 54, "xp": 12959547, "max_xp": 13000000, "gold": 166736687, "map": "main", "freeBag": 13, "standOpen": true,
+      "bag": ["hpot1 x900", "mpot1 x900", "stand0", "scroll1 x4", "scroll0 x3", "wgloves+0 x2", "leather", "dexearring+2 x2", "dexearring+1", "dexearring+0", "dexring+1", "dexamulet+3", "dexbelt+0", "intamulet+2 x2", "intamulet+1", "intbelt+2 x2", "intring+1", "intearring+2", "intearring+1", "strearring+3", "strearring+2", "strring+1", "strring+0 x2", "strbelt+2"],
+      "workshopGoals": "essence of fire goals: fireblade+8 (warrior, p1), firestaff+8 (priest), firebow+8 (ranger) - 36 essence left at 21:18Z; Rugged spare copies on the way to +8 (several failed at +5 and +8 tonight); bought helmet1+4 from a player for 710k"
+    }
+  },
+  "bank": {
+    "gold": 1000, "freeSlots": 32, "of": 168, "seenAt": "2026-11-22T21:37:48Z (merchant's bank snapshot)",
+    "items": { "stormfeather": 1970, "gem1": 914, "crabclaw": 300, "marketparcel": 68, "monstertoken": 53, "gem0": 51, "drapes": 47, "spores": 45, "beewings": 35, "bwing": 31, "essenceoffire": 30, "candycane": 23, "voidthread": 22, "embercore": 19, "cscale": 19, "shadowstone": 16, "pstem": 14, "carrot": 13, "gslime": 13, "candy0": 10, "candy1": 10, "ascale": 10, "essenceofether": 9, "seashell": 7, "reefglass": 6, "frogt": 5, "bfur": 5, "armorbox": 4, "gemfragment": 4, "rfangs": 4, "verdantspore": 4, "frostcore": 3, "forscroll": 3, "ijx": 3, "weaponbox": 2, "dstones": 2, "mistletoe": 2, "gloomfeather": 2, "cryptkey": 1, "offeringp": 1, "elixirvit0": 1, "elixirstr0": 1, "elixirint0": 1, "funtoken": 0 },
+    "gear": ["mcape+0 x8 (Dracul's Attire, Attire +7 wish open)", "dawnwardaegis+0 x4", "pouchbow+5 (Poucher being built)", "shoes1+2", "shoes1+0", "wgloves+0 x2", "wbreeches+0", "blade+8 x2", "bow+8", "staff+8", "staffofthedead+6", "glolipop+7", "glolipop+0", "ololipop+0 x3", "sword+0 x2", "t2bow+3", "tshirt1+3", "quiver+7", "coat+8:str", "shoes+8:str", "shoes+8:dex", "shoes+7:dex", "wbook0+2 x2", "wbook0+0 x3", "orbg+0", "stramulet+3", "stramulet+2", "stramulet+1 x2", "stramulet+0 x4", "intamulet+1", "intamulet+0 x2", "dexamulet+1", "dexamulet+0 x4", "strbelt+2", "strbelt+1", "dexbelt+2", "dexbelt+1 x2", "dexbelt+0", "intbelt+0", "strring+1", "dexring+1", "dexring+0", "intring+1", "intring+0 x2", "intearring+2", "intearring+0 x5", "strearring+0 x5", "dexearring+1", "dexearring+0 x5", "vitearring+1", "vitearring+0 x5"]
+  },
+  "gold": { "merchant": 166736687, "VizPri": 32915, "VizWar": 58475, "VizRng": 10530, "bank": 1000, "total": 166839607 },
+  "today": {
+    "deaths": ["18:45Z VizWar - Fire Spirits (Agitate) at gscorpion", "20:34Z VizRng - targetron", "20:52Z VizWar + 20:53Z VizRng - Fire Spirit L7 on the way out of desertland", "21:21Z VizRng - Vampire Rats (level1) after leaving Spooky Town"],
+    "bossKills": ["Phoenix several", "Dracul", "Ms. Dracul x3 (last 21:26Z on the priest)", "Skeletor 19:33Z (level 5, on the priest) - armor box"]
+  }
+}

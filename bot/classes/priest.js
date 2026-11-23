@@ -91,6 +91,8 @@ module.exports = function createPriest(ctx) {
                 return e && e.type === "monster" && !e.dead && e.target === p.name;
             });
             if (!onIt) return false;
+            // Absorb takes every monster on that ally - never a Giga Crab (events.noArea, 2026-11-23).
+            if (Object.values(parent.entities || {}).some(function (e) { return e && !e.dead && e.target === p.name && util.noArea(ctx.config, e); })) return false;
             return !tanks.some(function (t) { return Math.hypot(t.x - p.x, t.y - p.y) <= tauntRange; });
         });
         if (!victim) return false;
@@ -131,6 +133,7 @@ module.exports = function createPriest(ctx) {
                 return e && e.type === "monster" && !e.dead && e.target === n;
             });
             if (!on.length || on.length > (lc.maxPull || 5)) continue;
+            if (on.some(function (m) { return util.noArea(ctx.config, m); })) continue; // never a Giga Crab (2026-11-23)
             const dying = on.filter(function (m) { return ctx.targeting.diesSoon(m, lc.hits || 2); });
             if (!dying.length) continue;
             // Without a tank to take the rest back: only what our courage holds per damage type (no fear).

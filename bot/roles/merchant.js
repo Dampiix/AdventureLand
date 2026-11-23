@@ -1158,6 +1158,11 @@ module.exports = function createMerchant(ctx) {
                 await goHome();
                 return;
             }
+            // Boss search for the team (events.scout, 2026-11-23): after pickups and deliveries, before the chores.
+            if (ctx.scout && await ctx.scout.work()) {
+                await goHome();
+                return;
+            }
             await goHome();
             if (Date.now() >= nextChoresAt) {
                 nextChoresAt = Date.now() + 30 * 1000;

@@ -71,6 +71,7 @@ module.exports = function createWarrior(ctx) {
     }
     function worthTaunting(m) {
         if (spareForLuck(m)) return false;
+        if (util.noArea(ctx.config, m)) return false; // never the Giga Crab (events.noArea, 2026-11-23)
         const p = get_player(m.target);
         if (!p || p.rip) return false;
         const t = c.taunt || {};
@@ -493,12 +494,148 @@ module.exports = function createWarrior(ctx) {
                 const score = count - avg / (ag.avgPerMonster || 60);
                 if (best && (score < best.score - 0.02 || (Math.abs(score - best.score) <= 0.02 && d >= best.d))) continue;
                 if (bad.some(function (p) { return Math.hypot(p.x - x, p.y - y) <= reach + 20; })) continue;
+                if (foreignInReach({ x: x, y: y }).length) continue; // other kinds busy with someone count too (2026-11-23)
                 if (d > 0 && !can_move_to(x, y)) continue; // checked last: the costly one
                 best = { x: x, y: y, count: count, d: d, avg: avg, score: score };
             }
         }
         if (best) best.here = best.d <= (ag.centerWithin || 20);
         return best;
+    }
+
+    // ---- clear of other kinds before Agitate (2026-11-23, player decision) ---------------------
+    // Agitate taunts every monster in reach. Fire Spirits (84k HP, 280 px reach, burn) roam into the Giant Scorpion area
+    // by themselves; Agitate took them along with the scorpions and the warrior died (five times on 2026-11-22/23, at
+    // 03:12 with two of them). Server rule (node/server.js): a monster without rage attacks a passer-by in front of it but
+    // never takes up the chase - only a taunt, Agitate or our own hit makes it follow. So before every Agitate no monster
+    // of another kind may be within reach: live entities, not spawn boxes (they roam). With one there the warrior first
+    // walks to a point clear of all of them (reach + agitate.clearMargin, centre distance - the server measures hitbox to
+    // hitbox) that keeps as many of our monsters in reach as possible: the ones on allies first, then the free ones.
+    // No such point within agitate.clearSearch: no Agitate (Taunt and the normal combat go on).
+    // "Our" kinds: the farm target (event types count) and, in auto mode, the kinds that pass the same safety check
+    // (packWanted - the plain snakes with the O-Snakes, 2026-11-18); strict (the protective Agitate, player decision
+    // 2026-11-22): the farm kind only. Ones already on us don't count (they come anyway).
+    function ourKind(e, strict) {
+        let fm = null;
+        try { fm = ctx.targeting.farmNow ? ctx.targeting.farmNow() : null; } catch (x) { fm = null; }
+        if (!fm) return true; // no farm target known: as before
+        if (fm.any) return !Array.isArray(fm.types) || fm.types.includes(e.mtype);
+        return e.mtype === fm.monster || (!strict && packWanted(e));
+    }
+    function foreignInReach(p, list, strict) {
+        const r = G.skills.agitate.range + (ag.clearMargin || 80);
+        return (list || Object.values(parent.entities || {})).filter(function (e) {
+            if (!e || e.type !== "monster" || e.dead || e.target === character.name || ourKind(e, strict)) return false;
+            const q = util.xy(e);
+            return Math.hypot(q.x - p.x, q.y - p.y) <= r;
+        });
+    }
+    // Toward the spot's middle (2026-11-23, player decision, part 1): we come to most spots from one side, the priest
+    // stands on that side and his Absorb Sins (luck catch) pulls the pack outward; Agitate cast where the warrior stood
+    // pulled it further out every time - at the Giant Scorpions south into the Fire Spirits. So before an Agitate the
+    // warrior standing more than agitate.homeSlack px from the middle of the farm kind's spawn box he is at first walks
+    // (at most homeStep px) to a point nearer the middle - the monsters then come to him there: the priest pulls the
+    // pack outward, the warrior pulls it back onto the spot. The monsters on allies that are in reach now stay in reach,
+    // the point is clear of other kinds, on the leash and outside failing rage zones; it must be homeMinGain px nearer.
+    // No such point: Agitate where he stands. (Part 2, drifting toward the middle during the fight: not built.)
+    function spotMiddle() {
+        let fm = null;
+        try { fm = ctx.targeting.farmNow ? ctx.targeting.farmNow() : null; } catch (x) { fm = null; }
+        if (!fm || fm.any || !fm.monster) return null;
+        const me = util.xy(character);
+        let best = null, bestD = Infinity;
+        ((G.maps[character.map] || {}).monsters || []).forEach(function (pk) {
+            if (pk.type !== fm.monster) return;
+            util.spawnBoxes(pk, character.map).forEach(function (b) {
+                if (!b || b.length < 4) return;
+                const gap = Math.hypot(Math.max(b[0] - me.x, 0, me.x - b[2]), Math.max(b[1] - me.y, 0, me.y - b[3]));
+                if (gap < bestD) { bestD = gap; best = { x: (b[0] + b[2]) / 2, y: (b[1] + b[3]) / 2 }; }
+            });
+        });
+        return best && bestD <= (ag.homeNear || 600) ? best : null; // only at the spot, not on the way
+    }
+    // The point to Agitate from. opts: strict (farm kind only), mid (spot middle or null), keepMust (the monsters on allies
+    // in reach now must all stay in reach), maxD (walk limit). Score: monsters on allies first, then nearness to the
+    // middle (agitate.homePxPerMonster px nearer = one free monster more), then free ones, then the walk.
+    function agitatePoint(must, free, opts) {
+        const strict = opts.strict, mid = opts.mid;
+        const reach = G.skills.agitate.range - 10;
+        const search = Math.min(opts.maxD || ag.clearSearch || 240, ag.clearSearch || 240), grid = ag.gridStep || 40;
+        const me = util.xy(character);
+        const foreign = Object.values(parent.entities || {}).filter(function (e) {
+            return e && e.type === "monster" && !e.dead && e.target !== character.name && !ourKind(e, strict);
+        });
+        const mustP = must.map(util.xy), freeP = free.map(util.xy);
+        const mustNow = mustP.filter(function (q) { return Math.hypot(q.x - me.x, q.y - me.y) <= reach; }).length;
+        const lead = ctx.party.enabled && ctx.party.isMember && !ctx.party.detached() ? ctx.party.leaderInfo() : null;
+        const leash = (ctx.config.party && ctx.config.party.leash) || 300;
+        const perPx = ag.homePxPerMonster || 40;
+        let best = null;
+        for (let gx = -search; gx <= search; gx += grid) {
+            for (let gy = -search; gy <= search; gy += grid) {
+                const d = Math.hypot(gx, gy);
+                if (d > search || d === 0) continue;
+                const x = me.x + gx, y = me.y + gy;
+                const inR = function (q) { return Math.hypot(q.x - x, q.y - y) <= reach; };
+                const nMust = mustP.filter(inR).length, nFree = freeP.filter(inR).length;
+                if (!nMust && !nFree) continue;
+                if (opts.keepMust && nMust < mustNow) continue;
+                const dMid = mid ? Math.hypot(mid.x - x, mid.y - y) : 0;
+                const score = nMust * 100 + nFree - dMid / perPx - d / (ag.avgPerMonster || 60);
+                if (best && score <= best.score) continue;
+                if (foreignInReach({ x: x, y: y }, foreign, strict).length) continue;
+                if (ctx.targeting.failingZoneAt && ctx.targeting.failingZoneAt({ x: x, y: y })) continue;
+                if (lead && lead.map === character.map && Math.hypot(lead.x - x, lead.y - y) > leash) continue;
+                if (!can_move_to(x, y)) continue; // checked last: the costly one
+                best = { x: x, y: y, d: d, dMid: dMid, must: nMust, free: nFree, of: must.length, score: score };
+            }
+        }
+        return best;
+    }
+    // "go": Agitate now; "step": walking to a better point first (this tick is taken); "no": no Agitate.
+    let clearWalk = null, clearLogAt = 0, homeLogAt = 0;
+    function agitateClear(must, free, strict) {
+        must = must || []; free = free || [];
+        // Never with a Giga Crab in reach (events.noArea, 2026-11-23): Agitate would take it off its player onto us.
+        if (util.noAreaNear(ctx.config, G.skills.agitate.range + (ag.clearMargin || 80))) { util.status("agitate: Giga Crab in reach", "white"); return "no"; }
+        const me = util.xy(character);
+        const here = foreignInReach(me, null, strict);
+        const logNow = Date.now() - clearLogAt > 60 * 1000;
+        const mid = ag.home === false ? null : spotMiddle();
+        const dMidNow = mid ? Math.hypot(mid.x - me.x, mid.y - me.y) : 0;
+        let p = null, why = null;
+        if (here.length) {
+            const kinds = {};
+            here.forEach(function (e) { kinds[e.mtype] = (kinds[e.mtype] || 0) + 1; });
+            const what = Object.keys(kinds).map(function (k) { return kinds[k] + "x " + k; }).join(", ");
+            p = agitatePoint(must, free, { strict: strict, mid: mid });
+            if (!p) {
+                if (logNow) { clearLogAt = Date.now(); util.log("warrior", "agitate: " + what + " in reach, no clear point - no Agitate", "orange"); }
+                util.status("agitate: " + what + " in reach", "white");
+                return "no";
+            }
+            if (logNow) {
+                clearLogAt = Date.now();
+                util.log("warrior", "agitate: " + what + " in reach - stepping " + Math.round(p.d) + " px clear first (" +
+                    p.must + "/" + p.of + " on allies and " + p.free + " free ones stay in reach" + (mid ? ", " + Math.round(p.dMid) + " px from the spot middle" : "") + ")", "yellow");
+            }
+            why = "clear of " + Object.keys(kinds)[0];
+        } else if (mid && dMidNow > (ag.homeSlack || 100)) {
+            p = agitatePoint(must, free, { strict: strict, mid: mid, keepMust: true, maxD: ag.homeStep || 160 });
+            if (!p || p.dMid > dMidNow - (ag.homeMinGain || 40)) { clearWalk = null; return "go"; } // nothing better: here
+            if (Date.now() - homeLogAt > 60 * 1000) {
+                homeLogAt = Date.now();
+                util.log("warrior", "agitate: " + Math.round(dMidNow) + " px from the spot middle - stepping " + Math.round(p.d) + " px toward it first (" +
+                    p.must + "/" + p.of + " on allies and " + p.free + " free ones stay in reach, then " + Math.round(p.dMid) + " px)", "white");
+            }
+            why = "toward the spot middle";
+        } else { clearWalk = null; return "go"; }
+        if (!is_moving(character) || !clearWalk || Math.hypot(clearWalk.x - p.x, clearWalk.y - p.y) > 25) {
+            clearWalk = { x: p.x, y: p.y };
+            quiet(move(p.x, p.y));
+        }
+        util.status("agitate: stepping " + why, "orange");
+        return "step";
     }
 
     // ---- gap step (player idea 2026-11-22) ---------------------------------------------------
@@ -617,7 +754,7 @@ module.exports = function createWarrior(ctx) {
         const coming = onMe().length;
         if (coming >= streamLimit(splash)) return; // Agitate only while fewer than the limit attack us
         const fresh = packAround(G.skills.agitate.range).filter(function (m) { return m.target !== character.name; });
-        if (fresh.length < (ag.streamFrom || 1) || unwantedAround(G.skills.agitate.range).length) return;
+        if (fresh.length < (ag.streamFrom || 1)) return;
         if (!farmTargetIn(fresh)) return;
         // Agitate taunts everything in reach, not just up to our limit: the safe count must cover
         // all of them (2026-11-18: "up to 2" booboos, but 5 stood in reach - the warrior died).
@@ -626,6 +763,10 @@ module.exports = function createWarrior(ctx) {
         // Auto: every single cast checks the levels too - the decision is held during fights, and
         // two grown bats came along with a stream pull (2026-11-18).
         if (ag.monsters === "auto" && typeof ag.maxLevel === "number" && fresh.some(function (m) { return (m.level || 1) > ag.maxLevel; })) return;
+        // Other kinds in reach (any target but us, 2026-11-23): step clear of them first - see agitateClear.
+        const clear = agitateClear(onOthers().filter(function (m) { return ourKind(m); }), fresh);
+        if (clear !== "go") return clear;
+        if (unwantedAround(G.skills.agitate.range).length) return;
         use_skill("agitate").catch(function () {});
         lastAgitate = { at: Date.now(), type: fresh[0].mtype };
         if (Date.now() - lastStreamLog > 5 * 60 * 1000) {
@@ -1018,6 +1159,7 @@ module.exports = function createWarrior(ctx) {
     }
     function packTick() {
         if (splashOnly()) releaseSplash(); // puts the Lolipops on (also in a swords stream)
+        if (util.noAreaNear(ctx.config, G.skills.agitate.range + (ag.clearMargin || 80))) return false; // Giga Crab near (2026-11-23)
         if (!packOn()) { releaseSplash(); return false; }
         // A roaming boss waiting for the team in reach: no Agitate (it would open the fight alone, 2026-11-21).
         if (ctx.targeting && ctx.targeting.heldBossNear && ctx.targeting.heldBossNear(G.skills.agitate.range || 300)) return false;
@@ -1065,15 +1207,15 @@ module.exports = function createWarrior(ctx) {
                 return true;
             }
             ctx.gear.holdWeapons(ag.keepMs || 60 * 1000);
-            streamAgitate(true);
+            if (streamAgitate(true) === "step") return true; // walking clear of other kinds first
             return streamFight(true);
         }
         if (ctx.party.enabled) {
-            if (effectiveMode() === "swords") { streamAgitate(); return streamFight(); }
+            if (effectiveMode() === "swords") { if (streamAgitate() === "step") return true; return streamFight(); }
             return false; // pull-point modes are solo only
         }
         if (agMode() === "swords" && (ag.swords || "stream") === "stream") {
-            streamAgitate();
+            if (streamAgitate() === "step") return true;
             return streamFight();
         }
         if (pack.busy) return true;
@@ -1312,16 +1454,23 @@ module.exports = function createWarrior(ctx) {
         },
 
         // Called once by the fighter when we die (the class ticks pause while dead - the check
-        // in always() never ran, 2026-11-18). A death within 90 s of an Agitate: no Agitate on
-        // that kind for agitate.deathDenyMs.
-        onDeath: function () {
+        // in always() never ran, 2026-11-18), with the killer the fighter blames (the kind that did the most damage in
+        // the last seconds - the same one the spot block uses). A death within 90 s of an Agitate: no Agitate on the
+        // KILLER's kind for agitate.deathDenyMs (2026-11-23, player decision: two Fire Spirits Agitate took along killed
+        // the warrior, and the block landed on the Giant Scorpions - "agitate auto: gscorpion -> off (died here recently)").
+        // Killer unknown: no block.
+        onDeath: function (killer) {
             if (!lastAgitate.type || Date.now() - lastAgitate.at > 90 * 1000) return;
-            statOf(lastAgitate.type).denyUntil = Date.now() + (ag.deathDenyMs || 2 * 60 * 60 * 1000);
+            if (!killer || !G.monsters[killer]) {
+                util.log("warrior", "agitate: died within 90 s of an Agitate (" + lastAgitate.type + "), killer unknown - no block", "orange");
+                return;
+            }
+            statOf(killer).denyUntil = Date.now() + (ag.deathDenyMs || 2 * 60 * 60 * 1000);
             saveStats(true);
             auto.at = 0;
             pack.state = "idle";
-            util.log("warrior", "agitate: died while agitating " + lastAgitate.type + " - no Agitate there for " +
-                Math.round((ag.deathDenyMs || 2 * 60 * 60 * 1000) / 60000) + " min", "red");
+            util.log("warrior", "agitate: killed by " + killer + " within 90 s of an Agitate (" + lastAgitate.type + ") - no Agitate on " +
+                killer + " for " + Math.round((ag.deathDenyMs || 2 * 60 * 60 * 1000) / 60000) + " min", "red");
         },
 
         survive: function () {
@@ -1357,7 +1506,8 @@ module.exports = function createWarrior(ctx) {
             const onAllies = others.map(function (m) { return m.id; });
             const bystanders = Object.values(parent.entities || {}).some(function (e) {
                 return e && e.type === "monster" && !e.dead && util.distanceTo(e) <= G.skills.agitate.range &&
-                    e.target !== character.name && !onAllies.includes(e.id) && !others.some(function (o) { return o.mtype === e.mtype; });
+                    e.target !== character.name && !onAllies.includes(e.id) && !others.some(function (o) { return o.mtype === e.mtype; }) &&
+                    ourKind(e, true); // other kinds: agitateClear steps clear of them (2026-11-23)
             });
             // Only the farm kind (2026-11-22, player decision): a Fire Spirit on an ally made the other Fire Spirits in
             // reach "not bystanders" (same kind as one on an ally) and Agitate pulled three of them - the warrior died.
@@ -1369,9 +1519,9 @@ module.exports = function createWarrior(ctx) {
             // Foreign kinds on an ally block it at ANY distance (2026-11-22, player decision): at 20:51 Agitate pulled Fire
             // Spirits that already targeted the priest/ranger from just outside the 320 px check.
             const allies = ctx.party.memberNames();
-            const foreignInReach = !!ourKinds && Object.values(parent.entities || {}).some(function (e) {
+            const foreignOnAllies = !!ourKinds && Object.values(parent.entities || {}).some(function (e) {
                 if (!e || e.type !== "monster" || e.dead || e.target === character.name || ourKinds.includes(e.mtype)) return false;
-                return util.distanceTo(e) <= G.skills.agitate.range || (!!e.target && allies.includes(e.target));
+                return !!e.target && allies.includes(e.target);
             });
             // Agitate takes every monster in reach - not while one on an ally is about to die for the luck catcher.
             const sparing = others.some(function (m) { return util.distanceTo(m) <= G.skills.agitate.range && spareForLuck(m); });
@@ -1379,12 +1529,18 @@ module.exports = function createWarrior(ctx) {
             // (taunt.agitateOver on allies) - it also pulls the free monsters around.
             const tf = c.taunt || {};
             const crowd = !tf.first || others.length >= (tf.agitateOver || 6);
-            if (!bystanders && !foreignInReach && !sparing && crowd && others.length >= (c.agitateFrom || 3) && util.canCast("agitate") && mpLeftAfter("agitate") >= reserve() &&
+            // Other kinds in reach that are not on allies (a roaming Fire Spirit, 2026-11-23): step clear of them first
+            // (agitateClear) - the ones on allies stay in reach where possible. Only when Agitate would go out otherwise.
+            if (!bystanders && !foreignOnAllies && !sparing && crowd && others.length >= (c.agitateFrom || 3) && util.canCast("agitate") && mpLeftAfter("agitate") >= reserve() &&
                 others.filter(function (m) { return util.distanceTo(m) <= G.skills.agitate.range; }).length >= (c.agitateFrom || 3) &&
                 protectiveAgitateOk()) {
-                use_skill("agitate").catch(function () {});
-                util.log("warrior", "Agitate (" + others.length + " monsters on allies)", "yellow");
-                return false;
+                const clear = agitateClear(others.filter(function (m) { return ourKind(m, true); }), [], true);
+                if (clear === "step") return true; // walking clear: no fight elsewhere meanwhile
+                if (clear === "go") {
+                    use_skill("agitate").catch(function () {});
+                    util.log("warrior", "Agitate (" + others.length + " monsters on allies)", "yellow");
+                    return false;
+                }
             }
             const t = c.taunt || {};
             if (!t.enabled) return false;
@@ -1422,11 +1578,13 @@ module.exports = function createWarrior(ctx) {
             if (sturdy && util.canCast("warcry") && mpLeftAfter("warcry") >= reserve() && ctx.party.enabled) {
                 use_skill("warcry").catch(function () {});
             }
-            if (util.canCast("cleave") && mpLeftAfter("cleave") >= reserve() && !spikyNear(G.skills.cleave.range) &&
+            // Cleave and Stomp hit everything around: never with a Giga Crab in reach (events.noArea, 2026-11-23).
+            const giga = util.noAreaNear(ctx.config, Math.max(G.skills.cleave.range, G.skills.stomp ? G.skills.stomp.range : 0) + 40);
+            if (!giga && util.canCast("cleave") && mpLeftAfter("cleave") >= reserve() && !spikyNear(G.skills.cleave.range) &&
                 around(G.skills.cleave.range, false).length >= (c.cleaveFrom || 3)) {
                 use_skill("cleave").catch(function () {});
             }
-            if (util.canCast("stomp") && mpLeftAfter("stomp") >= reserve() && !spikyNear(G.skills.stomp.range) &&
+            if (!giga && util.canCast("stomp") && mpLeftAfter("stomp") >= reserve() && !spikyNear(G.skills.stomp.range) &&
                 around(G.skills.stomp.range, true).length >= (c.stompFrom || 2)) {
                 use_skill("stomp").catch(function () {});
             }

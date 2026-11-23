@@ -52,6 +52,92 @@ module.exports = function createEvents(ctx) {
     function everyMs(name) {
         return (rcfg.enabled && rcfg.bosses && rcfg.bosses[name]) || cfg.searchEveryMs;
     }
+    // ---- Witch's Cipher: farming its ingredients (events.witchCipher, 2026-11-23, player decision) ----------------
+    // The ingredients (verdantspore, frostscale, embercoal, gloomfeather) drop only during the event's 20-minute
+    // gathering phase - 0.3 % per 1,000 monster HP at luck 1, so the yield follows our damage, not the spot. From
+    // witchCipher.leadMs before the start until gather_end the leader farms the ingredient the merchant reports as
+    // scarcest (roles/scout.js: dmpx_cipher_stock, ties at random, fixed per round): the first spot of
+    // witchCipher.spots[ingredient] that is not blocked (crowded, too strong, a recent death) - targeting.currentFarm,
+    // above hunts, drop routes and the guide. Meanwhile no roaming bosses, boss searches or Daisy trips (the whole
+    // window counts). No spot passes: the normal choice. The schedule comes from server.status (a week ahead).
+    const wcfg = cfg.witchCipher || {};
+    function cipherWindow() {
+        if (!wcfg.farm) return null;
+        const st = (typeof server !== "undefined" && server.status) || {};
+        const now = Date.now();
+        const gatherMs = ((G.events.witchcipher || {}).gathering || 1200) * 1000;
+        const live = st.witchcipher;
+        if (live && live.live && live.phase === "gathering" && now < (live.gather_end || 0)) return { at: live.start, until: live.gather_end };
+        const ev = ((st.schedule || {}).events || []).find(function (e) {
+            return e && e.event === "witchcipher" && typeof e.at === "number" && now >= e.at - (wcfg.leadMs || 10 * 60 * 1000) && now < e.at + gatherMs;
+        });
+        return ev ? { at: ev.at, until: ev.at + gatherMs } : null;
+    }
+    // { ingredient, list, until, at } while the window is open, else null.
+    let cipherLogged = null;
+    function cipherFarm() {
+        const win = cipherWindow();
+        if (!win) { cipherLogged = null; return null; }
+        let ing = null;
+        try {
+            const s = get("dmpx_cipher_stock");
+            if (s && s.choice && s.choice.at === win.at && Date.now() - (s.at || 0) < 15 * 60 * 1000) ing = s.choice.ingredient;
+        } catch (e) { /* storage unavailable */ }
+        const ingredient = ing || wcfg.fallback || "embercoal";
+        const list = ((wcfg.spots || {})[ingredient] || []).slice();
+        if (cipherLogged !== win.at + ":" + ingredient) {
+            cipherLogged = win.at + ":" + ingredient;
+            util.log("event", "Witch's Cipher gathering until " + new Date(win.until).toISOString().slice(11, 16) + "Z: farming " + ingredient +
+                (ing ? " (the scarcest, merchant)" : " (no report from the merchant)") + " - spots " + list.join(", ") + "; no bosses or Daisy meanwhile", "yellow");
+        }
+        return { ingredient: ingredient, list: list, until: win.until, at: win.at };
+    }
+    function cipherActive() { return !!cipherWindow(); }
+
+    // ---- the merchant searches bosses (events.scout, 2026-11-23, player decision) ---------------------
+    // The bosses on scout.bosses are searched by the merchant (roles/scout.js) while the fighters farm on; the
+    // leader writes what is due into the shared storage (dmpx_scout_plan) and takes the merchant's results
+    // (scoutdone). Fallback: the runner / team search as before while the merchant is not available (no fresh
+    // heartbeat on our server, Ponty round, trade trip, paused after a death) or a boss is overdue by
+    // scout.fallbackMs.
+    const scfg = cfg.scout || {};
+    let scoutAvail = { at: 0, ok: false };
+    function scoutAvailable() {
+        if (!leads || !scfg.enabled || !config.merchant) return false;
+        if (Date.now() - scoutAvail.at < 2000) return scoutAvail.ok;
+        let ok = false, st = {};
+        try {
+            const m = config.merchant;
+            const b = get("dmpx_beat:" + m);
+            const here = parent.server_region + " " + parent.server_identifier;
+            st = get("dmpx_scout:" + m) || {};
+            ok = !!b && Date.now() - b.at < (scfg.freshMs || 90 * 1000) && b.server === here && !b.rip &&
+                !get("dmpx_ponty_round:" + m) && !get("dmpx_trade_trip:" + m) && !((st.pausedUntil || 0) > Date.now());
+        } catch (e) { ok = false; }
+        scoutAvail = { at: Date.now(), ok: ok, st: st };
+        return ok;
+    }
+    // The merchant takes this boss now (not the runner, not the team).
+    function scoutTakes(name) {
+        if (!(scfg.bosses || []).includes(name) || !scoutAvailable()) return false;
+        // On its round with this boss: still its job (a round can take longer than the fallback time).
+        const st = scoutAvail.st || {};
+        if (st.state === "out" && (st.bosses || []).includes(name) && Date.now() - (st.at || 0) < (scfg.lapMaxMs || 15 * 60 * 1000)) return true;
+        const due = nextSearchAt[name] || 0;
+        return !due || Date.now() - due < (scfg.fallbackMs || 10 * 60 * 1000);
+    }
+    let planSent = { at: 0, key: "" };
+    function publishScoutPlan() {
+        if (!leads || !scfg.enabled) return;
+        const due = cipherActive() ? [] : (scfg.bosses || []).filter(function (n) {
+            return policy(n) === "always" && Date.now() >= (nextSearchAt[n] || 0) && scoutTakes(n) && !(current && current.monster === n);
+        });
+        const key = due.join(",");
+        if (key === planSent.key && Date.now() - planSent.at < 10 * 1000) return;
+        planSent = { at: Date.now(), key: key };
+        try { set("dmpx_scout_plan", { at: Date.now(), leader: character.name, server: parent.server_region + " " + parent.server_identifier, due: due }); } catch (e) { /* storage unavailable */ }
+    }
+
     // Bosses on config.events.farmBosses are hunted nonstop: the next search comes after
     // farmBossEveryMs instead of searchEveryMs (the Phoenix respawns ~32 s after its death).
     function searchLater(name) {
@@ -330,6 +416,10 @@ module.exports = function createEvents(ctx) {
         }
         skippedForLevel[name] = false;
         if (p === "always" && G.monsters[name] && !(G.events[name] && G.events[name].join) && !canBeat(name)) return "never";
+        // Join events with a monster the team must handle (events.joinNeeds, 2026-11-23): the Giga Crab only while the
+        // boss check says the team survives its Huge Crabs - we never take the Giga Crab's hits (events.foreignOnly).
+        const need = (cfg.joinNeeds || {})[name];
+        if (p === "always" && need && G.monsters[need] && !canBeat(need)) return "never";
         return p;
     }
 
@@ -454,6 +544,12 @@ module.exports = function createEvents(ctx) {
             util.log("event", data.name + " seen by " + from + " " + (data.info ? infoText(data.info) : "(" + data.map + ")"), "green");
         }
         sightings[data.name] = { id: data.id, map: data.map, x: data.x, y: data.y, fx: data.fx, fy: data.fy, from: from, at: Date.now(), info: data.info || null };
+        // The merchant reports and walks on (events.scout, 2026-11-23): its report holds up to scout.holdMs instead
+        // of 10 s - the walk from the farm spot takes 60-90 s, and at 06:09 the team turned back after 32 s.
+        if (scfg.enabled && from === config.merchant) {
+            sightings[data.name].scout = true;
+            sightings[data.name].until = Date.now() + (scfg.holdMs || 3 * 60 * 1000);
+        }
     });
     // Kills only a member sees (player request 2026-11-21): the leader counted a Phoenix the ranger
     // and nibe2 killed in the cave as "gone without a kill seen" (and searched it again on the
@@ -494,10 +590,28 @@ module.exports = function createEvents(ctx) {
             return true;
         });
     }
-    // A member's fresh sighting (10 s) of a boss that is not known dead, or null.
+    // A member's fresh sighting (10 s) of a boss that is not known dead, or null. The merchant's (scout) report holds
+    // until scout.holdMs, or until one of us has stood within scout.arriveRadius px of the reported boss for
+    // scout.arriveGraceMs without a fresh sighting (then it is gone - our own sightings replace the report).
+    function fighterAt(s) {
+        const near = scfg.arriveRadius || 300;
+        if (character.map === s.map && Math.hypot(character.real_x - s.x, character.real_y - s.y) <= near) return true;
+        const info = get_party() || {};
+        return party.memberNames().some(function (n) {
+            const p = info[n];
+            return !!p && p.map === s.map && typeof p.x === "number" && Math.hypot(p.x - s.x, p.y - s.y) <= near;
+        });
+    }
     function memberSighting(name) {
         const s = sightings[name];
-        if (!s || Date.now() - s.at > 10 * 1000 || killedAt(s.id)) return null;
+        if (!s || killedAt(s.id)) return null;
+        if (s.scout) {
+            if (Date.now() > s.until) return null;
+            if (!s.arrivedAt && fighterAt(s)) s.arrivedAt = Date.now();
+            if (s.arrivedAt && Date.now() - s.arrivedAt > (scfg.arriveGraceMs || 10 * 1000)) return null;
+            return s;
+        }
+        if (Date.now() - s.at > 10 * 1000) return null;
         return s;
     }
     // Parallel boss search (player decision 2026-11-21, from earthiverse): the leader splits the spawn
@@ -526,6 +640,14 @@ module.exports = function createEvents(ctx) {
         util.log("event", "split search: " + who.map(function (n) { return n + " " + jobs[n].length; }).join(", ") + " area(s)", "white");
         return jobs[character.name];
     }
+    // The merchant's search round is done (roles/scout.js): a boss it did not find (or found, but the team did not
+    // engage it) is searched again on its timer; an engaged one is booked by decide().
+    ctx.comms.on("scoutdone", function (data, from) {
+        if (!leads || !data || !data.name || from !== config.merchant) return;
+        if (data.found && boss && boss.name === data.name) return; // engaged: decide() books the next search
+        searchLater(data.name);
+        util.log("event", data.name + (data.found ? " found by " + from + " but not engaged" : " not found by " + from) + " - next search in " + Math.max(1, Math.round((nextSearchAt[data.name] - Date.now()) / 60000)) + " min", "white");
+    });
     ctx.comms.on("searchdone", function (data, from) {
         if (split && data && data.id === split.id) split.pending = split.pending.filter(function (n) { return n !== from; });
         if (runnerJob && data && data.id === runnerJob.id) {
@@ -844,6 +966,11 @@ module.exports = function createEvents(ctx) {
         // sight waits until it is done (2026-11-21: with the Phoenix and Dracul both in the cave the
         // event flipped between them every tick - the warrior switched targets, the journal filled
         // with "in my sight" and every flip restarted the other boss's search timer).
+        // Witch's Cipher gathering window: no roaming bosses (2026-11-23, player decision - the 20 minutes count fully).
+        if (cipherActive()) {
+            if (boss) { util.log("event", boss.name + " left alone - Witch's Cipher gathering", "white"); boss = null; }
+            return null;
+        }
         const holding = boss && Date.now() - boss.seenAt < 30 * 1000 && !killedAt(boss.id);
         // Without a current boss (e.g. after a restart) one that already fights one of us comes first
         // (2026-11-21: Dracul at 5 % on the warrior, the event went to the fresh Phoenix next to it).
@@ -862,7 +989,7 @@ module.exports = function createEvents(ctx) {
                 const info = seen ? bossInfo(name, seen) : told.info;
                 boss = seen
                     ? { name: name, seenAt: Date.now(), id: seen.id }
-                    : { name: name, seenAt: told.at, id: told.id, dest: walkTo(told) };
+                    : { name: name, seenAt: told.scout ? Date.now() : told.at, id: told.id, dest: walkTo(told) }; // a held scout report counts as seen now
                 boss.first = prev && prev.first ? prev.first : { at: Date.now(), info: info };
                 boss.info = info || (prev && prev.info) || null;
                 if (!prev && seen) util.log("event", name + " in my sight " + infoText(info), "green");
@@ -889,6 +1016,9 @@ module.exports = function createEvents(ctx) {
         shareStats();
         watchBossDeaths();
         reportSightings();
+        // Every tick, also while we search or fight (v1.220.4: the plan went stale during the leader's own search,
+        // and the merchant stopped its round after 66 s).
+        publishScoutPlan();
         if (searching) {
             // A target boss in sight (the searched one or another): stop the walk, fight it.
             if (leads && !searchAbort) {
@@ -947,8 +1077,11 @@ module.exports = function createEvents(ctx) {
                 util.log("event", "in " + current.name + " (" + character.map + ")", "green");
             }
             if (joined && joined.name === current.name && character.map !== joined.map) joined = null;
-            // Already there (e.g. after a restart): event maps carry the event's name.
-            if (!joined && !joining && character.map === current.name) joined = { name: current.name, map: character.map };
+            // Already there (e.g. after a restart): event maps carry the event's name; events on a normal map
+            // (events.joinSpot, the Giga Crab on main) count within its radius.
+            const js = (cfg.joinSpot || {})[current.name];
+            const atSpot = !!js && character.map === js.map && Math.hypot(character.real_x - js.x, character.real_y - js.y) <= (js.r || 500);
+            if (!joined && !joining && (character.map === current.name || atSpot)) joined = { name: current.name, map: character.map };
             if (!joined) {
                 // Give a sent join time to land before trying again; a failed one waits 10 s.
                 if (joining ? Date.now() - joining.at > 30000 : Date.now() - lastJoinTry > 10000) {
@@ -965,11 +1098,13 @@ module.exports = function createEvents(ctx) {
             }
         }
         checkRunner();
-        // One search at a time: the team search waits while a runner is out, and the other way round.
-        if (!current && !runnerJob) {
-            // A nonstop boss with a runner is the runner's job, not the team's.
+        // One search at a time: the team search waits while a runner is out, and the other way round. None during the
+        // Witch's Cipher gathering window.
+        if (!current && !runnerJob && !cipherActive()) {
+            // A nonstop boss with a runner is the runner's job, not the team's; a boss the merchant searches
+            // (scoutTakes) is not the team's either.
             const due = (cfg.search || []).find(function (name) {
-                return policy(name) === "always" && Date.now() >= (nextSearchAt[name] || 0) && !nonstopRunner(name);
+                return policy(name) === "always" && Date.now() >= (nextSearchAt[name] || 0) && !nonstopRunner(name) && !scoutTakes(name);
             });
             if (due) {
                 searchBoss(due);
@@ -980,7 +1115,7 @@ module.exports = function createEvents(ctx) {
             if (!(typeof smart !== "undefined" && smart.moving)) {
                 const nonstop = (cfg.farmBosses || []).filter(function (n) { return !!nonstopRunner(n); });
                 const run = runnerBosses().filter(function (n) { return !nonstop.includes(n); }).concat(nonstop).find(function (name) {
-                    return policy(name) === "always" && Date.now() >= (nextSearchAt[name] || 0);
+                    return policy(name) === "always" && Date.now() >= (nextSearchAt[name] || 0) && !scoutTakes(name);
                 });
                 if (run) startRunner(run);
             }
@@ -1019,5 +1154,8 @@ module.exports = function createEvents(ctx) {
         // (2026-11-20: the priest waited 45 s for the warrior with the Phoenix reported).
         engaging: function () { return !!(current && current.sighted) || (leads && !!visibleBoss()); },
         teamStats: teamStats, // leader: own stats + fresh member reports
+        publishScoutPlan: publishScoutPlan, // fighter.busyStep: every tick, before the team wait and supply can take it
+        cipherFarm: cipherFarm,             // targeting.currentFarm: the Witch's Cipher ingredient spot list, or null
+        cipherActive: cipherActive,         // fighter.busyStep: no Daisy trips in the gathering window
     };
 };

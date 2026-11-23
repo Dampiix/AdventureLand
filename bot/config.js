@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.219.3",
+    version: "1.222.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -202,7 +202,9 @@ module.exports = {
     // rageWallSteps (2026-11-22): margins tried one after another when the path search finds no way (-1 = walls off).
     // leaveVia (2026-11-22): leaving the key map for any other, walk to the value map first - the way back from Spooky
     // Town went through level1's Vampire Rats too (every path walk, see core/fighter.js leaveLeg).
-    travel: { via: { spookytown: "halloween" }, leaveVia: { spookytown: "halloween" }, rageWalls: true, rageWallSteps: [100, 50, 0, -1], rageMargin: 100 },
+    // wallMonsters (2026-11-22): packs without a rage box that attack on sight - their spawn boxes are walls for every path
+    // walk like the rage zones (the ranger died walking through the level1 Vampire Rats on the way out of Spooky Town).
+    travel: { via: { spookytown: "halloween" }, leaveVia: { spookytown: "halloween" }, rageWalls: true, rageWallSteps: [100, 50, 0, -1], rageMargin: 100, wallMonsters: ["prat"] },
 
     // "solo":  only the leader fights (Lone Wolf bonus); the merchant still supports it.
     // "party": all fighters form a party around the leader.
@@ -295,11 +297,24 @@ module.exports = {
             // ~1,590 healing/s); the ranger (~1,590 a hit) and the priest (~1,600) survive only 2-3 hits - see
             // boss.minHitsNonTankBy. Drops: Tiny Ruby, armor box 5 %, weapon box 2 %, Dawnward Aegis 2 %, Shadow Stone 1 %.
             skeletor: "always",
-            crabxx: "never", franky: "never", icegolem: "never",
+            // Giga Crab (2026-11-23, player decision): daily, 40 min, main beach. 960k HP, 16,000 physical every 3.3 s (one hit
+            // kills priest or ranger), speed 80 while it has a target, rage 0 (keeps its target). While Huge Crabs live it
+            // takes 1 damage per hit ("1hp"). We kill the Huge Crabs and hit the Giga Crab only while a FOREIGN player holds
+            // it and it takes damage (foreignOnly); no Taunt, Agitate, Cleave, Stomp, multi-shot or Absorb on it (noArea).
+            // Goes only while the boss check passes for its Huge Crabs (joinNeeds). Fun Tokens (drop weight 1000).
+            crabxx: "always",
+            franky: "never", icegolem: "never",
             horseman: "never", abtesting: "never",
             graveyard: "always",          // Halloween: zombies/ghouls in Spooky Town's graveyard - Bones (2026-11-16)
         },
         // "always" only applies once every fighter has reached this level
+        // Join events on a normal map (2026-11-23): their monster types, where join() puts us (counts as joined within r
+        // px), what the team must handle to go, and the Giga Crab rules (see policy.crabxx).
+        joinTypes: { crabxx: ["crabx", "crabxx"] },
+        joinSpot: { crabxx: { map: "main", x: -1000, y: 1700, r: 600 } },
+        joinNeeds: { crabxx: "crabx" },
+        foreignOnly: { crabxx: "1hp" },
+        noArea: ["crabxx"],
         minLevel: { phoenix: 40, goobrawl: 20, snowman: 10, graveyard: 40, mvampire: 50, fvampire: 60, jr: 40, greenjr: 40, skeletor: 60 },
         // The whole team searches only the Phoenix (player decision 2026-11-21: in one hour two team rounds
         // for Mvampire, Jr. and Green Jr. took 14.6 min - 23 % of the time - without a find). The others
@@ -329,6 +344,43 @@ module.exports = {
         // others already; Dracul 18 min). solo: the runner kills these alone (3-4k HP, weak hits); the
         // others (Dracul: 240k HP) are reported and held until the team is there (holdFor). maxMs: the
         // leader gives up on a runner that never reports back; killMs: longest solo fight.
+        // The merchant searches bosses (2026-11-23, player decision; roles/scout.js): the bosses on scout.bosses (the
+        // merchant's list) are searched by the merchant between its chores - the fighters stay at the spot and only
+        // leave when it reports a find. The runner's list is runner.bosses below; for the scout bosses the runner (and
+        // the team's Phoenix search) only steps in while the merchant is not available (other server, Ponty round,
+        // trade trip, paused after a death, no heartbeat for freshMs) or a boss is overdue by fallbackMs. Jr. stays
+        // the runner's (Spooky Town: rage zones, Vampire Rats on the way). A find (v1.220.2, player decision): the
+        // merchant reports it for reportMs (every second; a step to keepAway px first when closer) and walks on; the
+        // leader holds its report up to holdMs - or until one of us stood within arriveRadius px of the reported boss
+        // for arriveGraceMs without seeing it (gone). Bosses on watch are watched instead: the merchant keeps keepAway
+        // px and reports until a fighter is within teamNear px, it is gone (lostMs out of sight) or watchMs ran out.
+        // mapOrder: the order of the maps on a round. safeWalk: every path walk of the merchant
+        // plans around aggressive monsters in sight (pad px), rage zones and the travel.wallMonsters spawns (ragePad
+        // px); no path: walls off for offMs.
+        // Witch's Cipher (2026-11-23, player decision; events.js cipherFarm, roles/scout.js): from leadMs before a round
+        // until its gathering phase ends (20 min) the team farms the ingredient the merchant reports as scarcest (bank +
+        // its bag; ties at random) - the first spot of spots[ingredient] the safety checks don't block, above hunts and
+        // the guide; no roaming bosses, boss searches or Daisy trips meanwhile. No report: fallback. Brewing comes later.
+        // Spot lists: highest HP first where we farm safely (the drop chance grows with HP, the yield with our damage).
+        witchCipher: {
+            farm: true, leadMs: 10 * 60 * 1000, fallback: "embercoal",
+            spots: {
+                embercoal: ["gscorpion", "plantoid"],
+                frostscale: ["wolfie", "boar", "arcticbee", "iceroamer"],
+                gloomfeather: ["ghost", "osnake", "snake", "minimush"],
+                verdantspore: ["spider", "croc", "bee", "goo"],
+            },
+        },
+        scout: {
+            enabled: true,
+            bosses: ["phoenix", "mvampire", "fvampire", "skeletor", "greenjr"],
+            fallbackMs: 10 * 60 * 1000, lapMaxMs: 15 * 60 * 1000, freshMs: 90 * 1000,
+            reportMs: 3000, holdMs: 3 * 60 * 1000, arriveRadius: 300, arriveGraceMs: 10 * 1000, watch: [],
+            keepAway: 250, teamNear: 300, watchMs: 3 * 60 * 1000, lostMs: 8000, spotMs: 3000, pauseAfterDeathMs: 30 * 60 * 1000,
+            mapOrder: ["main", "arena", "cave", "halloween"],
+            // hits: only aggressive monsters that kill the merchant in this many hits are walled (2026-11-23).
+            safeWalk: { enabled: true, pad: 100, ragePad: 100, offMs: 60 * 1000, hits: 2 },
+        },
         runner: {
             enabled: true,
             bosses: { mvampire: 20 * 60 * 1000, fvampire: 25 * 60 * 1000, jr: 60 * 60 * 1000, greenjr: 60 * 60 * 1000, skeletor: 20 * 60 * 1000 },
@@ -730,6 +782,17 @@ module.exports = {
                 gather: "center",     // "center": walk into the pack, Agitate there, all arrive together; "step": Agitate, then step away
                 centerWithin: 20,     // "center": at the pull point within this distance
                 searchRadius: 200, gridStep: 40, // "center": pull points tried around us
+                // Clear of other kinds (2026-11-23, player decision): before every Agitate (stream, pull point, protective) no
+                // monster of another kind (live, any target but us) within reach + clearMargin px (centre distance; the server
+                // measures hitbox to hitbox). With one there: walk to the point within clearSearch px that is clear of all of
+                // them and keeps the most of ours in reach (on allies first); none: no Agitate.
+                clearMargin: 80, clearSearch: 240,
+                // Toward the spot middle (2026-11-23, player decision, part 1): more than homeSlack px from the middle of the
+                // farm kind's spawn box (within homeNear px of it), the warrior first walks up to homeStep px to a point at
+                // least homeMinGain px nearer the middle (monsters on allies stay in reach, clear of other kinds), then
+                // Agitates there - the priest pulls the pack outward, the warrior pulls it back. homePxPerMonster: that
+                // much nearer the middle is worth one free monster more in the point choice. home: false switches it off.
+                home: true, homeSlack: 100, homeStep: 160, homeMinGain: 40, homeNear: 600, homePxPerMonster: 40,
                 avgPerMonster: 60,    // "center": one monster more in reach is worth this much less average way (px)
                 sideStep: 50,         // "center": step out of the pack after Agitate (0 = stay)
                 adjustStep: 40, adjustEveryMs: 4000, // "center": step when monsters come from behind
@@ -776,7 +839,7 @@ module.exports = {
         goldKeep: 10000,
         goldMinSend: 5000,               // only send gold when the surplus is at least this
         freeSlotsMin: 6,                 // ask for a pickup when fewer slots are free
-        pickupEveryMs: 15 * 60 * 1000,   // ask for a routine pickup this often
+        pickupEveryMs: 20 * 60 * 1000,   // ask for a routine pickup this often (20 min since 2026-11-22, player decision; was 15)
         firstPickupAfterMs: 60 * 1000,   // first routine pickup this long after the bot starts
         requestEveryMs: 60 * 1000,       // don't spam the merchant
         merchantTimeoutMs: 3 * 60 * 1000, // no answer for this long -> buy potions yourself
@@ -1387,7 +1450,10 @@ module.exports = {
             // slime, ashleaf (Thistle Quiver), bat wings, spores (Oathplate), reef glass,
             // carrots (Carrot Sword).
             // Snake Fangs are no longer sold (2026-11-17): a player buys them for 3M each.
-            "embercoal", "rattail", "smush",
+            // embercoal off the list 2026-11-23 (player decision): a Witch's Cipher ingredient (with frostscale,
+            // gloomfeather, verdantspore - none of them is ever sold). They drop only during the event's gathering
+            // phase and don't spoil, so the stock is kept for the cauldron and the Witch's recipes.
+            "rattail", "smush",
             "cclaw",   // Crab Claw (fist weapon, 12 attack) - player decision 2026-11-17
             "vitscroll", "lspores", // VIT stat scrolls (we use STR/INT/DEX; the shop sells them), Large Spores - 2026-11-17
             // Rugged and Heavy armor (armor boxes) are no longer sold since the fresh start:

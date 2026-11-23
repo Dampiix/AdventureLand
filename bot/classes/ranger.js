@@ -35,7 +35,8 @@ module.exports = function createRanger(ctx) {
         };
         const inReach = Object.values(parent.entities || {}).filter(function (e) {
             return e && e.type === "monster" && !e.dead && e.visible && is_in_range(e, "3shot") &&
-                !util.tooSpiky(ctx.config, e) && (!e.target || names.includes(e.target));
+                !util.tooSpiky(ctx.config, e) && (!e.target || names.includes(e.target)) &&
+                !util.noArea(ctx.config, e); // never the Giga Crab in a multi-shot (events.noArea, 2026-11-23)
         });
         const onUs = inReach.filter(function (e) { return !!e.target; });
         const oneShot = inReach.filter(function (e) { return !e.target && kills(e); });

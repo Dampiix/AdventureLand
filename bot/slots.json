@@ -20,6 +20,7 @@
     { "file": "classes/ranger.js",  "slot": 36, "name": "bot_class_ranger" },
     { "file": "core/drops.js",      "slot": 37, "name": "bot_drops" },
     { "file": "classes/warrior.js", "slot": 38, "name": "bot_class_warrior" },
-    { "file": "classes/rogue.js",   "slot": 39, "name": "bot_class_rogue" }
+    { "file": "classes/rogue.js",   "slot": 39, "name": "bot_class_rogue" },
+    { "file": "roles/scout.js",     "slot": 40, "name": "bot_scout" }
   ]
 }

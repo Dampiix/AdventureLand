@@ -292,7 +292,7 @@ function log(tag, text, color) {
 // game log keeps ~200 lines without times; this keeps the last 400 decisions with a timestamp
 // per character in the storage ("dmpx_journal:<name>": [[ms, text], ...]).
 // "dps" (2026-11-21): the damage meter's 5-minute lines (team damage/s, kills) for the measurement hours.
-const JOURNAL_TAGS = ["target", "drops", "hunt", "event", "party", "cavalry", "dps", "kills"];
+const JOURNAL_TAGS = ["target", "drops", "hunt", "event", "party", "cavalry", "dps", "kills", "scout"];
 let journalBuf = null;
 function journal(text) {
     try {
@@ -534,6 +534,28 @@ function tooSpiky(config, m, ctype) {
     return (mc.classes || ["warrior", "paladin", "rogue"]).includes(ctype || character.ctype);
 }
 
+// Giga Crab rules (events.foreignOnly / events.noArea, 2026-11-23, player decision): monsters we only hit while a
+// FOREIGN player holds them (and, when a flag is named, while that flag is not set - crabxx "1hp": it takes 1 damage
+// while Huge Crabs live), and monsters no area skill, Taunt, Agitate or Absorb Sins may ever touch.
+function foreignOnlyBlocks(config, m) {
+    const fo = (config.events && config.events.foreignOnly) || {};
+    if (!m || !Object.prototype.hasOwnProperty.call(fo, m.mtype)) return false;
+    const own = Object.keys(config.characters || {});
+    if (!m.target || own.includes(m.target)) return true; // free, or on one of us: never ours to hit
+    const flag = fo[m.mtype];
+    return !!(flag && m[flag]);
+}
+function noArea(config, m) {
+    return !!m && ((config.events && config.events.noArea) || []).includes(m.mtype);
+}
+// A noArea monster within range px of us (or of point p).
+function noAreaNear(config, range, p) {
+    const at = p || { x: character.real_x, y: character.real_y };
+    return Object.values(parent.entities || {}).some(function (e) {
+        return e && e.type === "monster" && !e.dead && noArea(config, e) && Math.hypot(e.x - at.x, e.y - at.y) <= range;
+    });
+}
+
 // Heartbeat for the member watchdog (main.js, player decision 2026-11-20): every 10 s after a
 // loop step went through, "dmpx_beat:<name>" = { at, server } in the storage all our windows
 // share. A loop that stops or throws every step stops the beat.
@@ -619,6 +641,9 @@ module.exports = {
     heartbeat: heartbeat,
     journal: journal,
     tooSpiky: tooSpiky,
+    foreignOnlyBlocks: foreignOnlyBlocks,
+    noArea: noArea,
+    noAreaNear: noAreaNear,
     teamCycle: teamCycle,
     deriveTeam: deriveTeam,
     weaponPower: weaponPower,

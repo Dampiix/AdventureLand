@@ -738,8 +738,17 @@ module.exports = function createTargeting(ctx) {
     function rageZones(mapName) {
         if (!zonesByMap[mapName]) {
             const map = G.maps[mapName] || {};
-            zonesByMap[mapName] = (map.monsters || []).filter(function (p) { return p.rage && G.monsters[p.type]; }).map(function (p) {
-                return { type: p.type, b: p.rage, count: p.count || 1, key: mapName + ":" + p.rage.join(",") };
+            // travel.wallMonsters (2026-11-22): packs without a rage box that attack on sight count as zones too, with their
+            // spawn box - the Vampire Rats in level1 (aggro 1, 9,200 HP, level 20): the ranger walked through them on the way
+            // out of Spooky Town and died. Every path walk plans around them (rage walls); farming them stays possible.
+            const walls = ((config.travel || {}).wallMonsters) || [];
+            zonesByMap[mapName] = [];
+            (map.monsters || []).forEach(function (p) {
+                if (!G.monsters[p.type]) return;
+                if (p.rage) { zonesByMap[mapName].push({ type: p.type, b: p.rage, count: p.count || 1, key: mapName + ":" + p.rage.join(",") }); return; }
+                if (!walls.includes(p.type)) return;
+                (p.boundary ? [p.boundary] : (p.boundaries || []).filter(function (x) { return !x[4] || x[4] === mapName; }).map(function (x) { return x.length > 4 ? x.slice(0, 4) : x; }))
+                    .forEach(function (bx) { if (bx && bx.length >= 4) zonesByMap[mapName].push({ type: p.type, b: bx.slice(0, 4), count: p.count || 1, key: mapName + ":" + bx.slice(0, 4).join(",") }); });
             });
         }
         return zonesByMap[mapName];
@@ -1414,6 +1423,9 @@ module.exports = function createTargeting(ctx) {
 
     // Monster types an event spawns in waves (G.events[name].waves), or null for "anything".
     function eventMonsters(name) {
+        // Configured types first (events.joinTypes, e.g. the Giga Crab and its Huge Crabs on the main map).
+        const jt = (config.events && config.events.joinTypes) || {};
+        if (Array.isArray(jt[name])) return jt[name].slice();
         const waves = G.events[name] && G.events[name].waves;
         if (!Array.isArray(waves)) return null;
         const types = {};
@@ -1458,6 +1470,20 @@ module.exports = function createTargeting(ctx) {
 
         const own = config.characters[character.name] || {};
         const override = own.farm || config.targeting.farm;
+
+        // Witch's Cipher gathering (events.witchCipher, 2026-11-23, player decision): the scarcest ingredient's spot
+        // list, the first one not blocked - above hunts, drop routes, the config target and the guide.
+        const cf = ctx.events && ctx.events.cipherFarm ? ctx.events.cipherFarm() : null;
+        if (cf && cf.list.length) {
+            const pickC = cf.list.find(function (m) { return G.monsters[m] && !farmBlocked(m); });
+            if (pickC) {
+                const nextC = { monster: pickC, source: "witch's cipher: " + cf.ingredient };
+                if (!farm || farm.monster !== nextC.monster || farm.source !== nextC.source) util.log("target", "farm target: " + pickC + " (" + nextC.source + ")", "yellow");
+                farm = nextC;
+                nextPickAt = 0; // the normal choice right after the window
+                return farm;
+            }
+        }
 
         // An open, safe Monster Hunt beats both the guide and a configured farm target;
         // the configured target only replaces the guide's choice.
@@ -1767,6 +1793,8 @@ module.exports = function createTargeting(ctx) {
         if (!t || !t.visible || t.dead || t.type !== "monster") return false;
         if (util.tooSpiky(config, t)) return false; // melee vs. damage return: our own hit kills us
         if (t.target && !isOurs(t.target) && !isCoop(t)) return false;
+        // Giga Crab (events.foreignOnly): only while a foreign player holds it and it takes damage (2026-11-23).
+        if (util.foreignOnlyBlocks(config, t)) return false;
         return true;
     }
 
@@ -1779,6 +1807,7 @@ module.exports = function createTargeting(ctx) {
         let bestDistance = Infinity;
         Object.values(parent.entities || {}).forEach(function (m) {
             if (!m || m.type !== "monster" || m.dead || !m.target || !names.includes(m.target)) return;
+            if (util.foreignOnlyBlocks(config, m)) return; // a Giga Crab on one of us: never hit it (2026-11-23)
             const d = util.distanceTo(m);
             if (d >= bestDistance || skipDoomed(m)) return;
             best = m;
