@@ -73,12 +73,20 @@ by hand to learn the flow; this file is the starting point for the decision rule
   - Floor 3: Venom Burrow (6 snakes + 2 scorpions / 6 spiders / broodmother + 3 scorpions) or Deep Roost (6 bats +
     2 spiders / 5 wolves / broodmother + 4 bats).
 - XP of a whole run is small (roughly 5-8M); the value is Amber and the cave items.
+- Monster drops (`G.drops.monsters`, luck counts): every cave monster 8 % 1 Amber; spider +3 % Spider Silk, scorpion
+  +3 % Cobra Scale, snake +3 % Snake Oil; **Broodmother 100 % 1 Amber** + 10 % Spider Silk. Travelers, rogue and floor
+  keepers drop nothing and give 0 XP (their reward is a table roll) - a keeper summoned by an encounter probably pays
+  nothing. Dark Mage: 100 % Nightjudge (`G.drops.cave_darkmage`); rogue: Last Word (`cave_rogue_weapon`).
 
 ## Reward tables (`G.drops`)
 
+A "roll" is one draw from the table right away (not an item to keep); items go to a random member of the original
+party. About 1,000 cave gold = 1 Amber (Loaded Die: 10,000 cave gold at the merchant or 10 Amber at Cole).
+
 | table | used for | content (weight) |
 |---|---|---|
-| cave_parcel | bought parcels, trials, hunts, hostile travelers, camp packs | 50 Amber x1, 22 Amber x2, 10 scroll1, 5 gem1, 5 Tunnel Axe, 5 Reed Scythe, 2 Locktooth, 1 Mothstep Boots |
+| cave_farm | each cleared camp pack (most likely; the guide's "clearing monster packs" table) | 57 Amber x1, 20 Amber x2, 10 scroll1, 4 Tunnel Axe, 4 Reed Scythe, 3 Locktooth, 2 Mothstep Boots |
+| cave_parcel | bought parcels, trials, hunts, fights with hostile travelers | 50 Amber x1, 22 Amber x2, 10 scroll1, 5 gem1, 5 Tunnel Axe, 5 Reed Scythe, 2 Locktooth, 1 Mothstep Boots |
 | cave_rescue | successful rescue/escort, helping the winning rival | 60 Amber x2, 20 Amber x3, 10 gem1, 5 Tunnel Axe, 3 Counterweight, 2 Mothstep Boots |
 | cave_boss | floor keepers | 55 Amber x3, 15 Locktooth, 12 Counterweight, 10 Tunnel Axe, 8 Mothstep Boots |
 | cave_finish | floor 3 completed | 45 Amber x5, 15 Locktooth, 15 Counterweight, 10 Tunnel Axe, 10 Mothstep Boots, 5 Loaded Die |
@@ -98,7 +106,7 @@ by hand to learn the flow; this file is the starting point for the decision rule
 | Deepvein Axe | axe | atk 48, str 4, crit 2, apiercing 30, lifesteal 1 | 200 Amber + Tunnel Axe +0 + 10 gemfragment + 20 leather + 480,000 |
 | Amberweave Coat | chest | armor 42, res 28, hp 100, luck 3, eva 2 | 300 Amber + coat + 30 spidersilk + 20 cscale + 360,000 |
 | Last Word | dagger | atk 28, crit 5, apiercing 80, speed -4 | rare: Cornered Rogue (1 %), only if monsters kill him |
-| Nightjudge | staff | atk 48, rpiercing 80, range 60 | source unknown (probably the Dark Mage) |
+| Nightjudge | staff | atk 48, rpiercing 80, range 60 | Dark Mage (100 %) - only his reflected spell kills him |
 
 Merchant stock (cave gold, one copy each): Tunnel Axe 6,000, Reed Scythe 2,500, broom 48,000, tshirt0/1/2 16,000,
 **Loaded Die 10,000**, Locktooth 6,000, Counterweight 8,000, Mothstep Boots 6,000, scroll1 2,000, gem1 5,000.
@@ -111,12 +119,18 @@ One merchant per floor near the doorway, along an upper wall. Cave gold never le
 - Free and safe: `e07_4` (100 % parcel) and the 20-second `careful` options (`e02_2`, `e09_4`, `e15_4`, `e17_4`,
   `e22_2`, `e40_4`).
 - A 50/50 between a reward and an easy fight is good: the worst case is a fight we win. Best: 50 % `cave_boss`
-  (`e04_0`, `e13_0`, `e22_0`).
-- Tolls (`e26`-`e30`): fight the three guards (`_1`) - costs neither cave gold nor Amber.
+  (`e04_0`, `e13_0`, `e22_0`). Not with wolves: `e21_2` (3 wolves for half a parcel) was dropped (player review
+  2026-11-24), `e06` takes `cover` on the first run (no wolf fight; count the wolves).
+- Fights with hostile travelers (1,200 HP) pay a parcel roll (guide): `e05_2` instead of `e05_1`.
+- Sure cave gold beats an unverified fight reward: `e03_4` (2,000) instead of the six rats.
+- Every pen in `e08` pays the same box: the three crabs are quickest; keepers from encounters give nothing extra.
+- Tolls (`e26`-`e30`): test `_5` once (the NPC + six guards, all trivial: six guard drops and probably a parcel roll
+  for the hostile traveler); else `_1` (three guards, free).
 - Conflicts: `testimony` (help whoever hits harder) - only helping the winner pays `cave_rescue`.
 - Cornered Rogue (`e20`): `watch` - the only way to Last Word; a betrayal is harmless at 1,200 HP.
 - Hunts: the double variant (12 crabs in 90 s, 20 rats in 60 s; 16 bats in 75 s only if they are close).
-- A lamp is needed for `e47 moths` (boots in the wall): pick one up early (`e38`/`e49` lamp, `e21_4`, `e23_4`, ...).
+- Tools (`e38`, `e49` and the others): on floor 1 without a tool the pry bar (used by `e02`, `e12`, `e18`, `e22`);
+  later or with a tool, 1 Amber. A lamp only for `e47 moths` - free ones (`e21_4`, `e23_4`, ...) are fine.
 - Spend all cave gold; Loaded Die first, then cave items by use.
 
 ## Open questions (answer on the manual runs)
@@ -158,11 +172,11 @@ This box has been sitting here for days. I can sell it to you, but fair warning:
 
 I keep rats for the wolves. You can help clear the pen, buy some bait, or take the tame one along.
 
-- `e03_0` Open the rat gate. Fight six rats for the parcel. **[rec]** - 100%: FIGHT 6x cave_rat
+- `e03_0` Open the rat gate. Fight six rats for the parcel. - 100%: FIGHT 6x cave_rat
 - `e03_1` Put your hand through the bars. - 50%: cave_parcel | 50%: FIGHT 2x cave_wolf
 - `e03_2` Buy a rattling feed tin for 2 Amber - cost 2 Amber; 100%: flag decoy
 - `e03_3` Free the tame rat. Let it follow us. - 100%: ally cave_rat
-- `e03_4` Sell the spare feed for 2,000 cave gold - 100%: 2000 cave gold
+- `e03_4` Sell the spare feed for 2,000 cave gold **[rec]** - 100%: 2000 cave gold
 - `e03_5` Leave it and keep going. - effect `leave`
 
 ### e04 The Hot Forge (forge, mixed)
@@ -181,8 +195,8 @@ There’s a supply box stuck behind the hot forge. We can force it out, buy a co
 Need another sword? Pay me now and I’ll fight beside you. Or trust the guard offering to lead you for free. Your call.
 
 - `e05_0` Hire the guard for 2,000 shared gold - cost 2000 gold; 100%: NPC joins
-- `e05_1` Let the guard lead. No money up front. **[rec]** - 50%: NPC joins | 50%: FIGHT 3x cave_guard
-- `e05_2` Fight the guard for the contract chest - 100%: FIGHT 1x cave_npc
+- `e05_1` Let the guard lead. No money up front. - 50%: NPC joins | 50%: FIGHT 3x cave_guard
+- `e05_2` Fight the guard for the contract chest **[rec]** - 100%: FIGHT 1x cave_npc
 - `e05_3` Take a route with fewer guards - 100%: flag truce
 - `e05_4` Buy a spare lamp for 1 Amber - cost 1 Amber; 100%: flag lamp
 - `e05_5` Leave it and keep going. - effect `leave`
@@ -191,12 +205,12 @@ Need another sword? Pay me now and I’ll fight beside you. Or trust the guard o
 
 Wolves have cornered {npc}. “Help me! Kill these wolves and I’ll share what’s in my pack.” You could also wait and search the pack if the wolves kill them.
 
-- `save` Save {npc}: fight the wolves **[rec]** - effect `save`
+- `save` Save {npc}: fight the wolves - effect `save`
 - `watch` Wait; loot the pack if {npc} dies - effect `watch`
 - `lure` Draw the wolves away from {npc} - effect `lure`
 - `aid` Save and hire {npc} for 2,000 shared gold - cost 2000 gold; effect `hire`
 - `finish` Attack {npc} and the wolves - effect `both`
-- `cover` Bring {npc} behind us; take a smaller reward - effect `cover`
+- `cover` Bring {npc} behind us; take a smaller reward **[rec]** - effect `cover`
 
 ### e07 Borrow a Uniform (disguise, mixed)
 
@@ -364,12 +378,12 @@ I sell guard passes and mark supply rooms on maps. I know a shortcut too, though
 
 - `e21_0` Buy a pass for 3 shared Amber; skip one guardroom - cost 3 Amber; 100%: flag truce
 - `e21_1` Take the guarded shortcut - 100%: FIGHT 3x cave_guard
-- `e21_2` Trust the crossed-out route **[rec]** - 50%: cave_parcel | 50%: FIGHT 3x cave_wolf
+- `e21_2` Trust the crossed-out route - 50%: cave_parcel | 50%: FIGHT 3x cave_wolf
 - `e21_3` Hire the mapmaker for 2,000 cave gold - cost 2000 gold; 100%: NPC joins
-- `e21_4` Take the spare lantern - 100%: flag lamp
+- `e21_4` Take the spare lantern **[rec]** - 100%: flag lamp
 - `e21_5` Leave it and keep going. - effect `leave`
 
-Note: 3 wolves on the bad roll; e21_4 (free lamp) if we still need one.
+Note: a free lamp, or leave if we hold one - 50 % on 3 wolves for half a parcel is not worth ~60 s (player review 2026-11-24).
 
 ### e22 One More Turn (pressure, mixed)
 
@@ -422,55 +436,55 @@ Help me get this crate to the stairs and I’ll pay 3,000 cave gold and share my
 Three guards block the way. Their captain holds out a hand. “Pay the toll, or find out how serious we are.”
 
 - `e26_0` Pay the 3,000 gold toll - cost 3000 gold; effect `pay`
-- `e26_1` Fight the three guards **[rec]** - effect `bad_fight`
+- `e26_1` Fight the three guards - effect `bad_fight`
 - `e26_2` Pay 2 shared Amber instead - cost 2 Amber; effect `pay`
 - `e26_3` Pay 1,000 gold and spend 30 seconds getting past - cost 1000 gold; 30 s; effect `time`
 - `e26_4` Wait for a way past; lose 45 seconds - 45 s; effect `time`
-- `e26_5` Fight {npc} and six guards - effect `bad_double`
+- `e26_5` Fight {npc} and six guards **[rec]** - effect `bad_double`
 
 ### e27 Stopped by a Guard (toll, bad)
 
 The guard blocks your way. Apparently, passing through is a privilege with a price.
 
 - `e27_0` Pay 3,000 shared gold to pass - cost 3000 gold; effect `pay`
-- `e27_1` Fight the three guards **[rec]** - effect `bad_fight`
+- `e27_1` Fight the three guards - effect `bad_fight`
 - `e27_2` Pay 2 shared Amber instead - cost 2 Amber; effect `pay`
 - `e27_3` Pay 1,000 gold and spend 30 seconds getting past - cost 1000 gold; 30 s; effect `time`
 - `e27_4` Wait for a way past; lose 45 seconds - 45 s; effect `time`
-- `e27_5` Fight {npc} and six guards - effect `bad_double`
+- `e27_5` Fight {npc} and six guards **[rec]** - effect `bad_double`
 
 ### e28 The Rope Snaps (alarm, bad)
 
 The alarm rope has snapped, but the message got through. Guards are coming, and the bell keeper seems willing to reconsider—for a price.
 
 - `e28_0` Pay 3,000 shared gold to stop the alarm - cost 3000 gold; effect `pay`
-- `e28_1` Fight the three guards **[rec]** - effect `bad_fight`
+- `e28_1` Fight the three guards - effect `bad_fight`
 - `e28_2` Pay 2 shared Amber instead - cost 2 Amber; effect `pay`
 - `e28_3` Pay 1,000 gold and spend 30 seconds getting past - cost 1000 gold; 30 s; effect `time`
 - `e28_4` Wait for a way past; lose 45 seconds - 45 s; effect `time`
-- `e28_5` Fight {npc} and six guards - effect `bad_double`
+- `e28_5` Fight {npc} and six guards **[rec]** - effect `bad_double`
 
 ### e29 The Cargo Is Stuck (cargo, bad)
 
 A loaded cart is wedged in the passage. Its guards could move it, but first they'd like to be paid for the inconvenience.
 
 - `e29_0` Pay 3,000 shared gold to move the cart - cost 3000 gold; effect `pay`
-- `e29_1` Fight the three guards **[rec]** - effect `bad_fight`
+- `e29_1` Fight the three guards - effect `bad_fight`
 - `e29_2` Pay 2 shared Amber instead - cost 2 Amber; effect `pay`
 - `e29_3` Pay 1,000 gold and spend 30 seconds getting past - cost 1000 gold; 30 s; effect `time`
 - `e29_4` Wait for a way past; lose 45 seconds - 45 s; effect `time`
-- `e29_5` Fight {npc} and six guards - effect `bad_double`
+- `e29_5` Fight {npc} and six guards **[rec]** - effect `bad_double`
 
 ### e30 The Wrong Receipt (debt, bad)
 
 The collector insists you're carrying a debtor's receipt. He can be paid off, fought, or given time to discover that names are worth reading.
 
 - `e30_0` Pay 3,000 shared gold to settle the debt - cost 3000 gold; effect `pay`
-- `e30_1` Fight the three guards **[rec]** - effect `bad_fight`
+- `e30_1` Fight the three guards - effect `bad_fight`
 - `e30_2` Pay 2 shared Amber instead - cost 2 Amber; effect `pay`
 - `e30_3` Pay 1,000 gold and spend 30 seconds getting past - cost 1000 gold; 30 s; effect `time`
 - `e30_4` Wait for a way past; lose 45 seconds - 45 s; effect `time`
-- `e30_5` Fight {npc} and six guards - effect `bad_double`
+- `e30_5` Fight {npc} and six guards **[rec]** - effect `bad_double`
 
 ### e31 The Shop with One Item (merchant, positive)
 
@@ -557,14 +571,14 @@ Want a free roll? Roll a six and the party gets a chest with 1 Amber. No bet thi
 
 Take what you need from my tool bag. The pry bar opens locked hatches, the lamp helps with moths, and the tin rattle can draw a patrol away.
 
-- `e38_0` Take a pry bar for locked hatches - effect `tool`
-- `e38_1` Take a lamp for the moths **[rec]** - effect `lamp`
+- `e38_0` Take a pry bar for locked hatches **[rec]** - effect `tool`
+- `e38_1` Take a lamp for the moths - effect `lamp`
 - `e38_2` Take the tin rattle - effect `decoy`
 - `e38_3` Ask the cartographer to come with us - 100%: NPC joins
 - `e38_4` Trade the scrap for 1 Amber - 100%: 1 Amber
 - `e38_5` We have what we need. - effect `leave`
 
-Note: tool (e38_0) once we hold a lamp.
+Note: floor 1 without a tool the pry bar; later or with a tool 1 Amber (e38_4).
 
 ### e39 The Amber Garden (plant, positive)
 
@@ -686,14 +700,14 @@ I keep a few supplies for travelers. There is one item left today, and I take ca
 
 I can turn these hinges into a pry bar, or refill a lamp. Pick one, and it is yours for the rest of this visit.
 
-- `e49_0` Take a pry bar for locked hatches - effect `tool`
-- `e49_1` Take a lamp for the moths **[rec]** - effect `lamp`
+- `e49_0` Take a pry bar for locked hatches **[rec]** - effect `tool`
+- `e49_1` Take a lamp for the moths - effect `lamp`
 - `e49_2` Take the tin rattle - effect `decoy`
 - `e49_3` Ask the toolmaker to come with us - 100%: NPC joins
 - `e49_4` Trade the scrap for 1 Amber - 100%: 1 Amber
 - `e49_5` We have what we need. - effect `leave`
 
-Note: tool (e49_0) once we hold a lamp.
+Note: floor 1 without a tool the pry bar; later or with a tool 1 Amber (e49_4).
 
 ### e50 Before You Leave (farewell, positive)
 
