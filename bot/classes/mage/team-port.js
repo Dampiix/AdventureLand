@@ -7,11 +7,13 @@
 //          graceMs (map changes and entities settle first).
 //   never: under the manual rules, without a goal, during a boss search (a find becomes the leader's boss goal).
 // A member we saw within minDist px while we were at the goal has been there: not pulled again for this goal. Party
-// positions lag behind: a member we can see counts by its live position, one we can't see on our map by its party info.
+// positions lag behind: a member we can see counts by its live position, one we can't see by its live position from the
+// team view (memberPos, when it runs in our client) or else its party info.
 // The journal (tag party) says why we don't pull someone on another map, at most every 30 s.
 // Interface: createTeamPort(deps, options) -> { tick() }
 //   deps: game, log, errReason, distanceTo, partyEnabled(), members(), teamGoal(), atGoal(goal), goalLabel(goal),
-//         manual(), searchActive() -> our own boss search runs, fighters() -> team fighter names, tankClasses()
+//         manual(), searchActive() -> our own boss search runs, fighters() -> team fighter names, tankClasses(),
+//         memberPos(name) -> { map, x, y, rip, type } live from the team view, or null (optional)
 //   options: see DEFAULTS
 // Works for any class that has the skill.
 // =====================================================================
@@ -48,7 +50,7 @@ module.exports = function createTeamPort(deps, options) {
         const label = deps.goalLabel(g);
         const why = function (r) {
             if (Date.now() - portWhyAt < 30 * 1000) return;
-            const away = others.filter(function (n) { return info[n].map !== me.map; });
+            const away = others.filter(function (n) { return ((deps.memberPos && deps.memberPos(n)) || info[n]).map !== me.map; });
             if (!away.length) return;
             portWhyAt = Date.now();
             deps.log("party", "magiport to " + label + " for " + away.join(", ") + " waits: " + r, "white");
@@ -69,7 +71,7 @@ module.exports = function createTeamPort(deps, options) {
         const minDist = mpc.minDist || 600;
         const waiting = [];
         const far = others.filter(function (n) {
-            const p = info[n];
+            const p = (deps.memberPos && deps.memberPos(n)) || info[n]; // live from the team view, else party info
             const live = game.player(n);
             if (live && live.rip) return false;
             if (live && deps.distanceTo(live) <= minDist) { seen[n] = true; return false; }
@@ -103,7 +105,7 @@ module.exports = function createTeamPort(deps, options) {
         portTries[who] = { goal: g.id, n: prev && prev.goal === g.id ? prev.n + 1 : 1, at: now };
         portBusy = true;
         const lv = game.player(who);
-        deps.log("party", "magiport " + who + " to " + label + " (" + (lv ? Math.round(deps.distanceTo(lv)) + " px away" : "on " + info[who].map) + ", try " + portTries[who].n + ")", "yellow");
+        deps.log("party", "magiport " + who + " to " + label + " (" + (lv ? Math.round(deps.distanceTo(lv)) + " px away" : "on " + (((deps.memberPos && deps.memberPos(who)) || info[who]).map)) + ", try " + portTries[who].n + ")", "yellow");
         Promise.resolve(game.useSkill("magiport", who))
             .catch(function (e) { deps.log("party", "magiport " + who + ": " + deps.errReason(e), "orange"); })
             .finally(function () { portBusy = false; });

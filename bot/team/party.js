@@ -16,6 +16,7 @@
 
 const game = require("../lib/game.js");
 const createSpots = require("../safety/spots.js");
+const createTeamView = require("./team-view.js");
 
 module.exports = function createParty(deps) {
     const config = deps.config;
@@ -23,6 +24,7 @@ module.exports = function createParty(deps) {
     const comms = deps.comms;
     const bus = deps.bus;
     const spots = createSpots({ game: game, util: util, config: config });
+    const teamView = createTeamView({ game: game }); // read only: the leader's entry (team view step 1)
     const cfg = config.party;
     const leader = config.leader;
     const phase = config.phases[config.phase] || {};
@@ -163,40 +165,67 @@ module.exports = function createParty(deps) {
         return !!beenAt[g.id];
     }
 
-    function broadcast(farm, target, event) {
-        if (!enabled || !isLeader) return;
-        const now = Date.now();
-        const g = leaderGoal(); // every tick: the goal's id and `reached` stay current between broadcasts
-        if (now - lastBroadcast < cfg.broadcastMs) return;
-        lastBroadcast = now;
-        // Only members in the party (2026-11-22 review): an offline member made every send fail - a red log line
-        // every broadcastMs. events.shareStats filters the same way.
-        const others = members.filter(function (n) { return n !== character.name && inParty(n); });
-        if (!others.length) return;
-        comms.send(others, "lead", {
+    // The leader's report to the members: where it is, what it farms and targets, its route end, event, manual flag and
+    // the team goal. Sent as the "lead" message every broadcastMs, and read live from our team view entry (leadData).
+    let lastLead = { farm: null, target: null, event: null };
+    function leadPayload(farm, target, event, g) {
+        return {
             map: character.map,
             x: Math.round(character.x),
             y: Math.round(character.y),
             farm: farm ? farm.monster : null,
             target: target ? target.id : null,
             moving: typeof smart !== "undefined" && !!smart.moving, // on a route (members don't fight meanwhile)
-            // Where the route ends (player decision 2026-11-21, idea from earthiverse): members walk
-            // there themselves instead of following us door by door.
+            // Where the route ends: members walk there themselves instead of following us door by door.
             dest: cfg.goToDest !== false && typeof smart !== "undefined" && smart.moving && smart.map ? { map: smart.map, x: Math.round(smart.x), y: Math.round(smart.y) } : null,
             // dest: where a roaming boss was seen (a member's sighting) - members go there, not to its nearest spawn.
             event: event ? { name: event.name, join: !!event.join, monster: event.monster || null, dest: event.dest && typeof event.dest === "object" ? event.dest : null } : null,
-            manual: !!bus.get("manualOwn"), // /manual: members use the manual rules too (v1.231.1)
-            // The team goal (v1.236.0): the end goal of the team's route, see leaderGoal.
+            manual: !!bus.get("manualOwn"), // /manual: members use the manual rules too
+            // The team goal: the end goal of the team's route, see leaderGoal.
             goal: g ? { id: g.id, kind: g.kind, name: g.name, map: g.map || null, x: g.x, y: g.y, reached: !!g.reached } : null,
-        });
+        };
+    }
+    function broadcast(farm, target, event) {
+        if (!enabled || !isLeader) return;
+        lastLead = { farm: farm, target: target, event: event };
+        const now = Date.now();
+        const g = leaderGoal(); // every tick: the goal's id and `reached` stay current between broadcasts
+        if (now - lastBroadcast < cfg.broadcastMs) return;
+        lastBroadcast = now;
+        // Only members in the party: an offline member made every send fail. events.shareStats filters the same way.
+        const others = members.filter(function (n) { return n !== character.name && inParty(n); });
+        if (!others.length) return;
+        comms.send(others, "lead", leadPayload(farm, target, event, g)); // the fallback for members outside our client
+    }
+    // Leader: the same report, live (read by the members through our team view entry). The goal as of our last tick.
+    function leadData() {
+        if (!enabled || !isLeader) return null;
+        return leadPayload(lastLead.farm, lastLead.target, lastLead.event, goalNow);
     }
 
+
     // Fresh leader info for members, or null.
+    // Members: the leader's report - live from its team view entry when it runs in our client (team view step 1), else
+    // the last "lead" message (up to 15 s old). The journal notes when the source changes.
+    let leadSource = null;
+    function noteSource(src) {
+        if (src === leadSource) return;
+        leadSource = src;
+        util.log("party", "leader info: " + (src === "view" ? "live from the team view" : src === "message" ? "from the leader's messages" : "none"), "white");
+    }
     function leaderInfo() {
-        if (!enabled || isLeader || !leaderState) return null;
-        if (Date.now() - leaderState.at > 15000) return null;
+        if (!enabled || isLeader) return null;
+        let live = null;
+        try {
+            const e = teamView.member(leader);
+            live = e && e.bot && e.bot.lead ? e.bot.lead() : null;
+        } catch (x) { live = null; } // a reloading frame: use the message
+        if (live) { noteSource("view"); return Object.assign(live, { at: Date.now() }); }
+        if (!leaderState || Date.now() - leaderState.at > 15000) { noteSource(null); return null; }
+        noteSource("message");
         return leaderState;
     }
+    function leadVia() { return leadSource; }
 
     // isDest: the end of the leader's route - a new destination replaces our current walk.
     let lastGoal = null;
@@ -383,6 +412,8 @@ module.exports = function createParty(deps) {
         onInvite: onInvite,
         broadcast: broadcast,
         leaderInfo: leaderInfo,
+        leadData: leadData,  // leader: the live report for our team view entry
+        leadVia: leadVia,    // members: "view" or "message" (/team)
         keepUp: keepUp,
         idleFollow: idleFollow,
         nearLeader: nearLeader,

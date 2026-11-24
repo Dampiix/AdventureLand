@@ -116,6 +116,8 @@ function publishTeamEntry(ctx, me) {
             event: function () { return opt(function () { const e = ctx.events.current(); return e ? { name: e.name, monster: e.monster, join: !!e.join } : null; }); },
             manual: function () { return opt(function () { return ctx.cave.active(); }); },
             stats: function () { return opt(function () { return BOT_UTIL.combatStats(); }); },
+            // Leader: its live report for the members (team view step 1; null on members and the merchant).
+            lead: function () { return opt(function () { return ctx.party.leadData(); }); },
         },
         actions: {},
     });
@@ -137,6 +139,7 @@ function teamReport(teamView) {
                 Math.round(c.real_x) + "," + Math.round(c.real_y) + " HP " + Math.round(c.hp) + "/" + c.max_hp +
                 (farm && farm.monster ? " farm " + farm.monster : "") + (goal ? " goal " + goal.kind + ":" + (goal.name || "") : "") +
                 (ev ? " event " + ev.name : "") + (b.status ? " | " + b.status() : ""), "white");
+            if (e.name === character.name && e.role === "member" && BOT_CMD_CTX && BOT_CMD_CTX.party) game_log("[team] our leader info: " + (BOT_CMD_CTX.party.leadVia() || "none"), "white");
         } catch (x) { game_log("[team] " + e.name + ": " + x.message, "orange"); }
     });
 }

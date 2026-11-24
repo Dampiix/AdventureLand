@@ -19,6 +19,7 @@ const createReflect = require("./reflect.js");
 const createBlaster = require("./blaster.js");
 const createBlink = require("./blink.js");
 const createTeamPort = require("./team-port.js");
+const createTeamView = require("../../team/team-view.js");
 
 module.exports = function createMage(ctx) {
     const util = ctx.util;
@@ -65,6 +66,8 @@ module.exports = function createMage(ctx) {
         },
         inSpotArea: function (p, type) { return !!(ctx.targeting.inSpotArea && ctx.targeting.inSpotArea(p, type)); },
     }, c.blinkTravel);
+    // Team view (step 1): the members' live positions when they run in our client.
+    const teamView = createTeamView({ game: game });
     const teamPort = createTeamPort({
         game: game, log: util.log, errReason: util.errReason, distanceTo: util.distanceTo,
         partyEnabled: function () { return !!ctx.party.enabled; },
@@ -76,6 +79,12 @@ module.exports = function createMage(ctx) {
         searchActive: function () { return !!(ctx.events && ctx.events.searchJob && ctx.events.searchJob()); },
         fighters: function () { return (ctx.config.team && ctx.config.team.fighters) || []; },
         tankClasses: function () { return ((ctx.config.targeting && ctx.config.targeting.teamSafety) || {}).tankClasses || ["warrior", "paladin"]; },
+        memberPos: function (n) {
+            try {
+                const e = teamView.member(n), p = e && e.game();
+                return p ? { map: p.map, x: p.real_x, y: p.real_y, rip: p.rip, type: p.ctype } : null;
+            } catch (x) { return null; }
+        },
     }, c.magiport);
 
     return {

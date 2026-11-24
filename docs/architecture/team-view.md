@@ -1,6 +1,6 @@
 # Team view: direct communication between our characters (plan, 2026-11-24)
 
-Status: **step 0 built (v1.237.20-pilot)**, steps 1-5 open. On `modular-pilot` after stages 1-7. Unlike the rebuild stages this **changes behaviour**
+Status: **steps 0 (v1.237.20-pilot) and 1 (v1.237.21-pilot) built**, steps 2-5 open. On `modular-pilot` after stages 1-7. Unlike the rebuild stages this **changes behaviour**
 (information arrives at once instead of in messages every few seconds), so every step gets a live test, not only
 old-vs-new comparisons.
 
