@@ -10,7 +10,7 @@ slot becomes a bundle. The fighter's class interface stays: `name, survive, alwa
 
 | Class | Today | Modules |
 |---|---|---|
-| priest | 252 lines, live | `priest.js`; `heal.js` (hurt members, heal, far member low, Party Heal); `absorb.js`; `luck-catch.js` (luck set on the kill, with gear.luckOn); `revive.js` |
+| priest | 252 lines, live | `priest.js`; `heal.js` (hurt members, heal, far member low, Party Heal); `absorb.js`; `luck-catch.js` (luck set on the kill, with gear.luckOn); `revive.js`; `curse.js` (Curse on sturdy targets); `dark-blessing.js` (Dark Blessing on long fights: sturdy targets, bosses) |
 | ranger | 92, not running | `ranger.js`; `shots.js` (3-Shot targets, Supershot, Hunter's Mark, Poison Arrow) |
 | rogue | 153, not running | `rogue.js`; `stealth.js` (quiet spot, Invis); `rogue-buffs.js` (Rogue Speed, swiftness); `fanofknives.js` (Knife Belt skill) |
 | paladin | 93, not running | `paladin.js`; `mana-shield.js` (Mana Shield, Guardian's Oath); `cleansing.js`; Selfheal and Smash stay in `paladin.js` (a few lines) |
