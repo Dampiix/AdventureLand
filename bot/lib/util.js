@@ -537,19 +537,35 @@ function tooSpiky(config, m, ctype) {
 // Giga Crab rules (events.foreignOnly / events.noArea, 2026-11-23, player decision): monsters we only hit while a
 // FOREIGN player holds them (and, when a flag is named, while that flag is not set - crabxx "1hp": it takes 1 damage
 // while Huge Crabs live), and monsters no area skill, Taunt, Agitate or Absorb Sins may ever touch.
+// events.foreignRules (2026-11-24, player decision): classes that never hit it at all (neverBy - the priest has the
+// fewest HP and no way out), and a holder we trust: visible, at least holderMinHp of its HP and within holderMaxDist
+// px of the monster - so we never hit just when the holder dies or leaves and the next hit (ours) takes it over.
 function foreignOnlyBlocks(config, m) {
-    const fo = (config.events && config.events.foreignOnly) || {};
+    const ev = config.events || {};
+    const fo = ev.foreignOnly || {};
     if (!m || !Object.prototype.hasOwnProperty.call(fo, m.mtype)) return false;
     const own = Object.keys(config.characters || {});
     if (!m.target || own.includes(m.target)) return true; // free, or on one of us: never ours to hit
     const flag = fo[m.mtype];
-    return !!(flag && m[flag]);
+    if (flag && m[flag]) return true;
+    const r = (ev.foreignRules || {})[m.mtype] || {};
+    if ((r.neverBy || []).includes(character.ctype)) return true;
+    if (r.holderMinHp || r.holderMaxDist) {
+        const h = (parent.entities || {})[m.target];
+        if (!h || h.rip || h.dead) return true; // holder out of sight: no trust
+        if (r.holderMinHp && (!h.max_hp || h.hp / h.max_hp < r.holderMinHp)) return true;
+        if (r.holderMaxDist && Math.hypot(h.x - m.x, h.y - m.y) > r.holderMaxDist) return true;
+    }
+    return false;
 }
 function noArea(config, m) {
     return !!m && ((config.events && config.events.noArea) || []).includes(m.mtype);
 }
 // A noArea monster within range px of us (or of point p).
 function noAreaNear(config, range, p) {
+    // Cave of Many Dreams in manual mode (v1.231.0, player decision 2026-11-24): as if a Giga Crab stood next to us -
+    // no Agitate, Cleave or Stomp (they would pull the next pack, the floor keeper or hit travelers and allies).
+    if (character.cave && (config.cave || {}).mode === "manual" && (config.cave || {}).noArea !== false) return true;
     const at = p || { x: character.real_x, y: character.real_y };
     return Object.values(parent.entities || {}).some(function (e) {
         return e && e.type === "monster" && !e.dead && noArea(config, e) && Math.hypot(e.x - at.x, e.y - at.y) <= range;

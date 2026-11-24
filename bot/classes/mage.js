@@ -232,7 +232,7 @@ module.exports = function createMage(ctx) {
         if (isBlaster(worn)) {
             if (t && !t.dead && packAround(t, blastRadius(worn)) >= (bl.minNeighbours || 2)) packSeenAt = Date.now();
             const better = blasterBetter(worn);
-            const why = t && !t.dead && bossy(t) ? "boss" : Date.now() < noBlasterUntil ? "dangerous bystander" : util.mpRatio() < (bl.offMp || 0.2) ? "MP low" : better ? null :
+            const why = ctx.cave && ctx.cave.active() ? "cave" : t && !t.dead && bossy(t) ? "boss" : Date.now() < noBlasterUntil ? "dangerous bystander" : util.mpRatio() < (bl.offMp || 0.2) ? "MP low" : better ? null :
                 travelling() ? "on the way" : Date.now() - packSeenAt > (bl.keepMs || 4000) ? "no pack" : null;
             if (!why) { ctx.gear.holdWeapons(bl.holdMs || 60000); return; }
             const batch = usualBatch();
@@ -250,6 +250,7 @@ module.exports = function createMage(ctx) {
             return;
         }
         if (Date.now() < noBlasterUntil || util.mpRatio() < (bl.minMp || 0.5) || character.esize < 1) return;
+        if (ctx.cave && ctx.cave.active()) return; // no blast splash in the cave (manual mode, v1.231.0)
         const idx = blasterIndex();
         if (idx === -1) return;
         if (t && !t.dead && bossy(t)) return; // bosses: staff + book, whatever is stronger (v1.226.0)
@@ -294,6 +295,7 @@ module.exports = function createMage(ctx) {
     let portBusy = false, portLowLogAt = 0, portBoss = null; // portBoss: { id, since } - the boss in our sight
     function magiportTick() {
         if (!mpc.enabled || portBusy || character.rip || !ctx.party.enabled || !G.skills.magiport) return;
+        if (ctx.cave && ctx.cave.inCave()) return; // magiport can't enter or leave the cave
         const ev = ctx.events && ctx.events.current ? ctx.events.current() : null;
         if (!ev || ev.join || ev.solo || !ev.monster) return;
         const boss = get_nearest_monster({ type: ev.monster });

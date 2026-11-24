@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.229.3",
+    version: "1.231.1",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -327,6 +327,12 @@ module.exports = {
         joinSpot: { crabxx: { map: "main", x: -1000, y: 1700, r: 600 } },
         joinNeeds: { crabxx: "crabx" },
         foreignOnly: { crabxx: "1hp" },
+        // Extra Giga Crab safety (2026-11-24, player decision; util.foreignOnlyBlocks, fighter.gigaFlee): the priest never
+        // hits it; the others only while the foreign holder is visible, has >= holderMinHp of its HP and stands within
+        // holderMaxDist px of it (a holder dying or leaving hands it to the next hit - one 16k hit kills priest or mage).
+        // flee: whoever it targets runs fleeStep px away from it every tick - the mage blinks (1,600 MP) - and fights
+        // nothing meanwhile; it keeps its target (rage 0) and charges at 80, so the warrior (one hit) has the best odds.
+        foreignRules: { crabxx: { neverBy: ["priest"], holderMinHp: 0.4, holderMaxDist: 400, flee: true, fleeStep: 250 } },
         noArea: ["crabxx"],
         minLevel: { phoenix: 40, goobrawl: 20, snowman: 10, graveyard: 40, mvampire: 50, fvampire: 60, jr: 40, greenjr: 40, skeletor: 60 },
         // The whole team searches only the Phoenix (player decision 2026-11-21: in one hour two team rounds
@@ -905,6 +911,20 @@ module.exports = {
         callEveryMs: 5 * 60 * 1000,         // fewer than carry/2 in the bag calls the merchant, at most this long after its last visit (v1.229.3)
         buy: { elixirluck: { min: 10, max: 30 } },
         exchange: { source: "seashell", min: 6, refill: 20, sourceKeep: 40 },
+    },
+
+    // Cave of Many Dreams (v1.231.0, player decision 2026-11-24; core/cave.js, docs/cave-of-many-dreams.md). The player
+    // enters at Dorr (the bot never calls cave_enter) and walks the leader outside fights. mode "manual": inside the cave
+    // the bot fights only what the player starts (a target set on the leader by hand) or what attacks the party, never
+    // travels or pulls on its own; members follow the leader and vote what it voted; no Agitate/Cleave/Stomp (noArea),
+    // no Blaster, no magiport, events, supply or Cavalry; no respawn of our own (Nera: free at the doorway, Amber in
+    // place). Cave chests within 400 px are opened by everyone. neverFight: never attacked, also when it hits us.
+    // The recorder keeps states, requests, results and the cave's entities in the storage ("dmpx_cave_rec:<name>").
+    cave: {
+        mode: "manual",
+        noArea: true,
+        neverFight: ["cave_darkmage"],
+        record: true, recordMaxChars: 3000, recordCapLeader: 300, recordCapMember: 120, entsEveryMs: 10000,
     },
 
     // Fighter side of the item/gold flow

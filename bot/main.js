@@ -174,6 +174,7 @@ function startBot() {
             return ctx.party.memberNames().some(function (n) { return n !== character.name && fighters.includes(n); });
         };
         botParty = ctx.party;
+        ctx.cave = require_code("bot_cave")(ctx); // Cave of Many Dreams, manual mode (v1.231.0)
         ctx.hunts = require_code("bot_hunts")(ctx);
         ctx.events = require_code("bot_events")(ctx);
         botEvents = ctx.events;
@@ -382,6 +383,14 @@ function handle_command(command, args) {
     if (command === "ponty" || command === "ponti") {
         try { set("dmpx_ponty_force", Date.now()); } catch (e) { /* storage unavailable */ }
         try { parent.add_chat("", "[bot] Ponty round requested - the merchant starts it on its next check", "#9be36d"); } catch (e) { /* chat only */ }
+        return true;
+    }
+    // "/manual [on|off]" (v1.231.1, player decision 2026-11-24): the player walks this character (the leader) without
+    // stopping its code - it fights only what the player starts or what attacks the party, travels and pulls nothing
+    // on its own; the members follow it across maps and use the same rules. Kept across code loads until /manual again.
+    if (command === "manual" && BOT_CMD_CTX && BOT_CMD_CTX.cave) {
+        const v = String((Array.isArray(args) ? args[0] : args) || "").toLowerCase();
+        BOT_CMD_CTX.cave.setManual(v === "on" ? true : v === "off" ? false : !BOT_CMD_CTX.cave.ownManual());
         return true;
     }
     if (command === "pickup" && botSupply) {

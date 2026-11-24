@@ -226,6 +226,7 @@ module.exports = function createSupply(ctx) {
     // decision 2026-11-20): we ask for a pickup at once, so everyone is stocked and emptied.
     comms.on("callpickup", function (data, from) {
         if (!merchant || from !== merchant) return;
+        if (ctx.cave && ctx.cave.inCave()) return; // the merchant can't come into the cave (v1.231.0)
         requestPickup(counts());
         util.log("supply", "merchant calls before its Ponty round - pickup requested", "yellow");
     });

@@ -89,6 +89,7 @@ module.exports = function createParty(ctx) {
             dest: cfg.goToDest !== false && typeof smart !== "undefined" && smart.moving && smart.map ? { map: smart.map, x: Math.round(smart.x), y: Math.round(smart.y) } : null,
             // dest: where a roaming boss was seen (a member's sighting) - members go there, not to its nearest spawn.
             event: event ? { name: event.name, join: !!event.join, monster: event.monster || null, dest: event.dest && typeof event.dest === "object" ? event.dest : null } : null,
+            manual: !!(ctx.cave && ctx.cave.ownManual && ctx.cave.ownManual()), // /manual: members use the manual rules too (v1.231.1)
         });
     }
 

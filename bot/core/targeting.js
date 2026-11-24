@@ -1481,6 +1481,15 @@ module.exports = function createTargeting(ctx) {
     // its own kept the leader's mole without a line and died there three times).
     function srcKind(f) { return f ? String(f.source || "").split(",")[0].replace(/ of .*/, "") : ""; }
     function currentFarm() {
+        // Cave of Many Dreams, manual mode (bot_cave, v1.231.0): no spot, no travel - pickInner fights only what the
+        // player starts or what attacks the party.
+        // /manual (v1.231.1) the same outside the cave: the player walks the leader.
+        if (ctx.cave && ctx.cave.active()) {
+            const src = ctx.cave.caveManual() ? "cave" : "manual";
+            if (!farm || farm.source !== src) util.log("target", "now: " + src + " (the player walks the leader; fights only what it starts or what attacks us)", "yellow");
+            farm = { monster: null, any: true, types: [], cave: true, source: src };
+            return farm;
+        }
         shareSafe(); // members: tell the leader where we can fight safely
         clock();     // leader: our own experience with the current farm target
         // Events and world bosses come first (bot_events; members get it from the leader).
@@ -2055,6 +2064,21 @@ module.exports = function createTargeting(ctx) {
         return t && holdBoss(t) ? null : t;
     }
     function pickInner(farmTarget) {
+        // Cave, manual mode (v1.231.0, player decision 2026-11-24): our current target (on the leader: set by the
+        // player's click or attack), a monster attacking the party, and for members the leader's target - nothing
+        // else, no rare monsters, no free pulls.
+        if (farmTarget && farmTarget.cave) {
+            const cur = get_targeted_monster();
+            if (isValid(cur) && ctx.cave.mayFight(cur) && !skipDoomed(cur)) return cur;
+            const attacker = nearestPartyAttacker();
+            if (attacker && ctx.cave.mayFight(attacker) && !util.tooSpiky(config, attacker)) return attacker;
+            if (party.isMember) {
+                const lead = party.leaderInfo();
+                const assist = lead && lead.target ? get_monster(lead.target) : null;
+                if (isValid(assist) && ctx.cave.mayFight(assist) && !skipDoomed(assist)) return assist;
+            }
+            return null;
+        }
         checkOccupied();
         const rare = rareTarget();
         if (rare) return rare;

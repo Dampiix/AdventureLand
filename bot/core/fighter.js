@@ -1473,28 +1473,80 @@ module.exports = function createFighter(ctx, cls) {
         }
         return true;
     }
+    // ---- Giga Crab on us (events.foreignRules[type].flee, 2026-11-24, player decision) ------------------------------
+    // It only takes one of us when our hit lands just after its foreign holder lost it. Then we step fleeStep px away
+    // from it every tick (the free direction closest to straight away), the mage by Blink, and fight nothing meanwhile.
+    let gigaLogAt = 0, gigaMoveAt = 0;
+    function gigaFlee() {
+        const fr = (config.events && config.events.foreignRules) || {};
+        const crab = Object.values(parent.entities || {}).find(function (e) {
+            return e && e.type === "monster" && !e.dead && e.target === character.name && fr[e.mtype] && fr[e.mtype].flee;
+        });
+        if (!crab || character.rip) return false;
+        const r = fr[crab.mtype];
+        const me = { x: character.real_x, y: character.real_y };
+        const base = Math.atan2(me.y - crab.y, me.x - crab.x);
+        const step = r.fleeStep || 250;
+        let to = null;
+        [0, 0.5, -0.5, 1, -1, 1.5, -1.5, 2, -2].some(function (da) {
+            const p = { x: me.x + Math.cos(base + da) * step, y: me.y + Math.sin(base + da) * step };
+            if (can_move_to(p.x, p.y)) { to = p; return true; }
+            return false;
+        });
+        const now = Date.now();
+        if (now - gigaLogAt > 5000) {
+            gigaLogAt = now;
+            util.log("event", (G.monsters[crab.mtype] || {}).name + " is on me (" + Math.round(util.distanceTo(crab)) + " px) - fleeing" + (to ? "" : ", no free way"), "red");
+        }
+        util.status("fleeing " + crab.mtype, "red");
+        if (!to) return true;
+        if (character.ctype === "mage" && r.blink !== false && util.canCast("blink")) {
+            Promise.resolve(use_skill("blink", [Math.round(to.x), Math.round(to.y)])).catch(function () {});
+            return true;
+        }
+        if (now - gigaMoveAt > 500) {
+            gigaMoveAt = now;
+            try { Promise.resolve(xmove(to.x, to.y)).catch(function () {}); } catch (e) { /* next tick */ }
+        }
+        return true;
+    }
+
     let journalMap = null; // map changes go into the decision journal (util.journal, 2026-11-21)
     function tick() {
         if (character.map !== journalMap) {
             if (journalMap !== null) util.journal("[map] " + journalMap + " -> " + character.map);
             journalMap = character.map;
         }
+        // Cave of Many Dreams, manual mode (bot_cave, v1.231.0, player decision 2026-11-24): no respawn of our own (Nera
+        // at the doorway is free, in place costs Amber - the player decides), nothing while the cave is paused (votes),
+        // no events, supply, Cavalry or zone walks; the farm target is "cave" (targeting: only what the player starts or
+        // what attacks the party, never a walk to a spot) - the leader stands still outside fights.
+        // /manual (v1.231.1): the same rules outside the cave - the player walks the leader, members follow it.
+        const cave = !!(ctx.cave && ctx.cave.active());
+        const inCave = cave && ctx.cave.caveManual();
+        if (inCave && character.rip) { util.status("dead in the cave - your call (Nera)", "red"); return; }
         if (handleDeath()) return;
         samplePotions();
         noteTargets();
         if (!party.enabled || party.isLeader) { meterReport(false); killReport(false); } // the leader sees the whole team
         if (!cls.survive()) handlePotions();
+        if (inCave && ctx.cave.paused()) { util.status("cave paused (vote)", "white"); return; }
         if (cls.always) cls.always(); // every tick, also while a trip keeps the loop busy
-        lootChests();
+        if (!inCave) lootChests(); // the cave module opens cave chests itself
         party.manage();
         // Leader: share position every tick – also while searching, travelling or at Daisy,
         // so members never lose track (party.broadcast throttles itself).
-        party.broadcast(lastFarm, lastTarget, ctx.events.current());
+        party.broadcast(lastFarm, lastTarget, cave ? null : ctx.events.current());
+        if (gigaFlee()) return; // a Giga Crab on us: run, nothing else (2026-11-24)
         ctx.gear.tick();
-        if (cavalryTick() === true) return; // walking to a grown pack for the Cavalry
-        if (leaveRageZone()) return; // standing in a rage zone we can't take: out first (2026-11-22)
-        if (keepClearOfZones()) return; // standing next to one: on to rageMargin first (2026-11-22)
-        if (busyStep()) { defendInPlace(); return; }
+        if (cave) {
+            if (party.keepUp(false)) { defendInPlace(); return; } // members: on the leader's map first
+        } else {
+            if (cavalryTick() === true) return; // walking to a grown pack for the Cavalry
+            if (leaveRageZone()) return; // standing in a rage zone we can't take: out first (2026-11-22)
+            if (keepClearOfZones()) return; // standing next to one: on to rageMargin first (2026-11-22)
+            if (busyStep()) { defendInPlace(); return; }
+        }
         // Kiting comes before healing and covering (2026-11-21): the priest alone with a Phoenix
         // healed itself every tick (cls.support ends the tick) and never stepped back - the Phoenix
         // stood 13 px off and hit it all along. Heals and attacks still fire while we walk; the
@@ -1505,11 +1557,11 @@ module.exports = function createFighter(ctx, cls) {
         // (the priest alone in desertland while the others were at the Phoenix in the cave). Once we pass through,
         // there are no kite steps: we outrun them, heals and attacks in range go on. The decision is made here too,
         // because a healing priest ends most ticks in cls.support and never reaches handleCombat.
-        if (lastFarm && !(passing && Date.now() < passing.until)) {
+        if (!cave && lastFarm && !(passing && Date.now() < passing.until)) {
             const on = aimed && !aimed.dead ? aimed : util.attackersOnMe()[0];
             if (on && passThrough(lastFarm, on)) startPassing(lastFarm);
         }
-        const passingNow = !!passing && Date.now() < passing.until;
+        const passingNow = !cave && !!passing && Date.now() < passing.until;
         const kited = !passingNow && kiteStep(aimed && !aimed.dead ? aimed : null);
         if (!kited && toHealer()) return;
         const covering = !kited && coverMembers();
