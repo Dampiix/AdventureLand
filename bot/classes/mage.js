@@ -343,12 +343,58 @@ module.exports = function createMage(ctx) {
             .finally(function () { portBusy = false; });
     }
 
+    // ---- Blink on routes (v1.234.0, player decision 2026-11-24) ------------------------------------------------------
+    // Blink has no range limit on the server (any point of the same map; a test blinked 980 px and landed 35 px off).
+    // On a path walk (smart_move, path found) we jump to the farthest step of the plan on this map - the next door or the
+    // goal - when it is at least minDist px away, our MP stays above keepMp after the 1,600-MP cast (Magiport needs 900 a
+    // member), nothing attacks us, and we are not under the manual rules (cave, /manual). The steps up to that point are
+    // dropped from the plan; the landing point itself stays, so the walk ends exactly there (doors need it).
+    const bt = c.blinkTravel || {};
+    let blinkLogAt = 0, blinkCount = 0, blinkPx = 0, blinkBusyUntil = 0;
+    function blinkTravelTick() {
+        if (!bt.enabled || character.rip || Date.now() < blinkBusyUntil) return;
+        if (typeof smart === "undefined" || !smart.moving || !smart.found || smart.town || !Array.isArray(smart.plot) || !smart.plot.length) return;
+        if (ctx.cave && ctx.cave.active()) return;
+        if (!G.skills.blink || !util.canCast("blink")) return;
+        if ((character.mp - (G.skills.blink.mp || 1600)) / Math.max(1, character.max_mp) < (bt.keepMp || 0.4)) return;
+        if (util.attackersOnMe().length) return;
+        if (typeof is_transporting === "function" && is_transporting(character)) return;
+        // The last step of the plan on our map before a door, town or another map.
+        let k = -1;
+        for (let i = 0; i < smart.plot.length; i++) {
+            const p = smart.plot[i];
+            if (!p || p.town || p.transport || p.map !== character.map) break;
+            k = i;
+        }
+        if (k < 0) return;
+        const to = smart.plot[k];
+        const d = Math.hypot(to.x - character.real_x, to.y - character.real_y);
+        if (d < (bt.minDist || 400)) return;
+        blinkBusyUntil = Date.now() + 1500;
+        Promise.resolve(use_skill("blink", [Math.round(to.x), Math.round(to.y)])).then(function () {
+            // Landed (200 ms): the plan goes on from the landing point.
+            if (smart.moving && Array.isArray(smart.plot)) {
+                const idx = smart.plot.indexOf(to);
+                if (idx > 0) smart.plot.splice(0, idx);
+            }
+            blinkCount++;
+            blinkPx += d;
+            if (Date.now() - blinkLogAt > 60 * 1000) {
+                blinkLogAt = Date.now();
+                util.log("mage", "Blink on the way: " + Math.round(d) + " px on " + character.map + " (" + blinkCount + " blinks, " + Math.round(blinkPx) + " px since start)", "white");
+            }
+        }).catch(function (e) {
+            blinkBusyUntil = Date.now() + 10 * 1000; // a refused blink (e.g. no safe spot there): not again right away
+            util.log("mage", "Blink on the way refused: " + util.errReason(e), "orange");
+        });
+    }
+
     return {
         name: "mage",
 
         survive: function () { return false; },
 
-        always: function () { magiportTick(); blasterTick(); },
+        always: function () { magiportTick(); blasterTick(); blinkTravelTick(); },
 
         support: function () {
             reflectTick();

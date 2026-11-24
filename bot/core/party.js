@@ -222,7 +222,9 @@ module.exports = function createParty(ctx) {
         if (dest) lastLeadDest = { d: dest, at: Date.now() };
         // At the leader's last route end while it stops for a moment (2026-11-22): stay there instead of walking back
         // to it - the leader no longer waits for members at its next goal (fighter.waitForTeam).
-        const prev = !dest && lastLeadDest && Date.now() - lastLeadDest.at < 30 * 1000 ? lastLeadDest.d : null;
+        // Only while the leader really stands (v1.234.1, player report 2026-11-24): its next route into a farm spot sends
+        // no end point (travelDest), and warrior and mage waited at Daisy - the old route end - until it changed maps.
+        const prev = !dest && !lead.moving && lastLeadDest && Date.now() - lastLeadDest.at < 30 * 1000 ? lastLeadDest.d : null;
         if (prev && prev.map === character.map && lead.map === character.map && util.distanceTo(prev) <= (cfg.waitDistance || 500)) {
             util.status("waiting for " + leader + " ahead", "white");
             return true;

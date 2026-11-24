@@ -1136,7 +1136,8 @@ module.exports = function createTargeting(ctx) {
         // spotCheck.groupGap px (edge to edge, the splash radius plus walking in) is judged as one pull.
         const gap = gcfg.groupGap || 60;
         let group = [];
-        free.forEach(function (e) {
+        // spotCheck.groupRule false (v1.233.1): no group judging here - the splash users check their pull live.
+        if (gcfg.groupRule !== false) free.forEach(function (e) {
             if (group.indexOf(e) !== -1) return;
             const g = [e];
             for (let i = 0; i < g.length; i++) {

@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.233.0",
+    version: "1.234.1",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -572,7 +572,10 @@ module.exports = {
         // matter. From 450 px the 4-booboo spawn was out of sight, "level 1 assumed" passed level-17 booboos.
         // groupGap (2026-11-22): passive kinds standing close (free ones chained within groupGap px, edge to edge) are
         // judged as one pull too - the X-scorpions passed one by one, the splash pulled 6 and the warrior died.
-        spotCheck: { enabled: true, party: true, margin: 150, maxMargin: 150, watchMs: 3000, maxWaitMs: 30000, groupGap: 60 },
+        // groupRule false (v1.233.1, player decision 2026-11-24): off - it judged 8 CGoos (rage 0, aggro 0.1, speed 9)
+        // as one pull from the edge; the splash users check their pull live (mage Blaster packVerdict, warrior splash
+        // check since 2026-11-22, Agitate via the team model). Aggressive kinds and rage zones keep their own rule.
+        spotCheck: { enabled: true, party: true, margin: 150, maxMargin: 150, watchMs: 3000, maxWaitMs: 30000, groupGap: 60, groupRule: false },
         // Learned hit factor (2026-11-22, iceroamers hit 2.3x what the formula says): every hit we take is compared
         // with attack x damage multiplier; from minHits hits of a kind on, the safety checks multiply its hits by
         // real / predicted (1 .. max). Sums are halved above keepHits (old hits fade). "/safety" lists the factors.
@@ -884,6 +887,10 @@ module.exports = {
             // a member that died could be pulled back later. graceMs (v1.228.3): the distance is judged on live positions (party info
             // lags behind); a member not in sight counts as far only after the boss has been in our sight this long.
             magiport: { enabled: true, keepMp: 0.3, minDist: 600, bossRange: 800, tries: 3, retryMs: 8000, graceMs: 4000 },
+            // Blink on routes (v1.234.0, player decision 2026-11-24): on a path walk jump to the farthest step of the plan on
+            // this map (next door or the goal) when it is at least minDist px away and our MP stays above keepMp after the
+            // 1,600-MP cast; never in a fight or under the manual rules. No range limit on the server (test: 980 px).
+            blinkTravel: { enabled: true, minDist: 400, keepMp: 0.4 },
         },
     },
 
