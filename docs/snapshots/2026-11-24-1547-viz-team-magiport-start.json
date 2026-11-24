@@ -1,0 +1,57 @@
+{
+  "account": "viz",
+  "taken": "2026-11-24T15:46:43Z",
+  "purpose": "Baseline for bot v1.236.1 (team goal + one team magiport, boss kills booked before a switch): compare XP, gold and boss kills per hour later",
+  "compareWith": "2026-11-24-0132-viz-party-night.json (00:32Z, bot 1.229.3)",
+  "bot": "1.236.1",
+  "party": ["VizPri", "VizWar", "VizMage"],
+  "farm": "gscorpion (guide, team model) in desertland; hunts on, bosses on (merchant scouts), Cavalry resets on; last 5 min at 15:42:48Z: team 3451 dmg/s (Mage 1475, War 1399, Pri 577), 62 kills",
+  "VizPri": {
+    "level": 69, "xp": 77066616, "max_xp": 240000000, "gold": 23762,
+    "elixir": ["elixirluck", "2026-11-25T00:00:37Z"],
+    "stats": { "hp": 5945, "mp": 5080, "attack": 805, "heal": 1916, "frequency": 0.986, "armor": 123, "resistance": 243, "str": 60, "int": 263, "dex": 31, "vit": 55, "speed": 55, "range": 206, "goldm": 1.2, "xpm": 1.66, "luckm": 1.49, "courage": 2, "mcourage": 14, "pcourage": 2 },
+    "gear": { "mainhand": "staffofthedead+7", "offhand": "wbook0+2", "helmet": "wcap+8 (int)", "chest": "wattire+8 (int)", "pants": "wbreeches+8 (int)", "shoes": "wshoes+8 (int)", "gloves": "wgloves+8 (int)", "cape": "horsecape+0 (int)", "belt": "intbelt+2", "amulet": "intamulet+2", "ring1": "intring+3", "ring2": "intring+2", "earring1": "intearring+3", "earring2": "intearring+3", "orb": "orbg+1" },
+    "inv": ["tracker", "mpot1 x265", "hpot1 x300", "elixirluck x4"]
+  },
+  "VizWar": {
+    "level": 73, "xp": 156887488, "max_xp": 510000000, "gold": 33019,
+    "elixir": ["elixirstr0", "2026-11-24T23:37:12Z"],
+    "stats": { "hp": 12221, "mp": 1295, "attack": 1092, "frequency": 0.895, "armor": 432, "resistance": 204, "str": 321, "int": 40, "dex": 41, "vit": 61, "speed": 69, "range": 31, "goldm": 1.05, "xpm": 1.16, "luckm": 1.12, "courage": 16, "mcourage": 2, "pcourage": 2 },
+    "gear": { "mainhand": "ololipop+7", "offhand": "ololipop+7", "helmet": "helmet1+8 (str)", "chest": "mcape+7 (str)", "pants": "pants1+7 (str)", "shoes": "shoes1+7 (str)", "gloves": "gloves1+8 (str)", "cape": "cape+0 (str)", "belt": "strbelt+3", "amulet": "stramulet+4", "ring1": "strring+3", "ring2": "strring+2", "earring1": "strearring+3", "earring2": "strearring+3", "orb": "orbg+1" },
+    "inv": ["tracker", "mpot1 x186", "hpot1 x273", "fireblade+7", "fireblade+7", "elixirstr0 x4"]
+  },
+  "VizMage": {
+    "level": 66, "xp": 125269125, "max_xp": 140000000, "gold": 30071,
+    "elixir": ["elixirint0", "2026-11-24T23:36:07Z"],
+    "stats": { "hp": 3758, "mp": 4720, "attack": 1078, "frequency": 0.961, "armor": 91, "resistance": 255, "str": 28, "int": 252, "dex": 31, "vit": 39, "speed": 59, "range": 201, "goldm": 1.15, "xpm": 2.66, "luckm": 1.22, "courage": 2, "mcourage": 3, "pcourage": 2 },
+    "gear": { "mainhand": "firestaff+7", "offhand": "wbook0+2", "helmet": "helmet+8 (int)", "chest": "coat+8 (int)", "pants": "pants+8 (int)", "shoes": "shoes+8 (int)", "gloves": "gloves+8 (int)", "cape": "horsecape+0 (int)", "belt": "intbelt+2", "amulet": "intamulet+2", "ring1": "intring+2", "ring2": "ringsj+2", "earring1": "intearring+3", "earring2": "intearring+3", "orb": "orbg+1" },
+    "inv": ["tracker", "hpot1 x300", "mpot1 x208", "elixirint0 x4", "gstaff+3 (Blaster, carried)"]
+  },
+  "VizMerch": {
+    "level": 56, "xp": 11375252, "max_xp": 20000000, "gold": 90627738, "shells": 0,
+    "where": "main -120,-112, stand open; no trade trip, no Ponty round",
+    "gear": { "mainhand": "staff+0", "helmet": "helmet+0", "shoes": "shoes+0" },
+    "stand": ["snakefang @3,500,000", "leather x4 @120,000", "gslime x99 @60", "frogt x8 @10", "offeringp x2 @350,000", "crossbow+0 @400,000", "essenceoffire x5 @140,000", "spores x20 @360"],
+    "inv": ["stand0", "hpot1 x900", "mpot1 x900", "elixirdex0 x50", "elixirstr0 x43", "elixirint0 x49", "elixirluck x24", "intamulet+2", "dexamulet+3", "dexamulet+0", "scroll1 x2", "scroll0", "strearring+2", "strearring+2", "strearring+1", "strearring+1", "intearring+2", "vitearring+1", "dexbelt+2", "strbelt+1", "intbelt+1", "intring+0", "leather x30"]
+  },
+  "boss_kills": {
+    "source": "tracker (socket 'tracker' -> monsters), per character, read 2026-11-24T15:46:43Z",
+    "VizPri": { "phoenix": 299, "mvampire": 122, "fvampire": 39, "jr": 3, "greenjr": 3, "skeletor": 67, "snowman": 5, "rgoo": 6 },
+    "VizWar": { "phoenix": 344, "mvampire": 122, "fvampire": 39, "jr": 2, "greenjr": 1, "skeletor": 67, "snowman": 6, "rgoo": 6 },
+    "VizMage": { "phoenix": 65, "mvampire": 34, "fvampire": 13, "jr": 3, "skeletor": 27, "snowman": 1 },
+    "since_0032Z_VizPri": { "phoenix": 44, "mvampire": 28, "fvampire": 13, "jr": 2, "greenjr": 1, "skeletor": 27, "snowman": 1 }
+  },
+  "bank": {
+    "source": "MCP get_bank (last account snapshot, freshness unverified, read 2026-11-24T15:47:09Z)",
+    "gold": 0,
+    "items0": ["frogt x7", "gem1 x1224", "mistletoe x3", "elixirvit0 x3", "ololipop+0", "embercore x36", "glolipop+0", "seashell x7242", "ololipop+0", "cclaw+0", "gem0 x79", "stormfeather x3657", "crabclaw x300", "bow+8", "frostcore x5", "cclaw+0", "rfangs x4", "bwing x31", "verdantspore x4", "gloomfeather x2", "candycane x34", "cclaw+0", "carrot x21", "t2bow+3", "bfur x4", "gslime x17", "monstertoken x13", "stramulet+3", "beewings x3133", "dexring+1", "voidthread x56", "shadowstone x18", "blade+8", "glolipop+0", "coat1+7 (str)", "cryptkey x1", "blade+8", "cscale x21", "dexring+0"],
+    "items1": ["ijx x4", "ololipop+0", "tshirt1+3", "essenceofether x14", "glolipop+7", "intbelt+1", "stramulet+2", "forscroll x5", "wcap+1", "spores x46", "drapes x47", "ololipop+0", "ascale x7", "ololipop+0", "cclaw+0", "glolipop+0", "glolipop+0", "offeringp x1", "ashleaf x100", "sword+0", "essenceoffrost x1", "pstem x30", "vitearring+2", "wbook0+2", "dexbelt+2", "sword+0", "glolipop+0", "candy0 x23", "candy1 x21", "shoes+7 (dex)", "shoes+8 (dex)", "dexring+0", "glolipop+0", "orbg+0", "gemfragment x4", "wbook0+0", "cshell x1", "ololipop+0"],
+    "items2": ["dstones x4", "vgloves+0", "intamulet+2", "glolipop+0", "ololipop+0", "embercoal x45", "dexamulet+3", "feather0 x4", "scythe+0", "quiver+7", "vgloves+0", "ololipop+0", "reefglass x247", "glolipop+0", "dexring+1", "cclaw+0", "cclaw+0", "funtoken x23", "strbelt+0", "intring+1", "helmet+7 (int)", "vitearring+2", "ololipop+0", "cclaw+0", "coat+7 (int)", "cclaw+0", "elixirint1 x1", "weaponbox x9", "strbelt+0", "ololipop+0", "cclaw+0", "ololipop+0", "intbelt+2", "wbook0+0", "helmet1+7 (str) [shiny]", "strbelt+1", "ololipop+0", "ololipop+0", "ololipop+0", "glolipop+0"],
+    "items3": ["xmace+0", "stramulet+0", "strring+0", "glolipop+0", "ololipop+0", "marketparcel x49", "wbreeches+2", "cclaw+0", "cclaw+0", "cclaw+0", "glolipop+0", "armorbox x8", "glolipop+0", "glolipop+0", "intamulet+1", "glolipop+0", "cave_mothsteps+0 [cavefound]", "intamulet+1", "cave_reedscythe+0 [cavefound]", "cave_reedscythe+0 [cavefound]", "cave_reedscythe+0 [cavefound]", "cave_reedscythe+0 [cavefound]", "cave_amber x29 [cavefound]", "stramulet+0", "vitearring+0", "ololipop+0", "ololipop+0", "cave_tunnelaxe+0 [cavefound]", "cave_mothsteps+0 [cavefound]", "hdagger+0", "cclaw+8", "cclaw+8", "ololipop+0", "ololipop+0", "dexbelt+0", "vitearring+0"]
+  },
+  "notes": [
+    "Priest level 69 again (started at 67 at 00:32Z, XP counter reset per level); mage 66 at 89 % to 67; warrior 73.",
+    "Team magiport v1.236.0 live since 14:33Z; boss booking fix v1.236.1 since 15:44Z.",
+    "Bank holds 49 marketparcel (Merrit) - each has a 0.022 % chance of a Duskweave Hood (mp_reduction 5)."
+  ]
+}
