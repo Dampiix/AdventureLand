@@ -32,7 +32,7 @@
       "name": "bot_supply"
     },
     {
-      "file": "core/fighter.js",
+      "file": "combat/fighter.js",
       "slot": 26,
       "name": "bot_fighter"
     },

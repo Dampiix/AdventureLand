@@ -1,6 +1,6 @@
 # Stage 5: fighter.js down to the tick (plan, 2026-11-24)
 
-Status: **step 1 done (v1.237.12-pilot: game.onSocket)**, step 2 (the split) open. Same branch (`modular-pilot`), **no change in behaviour**. Step 5 of the module plan.
+Status: **done** - step 1 v1.237.12-pilot (game.onSocket), step 2 v1.237.13-pilot (the split). Same branch (`modular-pilot`), **no change in behaviour**. Step 5 of the module plan.
 
 ## Where we are
 
@@ -58,6 +58,16 @@ reload from the old code swaps cleanly). The six places call it; the shared page
 1. `game.onSocket` + the six places; test; deploy; reload all four after the usual checks; check the reports.
 2. The fighter split; checks + tests; deploy; reload the fighters; watch farming, a boss fight, a death if one comes,
    chests, the Cavalry if it is called.
+
+## Result
+
+Twelve parts as planned plus the facade `combat/fighter.js` (~410 lines: deps, the shared state `ftr`, the start-up
+statements and the tick functions tick / busyStep / loop in the old order). The facade keeps `ctx` (it sets `ctx.strike`
+for the warrior); the parts get deps with getters. One mixed declaration was split by hand (`leaveRageZone`,
+`keepClearOfZones` stay in the facade, `holdRingStep` goes on `ftr`). Checks: `scripts/check-split.cjs` (57 of 57
+functions identical, statement order kept), `scripts/test-fighter.cjs` (old vs new with the real G, config, party and
+targeting, 8 scenarios: farming in range and at a distance, low HP, death and respawn, a member under attack, solo, a
+chest, a member following the leader).
 
 ## Not in stage 5
 
