@@ -3,7 +3,7 @@
 One bot for a whole Adventure Land team: up to three fighters and one merchant, all running the same code.
 The fighters farm, hunt bosses and level up; the merchant supplies them, sells, banks, trades with other players and upgrades their gear.
 
-> **Version:** `1.236.1` (`bot/config.js` → `version`) · **Teams:** `Dmpx…` (main account) and `Viz…` (second account) · **Code:** `bot/` → in-game CODE slots 20–41
+> **Version:** `1.236.2` (`bot/config.js` → `version`) · **Teams:** `Dmpx…` (main account) and `Viz…` (second account) · **Code:** `bot/` → in-game CODE slots 20–41
 
 ## Repository
 
@@ -255,7 +255,7 @@ A running bot keeps most of these in memory and writes them back on every change
 
 ## 5. Reading the logs
 
-Every bot line starts with a tag: `[tag] text`. The status box above the character shows the current action (for example `searching cgoo`, `rest 62%`, `kiting phoenix`, `working on wcap +6`).
+Every bot line starts with a tag: `[tag] text`. The status box above the character shows the current action in about 13 characters (`util.shortStatus`, v1.236.2 player decision): the important word first - `>` walks to (`> cgoo`, `> Daisy`, `> phoenix`), `@` is there and waits (`@cgoo`, `@phoenix`), `?` searches (`? phoenix`, `?phoenix wait`); then e.g. `wait Pri`, `kite gscorp`, `strong booboo`, `cav booboo`, `agi 4 on us`, `rest 62%`, `helmet1 3>7`. Monster names of 8+ letters are cut to 6 when the text is still too long. The long texts stay in the code; the log keeps the details.
 
 | Tag | Who | About |
 |---|---|---|
