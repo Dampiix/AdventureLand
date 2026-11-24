@@ -3,7 +3,7 @@
 One bot for a whole Adventure Land team: up to three fighters and one merchant, all running the same code.
 The fighters farm, hunt bosses and level up; the merchant supplies them, sells, banks, trades with other players and upgrades their gear.
 
-> **Version:** `1.237.9-pilot` (`bot/config.js` → `version`) · **Teams:** `Dmpx…` (main account) and `Viz…` (second account) · **Code:** `bot/` → in-game CODE slots 20–41
+> **Version:** `1.237.10-pilot` (`bot/config.js` → `version`) · **Teams:** `Dmpx…` (main account) and `Viz…` (second account) · **Code:** `bot/` → in-game CODE slots 20–41
 
 ## Repository
 
@@ -307,7 +307,7 @@ Only `main.js` calls `require_code()`. Every other module is a factory that rece
 | [`config.js`](bot/config.js) | 21 `bot_config` | Everything you tune |
 | [`lib/util.js`](bot/lib/util.js) | 22 `bot_util` | Shared helpers (bundle, pilot step 2): a facade over `geometry`, `names`, `storage` (journal, heartbeat), `status`, `combat-math` (damage, hit factors, mobbing, fear, kite risk), `items`, `game` (the game layer: our HP/MP, skills, thin client wrappers), `walking`, `monster-rules`, `team`, `basics` |
 | [`lib/comms.js`](bot/lib/comms.js) | 23 `bot_comms` | CODE messages between our own characters |
-| [`core/targeting.js`](bot/core/targeting.js) | 24 `bot_targeting` | Farm spot, safety checks, target picking (bundle: spot geometry in `safety/spots.js`) |
+| [`core/targeting.js`](bot/core/targeting.js) | 24 `bot_targeting` | Farm spot, safety checks, target picking - the facade (bundle, stage 4b) of `safety/` (spots, deaths, team-safety, live-safety, rage-zones, spot-check, boss-hold) and `farming/` (spots-taken, farm-choice, cavalry-plan, target-pick); the parts share one internal state `tgt` |
 | [`core/supply.js`](bot/core/supply.js) | 25 `bot_supply` | Fighter side of loot, gold and potions |
 | [`core/fighter.js`](bot/core/fighter.js) | 26 `bot_fighter` | Fighter main loop: potions, combat, kiting, Cavalry, deaths (bundle, stage 3b: with `travel/travel.js` - path walks, waypoints, goals without a path - and `travel/rage-walls.js` - rage zones as walls for the path search, the smart_move wrapper, stepping out of zones, the boss hold ring) |
 | [`classes/paladin/`](bot/classes/paladin/) | 27 `bot_class_paladin` | Paladin (bundle, stage 2): `paladin.js` (class, self-heal, Smash), `mana-shield.js`, `oath.js`, `cleansing.js` |

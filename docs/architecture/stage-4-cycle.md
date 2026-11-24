@@ -1,6 +1,6 @@
 # Stage 4: break the party / targeting / events cycle, then split targeting and events (plan, 2026-11-24)
 
-Status: **4a done (v1.237.9-pilot)**, 4b and 4c open. Same branch (`modular-pilot`), **no change in behaviour**. Step 4 of the module plan.
+Status: **4a done (v1.237.9-pilot), 4b done (v1.237.10-pilot)**, 4c open. Same branch (`modular-pilot`), **no change in behaviour**. Step 4 of the module plan.
 
 ## Where the cycle is (measured on v1.237.8-pilot)
 
@@ -63,6 +63,13 @@ stage 2: parts that share one internal state object `t`, installed with `install
 Made by a generator script (like the warrior's), so every function body is copied verbatim with `t.` in front of calls to
 other parts. Check: a script proves each body equal to the old one modulo `t.`; a test with a fake game for pick,
 currentFarm, liveSafe, spotGate old vs new; live a few hours (farm choice, spot checks, Cavalry, a boss hold).
+
+4b result: ten parts as planned (`cavalryNext` went to cavalry-plan, `saveStrong` / `tooStrongHere` to spots-taken,
+`distToSegment` to target-pick), the facade `core/targeting.js` (~290 lines) holds the deps, the state and start-up
+statements in the old order (after the parts, as the hoisted functions were before them) and the same interface. The
+shared state is `tgt` (`t` is a common local name in targeting). Checks: `scripts/check-split.cjs` (99 of 99 functions
+identical with `tgt.` removed, statement order kept), `scripts/test-targeting.cjs` (old vs new in a fake game with the
+real G and config, 7 scenarios: farm choice, picks, spot check, boss hold, a stranger on the spot, rage zones, solo).
 
 ## 4c. Split events (1,229 lines)
 
