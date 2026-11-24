@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.237.2-pilot",
+    version: "1.237.3-pilot",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -701,6 +701,7 @@ module.exports = {
     },
 
     classes: {
+        // Paladin (classes/paladin/): mana-shield, oath, cleansing modules; self-heal and Smash in the class.
         paladin: {
             selfHealBelow: 0.6,
             useSmash: true, mpReserve: 150, // Smash needs a mace
@@ -729,6 +730,7 @@ module.exports = {
             darkBlessing: { enabled: true, sturdyHits: 10 },
         },
         // Rogue (module added 2026-11-18): Quick Stab/Punch follow the mainhand (dagger/fist).
+        // Rogue (classes/rogue/): swiftness, stealth, fanofknives, strikes modules.
         rogue: {
             mpReserveRatio: 0.25,
             swiftness: true,          // Rogue Swiftness (lvl 40) on us and party members in reach
@@ -738,6 +740,7 @@ module.exports = {
             fanFrom: 3,               // Fan of Knives (lvl 65, Knife Belt) with this many monsters around
             poisonCoat: { enabled: true, minHits: 40 }, // A Poisonous Touch (Poison Sack) on targets needing 40+ hits
         },
+        // Ranger (classes/ranger/): three-shot and sturdy-shots modules.
         ranger: {
             sturdyHits: 3,                  // Hunter's Mark / Supershot only on targets needing 3+ hits
             mpReserveRatio: 0.3,

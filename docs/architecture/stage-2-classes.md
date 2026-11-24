@@ -10,10 +10,10 @@ slot becomes a bundle. The fighter's class interface stays: `name, survive, alwa
 
 | Class | Today | Modules |
 |---|---|---|
-| priest | 252 lines, live | `priest.js`; `heal.js` (hurt members, heal, far member low, Party Heal); `absorb.js`; `luck-catch.js` (luck set on the kill, with gear.luckOn); `revive.js`; `curse.js` (Curse on sturdy targets); `dark-blessing.js` (Dark Blessing on long fights: sturdy targets, bosses) |
-| ranger | 92, not running | `ranger.js`; `shots.js` (3-Shot targets, Supershot, Hunter's Mark, Poison Arrow) |
-| rogue | 153, not running | `rogue.js`; `stealth.js` (quiet spot, Invis); `rogue-buffs.js` (Rogue Speed, swiftness); `fanofknives.js` (Knife Belt skill) |
-| paladin | 93, not running | `paladin.js`; `mana-shield.js` (Mana Shield, Guardian's Oath); `cleansing.js`; Selfheal and Smash stay in `paladin.js` (a few lines) |
+| priest | 252 lines, live | `priest.js`; `heal.js` (hurt members, heal, far member low, Party Heal); `absorb.js`; `luck-catch.js` (luck set on the kill, with gear.luckOn); `revive.js`; `curse.js` (Curse on sturdy targets); `dark-blessing.js` (Dark Blessing on long fights: sturdy targets, bosses) - **done** (849463e) |
+| ranger | 92, not running | `ranger.js`; `three-shot.js` (3-Shot targets); `sturdy-shots.js` (Hunter's Mark, Supershot, Poison Arrow) - **done** |
+| rogue | 153, not running | `rogue.js`; `swiftness.js` (Rogue Swiftness); `stealth.js` (Assassin's Smoke, quiet spot, visible again); `fanofknives.js` (Knife Belt skill); `strikes.js` (Quick Stab/Punch, Mental Burst, Poisonous Touch) - **done** |
+| paladin | 93, not running | `paladin.js` (with Selfheal and Smash); `mana-shield.js`; `oath.js` (Guardian's Oath); `cleansing.js` - **done** |
 | warrior | 1,606, live | `warrior.js` (class, hooks); `agitate-mode.js` (pack mode, auto decision, stats - today 125-420); `agitate-point.js` (pull point, clear of other kinds, gap step - 420-720); `agitate-stream.js` (stream Agitate - 739-870); `agitate.js` (the pack tick that drives the three - 1164-1379); `splash.js` (Lolipops: put on, pull, drop on the way, release); `escape.js` (run from a losing fight - 897-1083); `area.js` (Cleave, Stomp); `mobility.js` (Charge, Dash); `taunt.js`; `defense.js` (Hard Shell, Warcry); `sword-swap.js` |
 
 Shared helpers the warrior uses in several of its modules (reserve MP, monsters around us, spiky near, our kind) go

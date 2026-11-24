@@ -12,10 +12,17 @@ const BASE_G = {
     skills: {
         heal: {}, partyheal: { mp: 400 }, curse: { mp: 400 }, darkblessing: { mp: 900, level: 70 }, absorb: { mp: 200, level: 55, range: 240 },
         revive: {}, taunt: { range: 200, class: ["warrior", "paladin"] }, agitate: { class: ["warrior"], range: 320, mp: 420 },
+        "3shot": { level: 60, wtype: "bow", mp: 300, damage_multiplier: 0.7 }, huntersmark: { mp: 240 }, supershot: { mp: 400, wtype: "bow" },
+        poisonarrow: { mp: 360 }, rspeed: { level: 40, mp: 320, range: 320 }, invis: { mp: 600 },
+        fanofknives: { level: 65, mp: 200, range: 120, slot: [["belt", "knifebelt"]] }, quickstab: { mp: 40, wtype: "dagger" },
+        quickpunch: { mp: 40, wtype: "fist" }, mentalburst: { mp: 50, requirements: { int: 64 }, damage_multiplier: 0.6 }, pcoat: { mp: 600 },
+        mshield: {}, guardians_oath: { level: 50 }, cleansing_light: { level: 30 }, selfheal: { mp: 20 }, smash: { mp: 380, wtype: "mace" },
     },
+    conditions: { poisoned: { cleansable: true }, eburn: { cleansable: true } },
     monsters: { gscorpion: { attack: 320, hp: 2400, speed: 9, range: 64 }, phoenix: { cooperative: true, attack: 300, hp: 300000 },
         crabxx: { attack: 900 } },
-    items: {}, classes: {}, maps: { desertland: {} },
+    items: { bow: { type: "weapon", wtype: "bow" }, dagger: { type: "weapon", wtype: "dagger" }, mace: { type: "weapon", wtype: "mace" } },
+    classes: {}, maps: { desertland: {} },
 };
 
 function setup(scenario, cls) {
@@ -34,7 +41,8 @@ function setup(scenario, cls) {
     g.is_on_cooldown = s => (sc.cooldown || []).includes(s);
     g.is_moving = () => false;
     g.use_skill = (name, target, extra) => { calls.push(["skill", name, target && target.name ? target.name : JSON.stringify(target), extra]); return Promise.resolve(); };
-    g.xmove = (x, y) => { calls.push(["xmove", x, y]); return Promise.resolve(); };
+    g.xmove = (x, y) => { calls.push(["xmove", Math.round(x), Math.round(y)]); return Promise.resolve(); };
+    g.stop = what => { calls.push(["stop", what]); return Promise.resolve(); };
     g.set_message = () => {};
     g.game_log = t => calls.push(["log", t]);
     const store = sc.store || {};
@@ -47,13 +55,16 @@ function setup(scenario, cls) {
         classes: { priest: { healBelow: 0.75, selfHealBelow: 0.6, partyHealBelow: 0.65, partyHealDanger: 0.35, partyHealOne: 0.5, useCurse: true, mpReserveRatio: 0.4,
             useRevive: true, absorb: { enabled: true, below: 0.35, selfAbove: 0.6 },
             luckCatch: { enabled: true, hits: 2, maxPull: 5, minHp: 0.6, everyMs: 1500, tankRange: 400, logEveryMs: 600000 },
-            darkBlessing: { enabled: true, sturdyHits: 10 } } },
+            darkBlessing: { enabled: true, sturdyHits: 10 } },
+            ranger: { sturdyHits: 3, mpReserveRatio: 0.3, usePoisonArrow: true },
+            rogue: { mpReserveRatio: 0.25, swiftness: true, smokeBelow: 0.25, smokeUntil: 0.6, smokeClear: 200, mentalBurst: true, fanFrom: 3, poisonCoat: { enabled: true, minHits: 40 } },
+            paladin: { selfHealBelow: 0.6, useSmash: true, mpReserve: 150, oathBelow: 0.5, useCleansingLight: true, manaShield: { onBelow: 0.35, offAbove: 0.7, minMp: 0.25 } } },
         targeting: { teamSafety: { tankClasses: ["warrior", "paladin"] } }, events: { noArea: ["crabxx"] }, characters: {},
     };
     const ctx = {
         util: util, config: config,
-        party: { enabled: sc.solo ? false : true, memberNames: () => Object.keys(sc.party || {}) },
-        strike: { heal: e => calls.push(["strike.heal", e.name]) },
+        party: { enabled: sc.solo ? false : true, isMember: !!sc.member, detached: () => false, memberNames: () => Object.keys(sc.party || {}) },
+        strike: { heal: e => calls.push(["strike.heal", e.name]), skill: (name, t) => calls.push(["strike.skill", name, t.map(e => e.id).join(",")]) },
         comms: { send: (to, type) => calls.push(["send", to, type]) },
         gear: { luckOn: () => calls.push(["luckOn"]) },
         targeting: { diesSoon: m => (sc.dying || []).includes(m.id), rageBoxes: () => sc.rageBoxes || [] },
@@ -127,6 +138,62 @@ const SCENARIOS = {
             players: { VizWar: P("VizWar", "warrior", 8500, 12221) },
             run: c => c.supportInPlace(),
             expect: calls => calls.some(c => c[0] === "strike.heal" && c[1] === "VizWar"),
+        },
+    },
+    ranger: {
+        "3-Shot on three monsters on the team": {
+            party: { VizRng: {}, VizWar: {} }, me: { name: "VizRng", ctype: "ranger", slots: { mainhand: { name: "bow", level: 5 } } },
+            entities: { a: {"id":"a","type":"monster","mtype":"gscorpion","visible":true,"x":130,"y":100,"real_x":130,"real_y":100,"hp":2400,"target":"VizWar"}, b: {"id":"b","type":"monster","mtype":"gscorpion","visible":true,"x":130,"y":100,"real_x":130,"real_y":100,"hp":2400,"target":"VizRng"}, c: {"id":"c","type":"monster","mtype":"gscorpion","visible":true,"x":130,"y":100,"real_x":130,"real_y":100,"hp":2400,"target":"VizWar"} },
+            run: c => c.fight({"id":"a","type":"monster","mtype":"gscorpion","visible":true,"x":130,"y":100,"real_x":130,"real_y":100,"hp":2400,"target":"VizWar"}),
+            expect: calls => calls.some(c => c[0] === "strike.skill" && c[1] === "3shot" && c[2].split(",").length === 3),
+        },
+        "Hunter's Mark, Supershot and Poison Arrow on a sturdy target": {
+            party: { VizRng: {} }, me: { name: "VizRng", ctype: "ranger", slots: { mainhand: { name: "bow", level: 5 } }, items: [{ name: "poison", q: 3 }] },
+            run: c => c.fight({"id":"t","type":"monster","mtype":"gscorpion","visible":true,"x":130,"y":100,"real_x":130,"real_y":100,"hp":20000,"s":{}}),
+            expect: calls => ["huntersmark", "supershot", "poisonarrow"].every(n => calls.some(c => c[0] === "skill" && c[1] === n)),
+        },
+    },
+    rogue: {
+        "Rogue Swiftness on ourselves": {
+            party: { VizRog: {} }, me: { name: "VizRog", ctype: "rogue", level: 60, max_mp: 2000, mp: 2000, s: {} },
+            run: c => c.always(),
+            expect: calls => calls.some(c => c[0] === "skill" && c[1] === "rspeed" && c[2] === "VizRog"),
+        },
+        "Assassin's Smoke and hiding at low HP": {
+            party: { VizRog: {} }, me: { name: "VizRog", ctype: "rogue", level: 60, hp: 1000, max_hp: 5000, max_mp: 2000, mp: 2000, s: {} },
+            entities: { a: {"id":"a","type":"monster","mtype":"gscorpion","visible":true,"x":130,"y":100,"real_x":130,"real_y":100,"hp":2400,"target":"VizRog"} },
+            run: c => { c.survive(); return c.support(); },
+            expect: calls => calls.some(c => c[0] === "skill" && c[1] === "invis") && calls.some(c => c[0] === "xmove"),
+        },
+        "Fan of Knives with the Knife Belt, Quick Stab, Mental Burst": {
+            party: { VizRog: {} }, me: { name: "VizRog", ctype: "rogue", level: 70, int: 70, attack: 900, max_mp: 2000, mp: 2000, s: {},
+                slots: { belt: { name: "knifebelt" }, mainhand: { name: "dagger", level: 5 } } },
+            entities: { a: {"id":"a","type":"monster","mtype":"gscorpion","visible":true,"x":130,"y":100,"real_x":130,"real_y":100,"hp":2400}, b: {"id":"b","type":"monster","mtype":"gscorpion","visible":true,"x":130,"y":100,"real_x":130,"real_y":100,"hp":2400}, c: {"id":"c","type":"monster","mtype":"gscorpion","visible":true,"x":130,"y":100,"real_x":130,"real_y":100,"hp":2400} },
+            run: c => c.fight({"id":"a","type":"monster","mtype":"gscorpion","visible":true,"x":130,"y":100,"real_x":130,"real_y":100,"hp":300}),
+            expect: calls => ["fanofknives", "quickstab", "mentalburst"].every(n => calls.some(c => c[0] === "skill" && c[1] === n)),
+        },
+        "visible again for the party": {
+            party: { VizRog: {}, VizPri: {} }, member: true, me: { name: "VizRog", ctype: "rogue", level: 60, s: { invis: {}, rspeed: {} } },
+            run: c => c.always(),
+            expect: calls => calls.some(c => c[0] === "stop" && c[1] === "invis"),
+        },
+    },
+    paladin: {
+        "Mana Shield and self-heal at low HP": {
+            party: { VizPal: {} }, me: { name: "VizPal", ctype: "paladin", hp: 1500, max_hp: 6000, mp: 3000, max_mp: 3000, s: {} },
+            run: c => c.survive(),
+            expect: calls => calls.some(c => c[1] === "mshield") && calls.some(c => c[1] === "selfheal"),
+        },
+        "Guardian's Oath and Cleansing Light on allies": {
+            party: { VizPal: {}, VizMage: {} }, me: { name: "VizPal", ctype: "paladin", level: 60 },
+            players: { VizMage: P("VizMage", "mage", 1500, 3758, { s: { poisoned: {} } }) },
+            run: c => c.support(),
+            expect: calls => calls.some(c => c[1] === "guardians_oath" && c[2] === "\"VizMage\"") && calls.some(c => c[1] === "cleansing_light"),
+        },
+        "Smash on a sturdy target": {
+            party: { VizPal: {} }, me: { name: "VizPal", ctype: "paladin", mp: 3000, max_mp: 3000, slots: { mainhand: { name: "mace", level: 5 } } },
+            run: c => c.fight({"id":"t","type":"monster","mtype":"gscorpion","visible":true,"x":130,"y":100,"real_x":130,"real_y":100,"hp":20000}),
+            expect: calls => calls.some(c => c[0] === "skill" && c[1] === "smash"),
         },
     },
 };

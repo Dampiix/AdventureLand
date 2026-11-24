@@ -37,7 +37,7 @@
       "name": "bot_fighter"
     },
     {
-      "file": "classes/paladin.js",
+      "file": "classes/paladin/paladin.js",
       "slot": 27,
       "name": "bot_class_paladin"
     },
@@ -82,7 +82,7 @@
       "name": "bot_events"
     },
     {
-      "file": "classes/ranger.js",
+      "file": "classes/ranger/ranger.js",
       "slot": 36,
       "name": "bot_class_ranger"
     },
@@ -97,7 +97,7 @@
       "name": "bot_class_warrior"
     },
     {
-      "file": "classes/rogue.js",
+      "file": "classes/rogue/rogue.js",
       "slot": 39,
       "name": "bot_class_rogue"
     },

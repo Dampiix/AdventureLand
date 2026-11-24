@@ -54,6 +54,8 @@ function canMoveTo(x, y) { return can_move_to(x, y); }
 function transporting(entity) { return typeof is_transporting === "function" && is_transporting(entity); }
 function isMoving(entity) { return is_moving(entity); }                 // stage 2 (priest)
 function storageGet(key) { return get(key); }                         // shared storage (all our windows); may throw
+function moveTo(x, y) { return xmove(x, y); }                         // stage 2 (rogue): walk, path search if needed
+function stopAction(what) { return stop(what); }                      // e.g. stop("invis")
 
 module.exports = {
     hpRatio: hpRatio,
@@ -82,4 +84,6 @@ module.exports = {
     transporting: transporting,
     isMoving: isMoving,
     storageGet: storageGet,
+    moveTo: moveTo,
+    stopAction: stopAction,
 };
