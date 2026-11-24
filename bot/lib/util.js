@@ -35,7 +35,7 @@ function damageMultiplier(defense) {
 // fighters' data combined). From hitFactor.minHits hits on, hitFactor() is real / predicted,
 // never below 1 (the checks only get more careful) and at most hitFactor.max. Old hits fade:
 // above hitFactor.keepHits the sums are halved.
-const HIT_KEY = "dmpx_hit_factor:";
+const HIT_KEY = "bot_hit_factor:";
 let hitOwn = null, hitSavedAt = 0, hitAll = null, hitAllAt = 0;
 function hitCfg() {
     const c = typeof BOT_CONFIG !== "undefined" && BOT_CONFIG ? BOT_CONFIG : {};
@@ -231,7 +231,7 @@ function errReason(e) {
 // status is shortened here, the details stay in the log. Applied in order.
 const SHORT = [
     [/ \([^)]*\)/g, ""],                     // details in brackets
-    [/\bDampiixMerch\b/g, "Merch"], [/\bDmpxPriest\b/g, "Pri"], [/\bDmpxRanger\b/g, "Rng"], [/\bDmpx(\w+)/g, "$1"],
+    // character names without their team prefix: see shortStatus (v1.233.0, no account names in the code any more)
     [/^dead - a priest is reviving me$/, "dead: revive"],
     [/^dead - waiting to respawn$/, "dead: respawn"],
     [/^searching /, "? "],                // "? booboo" (player request 2026-11-18)
@@ -271,8 +271,24 @@ const SHORT = [
     [/^up (\S+) \+(\d+)>\+(\d+)$/, "$1 $2>$3"], // "helmet1 3>7"
     [/ \+(\d)/g, "+$1"],                // "intring+3"
 ];
+// Team name prefixes (v1.233.0): the common start of each team's fighter names ("Viz" for VizPri, VizWar, ...),
+// set by deriveTeam. shortName("VizWar") -> "War"; the logs and the status box show names without it.
+let teamPrefixes = [];
+function shortName(name) {
+    const n = String(name || "");
+    const p = teamPrefixes.find(function (x) { return n.indexOf(x) === 0 && n.length > x.length; });
+    return p ? n.slice(p.length) : n;
+}
 function shortStatus(text) {
-    return SHORT.reduce(function (t, r) { return t.replace(r[0], r[1]); }, String(text));
+    let t = String(text);
+    teamPrefixes.forEach(function (p) { t = t.replace(new RegExp("\\b" + p + "(\\w+)", "g"), "$1"); });
+    return SHORT.reduce(function (s, r) { return s.replace(r[0], r[1]); }, t);
+}
+function commonPrefix(names) {
+    if (!names.length) return "";
+    let p = names[0];
+    names.forEach(function (n) { while (p && n.indexOf(p) !== 0) p = p.slice(0, -1); });
+    return p;
 }
 
 let lastStatus = "";
@@ -290,13 +306,13 @@ function log(tag, text, color) {
 
 // Decision journal (player request 2026-11-21): why and when the team changes its spot. The
 // game log keeps ~200 lines without times; this keeps the last 400 decisions with a timestamp
-// per character in the storage ("dmpx_journal:<name>": [[ms, text], ...]).
+// per character in the storage ("bot_journal:<name>": [[ms, text], ...]).
 // "dps" (2026-11-21): the damage meter's 5-minute lines (team damage/s, kills) for the measurement hours.
 const JOURNAL_TAGS = ["target", "drops", "hunt", "event", "party", "cavalry", "dps", "kills", "scout"];
 let journalBuf = null;
 function journal(text) {
     try {
-        const key = "dmpx_journal:" + character.name;
+        const key = "bot_journal:" + character.name;
         if (!journalBuf) journalBuf = get(key) || [];
         journalBuf.push([Date.now(), text]);
         if (journalBuf.length > 400) journalBuf.splice(0, journalBuf.length - 400);
@@ -389,7 +405,11 @@ function findItemIndex(predicate) {
 // Fill in the derived fields (leader, merchant, characters, phases) from
 // config.team, so the rest of the bot can keep reading them directly.
 function deriveTeam(cfg) {
-    // Several accounts share this config (2026-11-19: the fresh account "Viz" next to "Dmpx"):
+    // Team name prefixes for shortName/shortStatus: the fighters' common start, at least 2 letters.
+    teamPrefixes = [cfg.team].concat(cfg.otherTeams || []).map(function (tm) {
+        return tm && tm.fighters && tm.fighters.length > 1 ? commonPrefix(tm.fighters) : "";
+    }).filter(function (p) { return p.length >= 2; });
+    // Several accounts share this config (2026-11-19: a second account next to the first):
     // the team that lists the running character is used; cfg.team stays the default.
     const me = typeof character !== "undefined" && character ? character.name : null;
     const inTeam = function (t) { return t && me && ((t.fighters || []).includes(me) || t.merchant === me); };
@@ -578,7 +598,7 @@ function noAreaNear(config, range, p) {
 }
 
 // Heartbeat for the member watchdog (main.js, player decision 2026-11-20): every 10 s after a
-// loop step went through, "dmpx_beat:<name>" = { at, server } in the storage all our windows
+// loop step went through, "bot_beat:<name>" = { at, server } in the storage all our windows
 // share. A loop that stops or throws every step stops the beat.
 let lastBeatAt = 0;
 function heartbeat() {
@@ -588,7 +608,7 @@ function heartbeat() {
     try {
         const server = typeof parent !== "undefined" && parent.server_region ? parent.server_region + " " + parent.server_identifier : null;
         // hp: for the priest's Party Heal on members out of its sight (2026-11-21).
-        set("dmpx_beat:" + character.name, { at: now, server: server, hp: character.max_hp ? Math.round(character.hp / character.max_hp * 100) / 100 : 1, rip: !!character.rip });
+        set("bot_beat:" + character.name, { at: now, server: server, hp: character.max_hp ? Math.round(character.hp / character.max_hp * 100) / 100 : 1, rip: !!character.rip });
     } catch (e) { /* storage unavailable */ }
 }
 
@@ -598,7 +618,7 @@ function heartbeat() {
 // merchant to the configured server), else merchantRole.pontyRound.home.
 function teamServer(config) {
     try {
-        const b = get("dmpx_beat:" + config.leader);
+        const b = get("bot_beat:" + config.leader);
         if (b && b.server) return b.server;
     } catch (e) { /* storage unavailable */ }
     const pr = (config.merchantRole && config.merchantRole.pontyRound) || {};
@@ -668,6 +688,7 @@ module.exports = {
     setNoAreaHook: setNoAreaHook,
     teamCycle: teamCycle,
     deriveTeam: deriveTeam,
+    shortName: shortName,
     weaponPower: weaponPower,
     viaFirst: viaFirst,
     kiteRisk: kiteRisk,

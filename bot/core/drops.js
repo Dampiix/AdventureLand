@@ -23,7 +23,7 @@ module.exports = function createDrops(ctx) {
 
     // [{ name, copies }] from the merchant; kept across restarts so a reload doesn't
     // send the team to the XP spot until the next report arrives.
-    const NEEDS_KEY = "dmpx_drop_needs:" + character.name;
+    const NEEDS_KEY = "bot_drop_needs:" + character.name;
     const saved = (function () { try { return get(NEEDS_KEY) || {}; } catch (e) { return {}; } })();
     let needs = saved.list || [];
     let needsAt = saved.at || 0;
@@ -86,7 +86,7 @@ module.exports = function createDrops(ctx) {
         const mean = team.reduce(function (s, n) { return s + luckOfMember(n); }, 0) / Math.max(1, team.length);
         // Normal roll: kills of ours by target (no target: the team's mean luck).
         let kills = 0, normal = 0;
-        (parent.__dmpxKills || []).forEach(function (k) {
+        (parent.__botKills || []).forEach(function (k) {
             if (now - k.t > 10 * 60 * 1000 || (k.target && !team.includes(k.target))) return;
             kills++;
             normal += k.target ? luckOfMember(k.target) : mean;
@@ -95,7 +95,7 @@ module.exports = function createDrops(ctx) {
         // Bonus rolls: damage shares (equal shares while the meter has too little).
         const dmg = {};
         let total = 0;
-        (parent.__dmpxDps || []).forEach(function (h) {
+        (parent.__botDps || []).forEach(function (h) {
             if (now - h.t > 5 * 60 * 1000 || !team.includes(h.who)) return;
             dmg[h.who] = (dmg[h.who] || 0) + h.dmg;
             total += h.dmg;
@@ -289,7 +289,7 @@ module.exports = function createDrops(ctx) {
             return Math.hypot((e.x || 0) - character.x, (e.y || 0) - character.y) <= range;
         });
     }
-    const SPOT_KEY = "dmpx_spot_gold_v2:" + character.name; // v2: the mixed numbers before v1.151.0 are dropped
+    const SPOT_KEY = "bot_spot_gold_v2:" + character.name; // v2: the mixed numbers before v1.151.0 are dropped
     const spotGold = (function () { try { return get(SPOT_KEY) || {}; } catch (e) { return {}; } })(); // monster -> { gold, sec }
     let lastGold = character.gold, lastTick = Date.now(), lastSpotSave = 0, lastSpotSend = 0;
     const memberRates = {}; // fighter -> { at, rates: { monster: gold/s } }

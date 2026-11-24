@@ -129,17 +129,17 @@ module.exports = function createWorkshop(ctx) {
     // Value report (stage 1): the fighters' XP value and the leader's per-copy farm times.
     const fighterValues = {};
     // Kept across restarts: without them every wish needing drops sorts as "unknown" for 15 min.
-    const dropTimes = (function () { try { return get("dmpx_drop_times") || {}; } catch (e) { return {}; } })();
+    const dropTimes = (function () { try { return get("bot_drop_times") || {}; } catch (e) { return {}; } })();
     // Team gold per hour given up while farming each drop (leader's guide, player decision
     // 2026-11-20): ownCost values drop hours with it instead of our whole gold/hour.
     // v1.150.0: measured team gold only; the old key held costs from the guide calibration.
-    const COSTS_KEY = "dmpx_drop_costs_v2";
+    const COSTS_KEY = "bot_drop_costs_v2";
     const dropCosts = (function () { try { return get(COSTS_KEY) || {}; } catch (e) { return {}; } })();
     const costAsk = {}; // items ownCost had no drop cost for (asked with the next value report)
     comms.on("droptimes", function (data, from) {
         if (from !== config.leader) return;
         Object.assign(dropTimes, data.times || {});
-        try { set("dmpx_drop_times", dropTimes); } catch (e) { /* storage unavailable */ }
+        try { set("bot_drop_times", dropTimes); } catch (e) { /* storage unavailable */ }
         if (!data.basis) {
             // The leader's normal spot is not measured: no costs, so no wish orders on guesses.
             Object.keys(dropCosts).forEach(function (n) { delete dropCosts[n]; });
@@ -234,7 +234,7 @@ module.exports = function createWorkshop(ctx) {
     }
 
     // Fighters playing now (v1.225.0, player decision 2026-11-23): nothing is built in the background for characters that are
-    // not played. A fighter counts as online while its heartbeat ("dmpx_beat:<name>", every 10 s) is fresher than
+    // not played. A fighter counts as online while its heartbeat ("bot_beat:<name>", every 10 s) is fresher than
     // workshop.onlineMs. Planning - wishes, gear and material goals, weapons, Ponty buys, deliveries - serves only them;
     // protection (what is reserved, never sold or re-scrolled) still counts every fighter (allFighters, config.team.fighters).
     const onlineCache = {};
@@ -242,7 +242,7 @@ module.exports = function createWorkshop(ctx) {
         const c = onlineCache[f];
         if (c && Date.now() - c.t < 5000) return c.v;
         let v = true;
-        try { const b = get("dmpx_beat:" + f); v = !!(b && b.at && Date.now() - b.at < (cfg.onlineMs || 10 * 60 * 1000)); } catch (e) { /* storage unavailable: count it */ }
+        try { const b = get("bot_beat:" + f); v = !!(b && b.at && Date.now() - b.at < (cfg.onlineMs || 10 * 60 * 1000)); } catch (e) { /* storage unavailable: count it */ }
         onlineCache[f] = { t: Date.now(), v: v };
         return v;
     }
@@ -1588,7 +1588,7 @@ module.exports = function createWorkshop(ctx) {
     // Items sold into players' buy orders by level (market.sellTo, player decision 2026-11-20 -
     // Vitality earrings: +0 sold while someone pays, else compounded to +2 for stock): a level
     // with its own rule is held while a buyer at minPrice was seen in the last demandHours
-    // (merchant: dmpx_sell_demand), and nothing goes past the highest level we sell. Levels in
+    // (merchant: bot_sell_demand), and nothing goes past the highest level we sell. Levels in
     // between (+1) are compounded on.
     function heldForBuyers(name, level) {
         const rules = ((((config.market || {}).sellTo || {}).items) || []).filter(function (r) { return r.item === name; });
@@ -1598,7 +1598,7 @@ module.exports = function createWorkshop(ctx) {
         const rule = rules.find(function (r) { return (r.level || 0) === level; });
         if (!rule) return false;
         let seen = {};
-        try { seen = get("dmpx_sell_demand") || {}; } catch (e) { /* storage unavailable */ }
+        try { seen = get("bot_sell_demand") || {}; } catch (e) { /* storage unavailable */ }
         const last = seen[name + ":" + level] || seen._since;
         if (!last) return true; // no scan yet: hold
         return Date.now() - last < (rule.demandHours || 3) * 60 * 60 * 1000;
@@ -3373,7 +3373,7 @@ module.exports = function createWorkshop(ctx) {
             util.log("value", r.item + " " + r.fighter + ": " + (r.gain >= 0 ? "+" : "") + r.gain + "% for " + (r.unknown.length ? "? (no farm time: " + r.unknown.join(", ") + ")" : r.hours + " h") +
                 " (" + k(r.gold) + (r.copies ? ", " + r.copies + " copies" : "") + ")" + (r.value === null ? "" : " -> " + r.value + "%/h"), "white");
         });
-        try { set("dmpx_value_report", { at: Date.now(), goldPerHour: goldPerHour, goldPower: goldPower, xp: fighterValues, rows: rows.slice(0, 25) }); } catch (e) { /* storage unavailable */ }
+        try { set("bot_value_report", { at: Date.now(), goldPerHour: goldPerHour, goldPower: goldPower, xp: fighterValues, rows: rows.slice(0, 25) }); } catch (e) { /* storage unavailable */ }
     }
 
     // ---- Ponty (player request 2026-11-19, fresh account) --------------------------
@@ -3447,9 +3447,9 @@ module.exports = function createWorkshop(ctx) {
         try { grade = item_grade(item); } catch (e) { /* unknown */ }
         return s ? (s.g || 0) * Math.pow(10, grade) : 0;
     }
-    const FINDS_KEY = "dmpx_ponty_finds";
+    const FINDS_KEY = "bot_ponty_finds";
     // Every Ponty purchase, kept across restarts for the player's review (last 200).
-    const BOUGHT_KEY = "dmpx_ponty_bought";
+    const BOUGHT_KEY = "bot_ponty_bought";
     function noteBought(entry) {
         try { const old = get(BOUGHT_KEY) || []; set(BOUGHT_KEY, old.concat([Object.assign({ t: Date.now(), at: new Date().toISOString() }, entry)]).slice(-200)); } catch (e) { /* storage unavailable */ }
     }
@@ -4233,7 +4233,7 @@ module.exports = function createWorkshop(ctx) {
                     if (wishIndex(w, targetLevel(f, w)) !== -1) return; // ready for delivery
                     // Only what is being worked on (player request 2026-11-17): paused ones are left out.
                     if ((blockedUntil[key(f, w)] || 0) > now) return;
-                    list.push(w.name + "+" + w.level + " " + f.replace(/^Dmpx/, ""));
+                    list.push(w.name + "+" + w.level + " " + util.shortName(f));
                 });
             });
             const k = function (n) { return Math.round(n / 1000) + "k"; };

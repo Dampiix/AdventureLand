@@ -12,6 +12,42 @@
 const BOT_CONFIG = require_code("bot_config");
 const BOT_UTIL = require_code("bot_util");
 BOT_UTIL.deriveTeam(BOT_CONFIG);
+
+// v1.233.0 (player decision 2026-11-24): the bot's own names no longer carry the first account's prefix - page
+// variables "__bot...", storage keys "bot_...", message protocol "bot1". On the first start after the update the old
+// ones are taken over: socket listeners under the old names come off (else every hit/death counted twice until a
+// page reload), the cave_request wrapper is undone, page data and stored data (journal, trade logs, timers, ...)
+// move to the new names. OLD is built, so a search for the old prefix finds only this block.
+(function migrateFromOldPrefix() {
+    const OLD = "dm" + "px";
+    try {
+        const P = parent;
+        [["death", "DeathFn"], ["death", "BossDeathFn"], ["hit", "HitFn"], ["hit", "DpsFn"], ["hit", "UnstackFn"], ["action", "ActFn"], ["hit", "ActHitFn"]]
+            .forEach(function (x) {
+                const fn = P["__" + OLD + x[1]];
+                if (fn && P.socket) { try { P.socket.off(x[0], fn); } catch (e) { /* gone */ } }
+                delete P["__" + OLD + x[1]];
+            });
+        if (P["__" + OLD + "CaveReqOrig"]) P.cave_request = P["__" + OLD + "CaveReqOrig"];
+        ["CaveReqOrig", "CaveHook", "CaveDone", "ChatCmd"].forEach(function (k) { delete P["__" + OLD + k]; });
+        ["Deaths", "Kills", "Hits", "Dps", "LastTarget", "Inflight", "DoomedSkips"].forEach(function (k) {
+            if (P["__" + OLD + k] !== undefined && P["__bot" + k] === undefined) P["__bot" + k] = P["__" + OLD + k];
+            delete P["__" + OLD + k];
+        });
+        if (P[OLD + "LogFilter"]) P.botLogFilter = true; // the old log filter stays in front of add_log
+        if (P["__" + OLD + "SayOriginal"]) { P.say = P["__" + OLD + "SayOriginal"]; delete P["__" + OLD + "SayOriginal"]; }
+    } catch (e) { /* not in a browser client */ }
+    try {
+        const ls = window.localStorage, from = "cstore_" + OLD + "_", keys = [];
+        for (let i = 0; i < ls.length; i++) { const k = ls.key(i); if (k && k.indexOf(from) === 0) keys.push(k); }
+        keys.forEach(function (k) {
+            const nk = "cstore_bot_" + k.slice(from.length);
+            if (ls.getItem(nk) === null) ls.setItem(nk, ls.getItem(k));
+            ls.removeItem(k);
+        });
+        if (keys.length) BOT_UTIL.log("bot", "storage: " + keys.length + " keys moved to the bot_ prefix", "yellow");
+    } catch (e) { /* storage unavailable */ }
+})();
 const createBotComms = require_code("bot_comms");
 
 const BOT_CLASS_SLOTS = {
@@ -58,8 +94,8 @@ function startTeam() {
 function installChatCommands(ctx) {
     try {
         const page = parent;
-        if (page.__dmpxSayOriginal) page.say = page.__dmpxSayOriginal;
-        delete page.__dmpxChatCmd;
+        if (page.__botSayOriginal) page.say = page.__botSayOriginal;
+        delete page.__botChatCmd;
     } catch (e) { /* nothing to undo */ }
     // The commands themselves live in handle_command (below); it reads the bot's context from here.
     // 2026-11-21 (evening): this used to replace window.handle_command with a boss-only version, which
@@ -89,7 +125,7 @@ function hideGoldLogs() {
     try {
         const ui = BOT_CONFIG.ui || {};
         if (!ui.hideGoldLogs && !ui.hideKillLogs) return;
-        if (typeof parent === "undefined" || !parent || typeof parent.add_log !== "function" || parent.dmpxLogFilter) return;
+        if (typeof parent === "undefined" || !parent || typeof parent.add_log !== "function" || parent.botLogFilter) return;
         const original = parent.add_log;
         parent.add_log = function (message, color) {
             if (typeof message === "string") {
@@ -99,7 +135,7 @@ function hideGoldLogs() {
             }
             return original.apply(this, arguments);
         };
-        parent.dmpxLogFilter = true;
+        parent.botLogFilter = true;
     } catch (e) {
         // not in a browser client (headless): nothing to filter
     }
@@ -241,7 +277,7 @@ async function reopenRunnerNow(name, parts) {
 }
 
 // Member watchdog (player decision 2026-11-20, earthiverse idea #8): every bot writes a heartbeat
-// (util.heartbeat, "dmpx_beat:<name>") after each loop step. The client that hosts a bot window
+// (util.heartbeat, "bot_beat:<name>") after each loop step. The client that hosts a bot window
 // restarts it when the beat is silentMs old or the window is gone: the leader for the fighters it
 // starts (startWithLeader), any client for a window it hosts (the merchant). Never a window another
 // client hosts - two hosts would both answer the merchant's hop requests. Brakes: gapMs between
@@ -271,7 +307,7 @@ function startWatchdog() {
             });
             const watch = mine.concat(Object.keys(hosted).filter(function (n) { return !mine.includes(n); }));
             for (const n of watch) {
-                const beat = get("dmpx_beat:" + n) || {};
+                const beat = get("bot_beat:" + n) || {};
                 if (reopening[n]) continue; // a hop or restart of it is under way
                 const hasWindow = !!parent.document.getElementById("ichar" + n.toLowerCase());
                 const list = (restarts[n] || []).filter(function (t) { return now - t < 60 * 60 * 1000; });
@@ -279,7 +315,7 @@ function startWatchdog() {
                 const last = list.length ? list[list.length - 1] : 0;
                 const since = Math.max(beat.at || 0, last, startedAt);
                 // A hop of the merchant in progress (request open or done < 2 min ago) is no silence.
-                const hop = get("dmpx_hop_request:" + n);
+                const hop = get("bot_hop_request:" + n);
                 if (hop && (!hop.done || now - hop.done < 2 * 60 * 1000)) continue;
                 const silent = now - since > (wd.silentMs || 120000);
                 if (!silent && hasWindow) continue;
@@ -312,7 +348,7 @@ function startHopWatcher() {
     if (hopWatcherOn || !merch || character.name === merch) return;
     hopWatcherOn = true;
     const rid = "ichar" + merch.toLowerCase();
-    const HOP_KEY = "dmpx_hop_request:" + merch, ROUND_KEY = "dmpx_ponty_round:" + merch, TRIP_KEY = "dmpx_trade_trip:" + merch;
+    const HOP_KEY = "bot_hop_request:" + merch, ROUND_KEY = "bot_ponty_round:" + merch, TRIP_KEY = "bot_trade_trip:" + merch;
     let home =BOT_UTIL.teamServer(BOT_CONFIG); // where the leader runs, read again each check (2026-11-21)
     let hosting = false, handled = null, hopping = false;
     async function hopTo(to) {
@@ -381,7 +417,7 @@ function handle_command(command, args) {
     // /ponty (player request 2026-11-21): the merchant starts a Ponty round on its next check, from
     // any of our windows (shared storage; the merchant's round reads and clears the flag).
     if (command === "ponty" || command === "ponti") {
-        try { set("dmpx_ponty_force", Date.now()); } catch (e) { /* storage unavailable */ }
+        try { set("bot_ponty_force", Date.now()); } catch (e) { /* storage unavailable */ }
         try { parent.add_chat("", "[bot] Ponty round requested - the merchant starts it on its next check", "#9be36d"); } catch (e) { /* chat only */ }
         return true;
     }

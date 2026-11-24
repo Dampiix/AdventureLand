@@ -56,7 +56,7 @@ module.exports = function createPriest(ctx) {
         return ctx.party.memberNames().find(function (n) {
             if (n === character.name || get_player(n)) return false;
             let b = null;
-            try { b = get("dmpx_beat:" + n); } catch (e) { /* storage unavailable */ }
+            try { b = get("bot_beat:" + n); } catch (e) { /* storage unavailable */ }
             return !!b && Date.now() - b.at < 15000 && !b.rip && typeof b.hp === "number" && b.hp < (c.partyHealOne || 0.5);
         }) || null;
     }

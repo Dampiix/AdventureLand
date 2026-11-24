@@ -801,9 +801,9 @@ module.exports = function createMerchant(ctx) {
     // The hop itself is done by the client that hosts our bot window (main.js hop watcher):
     // we only write a request into the shared storage (CODE messages don't cross servers).
     const prc = m.pontyRound || {};
-    const ROUND_KEY = "dmpx_ponty_round:" + character.name;
-    const HOP_KEY = "dmpx_hop_request:" + character.name;
-    const LAST_KEY = "dmpx_ponty_round_last:" + character.name;
+    const ROUND_KEY = "bot_ponty_round:" + character.name;
+    const HOP_KEY = "bot_hop_request:" + character.name;
+    const LAST_KEY = "bot_ponty_round_last:" + character.name;
     function hereName() { return parent.server_region + " " + parent.server_identifier; }
     function homeName() { return util.teamServer(config); } // where the leader runs (2026-11-21)
     function readRound() { try { return get(ROUND_KEY) || null; } catch (e) { return null; } }
@@ -820,9 +820,9 @@ module.exports = function createMerchant(ctx) {
         const now = new Date();
         // /ponty chat command (2026-11-21): a requested round right away (requests older than 10 min drop).
         let force = 0;
-        try { force = get("dmpx_ponty_force") || 0; } catch (e) { /* storage unavailable */ }
+        try { force = get("bot_ponty_force") || 0; } catch (e) { /* storage unavailable */ }
         if (force) {
-            try { set("dmpx_ponty_force", 0); } catch (e) { /* storage unavailable */ }
+            try { set("bot_ponty_force", 0); } catch (e) { /* storage unavailable */ }
             // In the first half hour it counts as this hour's round (no second round right after it).
             if (Date.now() - force < 10 * 60 * 1000) return now.getMinutes() < 30 ? now.toDateString() + " " + now.getHours() : "manual:" + force;
         }
@@ -838,7 +838,7 @@ module.exports = function createMerchant(ctx) {
     let leaderMissLogAt = 0;
     function leaderOnline() {
         let b = null;
-        try { b = get("dmpx_beat:" + config.leader); } catch (e) { /* storage unavailable */ }
+        try { b = get("bot_beat:" + config.leader); } catch (e) { /* storage unavailable */ }
         const ok = !!(b && b.at && Date.now() - b.at < (prc.leaderFreshMs || 2 * 60 * 1000));
         if (!ok && Date.now() - leaderMissLogAt > 30 * 60 * 1000) {
             leaderMissLogAt = Date.now();
@@ -927,7 +927,7 @@ module.exports = function createMerchant(ctx) {
                 const bought = st.visits.reduce(function (s, v) { return s + (v.bought || 0); }, 0);
                 util.log("merchant", "Ponty round done in " + Math.round((Date.now() - st.startedAt) / 60000) + " min: " +
                     st.visits.map(function (v) { return v.server + " " + (v.items === null ? "-" : v.items) + "/" + v.bought; }).join(", ") + " (items/bought), " + bought + " bought", "green");
-                try { const log = get("dmpx_ponty_round_log") || []; set("dmpx_ponty_round_log", log.concat([{ at: Date.now(), visits: st.visits }]).slice(-50)); } catch (e) { /* storage unavailable */ }
+                try { const log = get("bot_ponty_round_log") || []; set("bot_ponty_round_log", log.concat([{ at: Date.now(), visits: st.visits }]).slice(-50)); } catch (e) { /* storage unavailable */ }
                 saveRound(null);
                 return false;
             }
@@ -947,11 +947,11 @@ module.exports = function createMerchant(ctx) {
     // round), walk to the buyer's stand, sell into the order, hop home. The server only sells
     // near the stand and when the buyer still has the gold (trade_sell: distance, buyer_gold).
     const stc = (config.market && config.market.sellTo) || {};
-    const TRIP_KEY = "dmpx_trade_trip:" + character.name;
+    const TRIP_KEY = "bot_trade_trip:" + character.name;
     // The next scan time survives a hop (review 2026-11-20): the 5-min wait after a buyer or seller
     // was away from its stand was set on the far server and lost on the way home - with a stale
     // merchant list the merchant hopped there and back every few minutes.
-    const NEXT_SCAN_KEY = "dmpx_trade_next:" + character.name;
+    const NEXT_SCAN_KEY = "bot_trade_next:" + character.name;
     let nextSellScanAt = Math.max(Date.now() + 60 * 1000, (function () { try { return get(NEXT_SCAN_KEY) || 0; } catch (e) { return 0; } })());
     function scanAgainIn(ms) {
         nextSellScanAt = Date.now() + ms;
@@ -974,7 +974,7 @@ module.exports = function createMerchant(ctx) {
     // "seller|item|level" (or "buyer|item|sell") -> time a trip for it came back empty. In the
     // shared storage: every hop restarts the bot, and an in-memory list sent the merchant twice
     // to a stand that was gone (2026-11-20).
-    const FAILED_KEY = "dmpx_trade_failed:" + character.name;
+    const FAILED_KEY = "bot_trade_failed:" + character.name;
     const failedOffers = (function () {
         try { const f = get(FAILED_KEY) || {}; Object.keys(f).forEach(function (k) { if (Date.now() - f[k] > 30 * 60 * 1000) delete f[k]; }); return f; } catch (e) { return {}; }
     })();
@@ -1045,7 +1045,7 @@ module.exports = function createMerchant(ctx) {
     // When a buyer at our minPrice was last seen per "item:level" (any server, open stand): the
     // workshop compounds sellTo items only after demandHours without one (player decision
     // 2026-11-20: sell Vitality earrings +0 while someone pays, else build +2 for stock).
-    const DEMAND_KEY = "dmpx_sell_demand";
+    const DEMAND_KEY = "bot_sell_demand";
     const demand = (function () { try { return get(DEMAND_KEY) || {}; } catch (e) { return {}; } })();
     function saveDemand() {
         if (!demand._since) demand._since = Date.now(); // tracking started: nothing seen before counts as unknown
@@ -1148,7 +1148,7 @@ module.exports = function createMerchant(ctx) {
                         markFailed(offerKey(d.seller, d.item, d.level), false);
                         workshop.bookPlayerBuy(Object.assign({}, d.offer, { name: d.item, level: d.level, price: price, seller: d.seller, server: here }));
                         util.log("merchant", "bought " + d.item + " +" + d.level + " from " + d.seller + " (" + here + ") for " + Math.round(price / 1000) + "k", "green");
-                        try { const log = get("dmpx_trade_log") || []; set("dmpx_trade_log", log.concat([{ at: Date.now(), kind: "buy", server: here, seller: d.seller, item: d.item, level: d.level, q: 1, price: price }]).slice(-100)); } catch (e) { /* log only */ }
+                        try { const log = get("bot_trade_log") || []; set("bot_trade_log", log.concat([{ at: Date.now(), kind: "buy", server: here, seller: d.seller, item: d.item, level: d.level, q: 1, price: price }]).slice(-100)); } catch (e) { /* log only */ }
                     } catch (e) { util.log("merchant", "buying from " + d.seller + ": " + util.errReason(e), "orange"); }
                 }
             }
@@ -1209,7 +1209,7 @@ module.exports = function createMerchant(ctx) {
                     }
                     if (sold) {
                         util.log("merchant", "sold " + sold + "x " + d.item + (lvl ? " +" + lvl : "") + " to " + d.buyer + " for " + Math.round(gold / 1000) + "k" + (remaining > 0 ? " (" + remaining + " more than it could pay)" : ""), "green");
-                        try { const log = get("dmpx_trade_log") || []; set("dmpx_trade_log", log.concat([{ at: Date.now(), server: here, buyer: d.buyer, item: d.item, level: lvl, q: sold, price: price }]).slice(-100)); } catch (e) { /* log only */ }
+                        try { const log = get("bot_trade_log") || []; set("bot_trade_log", log.concat([{ at: Date.now(), server: here, buyer: d.buyer, item: d.item, level: lvl, q: sold, price: price }]).slice(-100)); } catch (e) { /* log only */ }
                     } else if (chunk < 1) util.log("merchant", d.buyer + " can't pay even one " + d.item, "orange");
                 }
             }

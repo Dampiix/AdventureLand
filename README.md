@@ -3,7 +3,7 @@
 One bot for a whole Adventure Land team: up to three fighters and one merchant, all running the same code.
 The fighters farm, hunt bosses and level up; the merchant supplies them, sells, banks, trades with other players and upgrades their gear.
 
-> **Version:** `1.231.5` (`bot/config.js` → `version`) · **Teams:** `Dmpx…` (main account) and `Viz…` (second account) · **Code:** `bot/` → in-game CODE slots 20–41
+> **Version:** `1.233.0` (`bot/config.js` → `version`) · **Teams:** `Dmpx…` (main account) and `Viz…` (second account) · **Code:** `bot/` → in-game CODE slots 20–41
 
 ## Repository
 
@@ -74,7 +74,7 @@ Type these in the chat box of a game client that runs the bot. The game passes u
 | Command | Where | What it does |
 |---|---|---|
 | `/pickup` | any fighter | Ask the merchant to come now (potions, loot handover). |
-| `/ponty` or `/ponti` | any of our clients | The merchant starts a Ponty round on its next check (shared storage `dmpx_ponty_force`, dropped after 10 min). Started in minutes 0–29 of an hour, it counts as that hour's round. |
+| `/ponty` or `/ponti` | any of our clients | The merchant starts a Ponty round on its next check (shared storage `bot_ponty_force`, dropped after 10 min). Started in minutes 0–29 of an hour, it counts as that hour's round. |
 | `/phoenix` | leader | Search the Phoenix now and lift its 3 h pause. |
 | `/jr`, `/greenjr`, `/mvampire`, `/fvampire`, `/skeletor` | leader | The same for Jr., Green Jr., Dracul, Ms. Dracul and Skeletor. In the party phase a runner searches them; in solo it only lifts the pause. |
 | `/search <boss>` | leader | The same for any watched boss (default `phoenix`, e.g. `/search fvampire` for Ms. Dracul). Aliases: `phönix`, `phonix` → phoenix · `vampire`, `vampir`, `dracul` → mvampire · `msdracul`, `missdracul` → fvampire · `gjr` → greenjr. |
@@ -128,7 +128,7 @@ node scripts/deploy-bot.mjs --account viz
 Saving a slot does not change running code. Reload each character:
 
 1. **Members first** (in party: the other fighters), then about 10 s later **the leader**. Reloading the leader does **not** reload running members.
-2. **The merchant** only when it is idle: no trade trip, no Ponty round, empty upgrade queue. Check that `get("dmpx_trade_trip:<merchant>")` and `get("dmpx_ponty_round:<merchant>")` are `null` and `character.q` is empty.
+2. **The merchant** only when it is idle: no trade trip, no Ponty round, empty upgrade queue. Check that `get("bot_trade_trip:<merchant>")` and `get("bot_ponty_round:<merchant>")` are `null` and `character.q` is empty.
 
 ## 3. Config switches you will use
 
@@ -224,19 +224,21 @@ The bot keeps state in the game's `get()` / `set()` storage, which all our windo
 
 A running bot keeps most of these in memory and writes them back on every change. Clear a key and then **reload** that character, or use the chat command where one exists.
 
+**Names** (v1.233.0, player decision 2026-11-24): the bot's own names carry no account name - storage keys `bot_…`, page variables `__bot…`, message protocol `bot1`. Until v1.232 they started with the first account's prefix; the first start of v1.233.0 moves the old stored keys to `bot_` (a key that already exists under the new name wins), takes the old socket listeners off and undoes the old `cave_request` wrapper (`main.js`, `migrateFromOldPrefix`). Character names in logs and the status box lose their team prefix (`util.shortName`: the fighters' common start, e.g. "Viz").
+
 | Key | Holds | Clearing it… |
 |---|---|---|
-| `dmpx_ponty_round:<merchant>` | Running Ponty round | aborts a stuck round |
+| `bot_ponty_round:<merchant>` | Running Ponty round | aborts a stuck round |
 | `workshop_blocks:<merchant>` | Workshop jobs paused after a stop (until time) | retries every paused job at once |
-| `dmpx_trade_trip:<merchant>` | Running trade trip | aborts a stuck trip |
-| `dmpx_ponty_force` | `/ponty` request | cancels the request |
-| `dmpx_hop_request:<merchant>` | Server hop request | — |
-| `dmpx_boss_pause:<leader>` | Boss pauses after deaths | lifts them (better: `/phoenix` …) |
-| `dmpx_boss_search:<leader>` | Next search time per boss | makes every boss due |
-| `dmpx_farm_experience:<name>` | Proven spots, 1 h death blocks | removes death blocks |
-| `dmpx_crowded:<name>` | Crowded spots and their doubling | frees crowded spots |
-| `dmpx_strong_spots:<name>` | Spots waiting for the Cavalry | — |
-| `dmpx_cavalry_next` | Next Cavalry call (account-wide) | — |
+| `bot_trade_trip:<merchant>` | Running trade trip | aborts a stuck trip |
+| `bot_ponty_force` | `/ponty` request | cancels the request |
+| `bot_hop_request:<merchant>` | Server hop request | — |
+| `bot_boss_pause:<leader>` | Boss pauses after deaths | lifts them (better: `/phoenix` …) |
+| `bot_boss_search:<leader>` | Next search time per boss | makes every boss due |
+| `bot_farm_experience:<name>` | Proven spots, 1 h death blocks | removes death blocks |
+| `bot_crowded:<name>` | Crowded spots and their doubling | frees crowded spots |
+| `bot_strong_spots:<name>` | Spots waiting for the Cavalry | — |
+| `bot_cavalry_next` | Next Cavalry call (account-wide) | — |
 | `agitate_mode:<warrior>` | `/agitate` override | back to config |
 | `agitate_stats:<warrior>` | Learned splash, scale and denies per monster | relearns from scratch |
 | `workshop_earmarks:<merchant>` | Copies reserved for fighters | releases them |
@@ -244,12 +246,12 @@ A running bot keeps most of these in memory and writes them back on every change
 | `workshop_worn:<merchant>` | What each fighter wears | refilled on the next wishes |
 | `workshop_wishes:<merchant>` | Each fighter's wish list | refilled every 5 min |
 | `workshop_income:<merchant>` | 24 h income and spending (all pots) | **resets every pot** |
-| `dmpx_beat:<name>` | Heartbeat `{at, server, hp, rip}` | — |
-| `dmpx_journal:<name>` | Last 400 decision lines with timestamps | — |
-| `dmpx_ponty_bought` | Last 200 purchases (Ponty, orders, players) | — |
-| `dmpx_ponty_round_log` | Last 50 Ponty rounds | — |
-| `dmpx_trade_log` | Last 100 player trades | — |
-| `dmpx_value_report` | Last value report | — |
+| `bot_beat:<name>` | Heartbeat `{at, server, hp, rip}` | — |
+| `bot_journal:<name>` | Last 400 decision lines with timestamps | — |
+| `bot_ponty_bought` | Last 200 purchases (Ponty, orders, players) | — |
+| `bot_ponty_round_log` | Last 50 Ponty rounds | — |
+| `bot_trade_log` | Last 100 player trades | — |
+| `bot_value_report` | Last value report | — |
 
 ## 5. Reading the logs
 
@@ -276,7 +278,7 @@ Every bot line starts with a tag: `[tag] text`. The status box above the charact
 | `workshop` | merchant | upgrades, deliveries, budgets, purchases |
 | `value` | merchant | value report (gain per hour per wish) |
 
-The lines tagged `target`, `drops`, `hunt`, `event`, `party`, `cavalry` and `dps` also go into the **decision journal** (`dmpx_journal:<name>`, last 400 lines).
+The lines tagged `target`, `drops`, `hunt`, `event`, `party`, `cavalry` and `dps` also go into the **decision journal** (`bot_journal:<name>`, last 400 lines).
 
 The merchant logs a **workshop report** every 10 min, for example:
 
@@ -323,7 +325,7 @@ Only `main.js` calls `require_code()`. Every other module is a factory that rece
 
 [`slots.json`](bot/slots.json) holds the same file-to-slot mapping for the deploy script.
 
-**Messages between characters** (`comms.js`): `send_cm` with the envelope `{ p: "dmpx1", t: type, d: payload }`. A message is accepted only from a character of our own team (`config.characters`) and only for a known type. Other players' messages are ignored.
+**Messages between characters** (`comms.js`): `send_cm` with the envelope `{ p: "bot1", t: type, d: payload }`. A message is accepted only from a character of our own team (`config.characters`) and only for a known type. Other players' messages are ignored.
 
 ## 7. Team, phases and roles
 
@@ -339,7 +341,7 @@ Only `main.js` calls `require_code()`. Every other module is a factory that rece
 
 ## 8. Fighter: the main loop
 
-The fighter loop runs every `tickMs` (250 ms). Each pass writes the heartbeat `dmpx_beat:<name>`. Order of one tick:
+The fighter loop runs every `tickMs` (250 ms). Each pass writes the heartbeat `bot_beat:<name>`. Order of one tick:
 
 1. **Death:** while dead nothing else runs ([§22](#22-death-handling)).
 2. **Damage meter** (leader or solo): see [§16](#16-party-play).
@@ -481,7 +483,7 @@ The solo pack checks count the attack loss when a pull goes over our courage. Si
 
 **Learned hit factor** (`targeting.hitFactor`, v1.201.0). Every hit a fighter takes is compared with the formula (attack × damage multiplier of our armor/resistance minus its piercing):
 - Per monster kind, from 8 hits on, all checks multiply its hits by real ÷ predicted damage (at least 1, at most 5).
-- All fighters' hits count together (`dmpx_hit_factor:<name>`). Above 400 hits the sums are halved, so old hits fade.
+- All fighters' hits count together (`bot_hit_factor:<name>`). Above 400 hits the sums are halved, so old hits fade.
 - `/safety` lists the factors at the end.
 - Mobbed hits (with `mobbing`) are not learned, because the mobbing model covers them.
 - Why: iceroamers hit for 337–365 where the formula says about 150, after Agitate pulled four of them. That turned out to be mobbing, so the factor is now only a safety net.
@@ -503,7 +505,7 @@ The solo pack checks count the attack loss when a pull goes over our courage. Si
 
 **Too strong** (v1.206.1).
 - **One spot:** a spot that fails the [spot check](#11-safety-checks) is blocked on its own until the Cavalry is ready: at least 10 min, in memory only (without the Cavalry: `crowdedForMs`). The next spawn of the kind is tried.
-- **The whole kind:** when every spot of a kind fails, or the grown monsters in sight all fail the safety check, the kind is blocked until the Cavalry is ready to reset it ([§15](#15-cavalry-tracktrix)) (`dmpx_strong_spots`, log `X too strong here (...)`), and a hunt on it is skipped ("every X spot taken or too strong"). Without the Cavalry the kind is skipped like a crowded spot instead.
+- **The whole kind:** when every spot of a kind fails, or the grown monsters in sight all fail the safety check, the kind is blocked until the Cavalry is ready to reset it ([§15](#15-cavalry-tracktrix)) (`bot_strong_spots`, log `X too strong here (...)`), and a hunt on it is skipped ("every X spot taken or too strong"). Without the Cavalry the kind is skipped like a crowded spot instead.
 
 ## 13. Picking the next monster
 
@@ -565,7 +567,7 @@ The Tracktrix (`tracker`, kept in every fighter's bag) calls the Cavalry. It is 
 
 **Plans** (`cavalryPlan`). A too-strong or crowded first farm target is reset as soon as the Cavalry is ready. `cavalry.targets` (empty) would name spots to nuke for their loot.
 
-The cooldown is shared by the account (`dmpx_cavalry_next`, at least 10 min).
+The cooldown is shared by the account (`bot_cavalry_next`, at least 10 min).
 
 ## 16. Party play
 
@@ -615,6 +617,7 @@ A visible boss is checked with its live stats (bosses grow).
 **Search** (Phoenix).
 - The leader walks every spawn area and looks around 4 s at each. Any watched boss in sight ends the search.
 - After a kill, a slow boss (respawn > 200 s) is searched again at kill + respawn × 0.72. The Phoenix respawns after ~32 s at a random spot.
+- A kill is seen through the game's `death` message (own listener `__botBossDeathFn`): the boss fight ends at once. Without it a boss ends 30 s after it was last seen ("gone without a kill seen"). v1.227.5-v1.232.0 lost that listener to the kill log's of the same name - every boss ended by the 30 s timeout, and the respawn rule above never ran (fixed in v1.232.1).
 - **Parallel search** (party, `splitSearch`): the leader splits the areas between the fighters. A finder reports, the team meets at the finder, and the leader waits at most 4 min for the others' areas.
 
 **Runner** (`events.runner`, party only).
@@ -632,20 +635,20 @@ A visible boss is checked with its live stats (bosses grow).
 - **Never touched by area skills** (`noArea`): no Taunt on it, no Agitate with it within 320 + 80 px, no Cleave/Stomp with it near, never in the ranger's 3-Shot, no Absorb Sins on an ally it targets (luck catch too).
 - Drops (game data): Fun Tokens (weight 1000 + 2x 10), seashells, crab claws, a shell; achievements +1 luck at 100 kills.
 
-**Witch's Cipher farming** (`events.witchCipher`, v1.221.0, player decision). The four ingredients (verdantspore, frostscale, embercoal, gloomfeather) drop only in the event's 20-minute gathering phase, 0.3 % per 1,000 monster HP at luck 1 - so the yield follows our damage, not the spot (~15 per round). From `leadMs` 10 min before a round (read from `server.status.schedule`) until `gather_end` the leader farms the ingredient the merchant reports as scarcest (bank snapshot + its bag, `dmpx_cipher_stock`; ties at random, fixed per round): the first spot of `spots[ingredient]` the safety checks do not block, above hunts, drop routes and the guide; meanwhile no roaming bosses, boss searches (team, runner, merchant) or Daisy trips. No report: `fallback` (embercoal). No ingredient is sold (embercoal left the sell list in v1.220.5). Brewing at the Witch comes later.
+**Witch's Cipher farming** (`events.witchCipher`, v1.221.0, player decision). The four ingredients (verdantspore, frostscale, embercoal, gloomfeather) drop only in the event's 20-minute gathering phase, 0.3 % per 1,000 monster HP at luck 1 - so the yield follows our damage, not the spot (~15 per round). From `leadMs` 10 min before a round (read from `server.status.schedule`) until `gather_end` the leader farms the ingredient the merchant reports as scarcest (bank snapshot + its bag, `bot_cipher_stock`; ties at random, fixed per round): the first spot of `spots[ingredient]` the safety checks do not block, above hunts, drop routes and the guide; meanwhile no roaming bosses, boss searches (team, runner, merchant) or Daisy trips. No report: `fallback` (embercoal). No ingredient is sold (embercoal left the sell list in v1.220.5). Brewing at the Witch comes later.
 
 **Cave of Many Dreams, manual mode** (`config.cave`, v1.231.0, player decision 2026-11-24; `core/cave.js`, slot 41 `bot_cave`; game facts and all 50 encounters in [docs/cave-of-many-dreams.md](docs/cave-of-many-dreams.md)). The player enters at Dorr - the bot never calls `cave_enter()` - and walks the leader outside fights. While `character.cave` is set and `mode` is `"manual"`:
 - **Fights** only what the player starts (a target set on the leader by hand: the leader's current target) or what attacks the party; members also take the leader's target. Never a free pull, rare monster or spot walk (`targeting` farm `cave`); the leader stands still outside fights, kiting and covering work as usual in a fight. `neverFight` (Dark Mage) is never attacked.
 - **Off in the cave:** events, boss searches, supply calls (the merchant's call too), Daisy, Cavalry, rage-zone walks, magiport; Agitate, Cleave and Stomp (`noArea`: `util.noAreaNear` answers "yes"), the mage's Blaster (staff and book back). Nothing at all while the cave is paused (a vote). No respawn of our own (Nera: free at the doorway, 1 Amber in place - the player decides).
 - **Votes:** every member votes what its leader voted - the leader's `cave_request("vote")` (by hand in the UI or by code) is wrapped and sent as a CODE message `cavevote`; a leader vote found in the cave state wins. Members never vote on their own.
 - **Chests:** everyone opens cave chests within 400 px (cave gold and Amber go to the shared purse).
-- **Recorder** (`record`): cave states (`character.on("cave")`), every cave request and its result, and every `entsEveryMs` the cave's monsters/NPCs with all flat fields - in the storage `dmpx_cave_rec:<name>` (leader 400 entries, members 150), for the later automation. Since v1.231.5 a state is kept only when more than the clock changed (the first run filled 236 of 300 entries with one-second clock states), without the phrase objects, up to 12,000 chars; every reward goes in once as a `reward` entry; entities keep only game fields; a full storage drops the oldest half.
-- **`/manual [on|off]`** (v1.231.1, chat command in the leader's client): the same fight rules outside the cave, so the player can walk the leader (e.g. to Dorr) without stopping its code. The leader keeps broadcasting its position (field `manual`), the members follow it across maps and use the same rules. Kept across code loads (`dmpx_manual:<name>`) until `/manual` again; no events, supply, Daisy or Cavalry meanwhile, and no Agitate, Cleave or Stomp (v1.231.2, `util.setNoAreaHook`). Switching it off picks a farm target again at once (v1.231.2). Respawn and chests stay normal outside the cave. Healing walks of the priest stay (a hurt member counts as a fight).
+- **Recorder** (`record`): cave states (`character.on("cave")`), every cave request and its result, and every `entsEveryMs` the cave's monsters/NPCs with all flat fields - in the storage `bot_cave_rec:<name>` (leader 400 entries, members 150), for the later automation. Since v1.231.5 a state is kept only when more than the clock changed (the first run filled 236 of 300 entries with one-second clock states), without the phrase objects, up to 12,000 chars; every reward goes in once as a `reward` entry; entities keep only game fields; a full storage drops the oldest half.
+- **`/manual [on|off]`** (v1.231.1, chat command in the leader's client): the same fight rules outside the cave, so the player can walk the leader (e.g. to Dorr) without stopping its code. The leader keeps broadcasting its position (field `manual`), the members follow it across maps and use the same rules. Kept across code loads (`bot_manual:<name>`) until `/manual` again; no events, supply, Daisy or Cavalry meanwhile, and no Agitate, Cleave or Stomp (v1.231.2, `util.setNoAreaHook`). Switching it off picks a farm target again at once (v1.231.2). Respawn and chests stay normal outside the cave. Healing walks of the priest stay (a hurt member counts as a fight).
 - Entering: whether every member must choose Enter at Dorr itself is unknown until the first run - start warrior and mage in their own clients beforehand.
 
 **Merchant search** (`events.scout`, v1.220.0, player decision; `roles/scout.js`, slot 40 `bot_scout`).
 - **Lists:** the merchant searches the bosses on `scout.bosses` (Phoenix, Dracul, Ms. Dracul, Skeletor, Green Jr.); the runner keeps `runner.bosses` and searches Jr. (Spooky Town: rage zones, Vampire Rats on the way). The three fighters stay at the farm spot and only leave when the merchant reports a find.
-- **How:** the leader keeps the search timers, pauses and boss checks and writes the due bosses into the shared storage (`dmpx_scout_plan`). The merchant walks a round over their spawn areas after pickups and deliveries, before its chores (maps in `mapOrder`, nearest area first, areas within 150 px of each other once). A boss in sight stops the walk; it is reported like a member's sighting (the team walks to where the merchant stands). **Report and walk on** (v1.220.2, player decision): the merchant sends the find every second for `reportMs` 3 s (a step to `keepAway` 250 px first when closer) and goes on with its round. The leader holds a merchant's report up to `holdMs` 3 min instead of a member's 10 s (the walk from the farm spot takes 60-90 s; at 06:09 the team turned back after 32 s) - or until one of us stood within `arriveRadius` 300 px of the reported boss for `arriveGraceMs` 10 s without seeing it (gone); our own sightings take over on the way. Bosses on `scout.watch` (empty) are watched instead: the merchant keeps `keepAway` px and reports until a fighter is within `teamNear` 300 px, it is gone (`lostMs` 8 s out of sight, meanwhile it walks back toward the last spot) or `watchMs` 3 min ran out. After the round it reports each boss (`scoutdone`); not found (or found but not engaged): searched again on its timer. Only a boss whose areas were all walked (or that was found) is reported - a round cut short leaves the rest due (v1.220.4); the leader writes the plan every tick, also during its own searches and fights.
+- **How:** the leader keeps the search timers, pauses and boss checks and writes the due bosses into the shared storage (`bot_scout_plan`). The merchant walks a round over their spawn areas after pickups and deliveries, before its chores (maps in `mapOrder`, nearest area first, areas within 150 px of each other once). A boss in sight stops the walk; it is reported like a member's sighting (the team walks to where the merchant stands). **Report and walk on** (v1.220.2, player decision): the merchant sends the find every second for `reportMs` 3 s (a step to `keepAway` 250 px first when closer) and goes on with its round. The leader holds a merchant's report up to `holdMs` 3 min instead of a member's 10 s (the walk from the farm spot takes 60-90 s; at 06:09 the team turned back after 32 s) - or until one of us stood within `arriveRadius` 300 px of the reported boss for `arriveGraceMs` 10 s without seeing it (gone); our own sightings take over on the way. Bosses on `scout.watch` (empty) are watched instead: the merchant keeps `keepAway` px and reports until a fighter is within `teamNear` 300 px, it is gone (`lostMs` 8 s out of sight, meanwhile it walks back toward the last spot) or `watchMs` 3 min ran out. After the round it reports each boss (`scoutdone`); not found (or found but not engaged): searched again on its timer. Only a boss whose areas were all walked (or that was found) is reported - a round cut short leaves the rest due (v1.220.4); the leader writes the plan every tick, also during its own searches and fights.
 - **Fallback:** the runner / the team Phoenix search step in as before while the merchant is not available (no heartbeat on our server for `freshMs`, Ponty round, trade trip, paused for `pauseAfterDeathMs` after dying on a round) or a boss is overdue by `fallbackMs` 10 min (a boss on the merchant's running round counts as its job for `lapMaxMs` 15 min).
 - **Safe walking** (`scout.safeWalk`): every path walk of the merchant (also pickups, bank, Ponty) plans around aggressive monsters in sight without a target (`pad` 100 px: aggro picks players within the neighbouring 32-px cells only), rage zones and the `travel.wallMonsters` spawns (`ragePad` 100). Since v1.220.3 (player decision) only monsters that kill the merchant in `hits` 2 hits count (their hit on it with its armor/resistance, x1.1, times 2 reaches its max HP): with 1,400 HP Skeletor and Ms. Dracul, not bats, CGoos, Fire Spirits, Dracul or the Phoenix - every aggressive kind had walled the cave and arena paths. Rage zones always stay walls. No path with the walls: walls off for `offMs` 60 s and the walk is planned again. Log tag `[scout]`.
 
@@ -673,7 +676,7 @@ The hunt expiring first wins.
 Items that can't be bought come before XP when they are worth more (`drops`).
 
 1. **What is missing.** The merchant reports, every 5 min, the wished items it lacks copies for, plus `drops.want` (50 Armor Boxes).
-2. **Routes.** The leader asks its guide and the game's drop tables where each item drops. Only team-safe routes that take at most `maxHoursPerCopy` (4 h) per copy are kept. Bosses are excluded. **Luck** (v1.227.0): every route's chance counts `luckm` × the encouragement luck bonus (`character.encouragement.totals.luck`: Welcome Back, Lone Wolf). Server: each roll is chance × luckm × monster level; the bonus is one extra roll per contributor with share × (bonus − 1) and his full luckm - solo exactly luckm × bonus. In the party (v1.227.5) the sum is counted exactly: the normal roll with the luck of each kill's target at death (kill log, last 10 min - the luck catcher's share), plus (bonus − 1) × each member's damage share (meter, last 5 min) × its own luckm; members report their luckm with the goldm message. Heal points, which the server counts as contribution too, are not in the meter, so the estimate errs slightly low. The guide's rates are the plain table values, so the factor applies to its routes too (before only our own table routes, and only solo).
+2. **Routes.** The leader asks its guide and the game's drop tables where each item drops. Only team-safe routes that take at most `maxHoursPerCopy` (100 h since v1.232.0, player decision 2026-11-24 - a sanity cap; was 4 h) per copy are kept. Bosses are excluded. **Luck** (v1.227.0): every route's chance counts `luckm` × the encouragement luck bonus (`character.encouragement.totals.luck`: Welcome Back, Lone Wolf). Server: each roll is chance × luckm × monster level; the bonus is one extra roll per contributor with share × (bonus − 1) and his full luckm - solo exactly luckm × bonus. In the party (v1.227.5) the sum is counted exactly: the normal roll with the luck of each kill's target at death (kill log, last 10 min - the luck catcher's share), plus (bonus − 1) × each member's damage share (meter, last 5 min) × its own luckm; members report their luckm with the goldm message. Heal points, which the server counts as contribution too, are not in the meter, so the estimate errs slightly low. The guide's rates are the plain table values, so the factor applies to its routes too (before only our own table routes, and only solo).
 3. **By value** (`byValue`). The leader compares the XP spot with each drop spot: XP value plus gear value (the wish's gain per hour). A drop spot must be worth `valueSwitch` (1.2 ×) the current choice to switch.
    - Log: `[drops] value: XP spot X%/h vs <monster> Y%/h -> …`.
 4. **Spot gold** (`spotGold`). Every fighter measures its loot gold per farm target over 3 h, but only while the whole team farms together. The merchant prices buy orders from these numbers ([§32](#32-money-pots-budgets-and-prices)).
@@ -783,7 +786,7 @@ While the merchant walks over, the fighter keeps farming and sends its position 
 ## 22. Death handling
 
 On death the fighter logs the last 10 s of hits (`[death] last 10 s: …`).
-- **Blame:** the monster kind that dealt the most damage is blocked as a farm target for 1 h, stored across restarts (`dmpx_farm_experience`). A member reports it to the leader.
+- **Blame:** the monster kind that dealt the most damage is blocked as a farm target for 1 h, stored across restarts (`bot_farm_experience`). A member reports it to the leader.
 - **Respawn:** tried every 5 s. A priest about to revive us holds the respawn for 30 s.
 - **Bosses:** see [§17](#17-events-and-world-bosses) (pause after a death).
 - **Warrior Agitate:** see [§23](#warrior-classeswarrior) (Safety).
@@ -937,7 +940,7 @@ The merchant ticks every second.
 - **Trip:** take the items out of the bank → hop to that server → walk to the stand and trade → hop home.
   - The game limits trades to the buyer's gold; the merchant halves the quantity until it fits.
   - A failed trip blocks that offer for 30 min.
-- **Logs:** every trade goes to `dmpx_trade_log`.
+- **Logs:** every trade goes to `bot_trade_log`.
 
 ## 27. Ponty rounds over all servers
 
@@ -948,7 +951,7 @@ The merchant ticks every second.
    - bank if the bag is nearly full;
    - visit Ponty and buy what the rules allow ([§28](#28-workshop-wishes-and-upgrades));
    - with a full bag: bank and visit again (up to 2 times).
-3. **Home:** log `Ponty round done in N min: …` and append the round to `dmpx_ponty_round_log`.
+3. **Home:** log `Ponty round done in N min: …` and append the round to `bot_ponty_round_log`.
 
 **Home server** = the server in the leader's heartbeat. A merchant restarted elsewhere asks to hop home.
 
@@ -998,7 +1001,7 @@ A delivered wish is not fulfilled again for 6 h (rings and earrings excepted).
 - **Finds:** pieces nobody wished, rated by gain per gold against our best own upgrade. The best one worth it is bought (`buyFinds`), gets the main-stat scroll and is earmarked.
 - **Material sources:** Of-the-Dead +0 for Bones, Short Swords as bases ([§30](#30-workshop-weapons-and-material-goals)).
 - **Price rules:** at most 1.2 × our own cost (`maxShareOfOwn`) and at most 20 % of the gear pot (`maxShareOfPot`).
-- **Log:** every purchase goes to `dmpx_ponty_bought`.
+- **Log:** every purchase goes to `bot_ponty_bought`.
 
 ## 29. Workshop: gear goals and stages
 
@@ -1111,7 +1114,7 @@ The leader uses it to weigh drop spots ([§19](#19-drop-farming)).
 
 ## 33. Watchdog and server hops
 
-**Heartbeat.** Every bot writes `dmpx_beat:<name>` (`{at, server, hp, rip}`).
+**Heartbeat.** Every bot writes `bot_beat:<name>` (`{at, server, hp, rip}`).
 
 **Watchdog** (`watchdog`). The client that hosts a bot window restarts it when its heartbeat is 2 min old or the window is gone.
 - At most one restart per 10 min and 3 per hour; then it gives up with a red log.
@@ -1120,7 +1123,7 @@ The leader uses it to weigh drop spots ([§19](#19-drop-farming)).
 
 **Server hops.**
 - `change_server` is never used from code: from a bot window it opened a full game.
-- Instead the merchant writes a hop request (`dmpx_hop_request:<merchant>`). The client hosting the merchant's window re-creates it on the other server (hop watcher in `main.js`).
+- Instead the merchant writes a hop request (`bot_hop_request:<merchant>`). The client hosting the merchant's window re-creates it on the other server (hop watcher in `main.js`).
 - A merchant silent for 6 min on a round or trip away from home is brought home.
 
 ## 34. Rules the bot never breaks

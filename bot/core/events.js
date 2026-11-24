@@ -27,7 +27,7 @@ module.exports = function createEvents(ctx) {
     let searching = false;
     // boss -> timestamp; kept across restarts so a reload doesn't send the leader
     // searching right after a kill.
-    const SEARCH_KEY = "dmpx_boss_search:" + character.name;
+    const SEARCH_KEY = "bot_boss_search:" + character.name;
     const nextSearchAt = (function () {
         let stored = {};
         try { stored = get(SEARCH_KEY) || {}; } catch (e) { /* storage unavailable */ }
@@ -56,7 +56,7 @@ module.exports = function createEvents(ctx) {
     // The ingredients (verdantspore, frostscale, embercoal, gloomfeather) drop only during the event's 20-minute
     // gathering phase - 0.3 % per 1,000 monster HP at luck 1, so the yield follows our damage, not the spot. From
     // witchCipher.leadMs before the start until gather_end the leader farms the ingredient the merchant reports as
-    // scarcest (roles/scout.js: dmpx_cipher_stock, ties at random, fixed per round): the first spot of
+    // scarcest (roles/scout.js: bot_cipher_stock, ties at random, fixed per round): the first spot of
     // witchCipher.spots[ingredient] that is not blocked (crowded, too strong, a recent death) - targeting.currentFarm,
     // above hunts, drop routes and the guide. Meanwhile no roaming bosses, boss searches or Daisy trips (the whole
     // window counts). No spot passes: the normal choice. The schedule comes from server.status (a week ahead).
@@ -80,7 +80,7 @@ module.exports = function createEvents(ctx) {
         if (!win) { cipherLogged = null; return null; }
         let ing = null;
         try {
-            const s = get("dmpx_cipher_stock");
+            const s = get("bot_cipher_stock");
             // The live round's start carries milliseconds (…200568), the schedule's does not (…200000): same round
             // within 5 min (v1.223.4 - after the Snowman the leader fell back to embercoal, "no report").
             if (s && s.choice && Math.abs(s.choice.at - win.at) < 5 * 60 * 1000 && Date.now() - (s.at || 0) < 15 * 60 * 1000) ing = s.choice.ingredient;
@@ -98,7 +98,7 @@ module.exports = function createEvents(ctx) {
 
     // ---- the merchant searches bosses (events.scout, 2026-11-23, player decision) ---------------------
     // The bosses on scout.bosses are searched by the merchant (roles/scout.js) while the fighters farm on; the
-    // leader writes what is due into the shared storage (dmpx_scout_plan) and takes the merchant's results
+    // leader writes what is due into the shared storage (bot_scout_plan) and takes the merchant's results
     // (scoutdone). Fallback: the runner / team search as before while the merchant is not available (no fresh
     // heartbeat on our server, Ponty round, trade trip, paused after a death) or a boss is overdue by
     // scout.fallbackMs.
@@ -110,11 +110,11 @@ module.exports = function createEvents(ctx) {
         let ok = false, st = {};
         try {
             const m = config.merchant;
-            const b = get("dmpx_beat:" + m);
+            const b = get("bot_beat:" + m);
             const here = parent.server_region + " " + parent.server_identifier;
-            st = get("dmpx_scout:" + m) || {};
+            st = get("bot_scout:" + m) || {};
             ok = !!b && Date.now() - b.at < (scfg.freshMs || 90 * 1000) && b.server === here && !b.rip &&
-                !get("dmpx_ponty_round:" + m) && !get("dmpx_trade_trip:" + m) && !((st.pausedUntil || 0) > Date.now());
+                !get("bot_ponty_round:" + m) && !get("bot_trade_trip:" + m) && !((st.pausedUntil || 0) > Date.now());
         } catch (e) { ok = false; }
         scoutAvail = { at: Date.now(), ok: ok, st: st };
         return ok;
@@ -137,7 +137,7 @@ module.exports = function createEvents(ctx) {
         const key = due.join(",");
         if (key === planSent.key && Date.now() - planSent.at < 10 * 1000) return;
         planSent = { at: Date.now(), key: key };
-        try { set("dmpx_scout_plan", { at: Date.now(), leader: character.name, server: parent.server_region + " " + parent.server_identifier, due: due }); } catch (e) { /* storage unavailable */ }
+        try { set("bot_scout_plan", { at: Date.now(), leader: character.name, server: parent.server_region + " " + parent.server_identifier, due: due }); } catch (e) { /* storage unavailable */ }
     }
 
     // Bosses on config.events.farmBosses are hunted nonstop: the next search comes after
@@ -154,25 +154,28 @@ module.exports = function createEvents(ctx) {
     // searchEveryMs; the Phoenix (32 s) and anything not seen dying keep the normal timer.
     // The kill comes from the game's "death" message; the listener lives on the game page and
     // is swapped on each load (like the hit log).
+    // Its own listener name (v1.232.1): fighter.js's kill log used the same __botDeathFn and, loaded after us, took
+    // this listener off - since v1.227.5 every boss ended as "gone without a kill seen", 30 s after it was last seen
+    // (the team stood ~10-30 s after each kill), and respawn-aware searching never ran.
     const PAGE = parent;
     try {
-        if (PAGE.__dmpxDeathFn) PAGE.socket.off("death", PAGE.__dmpxDeathFn);
-        PAGE.__dmpxDeaths = PAGE.__dmpxDeaths || {};
-        PAGE.__dmpxDeathFn = function (d) {
+        if (PAGE.__botBossDeathFn) PAGE.socket.off("death", PAGE.__botBossDeathFn);
+        PAGE.__botDeaths = PAGE.__botDeaths || {};
+        PAGE.__botBossDeathFn = function (d) {
             try {
                 if (!d || !d.id) return;
                 const now = Date.now();
-                PAGE.__dmpxDeaths[d.id] = now;
-                Object.keys(PAGE.__dmpxDeaths).forEach(function (id) { if (now - PAGE.__dmpxDeaths[id] > 10 * 60 * 1000) delete PAGE.__dmpxDeaths[id]; });
+                PAGE.__botDeaths[d.id] = now;
+                Object.keys(PAGE.__botDeaths).forEach(function (id) { if (now - PAGE.__botDeaths[id] > 10 * 60 * 1000) delete PAGE.__botDeaths[id]; });
             } catch (e) { /* bookkeeping only */ }
         };
-        PAGE.socket.on("death", PAGE.__dmpxDeathFn);
+        PAGE.socket.on("death", PAGE.__botBossDeathFn);
     } catch (e) { /* no socket */ }
     function killedAt(id) {
         if (!id) return 0;
         const e = parent.entities && parent.entities[id];
         if (e && e.dead) return Date.now();
-        return (PAGE.__dmpxDeaths && PAGE.__dmpxDeaths[id]) || 0;
+        return (PAGE.__botDeaths && PAGE.__botDeaths[id]) || 0;
     }
     function respawnLater(name, killAt) {
         const resp = (G.monsters[name] && G.monsters[name].respawn) || 0;
@@ -209,7 +212,7 @@ module.exports = function createEvents(ctx) {
     // report only every 60 s, and until then the boss check said "waiting for the team's stats" -
     // a Phoenix in sight was left alone for up to a minute. Stored copies up to 30 min old count
     // as fresh right after the start (teamStats takes reports up to 3 min); new reports replace them.
-    const STATS_KEY = "dmpx_team_stats:" + character.name;
+    const STATS_KEY = "bot_team_stats:" + character.name;
     const stats = (function () {
         const out = {};
         try {
@@ -221,7 +224,7 @@ module.exports = function createEvents(ctx) {
         return out;
     })();                            // fighter -> { s, at }
     let lastStatsSent = 0;
-    const PAUSE_KEY = "dmpx_boss_pause:" + character.name;
+    const PAUSE_KEY = "bot_boss_pause:" + character.name;
     const paused = (function () { try { return get(PAUSE_KEY) || {}; } catch (e) { return {}; } })();
     const verdicts = {};             // boss -> { ok, why, at }
 
@@ -560,8 +563,8 @@ module.exports = function createEvents(ctx) {
     ctx.comms.on("bossdeath", function (data, from) {
         if (!leads || !data || !data.id) return;
         try {
-            PAGE.__dmpxDeaths = PAGE.__dmpxDeaths || {};
-            if (!PAGE.__dmpxDeaths[data.id]) PAGE.__dmpxDeaths[data.id] = Math.min(Date.now(), data.at || Date.now());
+            PAGE.__botDeaths = PAGE.__botDeaths || {};
+            if (!PAGE.__botDeaths[data.id]) PAGE.__botDeaths[data.id] = Math.min(Date.now(), data.at || Date.now());
         } catch (e) { /* bookkeeping only */ }
     });
     const reportedBoss = {}; // member: boss id -> { name, at } of our sightings, for the death report

@@ -58,37 +58,37 @@ module.exports = function createFighter(ctx, cls) {
     // log filled with "{}", 2026-11-18), and each load swaps the previous listener for its own.
     const PAGE = parent;
     try {
-        if (PAGE.__dmpxHitFn) PAGE.socket.off("hit", PAGE.__dmpxHitFn);
-        PAGE.__dmpxHits = PAGE.__dmpxHits || [];
-        PAGE.__dmpxHitFn = function (d) {
+        if (PAGE.__botHitFn) PAGE.socket.off("hit", PAGE.__botHitFn);
+        PAGE.__botHits = PAGE.__botHits || [];
+        PAGE.__botHitFn = function (d) {
             try {
                 if (!d || !d.damage || !PAGE.character || d.id !== PAGE.character.id) return;
                 const a = PAGE.entities && PAGE.entities[d.hid];
-                PAGE.__dmpxHits.push({ t: Date.now(), dmg: d.damage, who: a ? a.mtype + " L" + (a.level || 1) : String(d.hid || "?") });
+                PAGE.__botHits.push({ t: Date.now(), dmg: d.damage, who: a ? a.mtype + " L" + (a.level || 1) : String(d.hid || "?") });
                 util.noteHitTaken(d, a); // learned hit factor for the safety checks (2026-11-22)
-                while (PAGE.__dmpxHits.length && Date.now() - PAGE.__dmpxHits[0].t > HIT_LOG_MS) PAGE.__dmpxHits.shift();
+                while (PAGE.__botHits.length && Date.now() - PAGE.__botHits[0].t > HIT_LOG_MS) PAGE.__botHits.shift();
             } catch (e) { /* analysis only */ }
         };
-        PAGE.socket.on("hit", PAGE.__dmpxHitFn);
+        PAGE.socket.on("hit", PAGE.__botHitFn);
     } catch (e) { /* no socket */ }
     // Damage meter (player request 2026-11-19): real damage per second from the game's "hit"
     // events - ours, and on the leader every party member's it sees. Logged every
     // config.meter.everyMs, "/dps" prints it now. Listener swapped on each load like the one above.
     const meterCfg = config.meter || {};
     try {
-        if (PAGE.__dmpxDpsFn) PAGE.socket.off("hit", PAGE.__dmpxDpsFn);
-        PAGE.__dmpxDps = PAGE.__dmpxDps || [];
-        PAGE.__dmpxDpsFn = function (d) {
+        if (PAGE.__botDpsFn) PAGE.socket.off("hit", PAGE.__botDpsFn);
+        PAGE.__botDps = PAGE.__botDps || [];
+        PAGE.__botDpsFn = function (d) {
             try {
                 if (!d || !d.damage || !PAGE.entities || !d.hid) return;
                 const target = PAGE.entities[d.id];
                 if (!target || target.type !== "monster") return; // damage on monsters only (no heals, no hits on us)
-                PAGE.__dmpxDps.push({ t: Date.now(), who: String(d.hid), dmg: d.damage, kill: !!d.kill });
+                PAGE.__botDps.push({ t: Date.now(), who: String(d.hid), dmg: d.damage, kill: !!d.kill });
                 const keep = (meterCfg.windowMs || 5 * 60 * 1000) + 5000;
-                while (PAGE.__dmpxDps.length && Date.now() - PAGE.__dmpxDps[0].t > keep) PAGE.__dmpxDps.shift();
+                while (PAGE.__botDps.length && Date.now() - PAGE.__botDps[0].t > keep) PAGE.__botDps.shift();
             } catch (e) { /* meter only */ }
         };
-        PAGE.socket.on("hit", PAGE.__dmpxDpsFn);
+        PAGE.socket.on("hit", PAGE.__botDpsFn);
     } catch (e) { /* no socket */ }
     const meterStart = Date.now();
     let lastMeterLog = Date.now();
@@ -100,14 +100,14 @@ module.exports = function createFighter(ctx, cls) {
         if (win < 10 * 1000) return;
         const team = party.enabled ? party.memberNames() : [character.name];
         const per = {}; let total = 0, kills = 0;
-        (PAGE.__dmpxDps || []).forEach(function (h) {
+        (PAGE.__botDps || []).forEach(function (h) {
             if (now - h.t > win || !team.includes(h.who)) return;
             per[h.who] = (per[h.who] || 0) + h.dmg; total += h.dmg;
             if (h.kill) kills++;
         });
         const sec = win / 1000;
         const parts = Object.keys(per).sort(function (a, b) { return per[b] - per[a]; })
-            .map(function (n) { return n.replace(/^Dmpx/, "") + " " + Math.round(per[n] / sec); });
+            .map(function (n) { return util.shortName(n) + " " + Math.round(per[n] / sec); });
         util.log("dps", (team.length > 1 ? "team " : "") + Math.round(total / sec) + "/s over " + Math.round(sec / 60 * 10) / 10 + " min" +
             (parts.length > 1 ? " (" + parts.join(", ") + ")" : "") + ", " + kills + " kills", "white");
     }
@@ -117,27 +117,27 @@ module.exports = function createFighter(ctx, cls) {
     // so every tick notes each monster's target (noteTargets) and a death is counted under the last one seen - our
     // members by name, "none" (no target), "others" (another player). Logged with twice the damage meter's
     // interval, "/kills" prints it now.
-    PAGE.__dmpxLastTarget = PAGE.__dmpxLastTarget || {};
+    PAGE.__botLastTarget = PAGE.__botLastTarget || {};
     function noteTargets() {
         const now = Date.now();
         Object.values(PAGE.entities || {}).forEach(function (e) {
-            if (e && e.type === "monster" && !e.dead) PAGE.__dmpxLastTarget[e.id] = { target: e.target || "", mtype: e.mtype, t: now };
+            if (e && e.type === "monster" && !e.dead) PAGE.__botLastTarget[e.id] = { target: e.target || "", mtype: e.mtype, t: now };
         });
-        Object.keys(PAGE.__dmpxLastTarget).forEach(function (id) { if (now - PAGE.__dmpxLastTarget[id].t > 60 * 1000) delete PAGE.__dmpxLastTarget[id]; });
+        Object.keys(PAGE.__botLastTarget).forEach(function (id) { if (now - PAGE.__botLastTarget[id].t > 60 * 1000) delete PAGE.__botLastTarget[id]; });
     }
     try {
-        if (PAGE.__dmpxDeathFn) PAGE.socket.off("death", PAGE.__dmpxDeathFn);
-        PAGE.__dmpxKills = PAGE.__dmpxKills || [];
-        PAGE.__dmpxDeathFn = function (d) {
+        if (PAGE.__botDeathFn) PAGE.socket.off("death", PAGE.__botDeathFn);
+        PAGE.__botKills = PAGE.__botKills || [];
+        PAGE.__botDeathFn = function (d) {
             try {
-                const last = d && PAGE.__dmpxLastTarget && PAGE.__dmpxLastTarget[d.id];
+                const last = d && PAGE.__botLastTarget && PAGE.__botLastTarget[d.id];
                 if (!last) return; // not a monster we saw
-                PAGE.__dmpxKills.push({ t: Date.now(), target: last.target, mtype: last.mtype, luckm: d.luckm });
+                PAGE.__botKills.push({ t: Date.now(), target: last.target, mtype: last.mtype, luckm: d.luckm });
                 const keep = (meterCfg.windowMs || 5 * 60 * 1000) * 2 + 5000;
-                while (PAGE.__dmpxKills.length && Date.now() - PAGE.__dmpxKills[0].t > keep) PAGE.__dmpxKills.shift();
+                while (PAGE.__botKills.length && Date.now() - PAGE.__botKills[0].t > keep) PAGE.__botKills.shift();
             } catch (err) { /* statistics only */ }
         };
-        PAGE.socket.on("death", PAGE.__dmpxDeathFn);
+        PAGE.socket.on("death", PAGE.__botDeathFn);
     } catch (e) { /* no socket */ }
     let lastKillLog = Date.now();
     function killReport(force) {
@@ -147,7 +147,7 @@ module.exports = function createFighter(ctx, cls) {
         lastKillLog = now;
         const team = party.enabled ? party.memberNames() : [character.name];
         const by = {}, luck = {}; let total = 0;
-        (PAGE.__dmpxKills || []).forEach(function (k) {
+        (PAGE.__botKills || []).forEach(function (k) {
             if (now - k.t > every) return;
             const key = !k.target ? "none" : team.includes(k.target) ? k.target : "others";
             if (key === "others") return; // other players' fights: not ours
@@ -156,7 +156,7 @@ module.exports = function createFighter(ctx, cls) {
         });
         if (!total) { if (force) util.log("kills", "no kills of ours in the last " + Math.round(every / 60000) + " min", "white"); return; }
         const parts = Object.keys(by).sort(function (a, b) { return by[b] - by[a]; })
-            .map(function (n) { return n.replace(/^Dmpx/, "") + " " + by[n] + " (" + Math.round(by[n] / total * 100) + " %" + (luck[n] ? ", luck x" + (luck[n].s / luck[n].n).toFixed(2) : "") + ")"; });
+            .map(function (n) { return util.shortName(n) + " " + by[n] + " (" + Math.round(by[n] / total * 100) + " %" + (luck[n] ? ", luck x" + (luck[n].s / luck[n].n).toFixed(2) : "") + ")"; });
         util.log("kills", "by target at death, last " + Math.round(every / 60000) + " min: " + parts.join(", "), "white");
     }
     BOT_KILLS_REPORT = function () { killReport(true); };
@@ -170,7 +170,7 @@ module.exports = function createFighter(ctx, cls) {
     }
     function logDeathAnalysis() {
         const now = Date.now();
-        const hits = (PAGE.__dmpxHits || []).filter(function (h) { return now - h.t <= HIT_LOG_MS; });
+        const hits = (PAGE.__botHits || []).filter(function (h) { return now - h.t <= HIT_LOG_MS; });
         const by = {};
         hits.forEach(function (h) { const b = by[h.who] = by[h.who] || { n: 0, dmg: 0 }; b.n++; b.dmg += h.dmg; });
         const parts = Object.keys(by).sort(function (a, b) { return by[b].dmg - by[a].dmg; })
@@ -204,7 +204,7 @@ module.exports = function createFighter(ctx, cls) {
             // switched to booboos and the death closed the booboo spot.
             const dealt = {};
             const now = Date.now();
-            (PAGE.__dmpxHits || []).forEach(function (h) {
+            (PAGE.__botHits || []).forEach(function (h) {
                 if (now - h.t > HIT_LOG_MS) return;
                 const type = String(h.who || "").split(" ")[0];
                 if (G.monsters[type]) dealt[type] = (dealt[type] || 0) + h.dmg;
@@ -760,9 +760,9 @@ module.exports = function createFighter(ctx, cls) {
         quiet(move(x, y));
     }
     try {
-        if (parent.__dmpxUnstackFn) parent.socket.off("hit", parent.__dmpxUnstackFn);
-        parent.__dmpxUnstackFn = function (data) { try { unstack(data); } catch (e) { /* cosmetic only */ } };
-        parent.socket.on("hit", parent.__dmpxUnstackFn);
+        if (parent.__botUnstackFn) parent.socket.off("hit", parent.__botUnstackFn);
+        parent.__botUnstackFn = function (data) { try { unstack(data); } catch (e) { /* cosmetic only */ } };
+        parent.socket.on("hit", parent.__botUnstackFn);
     } catch (e) { /* no socket */ }
 
     let passing = null; // { until, dest } while we pass through attackers on the way
@@ -997,7 +997,7 @@ module.exports = function createFighter(ctx, cls) {
     //   emergency: any fighter low on HP with level-3+ monsters on it
     //   reset:     the one who picks the spot (leader, solo, farming on its own) at its farm target
     //              when several of them in reach have grown (resetFromLevel)
-    const CAV_KEY = "dmpx_cavalry_next"; // account-wide: next possible call (ms)
+    const CAV_KEY = "bot_cavalry_next"; // account-wide: next possible call (ms)
     let cavTryAt = 0;
     function cavalryReady() {
         let next = 0;
@@ -1009,7 +1009,7 @@ module.exports = function createFighter(ctx, cls) {
         util.log("cavalry", "calling the Cavalry: " + why, "yellow");
         interact("cavalry").then(function (r) {
             const wait = (r && (r.cooldown_ms || (r.next_call ? new Date(r.next_call).getTime() - Date.now() : 0))) || 0;
-            try { set(CAV_KEY, Date.now() + Math.max(wait, 10 * 60 * 1000)); set("dmpx_cavalry_called", Date.now()); } catch (e) { /* storage unavailable */ }
+            try { set(CAV_KEY, Date.now() + Math.max(wait, 10 * 60 * 1000)); set("bot_cavalry_called", Date.now()); } catch (e) { /* storage unavailable */ }
             util.log("cavalry", "Cavalry answered (" + ((r && r.assigned) || 0) + " sentries" + (r && r.queued ? ", queued" : "") + ")", "green");
         }).catch(function (e) {
             const ms = e && (e.cooldown_ms || e.ms);
@@ -1612,8 +1612,8 @@ module.exports = function createFighter(ctx, cls) {
     function rageWallReset() { rageWallLevel = 0; }
     (function installRageWalls() {
         const W = window;
-        if (!W.__dmpxOrigCanMove) W.__dmpxOrigCanMove = W.can_move;
-        const orig = W.__dmpxOrigCanMove;
+        if (!W.__botOrigCanMove) W.__botOrigCanMove = W.can_move;
+        const orig = W.__botOrigCanMove;
         if (typeof orig !== "function") return;
         let cache = { at: 0, map: null, boxes: [] };
         function blocked(mapName) {
@@ -1685,12 +1685,12 @@ module.exports = function createFighter(ctx, cls) {
             if (((G.maps[character.map] || {}).doors || []).some(function (dr) { return dr[4] === to; })) return null;
             return { map: lv };
         }
-        if (!W.__dmpxOrigSmartMove && typeof W.smart_move === "function") {
-            W.__dmpxOrigSmartMove = W.smart_move;
+        if (!W.__botOrigSmartMove && typeof W.smart_move === "function") {
+            W.__botOrigSmartMove = W.smart_move;
             W.smart_move = function () {
                 const self = this, args = arguments;
                 function run(a) {
-                    return W.__dmpxOrigSmartMove.apply(self, a).catch(function (e) {
+                    return W.__botOrigSmartMove.apply(self, a).catch(function (e) {
                         const why = util.errReason(e);
                         if (/path not found|failed/i.test(why) && rageWallLoosen()) return run(a);
                         // Not even without walls (2026-11-22): the goal itself is unreachable - the walls weren't the

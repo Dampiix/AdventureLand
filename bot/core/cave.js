@@ -19,7 +19,7 @@ module.exports = function createCave(ctx) {
     const cfg = config.cave || {};
     const me = character.name;
     const isLeader = me === config.leader;
-    const REC_KEY = "dmpx_cave_rec:" + me;
+    const REC_KEY = "bot_cave_rec:" + me;
     const PAGE = parent;
 
     function inCave() { return !!character.cave; }
@@ -28,7 +28,7 @@ module.exports = function createCave(ctx) {
     // leader (e.g. to Dorr) without stopping its code, so the leader's position still goes out and the members follow
     // across maps. Kept in the storage across code loads until /manual again. Members take it from the leader's
     // broadcast (party "lead" message, field manual).
-    const MANUAL_KEY = "dmpx_manual:" + me;
+    const MANUAL_KEY = "bot_manual:" + me;
     let manual = false;
     try { manual = !!get(MANUAL_KEY); } catch (e) { /* storage unavailable */ }
     function setManual(on) {
@@ -149,22 +149,22 @@ module.exports = function createCave(ctx) {
     // ---- cave_request wrapper: records every request; the leader's votes go to the members --------------------
     // Installed once per page (the original is kept on the page), the hook replaced by every code load.
     try {
-        if (!PAGE.__dmpxCaveReqOrig && typeof PAGE.cave_request === "function") {
-            PAGE.__dmpxCaveReqOrig = PAGE.cave_request;
+        if (!PAGE.__botCaveReqOrig && typeof PAGE.cave_request === "function") {
+            PAGE.__botCaveReqOrig = PAGE.cave_request;
             PAGE.cave_request = function (name, args) {
-                try { if (PAGE.__dmpxCaveHook) PAGE.__dmpxCaveHook(name, args); } catch (e) { /* hook only */ }
-                const p = PAGE.__dmpxCaveReqOrig.apply(this, arguments);
+                try { if (PAGE.__botCaveHook) PAGE.__botCaveHook(name, args); } catch (e) { /* hook only */ }
+                const p = PAGE.__botCaveReqOrig.apply(this, arguments);
                 try {
-                    if (p && typeof p.then === "function" && PAGE.__dmpxCaveDone) {
-                        p.then(function (r) { try { PAGE.__dmpxCaveDone(name, args, r, null); } catch (e) { /* hook only */ } },
-                            function (er) { try { PAGE.__dmpxCaveDone(name, args, null, er); } catch (e) { /* hook only */ } });
+                    if (p && typeof p.then === "function" && PAGE.__botCaveDone) {
+                        p.then(function (r) { try { PAGE.__botCaveDone(name, args, r, null); } catch (e) { /* hook only */ } },
+                            function (er) { try { PAGE.__botCaveDone(name, args, null, er); } catch (e) { /* hook only */ } });
                     }
                 } catch (e) { /* hook only */ }
                 return p;
             };
         }
     } catch (e) { util.log("cave", "could not wrap cave_request: " + util.errReason(e), "orange"); }
-    PAGE.__dmpxCaveHook = function (name, args) {
+    PAGE.__botCaveHook = function (name, args) {
         if (name === "info") return; // asked often by the client, nothing to learn
         record("req", { name: name, args: args || null });
         if (name === "vote" && isLeader && args && args.choice != null && args.option != null) {
@@ -173,7 +173,7 @@ module.exports = function createCave(ctx) {
             util.log("cave", "voted " + args.option + " - members follow", "yellow");
         }
     };
-    PAGE.__dmpxCaveDone = function (name, args, result, error) {
+    PAGE.__botCaveDone = function (name, args, result, error) {
         if (name === "info") return;
         // A result carrying the whole cave state (talk, enter): the state goes through onState, the entry keeps the rest.
         let r = result;

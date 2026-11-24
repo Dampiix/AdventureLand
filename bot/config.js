@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.231.5",
+    version: "1.233.0",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -452,7 +452,7 @@ module.exports = {
 
     // Monster Hunts (Daisy). Unsafe hunts are left to expire.
     hunts: {
-        enabled: false, // off for VizMage's solo run 2026-11-23; stays off in the party test 2026-11-23 22:00 local (player decision)
+        enabled: true, // back on 2026-11-24 once VizMage reached level 65 (player decision; off since VizMage's solo run 2026-11-23)
         minLevel: 20,                    // only once every fighter has this level (Daisy ignores our level)
         allow: [],                       // always hunt these, even if the guide calls them unsafe
         deny: [],                        // never hunt these
@@ -479,7 +479,10 @@ module.exports = {
     // guide names the best drop route and its expected time.
     drops: {
         enabled: true,
-        maxHoursPerCopy: 4,         // slower drops are not farmed (guide's own time estimate)
+        // Slower drops are not farmed (guide's own time estimate). 100 h from 2026-11-24 (player decision, was 4): only a
+        // sanity cap against "practically never" now - rare wishes (Winged Boots +7) compete by value; no rotation yet,
+        // the best-valued target is farmed and watched first.
+        maxHoursPerCopy: 100,
         refreshMs: 5 * 60 * 1000,   // leader re-asks the guide this often
         reportMs: 5 * 60 * 1000,    // merchant reports shortages this often
         // Extra stock to collect even without a wish: { name, copies } (bag + bank, any level)
@@ -919,7 +922,7 @@ module.exports = {
     // travels or pulls on its own; members follow the leader and vote what it voted; no Agitate/Cleave/Stomp (noArea),
     // no Blaster, no magiport, events, supply or Cavalry; no respawn of our own (Nera: free at the doorway, Amber in
     // place). Cave chests within 400 px are opened by everyone. neverFight: never attacked, also when it hits us.
-    // The recorder keeps states, requests, results and the cave's entities in the storage ("dmpx_cave_rec:<name>").
+    // The recorder keeps states, requests, results and the cave's entities in the storage ("bot_cave_rec:<name>").
     cave: {
         mode: "manual",
         noArea: true,

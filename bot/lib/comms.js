@@ -4,7 +4,7 @@
 // that are not in config.characters are ignored.
 // =====================================================================
 
-const PROTOCOL = "dmpx1";
+const PROTOCOL = "bot1";
 
 module.exports = function createComms(config, util) {
     const handlers = {};

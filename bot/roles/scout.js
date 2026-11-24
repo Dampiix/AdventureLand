@@ -8,7 +8,7 @@
 // fighters stay at the spot and only leave when it reports a find. Jr. (Spooky Town: rage zones,
 // Vampire Rats on the way) stays on the runner's list.
 //   - The leader decides what is due (its search timers, pauses and boss checks) and writes the
-//     plan into the shared storage (dmpx_scout_plan); the merchant only reads it.
+//     plan into the shared storage (bot_scout_plan); the merchant only reads it.
 //   - A boss in sight: reported like a member's sighting (bosssight, every 2 s), the walk stops,
 //     the merchant keeps scout.keepAway px from it and watches it until a fighter is near it, it
 //     is gone or scout.watchMs ran out - then it walks on.
@@ -32,8 +32,8 @@ module.exports = function createScout(ctx) {
     const ev = config.events || {};
     const sc = ev.scout || {};
     const wcfg = sc.safeWalk || {};
-    const PLAN_KEY = "dmpx_scout_plan";
-    const STATE_KEY = "dmpx_scout:" + character.name;
+    const PLAN_KEY = "bot_scout_plan";
+    const STATE_KEY = "bot_scout:" + character.name;
 
     // ---- safe walking ----------------------------------------------------------------------
     // Only monsters that kill us in safeWalk.hits hits (2026-11-23, player decision): every aggressive kind walled
@@ -48,8 +48,8 @@ module.exports = function createScout(ctx) {
     (function installSafeWalls() {
         if (wcfg.enabled === false) return;
         const W = window;
-        if (!W.__dmpxOrigCanMove) W.__dmpxOrigCanMove = W.can_move;
-        const orig = W.__dmpxOrigCanMove;
+        if (!W.__botOrigCanMove) W.__botOrigCanMove = W.can_move;
+        const orig = W.__botOrigCanMove;
         if (typeof orig !== "function") return;
         let cache = { at: 0, map: null, goal: "", boxes: [] };
         function blocked(mapName) {
@@ -94,16 +94,16 @@ module.exports = function createScout(ctx) {
             }
             return true;
         }
-        if (!W.__dmpxOrigSmartMove && typeof W.smart_move === "function") {
-            W.__dmpxOrigSmartMove = W.smart_move;
+        if (!W.__botOrigSmartMove && typeof W.smart_move === "function") {
+            W.__botOrigSmartMove = W.smart_move;
             W.smart_move = function () {
                 const self = this, args = arguments;
-                return W.__dmpxOrigSmartMove.apply(self, args).catch(function (e) {
+                return W.__botOrigSmartMove.apply(self, args).catch(function (e) {
                     const why = util.errReason(e);
                     if (/path not found|failed/i.test(why) && Date.now() >= wallsOffUntil) {
                         wallsOffUntil = Date.now() + (wcfg.offMs || 60 * 1000);
                         util.log("scout", "no path around the monsters - walls off for " + Math.round((wcfg.offMs || 60 * 1000) / 1000) + " s", "orange");
-                        return W.__dmpxOrigSmartMove.apply(self, args);
+                        return W.__botOrigSmartMove.apply(self, args);
                     }
                     throw e;
                 });
@@ -374,7 +374,7 @@ module.exports = function createScout(ctx) {
     }
 
     // ---- Witch's Cipher stock (events.witchCipher, 2026-11-23) ---------------------------------------
-    // Every 30 s: the four ingredients in the bank (last bank snapshot) and our bag into dmpx_cipher_stock. Once the
+    // Every 30 s: the four ingredients in the bank (last bank snapshot) and our bag into bot_cipher_stock. Once the
     // farming window of the next round opens (leadMs before its start), the scarcest one is chosen - ties at random -
     // and kept for that round; the leader farms it (events.cipherFarm).
     const wc = ev.witchCipher || {};
@@ -398,7 +398,7 @@ module.exports = function createScout(ctx) {
         return evs.length ? evs[0].at : null;
     }
     let cipherChoice = null; // { at, ingredient }
-    try { const old = get("dmpx_cipher_stock"); if (old && old.choice) cipherChoice = old.choice; } catch (e) { /* none */ }
+    try { const old = get("bot_cipher_stock"); if (old && old.choice) cipherChoice = old.choice; } catch (e) { /* none */ }
     setInterval(function () {
         if (!wc.farm) return;
         try {
@@ -411,7 +411,7 @@ module.exports = function createScout(ctx) {
                 util.log("scout", "Witch's Cipher at " + new Date(at).toISOString().slice(11, 16) + "Z: farm " + cipherChoice.ingredient + " (stock " +
                     INGREDIENTS.map(function (n) { return n + " " + counts[n]; }).join(", ") + ")", "yellow");
             }
-            set("dmpx_cipher_stock", { at: Date.now(), counts: counts, choice: cipherChoice });
+            set("bot_cipher_stock", { at: Date.now(), counts: counts, choice: cipherChoice });
         } catch (e) { /* next round */ }
     }, 30 * 1000);
 

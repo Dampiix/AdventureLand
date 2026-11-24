@@ -58,7 +58,7 @@ module.exports = function createTargeting(ctx) {
     let lastSkipLog = "";
 
     const PROVEN_MS = 15 * 60 * 1000;
-    const EXP_KEY = "dmpx_farm_experience:" + character.name;
+    const EXP_KEY = "bot_farm_experience:" + character.name;
     const experience = (function () { // monster -> { ms, at, bad }
         try { return get(EXP_KEY) || {}; } catch (e) { return {}; }
     })();
@@ -1390,18 +1390,18 @@ module.exports = function createTargeting(ctx) {
     let win = null; // { monster, start, last, idle }
     // A spot found crowded again soon after the last time is skipped longer each time
     // (crowdedForMs, doubled per repeat up to crowdedMaxMs). Kept across restarts.
-    const CROWD_KEY = "dmpx_crowded:" + character.name;
+    const CROWD_KEY = "bot_crowded:" + character.name;
     const crowdHistory = (function () { try { return get(CROWD_KEY) || {}; } catch (e) { return {}; } })(); // monster -> { n, at, until }
     Object.keys(crowdHistory).forEach(function (m) { if (crowdHistory[m].until > Date.now()) crowdedUntil[m] = crowdHistory[m].until; });
     // Too strong, not taken (player decision 2026-11-21): grown monsters (booboos at level 3-19) made
     // the spot "crowded" for 4 h and the team came back to the same grown pack. Now it waits for the
     // Cavalry: blocked until the Cavalry is ready, then cavalryPlan resets it (sentries kill the grown
     // ones, they respawn at level 1) and the block is gone.
-    const STRONG_KEY = "dmpx_strong_spots:" + character.name;
+    const STRONG_KEY = "bot_strong_spots:" + character.name;
     const strongSpots = (function () { try { return get(STRONG_KEY) || {}; } catch (e) { return {}; } })(); // monster -> since
     Object.keys(strongSpots).forEach(function (m) { crowdedUntil[m] = Math.max(crowdedUntil[m] || 0, cavalryNext()); }); // after a restart too
     function saveStrong() { try { set(STRONG_KEY, strongSpots); } catch (e) { /* storage unavailable */ } }
-    function cavalryNext() { try { return get("dmpx_cavalry_next") || 0; } catch (e) { return 0; } }
+    function cavalryNext() { try { return get("bot_cavalry_next") || 0; } catch (e) { return 0; } }
     function tooStrongHere(m) {
         const ns = noneSeen[m];
         return !!(ns && Date.now() - ns.at < 3 * 60 * 1000 && ns.unsafe > 0 && ns.taken === 0);
@@ -1600,11 +1600,11 @@ module.exports = function createTargeting(ctx) {
     // Cavalry readiness as the fighter records it (account-wide, see fighter.cavalryTick).
     function cavalryReady() {
         let next = 0;
-        try { next = get("dmpx_cavalry_next") || 0; } catch (e) { /* storage unavailable */ }
+        try { next = get("bot_cavalry_next") || 0; } catch (e) { /* storage unavailable */ }
         return Date.now() >= next;
     }
     function cavalryCalledAt() {
-        try { return get("dmpx_cavalry_called") || 0; } catch (e) { return 0; }
+        try { return get("bot_cavalry_called") || 0; } catch (e) { return 0; }
     }
     let cavPlan = null; // { monster, mode: "reset" | "nuke", since }
     // A spot of `type` found too strong that the team could take with fresh level-1 monsters (the Cavalry's reset
@@ -1769,23 +1769,23 @@ module.exports = function createTargeting(ctx) {
     // The listeners live on the game page and are swapped on each load (like the hit log).
     const PAGE = parent;
     try {
-        if (PAGE.__dmpxActFn) PAGE.socket.off("action", PAGE.__dmpxActFn);
-        if (PAGE.__dmpxActHitFn) PAGE.socket.off("hit", PAGE.__dmpxActHitFn);
-        PAGE.__dmpxInflight = {};
-        PAGE.__dmpxDoomedSkips = PAGE.__dmpxDoomedSkips || 0;
-        PAGE.__dmpxActFn = function (d) {
+        if (PAGE.__botActFn) PAGE.socket.off("action", PAGE.__botActFn);
+        if (PAGE.__botActHitFn) PAGE.socket.off("hit", PAGE.__botActHitFn);
+        PAGE.__botInflight = {};
+        PAGE.__botDoomedSkips = PAGE.__botDoomedSkips || 0;
+        PAGE.__botActFn = function (d) {
             try {
                 if (!d || !d.damage || d.heal || !d.target || !d.pid) return;
                 const t = PAGE.entities && PAGE.entities[d.target];
                 if (!t || t.type !== "monster") return;
-                PAGE.__dmpxInflight[d.pid] = { target: d.target, attacker: d.attacker, type: d.type, damage: d.damage, until: Date.now() + (d.eta || 0) + 600 };
+                PAGE.__botInflight[d.pid] = { target: d.target, attacker: d.attacker, type: d.type, damage: d.damage, until: Date.now() + (d.eta || 0) + 600 };
             } catch (e) { /* estimate only */ }
         };
-        PAGE.__dmpxActHitFn = function (d) {
-            try { if (d && d.pid && PAGE.__dmpxInflight) delete PAGE.__dmpxInflight[d.pid]; } catch (e) { /* estimate only */ }
+        PAGE.__botActHitFn = function (d) {
+            try { if (d && d.pid && PAGE.__botInflight) delete PAGE.__botInflight[d.pid]; } catch (e) { /* estimate only */ }
         };
-        PAGE.socket.on("action", PAGE.__dmpxActFn);
-        PAGE.socket.on("hit", PAGE.__dmpxActHitFn);
+        PAGE.socket.on("action", PAGE.__botActFn);
+        PAGE.socket.on("hit", PAGE.__botActHitFn);
     } catch (e) { /* no socket */ }
     // Dies within `hits` hits of our strongest fighter (or the damage on its way kills it already). For the luck catch
     // (2026-11-22, player decision): drops are rolled with the luck of the character the monster TARGETS when it dies.
@@ -1820,7 +1820,7 @@ module.exports = function createTargeting(ctx) {
     }
     // Will the damage already on its way kill this monster? (armor/resistance via util.damageMultiplier)
     function doomed(t) {
-        const fl = PAGE.__dmpxInflight;
+        const fl = PAGE.__botInflight;
         if (!t || !fl) return false;
         const def = G.monsters[t.mtype] || {};
         if (t.avoidance || def.avoidance) return false;
@@ -1844,7 +1844,7 @@ module.exports = function createTargeting(ctx) {
     }
     function skipDoomed(t) {
         if (!doomed(t)) return false;
-        PAGE.__dmpxDoomedSkips = (PAGE.__dmpxDoomedSkips || 0) + 1;
+        PAGE.__botDoomedSkips = (PAGE.__botDoomedSkips || 0) + 1;
         return true;
     }
 
