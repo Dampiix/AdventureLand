@@ -1,6 +1,6 @@
 # Stage 6: workshop and merchant into their parts (plan, 2026-11-24)
 
-Status: **plan, not built.** Same branch (`modular-pilot`), **no change in behaviour**. Step 6 of the module plan.
+Status: **6a done (v1.237.14-pilot)**, 6b open. Same branch (`modular-pilot`), **no change in behaviour**. Step 6 of the module plan.
 
 ## Where we are
 
@@ -41,6 +41,13 @@ start-up statements in the old order and the same interface. The facades stay in
 | `scrolls.js` | value report, scroll choice (14) |
 | `ponty.js` | Ponty, other players' stands (21) |
 | facade `workshop.js` | one per character, the main step (12) |
+
+6a result: 15 parts + facade as planned (204 of 204 functions identical, 78 statements in order). Shared state
+`wks` (58 values; 10 only the facade uses stay there). Seven locals with the name of state or a function were checked
+by hand - they use only their own local; `workRound` has a block-local `key` and calls the outer `key()` elsewhere, so
+only its calls became `wks.key(`. `scripts/test-workshop.cjs`: old vs new with the real G and config, 7 scenarios
+(wishes from bag, bank and develop, compound, dismantle, exchange, gear goals) - the fake game changes items like the
+server (a dismantle removes the copy, ...).
 
 ### 6b. Merchant (`roles/merchant/`, 6 sections -> 6 parts + facade) and the scout
 

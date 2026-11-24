@@ -72,7 +72,7 @@
       "name": "bot_gear"
     },
     {
-      "file": "roles/workshop.js",
+      "file": "roles/workshop/workshop.js",
       "slot": 34,
       "name": "bot_workshop"
     },

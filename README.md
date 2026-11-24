@@ -3,7 +3,7 @@
 One bot for a whole Adventure Land team: up to three fighters and one merchant, all running the same code.
 The fighters farm, hunt bosses and level up; the merchant supplies them, sells, banks, trades with other players and upgrades their gear.
 
-> **Version:** `1.237.13-pilot` (`bot/config.js` → `version`) · **Teams:** `Dmpx…` (main account) and `Viz…` (second account) · **Code:** `bot/` → in-game CODE slots 20–41
+> **Version:** `1.237.14-pilot` (`bot/config.js` → `version`) · **Teams:** `Dmpx…` (main account) and `Viz…` (second account) · **Code:** `bot/` → in-game CODE slots 20–41
 
 ## Repository
 
@@ -317,7 +317,7 @@ Only `main.js` calls `require_code()`. Every other module is a factory that rece
 | [`team/party.js`](bot/team/party.js) | 31 `bot_party` | Invites, leader broadcast, following, team goal (bundle, stage 4a: with `safety/spots.js`; reads boss, search and manual from the bus) |
 | [`farming/hunts.js`](bot/farming/hunts.js) | 32 `bot_hunts` | Monster Hunts and Daisy trips (stage 3c: explicit deps config, util, comms, party, targeting, drops) |
 | [`core/gear.js`](bot/core/gear.js) | 33 `bot_gear` | Fighter wishes and equipping |
-| [`roles/workshop.js`](bot/roles/workshop.js) | 34 `bot_workshop` | Merchant: upgrades, gear goals, weapons, materials, pots, Ponty |
+| [`roles/workshop/`](bot/roles/workshop/) | 34 `bot_workshop` | Merchant: upgrades, gear goals, weapons, materials, pots, Ponty - `workshop.js` is the facade (bundle, stage 6a: one per character, the main step) of common, wishes, bank, budget, crafting, compound, dismantle, material-goals, exchange, grace, gear-goals, off-plan-armor, better-weapons, scrolls, ponty; the parts share one internal state `wks` |
 | [`core/events.js`](bot/core/events.js) | 35 `bot_events` | Events and world bosses - the facade (bundle, stage 4c) of `encounters/` (boss-check, boss-tracker, boss-search, encounters = the per-tick flow), `events/witch-cipher.js` and `team/team-port.js` (magiport consent); the parts share one internal state `evs` |
 | [`classes/ranger/`](bot/classes/ranger/) | 36 `bot_class_ranger` | Ranger (bundle, stage 2): `ranger.js`, `three-shot.js`, `sturdy-shots.js` (Hunter's Mark, Supershot, Poison Arrow) |
 | [`core/drops.js`](bot/core/drops.js) | 37 `bot_drops` | Drop farming and spot gold |

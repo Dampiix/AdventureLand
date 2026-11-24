@@ -4,7 +4,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.237.13-pilot",
+    version: "1.237.14-pilot",
 
     team: {
         // DampiixWar, Dampiix, DampiixPri, Dampiiix are an item archive: never list them (items would go to the merchant).
