@@ -112,6 +112,26 @@ reflect picks the member with the most magical attack on it. Run before every de
 - The tests run in Node.
 - We know the start time and sizes and have decided how the rest is deployed.
 
+## Result (2026-11-24)
+
+Done on `modular-pilot`: step 1 (2f25529), step 2 (e8fe1cd, v1.237.0-pilot), steps 3-4 (b20e14a, v1.237.1-pilot).
+- **util split**: 11 lib files behind the facade; 30 min live with all four characters - heartbeats fresh, journals,
+  ports, boss kills and bookings as before. In Node: old util and the facade (as files and as the bundle) give the same
+  results, log/status/move calls and storage for all 60 functions.
+- **mage**: class + 5 skill modules. Tests: 8 situations, the new class makes exactly the same game calls as the old
+  one. Live after the reload (18:30): Blaster on/off, Energize burst, Blink (1,282 px), team ports to Daisy, to the
+  Phoenix (warrior; the priest walked in close) and back to the Giant Scorpions. Reflective Shield not seen yet: the
+  scorpions deal physical damage (it needs 100+ magical attack on someone); the code and its test are unchanged.
+- **Sizes**: `bot_util` bundle 12 files / 49 KB, `bot_class_mage` bundle 7 files / 44 KB. Start: the mage's first
+  journal line came about 1 s after the reload - no noticeable cost. Error traces through the `// ----` markers were
+  not exercised (no error happened).
+- **Seen, not caused by the pilot** (old code too): a first magiport try is sometimes refused with "invalid" (18:29 and
+  18:40), the retry 8 s later works. When the team goal changes while a member walks to the old goal (Daisy -> spot ->
+  Phoenix within 4 s), the mage first finished its walk towards the spot (~14 s) before turning to the Phoenix.
+
+Way to deploy the rest: per-slot bundles work as planned (slot names stay, no change to `main.js`), so the rebuild can
+go on slot by slot; merging into 2-3 role bundles stays possible later.
+
 ## Branch and way back
 
 The pilot runs on its own branch **`modular-pilot`** (from `bot-v1` at f5e45d1, player decision). Every step is one
