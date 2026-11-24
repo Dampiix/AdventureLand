@@ -7,7 +7,7 @@
 // =====================================================================
 
 const config = {
-    version: "1.237.18-pilot",
+    version: "1.237.19-pilot",
 
     team: {
         // DampiixWar, Dampiix, DampiixPri, Dampiiix are an item archive: never list them (items would go to the merchant).
@@ -206,16 +206,12 @@ const config = {
         keepByClass: { priest: ["essenceoflife"], ranger: ["poison"] },
     },
 
-    // Fighters: equipment wishes from the progression guide + auto-equip
+    // Fighters' gear (gear/): never equipped automatically (taken off when worn), never put on below a level, at most
+    // this many worn at once.
     gear: {
-        enabled: true,
-        noEquip: ["handofmidas"],   // never equipped automatically, taken off when worn
-        minLevel: { mcape: 7, hpants: 7 }, // never put on below this level
-        maxWorn: { zapper: 1 },     // at most this many worn at once
-        wishEveryMs: 5 * 60 * 1000, // re-read the guide and resend wishes this often
-        maxWishes: 12,  // class chains alone are up to 9; a longer list shifts less (the merchant works through it one by one)
-        // Class wishes for slots the guide leaves empty: the chains of gearPlan.wishes (only the first step not reached).
-        classWishesEnabled: true,
+        noEquip: ["handofmidas"],
+        minLevel: { mcape: 7, hpants: 7 },
+        maxWorn: { zapper: 1 },
     },
 
     // =================================================================
@@ -441,9 +437,9 @@ const config = {
         },
     },
 
-    // Merchant: fulfil wishes from bag, bank or by upgrading own copies
+    // Merchant: fulfil wishes from bag, bank or by upgrading own copies. Ours: risk floors, budgets, item lists, goals
+    // (the tuning is in roles/workshop/defaults.js).
     workshop: {
-        enabled: true,
         // Minimum success chance per upgrade step, by how the item is replaced (0: a failure only costs the attempt).
         risk: {
             shop: 0,               // re-buyable from an NPC
@@ -459,44 +455,13 @@ const config = {
             gearHighScrollFrom: 5,
             buyStrongerScrolls: true, // only within budgetPerWish; owned/banked ones are used first
         },
-        // Cheapest scroll per step by expected gold; a +0 copy no shop sells is valued at max(drop hours x gold/h, game
-        // value x valueFactor), else unknownValue.
-        scrollChoice: { enabled: true, valueFactor: 3, unknownValue: 1000000 },
-        dropNeverHours: 1000, // a drop slower than this per copy has no known own cost (no buy order at own cost)
         // Gold per wish (base item + scrolls, failures included): shop gear vs token/drop items; byItem per item.
         budgetPerWish: {
             shop: 1000000, rare: 4000000,
             byItem: { wattire: 8000000, wbreeches: 8000000, wgloves: 8000000, wshoes: 8000000 },
         },
-        massSkills: true,             // Mass Production / Mass Exchange before upgrades and exchanges
-        mainStatOnArmor: true,        // wished armor always gets the class's main stat scroll
-        deliveryBatchMs: 10 * 60 * 1000, // finish the open wishes first; a ready item waits at most this long
-        giveUpForMs: 60 * 60 * 1000,  // after a stop (risk/no source/wish budget used up) retry in an hour
-        onlineMs: 10 * 60 * 1000,     // only fighters with a heartbeat fresher than this are planned for
-        // Items with a stat slot go out with the receiver's main stat; these scrolls skip the pots up to maxCost.
-        statOnDelivery: { enabled: true, maxCost: 100000 },
-        retryAfterBudgetMs: 10 * 60 * 1000, // ...but only 10 min when we merely lack gold right now (or the bag is full)
-        bagReserve: 2,                // copies come out of the bank only while this many bag slots stay free
-        bankScanEveryMs: 10 * 60 * 1000,
-        // Value report: logs gain, cost and gain per hour of every open wish; orderWishes: work on open wishes by value.
-        valueReport: { enabled: true, everyMs: 15 * 60 * 1000, top: 6, orderWishes: true },
-        // Bases of a wished drop/craft are bought until their chances add up to baseTargetPieces finished pieces.
-        baseTargetPieces: 1,
-        maxBaseCopies: 20,
-        redeliverAfterMs: 6 * 60 * 60 * 1000, // don't fulfil the same wish for a fighter again within 6 h
-        // Grace farming: cheap shop items are failed at a level to raise the grace before a risky compound/rare step.
-        grace: {
-            enabled: false,
-            minLevel: 4,             // only for steps to +4 and higher
-            fodder: "wbasher",       // cheap upgradeable shop item no gear goal uses (Wooden Basher, 4,900 gold)
-            // Gold per target level per 24 h: incomeShare of the merchant's net income, at least budgetPerLevel.
-            incomeShare: 0.05,
-            budgetPerLevel: 300000,
-            maxAttempts: 25,         // fodder attempts per farming round
-            // Stop once the fodder's own chance at the target level is above this (now or with the stacks still needed).
-            maxFodderChance: 0.5,
-            batch: 5,                // helmets prepared at once, then attempted back to back
-        },
+        // Grace farming (off): the fodder - a cheap upgradeable shop item no gear goal uses (Wooden Basher, 4,900 gold).
+        grace: { enabled: false, fodder: "wbasher" },
         // Ladder pot: income share (last 24 h) for the materialGoals "ladder" budget; optional extra: { amount, until }.
         bruteForce: { incomeShare: 0.25 },
         // Box armor: spare Rugged copies are upgraded towards upTo while wished; sold once nobody needs them.
@@ -506,30 +471,23 @@ const config = {
         // Shared material: a recipe waits while an item listed before it (or a material weapon goal) is still wished.
         materialOrder: { essenceofether: ["thundergrips", "moonshardearring", "windbelt"] },
         tokenOrder: { funtoken: ["rabbitsfoot", "mshield"] }, // token purchases in this order
-        // Drop weapons that beat a fighter's worn one are delivered or upgraded until they do. With a gearPlan.weapons list
-        // that list rules; names, maxLevel, craft and buy only matter for classes without one.
+        // Drop weapons that beat a fighter's worn one. With a gearPlan.weapons list that list rules; names, maxLevel,
+        // craft and buy only matter for classes without one.
         betterWeapons: {
-            enabled: true,
             names: ["fireblade", "firestaff", "firebow", "concordmace", "maceofthedead", "staffofthedead", "bowofthedead",
                 "daggerofthedead"],
             maxLevel: 7,
-            margin: 0.03,   // at least 3% stronger than the worn weapon
             craft: ["daggerofthedead"], // crafted once the fighter's weapon is at gearGoals.upTo
             buy: [],        // bought with tokens when we hold none
             minChance: {},  // per item: chance each upgrade step needs
         },
         // The workshop never spends below share x the merchant's highest gold of the last 24 h (at most max).
         keepGold: { share: 0.2, max: 5000000 },
-        // Bonus wishes (no measurable gain, e.g. the priest's Wanderer set): one unit of work every everyMs.
-        bonusWishes: { everyMs: 3 * 60 * 1000 },
         // Gear goals: when idle, the merchant pushes worn shop armor and weapons to `upTo` with the main-stat scroll.
         gearGoals: {
-            enabled: true,
-            fromLevel: 0,
             upTo: 8,                  // weapons and the "shop gear done" mark for class wishes
             stages: [7, 8],           // team-wide: every fighter's shop gear reaches a stage before anyone goes on
             capBy: { ranger: { chest: 9 } }, // per-piece caps once the whole team is through the stages
-            everyMs: 3 * 60 * 1000,   // one gear-goal step this often even while wishes are open
             // offhand: a second shop weapon (dual wield) goes to upTo too; shields, books, quivers stay out.
             slots: ["helmet", "chest", "pants", "shoes", "gloves", "mainhand", "offhand"],
             weapons: [], // drop weapons: materialGoals and gearPlan.weapons
@@ -542,24 +500,20 @@ const config = {
         },
         wishes: {}, // fixed wishes on top of the guide's, e.g. DmpxPala: [{ name: "concordmace", level: 4 }]
         compound: {
-            auto: true,   // combine spare accessories/books when no wish is open
-            autoUpTo: 3,  // ...up to this level (each step still needs the risk tier's chance)
+            autoUpTo: 3,  // auto compounding up to this level (each step still needs the risk tier's chance)
             keep: { "dexbelt:2": 2 }, // copies held back from auto compounding ("name:level": count)
-            tidyMaxCost: 50000,       // an auto-compound step costing at most this never waits for a pot
         },
         exchange: {
-            enabled: true,
             items: ["gem0", "gem1", "seashell", "leather"], // seashell only while config.elixirs.exchange asks for it
-            // Opened only when a wished item comes out of them, a few at a time and while the bank has room.
-            onDemand: ["armorbox"], onDemandBatch: 3, onDemandBankFree: 10,
+            // Opened only when a wished item comes out of them.
+            onDemand: ["armorbox"],
             // Hoarded, not exchanged or opened (empty the list for a big batch).
             hold: ["gem0", "gem1", "marketparcel", "armorbox"], // + Merrit's parcels
-            batch: 10,     // exchanges per round, so deliveries are not delayed for long
-            keepFree: 8,   // stop while fewer bag slots are free (rewards need room)
         },
     },
 
-    // Merchant role
+    // Merchant role. Ours: own wishes, the stand's home, what is sold, gifts, the Ponty round, class items, the bank's keep
+    // list (the tuning is in roles/merchant/defaults.js).
     merchantRole: {
         // The merchant's own wishes: bought, crafted at Leo or reported as a drop shortage; kept in his bag, never
         // delivered, sold or banked. They come before the fighters' wishes and only keep the potion reserve.
@@ -568,33 +522,12 @@ const config = {
             { name: "rod" },          // fishing: Rugged pieces
             { name: "pickaxe" },      // mining (later: the Mining Tunnel has moles)
         ],
-        // Gathering with the merchant's own tools, whenever its cooldown is over.
-        gather: {
-            // Mainland pier by the fisherman (water within 24 px); one catch per 48 min, 99.5% a Rugged piece.
-            fishing: { enabled: true, spot: { map: "main", x: -1560, y: 470 }, maxCasts: 40 },
-        },
+        // Gathering with the merchant's own tools: the mainland pier by the fisherman (water within 24 px).
+        gather: { fishing: { spot: { map: "main", x: -1560, y: 470 } } },
         // Market stand: the merchant's home on the town square with the stand open (buy orders, Merrit's hourly parcel).
-        // Upgrade, compound, Xyn, Lucas and the potion shop are within reach; keep 40+ px from fixed NPCs.
-        stand: {
-            enabled: true,
-            home: { x: -120, y: -112 },
-            reach: 390,               // NPCs this close are used without walking (server: 400)
-            // Buy and sell orders: config.market at the top.
-        },
-        // Potion stock: potions.target per fighter (at most stockPerPotion), built only while we have stockFromGold gold.
-        stockPerPotion: 1000,
-        stockFromGold: 100000,
+        // Upgrade, compound, Xyn, Lucas and the potion shop are within reach; keep 40+ px from fixed NPCs. Orders: market.
+        stand: { home: { x: -120, y: -112 } },
         goldReserve: { ratio: 0.2, min: 0, max: 1000000 }, // never spend below 20% of our gold (max 1M)
-        handoverWaitMs: 10000,               // wait next to the fighter for its loot
-        // A pickup follows the fighter and re-routes once it moved more than retargetPx; gives up after followMs.
-        followMs: 4 * 60 * 1000,
-        retargetPx: 150,
-        // NPC sales (never shiny, locked, worn or wished copies); sellBuyable: NPC-shop items go at +0, except these types.
-        sellBuyable: {
-            enabled: true,
-            maxLevel: 0,
-            exceptTypes: ["pot", "uscroll", "cscroll", "pscroll", "offering", "stand", "elixir", "booster", "tome", "qubics"],
-        },
         // A plain name sells +0 copies, { name, maxLevel } up to that level. Never listed: Phoenix/event weapons, craft or
         // Witch's Cipher ingredients, Short Swords, Rugged/Heavy armor, accessories and books other than HP/VIT ones.
         sellList: [
@@ -623,9 +556,6 @@ const config = {
         // Every online fighter gets one if it carries none - from the bank, else bought with tokens (Tracktrix: 4 at Daisy).
         onePerCharacter: ["tracker"],
         onePerCharacterKeepOwn: false, // the merchant keeps no copy for itself
-        // Merchant's Luck on ourselves, our fighters and (strangers) every other non-merchant player in reach; ours is
-        // renewed below refreshBelowMs, strangers' strong mluck is left alone.
-        mluck: { enabled: true, strangers: true, refreshBelowMs: 30 * 60 * 1000, mpReserve: 100 },
         // Ponty round over other servers (main.js hop watcher): every everyHours full local hours (0 = off) and once at
         // testAt the merchant serves every fighter, banks, visits Ponty on each server and comes home.
         pontyRound: {
@@ -638,19 +568,10 @@ const config = {
             // Every hop ends a Lost and Found (Ron) access; hourly rounds mostly found nothing new.
             everyHours: 3,                     // every third full hour local time (0, 3, 6 ... o'clock)
             testAt: null,                      // one extra round at this ISO time
-            prepMaxMs: 8 * 60 * 1000, hopTimeoutMs: 2 * 60 * 1000,
         },
-        // Workshop rhythm: after a round that did something the next one comes after this; a round that only found locked
-        // jobs tries the next at once; 30 s only when there is nothing to do.
-        workshopFastMs: 3000,
         classItems: { priest: ["essenceoflife"], ranger: ["poison"] }, // skill ingredients, sent with every delivery
-        // Bank: with few free bag slots, everything neither sold nor kept goes into the bank (no new bank packs bought).
+        // Kept in the bag, never banked.
         bank: {
-            whenFreeBelow: 6,
-            // Below this many free bag slots the workshop's idle stock is banked as well (taken out again when needed).
-            stockFreeBelow: 15,
-            // Before each pickup: bank first while fewer slots are free (store only, workshop copies too). 0 = off.
-            beforePickupFree: 12,
             keep: [
                 "tracker",
                 "scroll0", "scroll1", "scroll2", "cscroll0", "cscroll1", "cscroll2",
@@ -679,6 +600,9 @@ const DEFAULTS = [
     require("./classes/ranger/defaults.js"),
     require("./classes/warrior/defaults.js"),
     require("./classes/mage/defaults.js"),
+    require("./gear/defaults.js"),     // fighters' gear
+    require("./roles/workshop/defaults.js"),
+    require("./roles/merchant/defaults.js"),
 ];
 DEFAULTS.forEach(function (d) { fillDefaults(config, d); });
 

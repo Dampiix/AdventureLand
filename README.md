@@ -3,7 +3,7 @@
 One bot for a whole Adventure Land team: up to three fighters and one merchant, all running the same code.
 The fighters farm, hunt bosses and level up; the merchant supplies them, sells, banks, trades with other players and upgrades their gear.
 
-> **Version:** `1.237.18-pilot` (`bot/config.js` → `version`) · **Teams:** `Dmpx…` (main account) and `Viz…` (second account) · **Code:** `bot/` → in-game CODE slots 20–41
+> **Version:** `1.237.19-pilot` (`bot/config.js` → `version`) · **Teams:** `Dmpx…` (main account) and `Viz…` (second account) · **Code:** `bot/` → in-game CODE slots 20–41
 
 ## Repository
 
@@ -133,7 +133,7 @@ Saving a slot does not change running code. Reload each character:
 
 ## 3. Config switches you will use
 
-All settings live in [`config.js`](bot/config.js) (slot 21 `bot_config`). The comments there explain every value and the decision behind it. These are the ones you change most often.
+Our decisions live in [`config.js`](bot/config.js) (slot 21 `bot_config`): the team, prices, the gear plan, bosses, farm targets, item names. The tuning (timings, distances, thresholds) lives in the `defaults.js` file next to the modules that use it (`combat/`, `safety/`, `farming/`, `encounters/`, `team/`, `travel/`, `supply/`, `cave/`, `gear/`, `classes/<class>/`, `roles/workshop/`, `roles/merchant/`, and `bot/defaults.js` for main). At load config.js fills in every setting it has no value for; a value set in config.js always wins, so a tuning value can be overridden there for us only. Some of the switches below live in a defaults file now - setting them in config.js works the same. These are the ones you change most often.
 
 ### Solo or party
 

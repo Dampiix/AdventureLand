@@ -1,6 +1,6 @@
 # Stage 7: explicit deps everywhere, defaults in the modules (plan, 2026-11-24)
 
-Status: **7a done** - step 1 v1.237.16-pilot (gear, supply, drops), step 2 v1.237.17-pilot (module views); 7b fighter side done (v1.237.18-pilot), merchant side open. Same branch (`modular-pilot`), **no change in behaviour**. Step 7 of the module plan.
+Status: **7a done** - step 1 v1.237.16-pilot (gear, supply, drops), step 2 v1.237.17-pilot (module views); 7b done - fighter side v1.237.18-pilot, merchant side v1.237.19-pilot. Same branch (`modular-pilot`), **no change in behaviour**. Step 7 of the module plan.
 
 ## 7a. The last ctx users get explicit deps
 
@@ -63,6 +63,10 @@ each area has a `defaults.js` next to its modules, and config.js requires them a
 Fighter side: `defaults.js` (main), travel, team, combat, encounters, safety, farming, cave, supply and one per class -
 config.js 999 -> 702 lines. `scripts/check-defaults.cjs`: values identical, the objects whose key order changed are
 listed (none of them is walked in order by the code - checked), no setting in two default files.
+
+Merchant side: `gear/defaults.js`, `roles/workshop/defaults.js`, `roles/merchant/defaults.js`; market, dismantle,
+materialGoals and the gear plan are all ours and stay. config.js: 999 -> 626 lines (18 default files, 495 settings). The
+only merchant-side object the code walks in order is `merchantRole.give` - unchanged in config.js.
 
 ## Order (one commit, one deploy each; reload after the usual checks)
 
