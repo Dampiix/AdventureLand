@@ -362,6 +362,8 @@ module.exports = function createMage(ctx) {
         // there"): a farm spot - we wait at its edge; any other route end (Daisy, town, ...) - we stand at it (we went
         // ahead there). Boss events have their own magiport.
         const toSpot = !!lead.farm && tg.inSpotArea(lead.dest, lead.farm);
+        // Only at the real goal (v1.235.7): a leg of the leader's route (leaving spookytown, a via map) is no goal.
+        if (lead.leg && !toSpot) return;
         if (toSpot) {
             const edge = tg.watchPoint(lead.farm);
             if (!edge || util.distanceTo(edge) > (tcfg.atEdge || 100)) return;
