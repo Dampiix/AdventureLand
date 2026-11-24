@@ -1,10 +1,13 @@
 // =====================================================================
-// bot_config - everything you are expected to tweak lives here. Another team (e.g. new level-1 characters)
-// only needs a new `team` block; classes come from character.ctype (all six have skill modules).
+// bot_config - our decisions: the team, prices, the gear plan, bosses, farm targets, item names. Another team (e.g.
+// new level-1 characters) only needs a new `team` block; classes come from character.ctype (all six have skill modules).
+// The tuning (timings, distances, thresholds) lives in the defaults.js files next to the modules (module plan, stage
+// 7b): at load every setting missing here is filled from them, ours always win - so a value set here overrides the
+// default for us only. Every character loads this one complete config.
 // =====================================================================
 
-module.exports = {
-    version: "1.237.17-pilot",
+const config = {
+    version: "1.237.18-pilot",
 
     team: {
         // DampiixWar, Dampiix, DampiixPri, Dampiiix are an item archive: never list them (items would go to the merchant).
@@ -96,62 +99,16 @@ module.exports = {
         },
     },
 
-    // Travel (core/fighter.js): via / leaveVia - to reach or leave the key map, walk through the value map first.
-    // rageWalls: rage boxes (+ rageMargin px) and wallMonsters' spawn boxes are walls for path walks (not the goal's own
-    // zones); rageWallSteps: margins tried in turn when no path is found (-1 = walls off).
-    travel: { via: { spookytown: "halloween" }, leaveVia: { spookytown: "halloween" }, rageWalls: true, rageWallSteps: [100, 50, 0, -1], rageMargin: 100, wallMonsters: ["prat"] },
+    // Our waypoints: a map behind a dangerous one is reached through a safe one (via), and left through it (leaveVia).
+    travel: { via: { spookytown: "halloween" }, leaveVia: { spookytown: "halloween" } },
 
     // "solo":  only the leader fights (Lone Wolf bonus); the merchant still supports it.
     // "party": all fighters form a party around the leader.
     phase: "party",
 
-    party: {
-        followDistance: 80,   // members idle within this distance of the leader
-        // Agitate range around the leader; a member within it judges rage zones with the team model, else its own check.
-        leash: 300,
-        farmRadius: 400,      // members pick free monsters only within this of the leader
-        broadcastMs: 2000,    // leader shares position/target this often
-        inviteEveryMs: 10000, // leader re-invites a missing member this often
-        // The leader waits for a fighter farther than waitDistance px (at most waitMaxMs per separation, not while attacked).
-        waitForTeam: true, waitDistance: 500, waitMaxMs: 45000, waitAgainMs: 60000,
-        // Members walk to the route's end themselves; below toHealerBelow HP they walk into the priest's range.
-        goToDest: true, toHealerBelow: 0.5,
-        // Team goal reached: within goalEdge px of a farm spot's edge point, else within goalRadius px (party.js).
-        goalEdge: 250, goalRadius: 200,
-        // The highest gold bonus opens chests (fixed: a name); others only if it is away (awayRange px) or after fallbackMs.
-        chestOpener: { enabled: true, fixed: null, awayRange: 400, fallbackMs: 10000 },
-        // Ranged fighters keep out of the monsters' melee reach (+margin px) while a tank class is near.
-        spacing: { enabled: true, minOwnRange: 100, margin: 50, gap: 130, step: 80, everyMs: 700 },
-        // Easy targets members pick themselves near the leader; harmlessRatio: hits for at most this share of our max HP.
-        spread: { enabled: true, maxHits: 3, maxDamageRatio: 0.05, harmlessRatio: 0.02 },
-    },
-
-    // Damage meter: every everyMs the leader (or a solo fighter) logs each member's damage/s over windowMs ("/dps": now).
-    meter: { everyMs: 5 * 60 * 1000, windowMs: 5 * 60 * 1000 },
-
-    tickMs: 250,
-
-    // Routes (smart_move).
-    movement: {
-        useTown: true, // the Town skill (teleport to the map's center) where it shortens a route
-        townMinDistance: 600, // ...but only from farther than this from the map's center (the route search counts Town as one step)
-    },
-
-    // Member watchdog (main.js): a bot window without a heartbeat for silentMs is restarted - at most one restart per
-    // gapMs and maxPerHour. A member stopped on purpose comes back too.
-    watchdog: { enabled: true, silentMs: 2 * 60 * 1000, checkEveryMs: 15 * 1000, gapMs: 10 * 60 * 1000, maxPerHour: 3 },
-
-    // Client display only (no effect headless).
-    ui: {
-        hideGoldLogs: true,   // drop the game's "123 gold" loot lines from the log
-        hideKillLogs: true,   // drop the game's "X killed a Bee" lines
-    },
-
-    // Events and world bosses (core/events.js). policy: "always" or "never" (default).
+    // Events and world bosses (encounters/): ours - which events and bosses, from which level, who searches what.
     events: {
-        enabled: true,
-        observe: true,                  // log which events are live and what we do
-        policy: {
+        policy: {                       // "always" or "never" (default)
             snowman: "always",          // holiday season world boss, 1,200 HP
             goobrawl: "always",         // daily goo fight
             phoenix: "always",          // roaming coop boss, weak hits, 180k XP, fire weapons
@@ -160,34 +117,19 @@ module.exports = {
             jr: "always",               // Jr. (Spooky Town): orange Lolipop Mace on every kill
             greenjr: "always",          // Green Jr. (Spooky Forest): green Lolipop Mace on every kill
             skeletor: "always",         // Skeletor (arena): 1,800 physical hits, see boss.minHitsNonTankBy
-            // Giga Crab (main beach, daily): 16,000 physical hits (one kills priest or ranger); see joinNeeds..noArea below.
+            // Giga Crab (main beach, daily): 16,000 physical hits (one kills priest or ranger); see the join settings.
             crabxx: "always",
             franky: "never", icegolem: "never",
             horseman: "never", abtesting: "never",
             graveyard: "always",          // Halloween: zombies/ghouls in Spooky Town's graveyard - Bones
         },
-        // Join events on a normal map: their monster types, where join() puts us (joined within r px), what the team must
-        // handle to go (joinNeeds); "1hp": hit the boss only while a FOREIGN player holds it (foreignOnly).
-        joinTypes: { crabxx: ["crabx", "crabxx"] },
-        joinSpot: { crabxx: { map: "main", x: -1000, y: 1700, r: 600 } },
-        joinNeeds: { crabxx: "crabx" },
-        foreignOnly: { crabxx: "1hp" },
-        // neverBy never hit it; the others only while the holder is visible, above holderMinHp and within holderMaxDist px.
-        // flee: its target runs fleeStep px away every tick (util.foreignOnlyBlocks, fighter.gigaFlee).
-        foreignRules: { crabxx: { neverBy: ["priest"], holderMinHp: 0.4, holderMaxDist: 400, flee: true, fleeStep: 250 } },
-        noArea: ["crabxx"], // no Taunt, Agitate, Cleave, Stomp, multi-shot or Absorb on these
         // "always" only applies once every fighter has reached this level
         minLevel: { phoenix: 40, goobrawl: 20, snowman: 10, graveyard: 40, mvampire: 50, fvampire: 60, jr: 40, greenjr: 40, skeletor: 60 },
         // search: the whole team searches these; engage: fought when met (searched by the scout or the runner).
         search: ["phoenix"],
         engage: ["mvampire", "fvampire", "jr", "greenjr", "skeletor"],
-        // splitSearch: spawn areas split between the fighters; holdForTeam: open only with everyone within holdRange px.
-        splitSearch: true, splitWaitMs: 4 * 60 * 1000, holdForTeam: false, holdRange: 350,
-        searchEveryMs: 20 * 60 * 1000,  // search again this long after a miss or a kill
-        // Witch's Cipher (events.js cipherFarm): from leadMs before a round until its gathering ends the team farms the
-        // scarcest ingredient at the first safe spot of spots[ingredient] (highest HP first); no report: fallback.
+        // Witch's Cipher: the spots per ingredient (highest HP first).
         witchCipher: {
-            farm: true, leadMs: 10 * 60 * 1000, fallback: "embercoal",
             spots: {
                 embercoal: ["gscorpion", "plantoid"],
                 frostscale: ["wolfie", "boar", "arcticbee", "iceroamer"],
@@ -195,351 +137,73 @@ module.exports = {
                 verdantspore: ["spider", "croc", "bee", "goo"],
             },
         },
-        // Merchant scout (roles/merchant/scout.js): searches `bosses` between chores; the runner steps in while it is unavailable
-        // or a boss is overdue by fallbackMs. Finds are reported for reportMs, `watch` bosses until a fighter is within
-        // teamNear px. safeWalk: its paths avoid aggressive monsters (pad px) and rage zones (ragePad px).
-        scout: {
-            enabled: true,
-            bosses: ["phoenix", "mvampire", "fvampire", "skeletor", "greenjr"],
-            fallbackMs: 10 * 60 * 1000, lapMaxMs: 15 * 60 * 1000, freshMs: 90 * 1000,
-            reportMs: 3000, holdMs: 3 * 60 * 1000, arriveRadius: 300, arriveGraceMs: 10 * 1000, watch: [],
-            keepAway: 250, teamNear: 300, watchMs: 3 * 60 * 1000, lostMs: 8000, spotMs: 3000, pauseAfterDeathMs: 30 * 60 * 1000,
-            mapOrder: ["main", "arena", "cave", "halloween"],
-            // hits: only aggressive monsters that kill the merchant in this many hits are walled.
-            safeWalk: { enabled: true, pad: 100, ragePad: 100, offMs: 60 * 1000, hits: 2 },
-        },
-        // Runner (events.runnerCandidate: fastest ranged fighter, never leader or healer): searches `bosses` (interval
-        // each) alone; solo: bosses it kills alone. maxMs: the leader gives up on it; killMs: longest solo fight.
+        // The merchant's boss search: these bosses; watch: held until a fighter is near.
+        scout: { enabled: true, bosses: ["phoenix", "mvampire", "fvampire", "skeletor", "greenjr"], watch: [] },
+        // The runner's bosses (search interval each); solo: bosses it kills alone.
         runner: {
             enabled: true,
             bosses: { mvampire: 20 * 60 * 1000, fvampire: 25 * 60 * 1000, jr: 60 * 60 * 1000, greenjr: 60 * 60 * 1000, skeletor: 20 * 60 * 1000 },
             solo: [],
-            maxMs: 8 * 60 * 1000,
-            killMs: 3 * 60 * 1000,
-            // Nonstop mode: farmBosses hunted by the runner alone while the boss check says it can win.
-            nonstopKillMs: 15 * 60 * 1000, // longest solo fight
-            nonstopMaxMs: 20 * 60 * 1000,  // one lap plus a fight; the leader gives up after this
         },
         // Held for the team; otherwise the finder opens when the solo boss check passes, else waits by the spawn box.
         holdFor: [],
-        // A seen kill of a slow boss (respawn > 200 s): searched again at kill + respawn x respawnFactor.
-        respawnFactor: 0.72,
-        farmBosses: [], // hunted nonstop: searched again after farmBossEveryMs
-        farmBossEveryMs: 10 * 1000,
-        searchSpotMs: 4000,             // look around this long at each spawn area
-        // Boss check (bosses only; the guide never calls them safe): from everyone's stats
-        // and the game's damage formula. Other players are not counted on.
-        boss: {
-            minHits: 6,                 // every fighter must survive this many hits in a row
-            minHitsNonTank: 4,          // ...the others only this many while a tank (warrior/paladin) is in the team
-            minHitsNonTankBy: { skeletor: 2 }, // per boss instead of minHitsNonTank
-            healCover: 1.5,             // damage/s on the tank <= priests' healing/s x this (potions do the rest)
-            maxFightMinutes: null,      // kill-time limit for the team alone; null = none
-            priestDamageShare: 0.3,     // priests mostly heal: count this share of their damage
-            // Solo (no priest): HP/s a fighter keeps up with potions and its own sustain.
-            soloSustainHps: 150,
-            pauseAfterDeathMs: 3 * 60 * 60 * 1000, // a death there pauses the boss this long
-        },
+        farmBosses: [], // hunted nonstop
     },
 
-    // Monster Hunts (Daisy). Unsafe hunts are left to expire.
-    hunts: {
-        enabled: true,
-        minLevel: 20,                    // only once every fighter has this level (Daisy ignores our level)
-        allow: [],                       // always hunt these, even if the guide calls them unsafe
-        deny: [],                        // never hunt these
-        xpTop: 5,                        // only monsters among the team's top xpTop XP spots (0 = every safe hunt)...
-        dropHunts: true,                 // ...or that drop something the merchant misses (wish or craft ingredient)
-        minRemainingMs: 2 * 60 * 1000,   // skip hunts about to expire
-        teamSpeedup: 2,                  // the team kills ~2x as fast as the leader alone (time check)
-        visitCooldownMs: 10 * 60 * 1000, // at most one Daisy trip per 10 min
-        waitAtDaisyMs: 6000,             // leader waits at least this long at Daisy...
-        waitAtDaisyMaxMs: 45000,         // ...and up to this until every member is done there
-        finishedRetryMs: 60 * 1000,      // a finished hunt: next Daisy trip after this at the earliest
-        daisyRange: 200,                 // how close counts as standing at Daisy
-        shareMs: 10000,                  // members report their hunt to the leader this often
-    },
+    // Monster Hunts (farming/hunts.js): always hunt these (even if the guide calls them unsafe) / never these.
+    hunts: { allow: [], deny: [] },
 
-    // Items that can't be bought come before XP: the merchant reports what is missing, the guide names the drop route.
-    drops: {
-        enabled: true,
-        maxHoursPerCopy: 100,       // slower drops are not farmed (a sanity cap; wishes compete by value)
-        refreshMs: 5 * 60 * 1000,   // leader re-asks the guide this often
-        reportMs: 5 * 60 * 1000,    // merchant reports shortages this often
-        // Extra stock to collect even without a wish: { name, copies } (bag + bank, any level).
-        want: [{ name: "armorbox", copies: 50 }],
-        // Drop spots vs the XP spot by value per hour; a switch needs valueSwitch x the current choice's value.
-        byValue: true,
-        valueSwitch: 1.2,
-        // Own loot gold per farm target over windowH hours (after minMinutes, fighters within togetherRange px).
-        spotGold: { enabled: true, windowH: 3, minMinutes: 10, togetherRange: 500 },
-    },
+    // Drops: extra stock to collect even without a wish: { name, copies } (bag + bank, any level).
+    drops: { want: [{ name: "armorbox", copies: 50 }] },
 
     targeting: {
         farm: null, // null = the guide picks; a monster or a list (the first one not too strong/crowded) to test or for a drop
         fallback: "goo",          // used when the progression guide has no answer
-        // Rare monsters attacked first when in sight within range px; skipped while invulnerable.
-        rare: { enabled: true, range: 400, types: ["goldenbat", "cutebee", "tinyp", "wabbit", "pinkgoo", "snowman"] },
-        // Guide "careful trial" routes count only once proven (own fights or 15 min of team farming without a death).
-        avoidTrial: true,
-        // Melee classes never hit monsters returning more than maxDreturn % damage (porcupine 4800); ranged ones farm them.
-        melee: { classes: ["warrior", "paladin", "rogue"], maxDreturn: 20 },
-        // The farm spot is left only when a member's "unsafe" lasts this long; a death there counts at once.
-        objectionGraceMs: 5 * 60 * 1000,
-        // Team model: safe when the tank survives tankHits volleys of `pull` monsters (pullAggressive: aggressive ones),
-        // healing covers that x healCover and the others survive otherHits hits. "/safety [map]" logs the verdicts.
-        teamSafety: {
-            enabled: true,
-            tankClasses: ["warrior", "paladin"],
-            tankHits: 6, otherHits: 3, healCover: 1.5,
-            pull: 2, pullAggressive: 3,
-            pullPassive: 1,                // aggro and rage below isolation.minAggro/minRage: one at a time
-            pullLone: 2,                   // monsters pulled one at a time (isolation): one plus a possible add
-            denseArea: 15000,              // aggressive spawns with less area per monster (px²) come as a whole pack
-            abilities: [],                 // monster abilities we accept (others: the guide decides)
-            fightHpUse: 0.5,               // uncovered damage over the whole fight: at most this share of the tank's max HP
-        },
-        // Aggro/rage monsters are pulled only with no other free one within radius px of the target or the way there.
-        // strongHold / watchMargin: px to stop from too-strong ones / to wait outside the spawn box for a lone one.
-        isolation: { enabled: true, minAggro: 0.3, minRage: 0.3, radius: 120, strongHold: 300, watchMargin: 150 },
-        // Spot check: the picker stops margin..maxMargin px outside the spawn/rage box, watches watchMs and judges the pack.
-        // groupGap: passive kinds chained this close are one pull (groupRule); aggroPack: a whole aggro spawn is one pull.
-        spotCheck: { enabled: true, party: true, margin: 150, maxMargin: 150, watchMs: 3000, maxWaitMs: 30000, groupGap: 60, groupRule: false, aggroPack: false },
-        // Learned hit factor: from minHits real hits of a kind, its predicted hits are scaled by real / predicted (1..max).
-        hitFactor: { enabled: true, minHits: 8, max: 5, keepHits: 400 },
-        // Mobbing (more than 3 on one player multiply its hits): guard - no new monster while maxOnOne are on one of us
-        // (unless the multiplier stays <= guardMinMult); projectSec - the live check looks this far ahead.
-        mobbing: { enabled: true, guard: true, maxOnOne: 3, guardMinMult: 1.25, projectSec: 4, healShare: 0.8 }, // healShare: share of a healer's heal/s counted in the live check
-        // Rage zones (map "rage" boxes): the spawn counts as a whole; failing it we stay out and call the Cavalry.
-        rage: { enabled: true },
-        // From fromLevel a monster is checked again with its real stats before a pull.
-        live: {
-            fromLevel: 2,
-            ownHits: 6,           // members/solo picking their own target: survive this many real hits
-            soloHpUse: 0.7,       // solo: HP lost over the whole fight (after own healing) at most this share of max HP
-            waitTolerance: 2.5,   // only while the team stats are not in yet: real/level-1 damage ratio cap (level-5 CGoo: 1.9x)
-        },
-        refreshMs: 5 * 60 * 1000, // how often to ask the guide again
-        crowdedAfterMs: 90 * 1000,    // no free target this long on the farm map -> spot is crowded
-        // ...or this share of a window without a free target:
-        crowdedWindowMs: 3 * 60 * 1000, crowdedIdleShare: 0.7, // idle = not in range of a target (walking counts)
-        crowdedForMs: 60 * 60 * 1000,  // then use the guide's next choice for this long,
-        // Another player within occupiedRadius px of our spot: skipped for occupiedForMs; free again after occupiedFreeMs alone.
-        occupiedBy: 1, occupiedRadius: 300, occupiedAfterMs: 20000, occupiedForMs: 60 * 60 * 1000, occupiedFreeMs: 30 * 1000,
-        // Shared, not taken: we stay while we had a target stayIfBusy of the last shareWindowMs.
-        stayIfBusy: 0.75, shareWindowMs: 2 * 60 * 1000, shareMinMs: 60 * 1000,
-        crowdedMaxMs: 6 * 60 * 60 * 1000, // doubled each time the same spot is crowded again within a day
+        // Rare monsters attacked first when in sight (range: farming/defaults.js).
+        rare: { types: ["goldenbat", "cutebee", "tinyp", "wabbit", "pinkgoo", "snowman"] },
     },
 
-    // Cavalry (Tracktrix; strong only while our highest level is below 80): emergencies and spots the spot check blocked.
-    // reset: also reset grown farm spots; targets: spots nuked whenever it is ready.
-    cavalry: { enabled: true, emergencyHpBelow: 0.35, emergencyOnMe: 1, reset: false, resetFromLevel: 5, resetMinCount: 2,
-        targets: [], planStayMs: 100 * 1000, planMaxMs: 10 * 60 * 1000,
-        foreignClear: 420, planMinCount: 5, resetPackMin: 5 }, // foreignClear: no call with another level-3+ kind this close; *MinCount/PackMin: wait for this many in reach
+    // Cavalry: spots nuked whenever it is ready (the rest: farming/defaults.js).
+    cavalry: { targets: [] },
 
-    combat: {
-        // Kiting (fighter.kiteStep): outranging (by margin px) a slower attacker (charge <= maxSpeedRatio x our speed), we
-        // circle it at charge + range + extra px. anchorRadius / farmAnchorMargin: stay near the spawn (boss / normal).
-        // farmRisk: a kiteable monster still counts with this share of its damage in the farm checks.
-        kite: { enabled: true, margin: 30, extra: 50, rangeSlack: 10, slack: 15, maxSpeedRatio: 0.99, anchorRadius: 280, farmAnchor: true, farmAnchorMargin: 250, everyMs: 250, avoidRadius: 120,
-            foreignMargin: 50, // kite/escape/spacing points stay this far beyond the reach of other kinds
-            farmRisk: 0.25, farmSpeedRatio: 0.9, farmRangeMargin: 50 },
-        potionHpBelow: 0.8,      // below this: an HP potion on every cooldown
-        potionMpBelow: 0.5,      // below this MP comes before the HP top-up (HP above half)
-        mpFirstAboveHp: 0.65,    // MP before the HP top-up only above this HP
-        hpWhenFits: true,        // solo: an HP potion whenever a whole one fits, MP in the gaps
-        potionWhenMissing: true, // otherwise drink as soon as a whole potion's worth is missing (HP before MP)
-        // passThrough: on the way, leave slower attackers of other kinds behind (above minHp, outside spotRadius).
-        // withHealer: potion rules near a priest; losing fastLossPerSec of max HP per second switches back to solo rules.
-        passThrough: { enabled: true, minHp: 0.5, speedShare: 0.8, spotRadius: 400, leaveAfterMs: 60 * 1000 },
-        withHealer: { potionHpBelow: 0.6, potionWhenMissing: false, fastLossPerSec: 0.06 },
-        mpTopUp: 0.5,            // MP: drink as soon as this share of an MP potion is missing
-        hpCriticalBelow: 0.3,    // below this HP an HP potion always comes first
-        // Solo: after a fight below hpBelow HP or mpBelow MP, pull nothing new and drink up to hpUntil / mpUntil first.
-        recover: { enabled: true, hpBelow: 0.5, mpBelow: 0.5, hpUntil: 0.8, mpUntil: 0.8, maxMs: 90 * 1000 },
-    },
-
+    // Classes: our item names and chosen modes; the thresholds and timings are in classes/<class>/defaults.js.
     classes: {
-        // Paladin (classes/paladin/): mana-shield, oath, cleansing modules; self-heal and Smash in the class.
-        paladin: {
-            selfHealBelow: 0.6,
-            useSmash: true, mpReserve: 150, // Smash needs a mace
-            oathBelow: 0.5,                 // Guardian's Oath on allies below 50% HP (lvl 50+)
-            useCleansingLight: true,        // lift poison/curse/burn/... from allies (lvl 30+)
-            // Mana Shield: damage drains MP instead of HP while on
-            manaShield: { onBelow: 0.35, offAbove: 0.7, minMp: 0.25 },
-        },
-        // Priest (classes/priest/): each skill module has its own defaults; these are our values. Details: the module headers.
         priest: {
-            healBelow: 0.75, selfHealBelow: 0.6,   // heal a member below / ourselves below this HP ratio
-            // Party Heal: 2+ members below partyHealBelow, or one below partyHealDanger, or any (also out of sight) below partyHealOne.
-            partyHealBelow: 0.65, partyHealDanger: 0.35, partyHealOne: 0.5,
-            useCurse: true, mpReserveRatio: 0.4,   // Curse on sturdy targets; Curse and Dark Blessing keep this MP share
-            useRevive: true,                       // revive fallen members (consumes an Essence of Life)
-            // Absorb Sins as an emergency: a non-tank member below `below` with monsters on it and no tank in Taunt range,
-            // while we are above selfAbove.
-            absorb: { enabled: true, below: 0.35, selfAbove: 0.6 },
-            // Luck catch: Absorb Sins on an ally whose monster dies within `hits` hits (at most maxPull, we above minHp, once per
-            // everyMs per ally); without a tank within tankRange only what our courage holds. Summary every logEveryMs.
-            luckCatch: { enabled: true, hits: 2, maxPull: 5, minHp: 0.6, everyMs: 1500, tankRange: 400, logEveryMs: 10 * 60 * 1000 },
-            // Luck swap (gear/): these pieces go on with the luck catch and come off backMs after the last one; missing
-            // pieces are skipped, a piece listed twice fills both slots (two Clover Studs).
-            luckSwap: { enabled: true, items: ["mshield", "rabbitsfoot", "wcap", "wattire", "wbreeches", "wgloves", "wshoes", "cloverstud", "cloverstud"], backMs: 3000 },
-            // Dark Blessing (level 70): +25 % party damage for 8 s on targets needing sturdyHits+ of our hits, and on bosses.
-            darkBlessing: { enabled: true, sturdyHits: 10 },
+            // Luck swap: these pieces go on with the luck catch; a piece listed twice fills both slots (two Clover Studs).
+            luckSwap: { items: ["mshield", "rabbitsfoot", "wcap", "wattire", "wbreeches", "wgloves", "wshoes", "cloverstud", "cloverstud"] },
         },
-        // Rogue (classes/rogue/): swiftness, stealth, fanofknives, strikes modules; Quick Stab/Punch follow the mainhand.
-        rogue: {
-            mpReserveRatio: 0.25,
-            swiftness: true,          // Rogue Swiftness (lvl 40) on us and party members in reach
-            smokeBelow: 0.25,         // Assassin's Smoke below this HP share with monsters on us (0 = never) ...
-            smokeUntil: 0.6, smokeClear: 200, // ... then hide where no monster is within smokeClear px until this HP share
-            mentalBurst: true,        // only once INT reaches the skill's 64
-            fanFrom: 3,               // Fan of Knives (lvl 65, Knife Belt) with this many monsters around
-            poisonCoat: { enabled: true, minHits: 40 }, // A Poisonous Touch (Poison Sack) on targets needing 40+ hits
-        },
-        // Ranger (classes/ranger/): three-shot and sturdy-shots modules.
-        ranger: {
-            sturdyHits: 3,                  // Hunter's Mark / Supershot only on targets needing 3+ hits
-            mpReserveRatio: 0.3,
-            usePoisonArrow: true,           // consumes a Poison Sack
-        },
-        // Warrior (classes/warrior/): agitate-*, protect, escape, splash, sword-swap, mobility. Details: the module headers.
         warrior: {
-            mpReserveRatio: 0.2,
-            // Taunt off an ally below allyHpBelow or hit for hitRatio+ of its max HP; always bosses (max HP >= bossHp) and
-            // monsters on our healer. walkFirst: walk within closeBy px first (unless below urgentHpBelow).
-            taunt: { enabled: true, first: false, agitateOver: 6, allyHpBelow: 0.8, hitRatio: 0.05, bosses: true, bossHp: 20000, offHealer: true,
-                walkFirst: true, closeBy: 25, urgentHpBelow: 0.5 },
-            agitateFrom: 3,                 // Agitate (lvl 68) when this many monsters are on allies
-            cleaveFrom: 3,                  // Cleave (lvl 52, axe/scythe) with this many monsters around
-            stompFrom: 2,                   // Stomp (lvl 52, basher) with this many attackers
-            sturdyHits: 4,                  // War Cry (lvl 70) on targets needing this many hits
-            hardShell: { enabled: true, factor: 3 }, // lvl 60: when the predicted next physical hits x factor reach our HP
-            useCharge: true,                           // +30 speed whenever we walk (on cooldown)
-            // Dash (combat, 120 MP): toward the target from `from` px, at most `max` px (server limit 50), one per everyMs.
-            dash: { enabled: false, from: 80, max: 49, minMpRatio: 0.5, everyMs: 1000, pauseMs: 10000 },
-            // Sword swap: `count` Swords of the Dead for targets dying in maxHits hits (burn never procs on the killing hit);
-            // fire blades back holdMs after the last quick target.
-            swordSwap: { enabled: true, names: ["swordofthedead"], count: 2, maxHits: 5, holdMs: 60 * 1000 },
-            // Agitate pack mode (lvl 68): splash weapons, War Cry + Agitate, hit the target with the most splash neighbours.
+            swordSwap: { names: ["swordofthedead"] }, // Swords of the Dead on targets that die in a few hits
             agitate: {
-                enabled: true,
                 monsters: "auto", deny: [], // "auto": decided per farm target; a list forces these kinds; deny excludes
-                maxOnMe: 8, maxHp: 50000, abilities: [], // auto: at most this many at once; no bosses / unknown abilities
-                splashOnlyFrom: 3, splashOnlyHoldMs: 8000, // Lolipops without Agitate with this many on us (splash must pay)
-                splashPullSlack: 40, // ...if we survive what the splash pulls: chained within splash radius + this (px)
-                offAfterMs: 60 * 1000, // a running auto mode goes off on a live "no" only after it held this long
-                fearMax: 0, // attackers of one damage type beyond our courage for it (each one more costs 20-40 % attack)
-                maxLevel: null, safetyShare: 0.5, // auto: null = no level cap; a pull may cost only this share of the HP the pack check allows
-                splashMin: 1.0, learnHits: 40, denseCount: 5, denseSpacing: 130, // auto: lolipops from 1.0 splash per hit (guess from spawn density first)
-                deathDenyMs: 2 * 60 * 60 * 1000, // auto: no Agitate on a kind for this long after dying to it
-                // Escape (escape.js, from slower monsters): below escapeHp, or when the HP lost over escapeLossSec kills us
-                // within escapeTtdSec; until nobody reaches us (range + escapeMargin, >= escapeClear px) and HP >= escapeUntilHp.
-                escapeHp: 0.3, escapeUntilHp: 0.6, escapeMaxMs: 45000, escapeClear: 250, escapeMargin: 100, escapeStep: 200, escapeKeepOff: 80, escapeLossSec: 3,
-                // Mobbing: escape below escapeMobHp if the live combo kills us within escapeTtdSec; no Agitate within mobStopTtdSec.
-                escapeMobHp: 0.7, escapeTtdSec: 8, mobStopTtdSec: 20,
-                partyEscape: true, // in a party too (healing counted), staying within the healer's reach where possible
-                // Gap step: minOnMe+ on us and the splash misses one in range -> `step` px into the largest angle gap.
-                gapStep: { enabled: true, step: 50, everyMs: 4000, minMs: 2500, minOnMe: 3 },
                 weapons: "splash",    // "splash": put on the splash weapons; "keep": pull with the usual ones ("/agitate off|swords|splash|chain|splashstream|config" switches the mode at runtime)
-                minPack: 3,
-                minHp: 0.8,           // start a pull only above this HP share
-                abortHp: 0.3,         // below: walk away from the pack
                 gather: "center",     // "center": walk into the pack, Agitate there, all arrive together; "step": Agitate, then step away
-                centerWithin: 20,     // "center": at the pull point within this distance
-                searchRadius: 200, gridStep: 40, // "center": pull points tried around us
-                // No other kind within reach + clearMargin px when we Agitate; else move within clearSearch px (none: skip).
-                clearMargin: 80, clearSearch: 240,
-                // Toward the spot middle: beyond homeSlack px from the spawn middle, Agitate from a point up to homeStep px
-                // nearer (gain >= homeMinGain); homePxPerMonster px nearer is worth one free monster more.
-                home: true, homeSlack: 100, homeStep: 160, homeMinGain: 40, homeNear: 600, homePxPerMonster: 40,
-                avgPerMonster: 60,    // "center": one monster more in reach is worth this much less average way (px)
-                sideStep: 50,         // "center": step out of the pack after Agitate (0 = stay)
-                adjustStep: 40, adjustEveryMs: 4000, // "center": step when monsters come from behind
-                waitShare: 0.7, waitMs: 3000, // first swing once this share of the pulled pack is in range (at most waitMs)
-                chaseFrom: 3,         // with this many or fewer left and none in range: walk to the nearest one
                 swords: "stream",     // mode "swords": "stream" = Agitate on every cooldown where we stand (normal combat), "pull" = the pull-point version
-                streamFrom: 1, streamOnMe: 3, // "stream": Agitate when this many free ones are in reach and fewer than streamOnMe attack us (auto: splashOnMe, so the splash is measured fairly)
-                splashOnMe: 5, sugarBonus: 2, agitateEverySec: 6, // "splashstream": at most this many on us; one Agitate per agitateEverySec (mana) ...
-                streamLowHp: 0.6, streamStopHp: 0.4, // ... at most 2 below 60% HP, no Agitate below 40%
-                streamToClump: true, clumpRadius: 60, clumpStep: 80, // "splashstream": walk to clumps (each neighbour within 60 px is worth 80 px of way)
                 partyMode: "auto", // party: stream only, on the leash, allies' Taunt/Agitate first; "auto" = the solo stream
-                kiteStep: 120,        // "step" (and backing off): this far
-                gatherMs: 2500,
-                regroupBelow: 0.5, regroupEveryMs: 8000, // spread out (fewer splash neighbours per hit than this): another step
-                keepMs: 60 * 1000,    // splash weapons stay on this long after a pull
             },
         },
-        // Mage (classes/mage/): each skill module has its own defaults; these are our values. Details: the module headers.
         mage: {
-            // Energize: MP to a member below energizeBelow while we keep energizeAbove; else a speed burst on the strongest
-            // fighter (ourselves within burstLeadMs ms of our next attack). energize: false = off.
-            energizeAbove: 0.6, energizeBelow: 0.4, burstLeadMs: 250,
-            // Reflective Shield on whoever takes the most magical attack (at least reflectMinAttack), keeping reflectKeepMp
-            // of our MP. reflect: false = off.
-            reflectMinAttack: 100, reflectKeepMp: 0.25,
-            useBurst: false, // Mana Burst: empties the whole MP pool
-            // Blaster mode: on for a pack (minNeighbours in its blast radius) above minMp, or always when it beats staff + book
-            // by singleMargin (singleTarget); back after keepMs without a pack or below offMp. aim: shoot the same kind's best
-            // pack. blockMs: staff + book after a held unsafe blast. fearMax: a blast may pull courage + this many.
-            blaster: { enabled: true, names: ["gstaff"], minNeighbours: 2, minMp: 0.5, offMp: 0.2, keepMs: 4000, holdMs: 60000,
-                singleTarget: true, singleMargin: 0.03, aim: true, blockMs: 6000, fearMax: 0 },
-            // Team Magiport at the team goal: pulls fighters farther than minDist px (tank first) while keepMp stays; a boss
-            // goal counts once it is in sight within bossRange px for graceMs; tries per member and goal, retryMs apart.
-            // events.js reads enabled for the members' consent.
-            magiport: { enabled: true, keepMp: 0.3, minDist: 600, bossRange: 800, graceMs: 4000, tries: 3, retryMs: 8000 },
-            // Blink on routes: jump to the farthest step on this map at least minDist px away, keeping keepMp of our MP.
-            blinkTravel: { enabled: true, minDist: 400, keepMp: 0.4 },
+            blaster: { names: ["gstaff"] }, // the Blaster weapon
         },
     },
 
-    potions: {
-        hp: "auto",       // "auto": small potions until the pool is big enough, then big ones
-        mp: "auto",
-        bigFrom: { hp: 1500, mp: 1000 }, // max HP / max MP from which hpot1 / mpot1 are used
-        target: 300,       // fighters get topped up to this many of each
-        requestBelow: 100, // ask the merchant for more below this
-        selfBuyBelow: 20,  // walk to town and buy yourself below this (merchant missing)
-    },
-
-    // Elixirs, one per class: a fighter carries `carry` and drinks one when none works or its own runs out within
-    // drinkBeforeMs. Merchant: buy - NPC elixirs below min (bag + bank) up to max; exchange - Seashells while a stat
-    // elixir is below min, until all are at refill (sourceKeep shells stay).
+    // Elixirs: which one each class drinks; the merchant buys NPC elixirs below min (bag + bank) up to max.
     elixirs: {
-        enabled: true,
         byClass: { priest: "elixirluck", mage: "elixirint0", warrior: "elixirstr0", ranger: "elixirdex0", rogue: "elixirdex0", paladin: "elixirstr0" },
-        carry: 4,                           // per fighter in the bag: 2 days
-        drinkBeforeMs: 10 * 60 * 1000,
-        callEveryMs: 5 * 60 * 1000,         // fewer than carry/2 in the bag calls the merchant, at most this long after its last visit
         buy: { elixirluck: { min: 10, max: 30 } },
-        exchange: { source: "seashell", min: 6, refill: 20, sourceKeep: 40 },
     },
 
     // Cave of Many Dreams (cave/cave.js, docs/cave-of-many-dreams.md): the player enters at Dorr and walks the leader.
-    // mode "manual": the bot fights only the player's target or attackers - no own travel, pulls or area skills (noArea).
+    // mode "manual": the bot fights only the player's target or attackers - no own travel, pulls or area skills.
     cave: {
         mode: "manual",
-        noArea: true,
         neverFight: ["cave_darkmage"], // never attacked, also when it hits us
-        // Recorder (storage "bot_cave_rec:<name>"), up to recordMaxChars per state.
-        record: true, recordMaxChars: 12000, recordCapLeader: 400, recordCapMember: 150, entsEveryMs: 10000,
     },
 
-    // Fighter side of the item/gold flow
+    // Items fighters never hand to the merchant; skill ingredients per class.
     supply: {
-        keep: ["tracker"],               // never handed to the merchant
-        keepByClass: { priest: ["essenceoflife"], ranger: ["poison"] }, // skill ingredients
-        goldKeep: 10000,                 // emergency fund for potions; the rest goes to the merchant
-        goldMinSend: 5000,               // only send gold when the surplus is at least this
-        freeSlotsMin: 6,                 // ask for a pickup when fewer slots are free
-        pickupEveryMs: 20 * 60 * 1000,   // ask for a routine pickup this often
-        firstPickupAfterMs: 60 * 1000,   // first routine pickup this long after the bot starts
-        requestEveryMs: 60 * 1000,       // don't spam the merchant
-        merchantTimeoutMs: 3 * 60 * 1000, // no answer for this long -> buy potions yourself
-        // While the merchant is on its way we keep farming and send our position this often, for at most followMs.
-        positionEveryMs: 5000,
-        followMs: 5 * 60 * 1000,
+        keep: ["tracker"],
+        keepByClass: { priest: ["essenceoflife"], ranger: ["poison"] },
     },
 
     // Fighters: equipment wishes from the progression guide + auto-equip
@@ -997,3 +661,42 @@ module.exports = {
         },
     },
 };
+
+// The tuning from the modules' defaults.js files (stage 7b), filled in where config.js has no value of its own.
+const DEFAULTS = [
+    require("./defaults.js"),          // main: watchdog, ui
+    require("./travel/defaults.js"),   // travel tuning, movement
+    require("./team/defaults.js"),     // party
+    require("./combat/defaults.js"),   // meter, tickMs, combat, potions
+    require("./encounters/defaults.js"), // events tuning
+    require("./safety/defaults.js"),   // targeting: team safety, isolation, spot check, hit factor, mobbing, rage, live
+    require("./farming/defaults.js"),  // hunts, drops, targeting (farm choice, crowded, occupied), cavalry
+    require("./cave/defaults.js"),     // cave recorder
+    require("./supply/defaults.js"),   // supply, elixir rules
+    require("./classes/paladin/defaults.js"),
+    require("./classes/priest/defaults.js"),
+    require("./classes/rogue/defaults.js"),
+    require("./classes/ranger/defaults.js"),
+    require("./classes/warrior/defaults.js"),
+    require("./classes/mage/defaults.js"),
+];
+DEFAULTS.forEach(function (d) { fillDefaults(config, d); });
+
+// Deep fill: a key we don't have takes the default (a copy); two plain objects are filled key by key; anything else we
+// have (a value, an array, null) stays as it is.
+function fillDefaults(ours, defaults) {
+    Object.keys(defaults).forEach(function (k) {
+        const d = defaults[k];
+        if (!(k in ours)) ours[k] = copyDefault(d);
+        else if (isPlain(ours[k]) && isPlain(d)) fillDefaults(ours[k], d);
+    });
+    return ours;
+}
+function isPlain(v) { return !!v && typeof v === "object" && !Array.isArray(v) && !(v instanceof RegExp); }
+function copyDefault(v) {
+    if (Array.isArray(v)) return v.map(copyDefault);
+    if (isPlain(v)) { const o = {}; Object.keys(v).forEach(function (k) { o[k] = copyDefault(v[k]); }); return o; }
+    return v;
+}
+
+module.exports = config;

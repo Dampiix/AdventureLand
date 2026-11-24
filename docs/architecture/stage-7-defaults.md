@@ -1,6 +1,6 @@
 # Stage 7: explicit deps everywhere, defaults in the modules (plan, 2026-11-24)
 
-Status: **7a done** - step 1 v1.237.16-pilot (gear, supply, drops), step 2 v1.237.17-pilot (module views); 7b open. Same branch (`modular-pilot`), **no change in behaviour**. Step 7 of the module plan.
+Status: **7a done** - step 1 v1.237.16-pilot (gear, supply, drops), step 2 v1.237.17-pilot (module views); 7b fighter side done (v1.237.18-pilot), merchant side open. Same branch (`modular-pilot`), **no change in behaviour**. Step 7 of the module plan.
 
 ## 7a. The last ctx users get explicit deps
 
@@ -55,6 +55,14 @@ Expected: config.js about 999 -> 450 lines; each module's header lists its setti
 **Check.** `scripts/check-defaults.cjs`: loads config.js and every module factory in Node, applies the defaults the
 way main.js does, and compares the result value by value with the config of the commit before 7b - it must be
 identical. It also fails when two modules declare the same key (one owner per setting).
+
+7b mechanism as built (changed from the plan with the user's OK): not the factories' DEFAULTS filled by main.js -
+main.js loads only its role's modules, and the merchant reads sections owned by fighter modules (potions ...). Instead
+each area has a `defaults.js` next to its modules, and config.js requires them and fills every missing setting at load
+(deep, ours always win) - one complete config object for both roles, main.js unchanged. config.js is a bundle now.
+Fighter side: `defaults.js` (main), travel, team, combat, encounters, safety, farming, cave, supply and one per class -
+config.js 999 -> 702 lines. `scripts/check-defaults.cjs`: values identical, the objects whose key order changed are
+listed (none of them is walked in order by the code - checked), no setting in two default files.
 
 ## Order (one commit, one deploy each; reload after the usual checks)
 
