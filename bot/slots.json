@@ -62,7 +62,7 @@
       "name": "bot_party"
     },
     {
-      "file": "core/hunts.js",
+      "file": "farming/hunts.js",
       "slot": 32,
       "name": "bot_hunts"
     },
@@ -107,7 +107,7 @@
       "name": "bot_scout"
     },
     {
-      "file": "core/cave.js",
+      "file": "cave/cave.js",
       "slot": 41,
       "name": "bot_cave"
     }

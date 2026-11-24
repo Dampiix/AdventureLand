@@ -210,8 +210,10 @@ function startBot() {
             return ctx.party.memberNames().some(function (n) { return n !== character.name && fighters.includes(n); });
         };
         botParty = ctx.party;
-        ctx.cave = require_code("bot_cave")(ctx); // Cave of Many Dreams, manual mode (v1.231.0)
-        ctx.hunts = require_code("bot_hunts")(ctx);
+        // Explicit deps (module plan, stage 3c); getters for what is created later (targeting, drops).
+        ctx.cave = require_code("bot_cave")({ config: ctx.config, util: ctx.util, comms: ctx.comms, get party() { return ctx.party; } }); // Cave of Many Dreams, manual mode
+        ctx.hunts = require_code("bot_hunts")({ config: ctx.config, util: ctx.util, comms: ctx.comms, get party() { return ctx.party; },
+            get targeting() { return ctx.targeting; }, get drops() { return ctx.drops; } });
         ctx.events = require_code("bot_events")(ctx);
         botEvents = ctx.events;
         installChatCommands(ctx);

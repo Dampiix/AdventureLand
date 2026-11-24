@@ -10,12 +10,14 @@
 //
 // active(): in the cave (character.cave set) and config.cave.mode "manual". Entering stays the player's job: the
 // bot never calls cave_enter().
+//
+// deps (module plan, stage 3c): { config, util, comms, party } - party may be a getter.
 // =====================================================================
 
-module.exports = function createCave(ctx) {
-    const config = ctx.config;
-    const util = ctx.util;
-    const comms = ctx.comms;
+module.exports = function createCave(deps) {
+    const config = deps.config;
+    const util = deps.util;
+    const comms = deps.comms;
     const cfg = config.cave || {};
     const me = character.name;
     const isLeader = me === config.leader;
@@ -38,8 +40,8 @@ module.exports = function createCave(ctx) {
             : "manual mode OFF - back to the bot's own plans", "yellow");
     }
     function leaderManual() {
-        if (isLeader || !ctx.party || !ctx.party.leaderInfo) return false;
-        const l = ctx.party.leaderInfo();
+        if (isLeader || !deps.party || !deps.party.leaderInfo) return false;
+        const l = deps.party.leaderInfo();
         return !!(l && l.manual);
     }
     function manualOn() { return manual || leaderManual(); }
@@ -168,7 +170,7 @@ module.exports = function createCave(ctx) {
         if (name === "info") return; // asked often by the client, nothing to learn
         record("req", { name: name, args: args || null });
         if (name === "vote" && isLeader && args && args.choice != null && args.option != null) {
-            const others = ctx.party.memberNames().filter(function (n) { return n !== me; });
+            const others = deps.party.memberNames().filter(function (n) { return n !== me; });
             if (others.length) comms.send(others, "cavevote", { choice: args.choice, option: args.option });
             util.log("cave", "voted " + args.option + " - members follow", "yellow");
         }

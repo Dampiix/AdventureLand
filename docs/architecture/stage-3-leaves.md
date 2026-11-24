@@ -1,6 +1,6 @@
 # Stage 3: config comments and the first leaf modules (plan, 2026-11-24)
 
-Status: **3a done (v1.237.6-pilot), 3b done (v1.237.7-pilot), 3c open.** After stage 2 (all classes as modules), same branch (`modular-pilot`), **no change in
+Status: **done** - 3a v1.237.6-pilot, 3b v1.237.7-pilot, 3c v1.237.8-pilot. After stage 2 (all classes as modules), same branch (`modular-pilot`), **no change in
 behaviour**. Steps 2 and 3 of the module plan's order.
 
 ## 3a. Config comments (no behaviour change at all)
@@ -31,6 +31,11 @@ code cut out of the old fighter.js and the new modules through 18 scenarios with
 Both already are self-contained files; they get `create(deps, options)` with what they use instead of `ctx`:
 - cave: game, util, config.cave, comms, party (manual mode, vote relay, recorder, chests in reach)
 - hunts: game, util, config.hunts, comms, party, targeting (spot safety, XP ranking), drops (drop worth)
+
+3c result: `cave/cave.js` and `farming/hunts.js` (moved, same slots `bot_cave` / `bot_hunts`); `main.js` hands them an
+explicit deps object with getters (party; targeting and drops are created later) instead of `ctx`. They still use the
+client's globals (character, get/set, parent) - the game layer comes with stage 5. Check: old file vs new with `deps.` read
+back as `ctx.` - identical except the header and the parameter name.
 
 ## Order (one commit and one deploy each)
 

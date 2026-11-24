@@ -4,7 +4,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.237.7-pilot",
+    version: "1.237.8-pilot",
 
     team: {
         // DampiixWar, Dampiix, DampiixPri, Dampiiix are an item archive: never list them (items would go to the merchant).
@@ -516,7 +516,7 @@ module.exports = {
         exchange: { source: "seashell", min: 6, refill: 20, sourceKeep: 40 },
     },
 
-    // Cave of Many Dreams (core/cave.js, docs/cave-of-many-dreams.md): the player enters at Dorr and walks the leader.
+    // Cave of Many Dreams (cave/cave.js, docs/cave-of-many-dreams.md): the player enters at Dorr and walks the leader.
     // mode "manual": the bot fights only the player's target or attackers - no own travel, pulls or area skills (noArea).
     cave: {
         mode: "manual",

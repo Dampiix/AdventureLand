@@ -3,7 +3,7 @@
 One bot for a whole Adventure Land team: up to three fighters and one merchant, all running the same code.
 The fighters farm, hunt bosses and level up; the merchant supplies them, sells, banks, trades with other players and upgrades their gear.
 
-> **Version:** `1.237.7-pilot` (`bot/config.js` → `version`) · **Teams:** `Dmpx…` (main account) and `Viz…` (second account) · **Code:** `bot/` → in-game CODE slots 20–41
+> **Version:** `1.237.8-pilot` (`bot/config.js` → `version`) · **Teams:** `Dmpx…` (main account) and `Viz…` (second account) · **Code:** `bot/` → in-game CODE slots 20–41
 
 ## Repository
 
@@ -315,7 +315,7 @@ Only `main.js` calls `require_code()`. Every other module is a factory that rece
 | [`classes/priest/`](bot/classes/priest/) | 29 `bot_class_priest` | Priest (bundle, stage 2): `priest.js` - the class, `heal.js` (heal, Party Heal), `absorb.js`, `luck-catch.js`, `revive.js`, `curse.js`, `dark-blessing.js` |
 | [`roles/merchant.js`](bot/roles/merchant.js) | 30 `bot_merchant` | Merchant main loop, selling, banking, stand, trips, Ponty rounds |
 | [`core/party.js`](bot/core/party.js) | 31 `bot_party` | Invites, leader broadcast, following |
-| [`core/hunts.js`](bot/core/hunts.js) | 32 `bot_hunts` | Monster Hunts and Daisy trips |
+| [`farming/hunts.js`](bot/farming/hunts.js) | 32 `bot_hunts` | Monster Hunts and Daisy trips (stage 3c: explicit deps config, util, comms, party, targeting, drops) |
 | [`core/gear.js`](bot/core/gear.js) | 33 `bot_gear` | Fighter wishes and equipping |
 | [`roles/workshop.js`](bot/roles/workshop.js) | 34 `bot_workshop` | Merchant: upgrades, gear goals, weapons, materials, pots, Ponty |
 | [`core/events.js`](bot/core/events.js) | 35 `bot_events` | Events and world bosses |
@@ -638,7 +638,7 @@ A visible boss is checked with its live stats (bosses grow).
 
 **Witch's Cipher farming** (`events.witchCipher`, v1.221.0, player decision). The four ingredients (verdantspore, frostscale, embercoal, gloomfeather) drop only in the event's 20-minute gathering phase, 0.3 % per 1,000 monster HP at luck 1 - so the yield follows our damage, not the spot (~15 per round). From `leadMs` 10 min before a round (read from `server.status.schedule`) until `gather_end` the leader farms the ingredient the merchant reports as scarcest (bank snapshot + its bag, `bot_cipher_stock`; ties at random, fixed per round): the first spot of `spots[ingredient]` the safety checks do not block, above hunts, drop routes and the guide; meanwhile no roaming bosses, boss searches (team, runner, merchant) or Daisy trips. No report: `fallback` (embercoal). No ingredient is sold (embercoal left the sell list in v1.220.5). Brewing at the Witch comes later.
 
-**Cave of Many Dreams, manual mode** (`config.cave`, v1.231.0, player decision 2026-11-24; `core/cave.js`, slot 41 `bot_cave`; game facts and all 50 encounters in [docs/cave-of-many-dreams.md](docs/cave-of-many-dreams.md)). The player enters at Dorr - the bot never calls `cave_enter()` - and walks the leader outside fights. While `character.cave` is set and `mode` is `"manual"`:
+**Cave of Many Dreams, manual mode** (`config.cave`, v1.231.0, player decision 2026-11-24; `cave/cave.js`, slot 41 `bot_cave`; game facts and all 50 encounters in [docs/cave-of-many-dreams.md](docs/cave-of-many-dreams.md)). The player enters at Dorr - the bot never calls `cave_enter()` - and walks the leader outside fights. While `character.cave` is set and `mode` is `"manual"`:
 - **Fights** only what the player starts (a target set on the leader by hand: the leader's current target) or what attacks the party; members also take the leader's target. Never a free pull, rare monster or spot walk (`targeting` farm `cave`); the leader stands still outside fights, kiting and covering work as usual in a fight. `neverFight` (Dark Mage) is never attacked.
 - **Off in the cave:** events, boss searches, supply calls (the merchant's call too), Daisy, Cavalry, rage-zone walks, magiport; Agitate, Cleave and Stomp (`noArea`: `util.noAreaNear` answers "yes"), the mage's Blaster (staff and book back). Nothing at all while the cave is paused (a vote). No respawn of our own (Nera: free at the doorway, 1 Amber in place - the player decides).
 - **Votes:** every member votes what its leader voted - the leader's `cave_request("vote")` (by hand in the UI or by code) is wrapped and sent as a CODE message `cavevote`; a leader vote found in the cave state wins. Members never vote on their own.

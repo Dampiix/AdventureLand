@@ -24,13 +24,16 @@
 // spots in bot_targeting: every fighter's guide agrees, no recent death there;
 // config.hunts.allow/deny override it) and the remaining kills fit into the
 // remaining time at the guide's kill speed. Other hunts are left to expire.
+//
+// deps (module plan, stage 3c): { config, util, comms, party, targeting, drops } - targeting and drops are created
+// after this module, so they are read when used (getters).
 // =====================================================================
 
-module.exports = function createHunts(ctx) {
-    const config = ctx.config;
-    const util = ctx.util;
-    const comms = ctx.comms;
-    const party = ctx.party;
+module.exports = function createHunts(deps) {
+    const config = deps.config;
+    const util = deps.util;
+    const comms = deps.comms;
+    const party = deps.party;
     const cfg = config.hunts;
     const leads = !party.isMember; // solo character or party leader
 
@@ -89,11 +92,11 @@ module.exports = function createHunts(ctx) {
         if (cfg.allow.includes(monster)) return true;
         if (!G.monsters[monster]) return false;
         const cached = safeCache[monster];
-        const died = ctx.targeting && ctx.targeting.deathAt ? ctx.targeting.deathAt(monster) : 0;
+        const died = deps.targeting && deps.targeting.deathAt ? deps.targeting.deathAt(monster) : 0;
         if (cached && Date.now() - cached.at < 2 * 60 * 1000 && !(cached.safe && died > cached.at)) return cached.safe;
         let why = "no targeting module";
         try {
-            why = ctx.targeting ? ctx.targeting.whyUnsafe(monster) : why;
+            why = deps.targeting ? deps.targeting.whyUnsafe(monster) : why;
         } catch (e) {
             why = "check failed: " + util.errReason(e);
         }
@@ -167,8 +170,8 @@ module.exports = function createHunts(ctx) {
     // (winterland, winter_cave), amulets (halloween) and belts (spookytown) come only that way, through "open"
     // tables (statring etc.: one of its items at random, so the chance is split between them).
     function dropWorth(monster) {
-        if (cfg.dropHunts === false || !ctx.drops || !ctx.drops.needs) return null;
-        const needs = ctx.drops.needs();
+        if (cfg.dropHunts === false || !deps.drops || !deps.drops.needs) return null;
+        const needs = deps.drops.needs();
         const hits = [];
         function add(item, chance, where) {
             const n = needs.find(function (x) { return x.name === item; });
@@ -198,7 +201,7 @@ module.exports = function createHunts(ctx) {
     function inXpTop(monster) {
         const n = cfg.xpTop;
         if (!n || cfg.allow.includes(monster)) return true;
-        const list = ctx.targeting && ctx.targeting.xpRanking ? ctx.targeting.xpRanking() : null;
+        const list = deps.targeting && deps.targeting.xpRanking ? deps.targeting.xpRanking() : null;
         if (!list) return true;
         const rank = list.indexOf(monster);
         let ok = rank !== -1 && rank < n;

@@ -187,7 +187,7 @@ const M = [
   ["farm-choice", "farming", "Spot-Wahl: Guide, Drops, Hunts, Rotation, Kavallerie-Plan.", "core/targeting.js", ["drops","hunts","team-safety","spot-check","storage"], [], ["boss","cipher"], 0],
   ["target-pick", "farming", "Ziel dieses Ticks: Angreifer, freie Einzelne, Assist.", "core/targeting.js", ["team-safety","mobbing-guard","rage-zones","party","geometry"], [], ["plan"], 0],
   ["drops", "farming", "Drop-Wert pro Spot, Gold pro Spot, Luck-Abgleich.", "core/drops.js", ["items","storage","comms"], [], [], 0],
-  ["hunts", "farming", "Monster-Hunts: Daisy besuchen, Hunt-Ziele, Abgabe.", "core/hunts.js", ["travel","party","team-goal","drops"], [], [], 1],
+  ["hunts", "farming", "Monster-Hunts: Daisy besuchen, Hunt-Ziele, Abgabe.", "farming/hunts.js", ["travel","party","team-goal","drops"], [], [], 1],
   ["travel", "travel", "Wege mit Zwischenkarten, schlechte Ziele, Hook in smart_move.", "core/fighter.js", ["geometry","storage"], [], [], 0],
   ["rage-walls", "travel", "Rage-Zonen als Wände für die Wegsuche.", "core/fighter.js", ["rage-zones","travel"], [], [], 0],
   ["kiting", "combat", "Kiten, Abstand halten, aus Ecken heraus.", "core/fighter.js", ["geometry","combat-math","rage-zones"], [], ["plan"], 0],
@@ -200,7 +200,7 @@ const M = [
   ["luck-swap", "gear", "Luck-Set beim Kill an, danach zurück.", "core/gear.js", ["equip","items"], [], [], 0],
   ["gear-value", "gear", "Wert von Items und XP pro Stunde.", "core/gear.js", ["items","storage"], [], [], 0],
   ["supply", "misc", "Tränke und Elixiere: Abholung beim Merchant, Selbstversorgung.", "core/supply.js", ["equip","items","comms"], [], ["manual"], 0],
-  ["cave", "misc", "Cave of Many Dreams: manueller Modus, Abstimmung, Recorder.", "core/cave.js", ["party","comms","storage","bus","status"], ["manual"], [], 1],
+  ["cave", "misc", "Cave of Many Dreams: manueller Modus, Abstimmung, Recorder.", "cave/cave.js", ["party","comms","storage","bus","status"], ["manual"], [], 1],
 
   ["game", "lib", "Spiel-Schicht: einziger Zugriff aufs Spiel (Charakter, Monster, Laufen, Skills, Wegsuche). Zwei Varianten: Browser/Steam und headless. Jedes Modul mit Spielzugriff nutzt sie, hier nicht einzeln eingezeichnet.", "neu (heute überall verstreut)", [], [], [], 0],
   ["config", "lib", "Nur noch unsere Abweichungen von den Modul-Standards; kurze Kommentare: was es macht, wie man es anpasst.", "config.js", [], [], [], 0],
