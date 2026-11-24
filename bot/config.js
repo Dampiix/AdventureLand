@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.237.1-pilot",
+    version: "1.237.2-pilot",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -709,30 +709,23 @@ module.exports = {
             // Mana Shield: damage drains MP instead of HP while on
             manaShield: { onBelow: 0.35, offAbove: 0.7, minMp: 0.25 },
         },
+        // Priest (classes/priest/): each skill module has its own defaults; these are our values. Details: the module headers.
         priest: {
-            healBelow: 0.75, selfHealBelow: 0.6,
-            partyHealBelow: 0.65,           // Party Heal when 2+ members are below this...
-            partyHealDanger: 0.35,          // ...or one member is below this
-            partyHealOne: 0.5,              // ...or any member (also out of sight, from its heartbeat) is below this (earthiverse, 2026-11-21)
-            useCurse: true, mpReserveRatio: 0.4,
-            useRevive: true,                // revive fallen members (consumes an Essence of Life)
-            // Absorb Sins (lvl 55): emergency only - a member below `below` with monsters on it
-            // and no warrior/paladin within Taunt range of it; only while we are above selfAbove.
+            healBelow: 0.75, selfHealBelow: 0.6,   // heal a member below / ourselves below this HP ratio
+            // Party Heal: 2+ members below partyHealBelow, or one below partyHealDanger, or any (also out of sight) below partyHealOne.
+            partyHealBelow: 0.65, partyHealDanger: 0.35, partyHealOne: 0.5,
+            useCurse: true, mpReserveRatio: 0.4,   // Curse on sturdy targets; Curse and Dark Blessing keep this MP share
+            useRevive: true,                       // revive fallen members (consumes an Essence of Life)
+            // Absorb Sins as an emergency: a non-tank member below `below` with monsters on it and no tank in Taunt range,
+            // while we are above selfAbove.
             absorb: { enabled: true, below: 0.35, selfAbove: 0.6 },
-            // Luck catch (2026-11-22, player decision; test): drops roll with the luck of the monster's target at death.
-            // A monster on an ally that dies within `hits` hits of our strongest fighter: Absorb Sins pulls everything off
-            // that ally (at most maxPull, priest above minHp, once per everyMs per ally). A tank (Taunt/Agitate) within
-            // tankRange takes the longer-living ones back and spares the dying ones; without a tank only what the
-            // priest's courage holds per damage type. Bosses included. Logged every logEveryMs.
+            // Luck catch: Absorb Sins on an ally whose monster dies within `hits` hits (at most maxPull, we above minHp, once per
+            // everyMs per ally); without a tank within tankRange only what our courage holds. Summary every logEveryMs.
             luckCatch: { enabled: true, hits: 2, maxPull: 5, minHp: 0.6, everyMs: 1500, tankRange: 400, logEveryMs: 10 * 60 * 1000 },
-            // Luck swap (2026-11-22, player decision, gear plan v2): the INT gear in normal fights; right before Absorb Sins
-            // (luck catch) the priest puts these on with one equip_batch call - Shield M, Rabbit's Foot, the five Wanderer's
-            // pieces (set bonus +16 luck) and a Clover Stud - and changes back backMs after the last catch (core/gear.js).
-            // Pieces it does not have yet are skipped; the best copy of each stays in its bag.
-            // Two Clover Studs (2026-11-23, player decision): one for each earring slot - a piece listed twice fills both slots.
+            // Luck swap (core/gear.js): these pieces go on with the luck catch and come off backMs after the last one; missing
+            // pieces are skipped, a piece listed twice fills both slots (two Clover Studs).
             luckSwap: { enabled: true, items: ["mshield", "rabbitsfoot", "wcap", "wattire", "wbreeches", "wgloves", "wshoes", "cloverstud", "cloverstud"], backMs: 3000 },
-            // Dark Blessing (lvl 70): +25% party damage for 8 s on targets needing sturdyHits+
-            // of our hits, and on bosses.
+            // Dark Blessing (level 70): +25 % party damage for 8 s on targets needing sturdyHits+ of our hits, and on bosses.
             darkBlessing: { enabled: true, sturdyHits: 10 },
         },
         // Rogue (module added 2026-11-18): Quick Stab/Punch follow the mainhand (dagger/fist).

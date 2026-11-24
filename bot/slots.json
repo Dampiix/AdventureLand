@@ -47,7 +47,7 @@
       "name": "bot_class_mage"
     },
     {
-      "file": "classes/priest.js",
+      "file": "classes/priest/priest.js",
       "slot": 29,
       "name": "bot_class_priest"
     },

@@ -52,6 +52,8 @@ function unequipSlot(slot) { return unequip(slot); }
 function path() { return typeof smart !== "undefined" ? smart : null; } // the running smart_move (plan in .plot)
 function canMoveTo(x, y) { return can_move_to(x, y); }
 function transporting(entity) { return typeof is_transporting === "function" && is_transporting(entity); }
+function isMoving(entity) { return is_moving(entity); }                 // stage 2 (priest)
+function storageGet(key) { return get(key); }                         // shared storage (all our windows); may throw
 
 module.exports = {
     hpRatio: hpRatio,
@@ -78,4 +80,6 @@ module.exports = {
     path: path,
     canMoveTo: canMoveTo,
     transporting: transporting,
+    isMoving: isMoving,
+    storageGet: storageGet,
 };
