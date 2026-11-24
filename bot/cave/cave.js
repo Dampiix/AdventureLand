@@ -11,7 +11,8 @@
 // active(): in the cave (character.cave set) and config.cave.mode "manual". Entering stays the player's job: the
 // bot never calls cave_enter().
 //
-// deps (module plan, stage 3c): { config, util, comms, party } - party may be a getter.
+// deps (module plan, stage 3c): { config, util, comms, party, bus } - party may be a getter; bus (stage 4a) gets
+// "manual" and "manualOwn".
 // =====================================================================
 
 module.exports = function createCave(deps) {
@@ -272,6 +273,11 @@ module.exports = function createCave(deps) {
         } catch (e) { /* next round */ }
     }, 500);
 
+    // On the bus for the party (stage 4a): manual rules on, and our own /manual (the leader broadcasts it).
+    if (deps.bus) {
+        deps.bus.provide("manual", active);
+        deps.bus.provide("manualOwn", function () { return manual; });
+    }
     return {
         active: active,         // manual rules: in the cave (mode "manual") or /manual (ours or the leader's)
         caveManual: caveManual, // in the cave in manual mode (no respawn, pauses, cave chests)

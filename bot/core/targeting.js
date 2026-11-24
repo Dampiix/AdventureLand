@@ -30,11 +30,17 @@
 // spawn comes at once - judged as one pull, failing zones are kept out of).
 // =====================================================================
 
+const game = require("../lib/game.js");
+const createSpots = require("../safety/spots.js");
+
 module.exports = function createTargeting(ctx) {
     const config = ctx.config;
     const util = ctx.util;
     const party = ctx.party;
     const cfg = config.targeting;
+    // Spot geometry (watchPoint, inSpotArea, spotBox, boxDist) lives in safety/spots.js (stage 4a): party uses it too.
+    const spots = createSpots({ game: game, util: util, config: config });
+    const watchPoint = spots.watchPoint, inSpotArea = spots.inSpotArea, spotBox = spots.spotBox, boxDist = spots.boxDist;
     let farm = null;
     let nextPickAt = 0;
     let huntBlockLogAt = 0; // v1.235.3: a hunt waiting for its blocked spot
@@ -183,7 +189,7 @@ module.exports = function createTargeting(ctx) {
     function harmless(monster, attack, n) {
         const m = G.monsters[monster];
         if (!m || m.cooperative || (m.abilities && Object.keys(m.abilities).length)) return false;
-        const team = ctx.events && ctx.events.teamStats ? ctx.events.teamStats() : [util.combatStats()];
+        const team = ctx.teamStats ? ctx.teamStats.teamStats() : [util.combatStats()];
         const att = attack || m.attack || 0;
         const mob = (n || 1) > 3 ? util.mobCap(att) : 1;
         return team.every(function (f) {
@@ -262,7 +268,7 @@ module.exports = function createTargeting(ctx) {
         if (!m || m.cooperative) return { ok: false, why: "no data / cooperative" };
         const odd = Object.keys(m.abilities || {}).filter(function (a) { return !(ts.abilities || []).includes(a); });
         if (odd.length) return { ok: false, why: "abilities: " + odd.join(", ") };
-        const team = ctx.events && ctx.events.teamStats ? ctx.events.teamStats() : [util.combatStats()];
+        const team = ctx.teamStats ? ctx.teamStats.teamStats() : [util.combatStats()];
         const expected = config.team.fighters.filter(function (f) { return f === character.name || party.inParty(f); }).length;
         if (team.length < expected) return { ok: false, why: "waiting for the team's stats" };
         // No tank class in the party (2026-11-22): whoever pulls - we, the leader - takes the hits in the
@@ -393,7 +399,7 @@ module.exports = function createTargeting(ctx) {
         if (c && c.level === e.level && now - c.at < 30 * 1000) return c.ok;
         // Harmless even at its real attack (every fighter survives 20+ hits, e.g. a level-7
         // armadillo with 27 attack): no further check.
-        const team = ctx.events && ctx.events.teamStats ? ctx.events.teamStats() : [];
+        const team = ctx.teamStats ? ctx.teamStats.teamStats() : [];
         const fighters = team.length ? team : [util.combatStats()];
         const harmlessNow = !(def.abilities && Object.keys(def.abilities).length) && fighters.every(function (f) {
             return f.max_hp >= 20 * (e.attack || def.attack || 0) * 1.1 * util.hitMultiplier(f, def.damage_type, def) * util.hitFactor(e.mtype);
@@ -929,32 +935,7 @@ module.exports = function createTargeting(ctx) {
         util.log("target", seen.length + " " + type + " in sight, none picked: " + (parts.join(", ") || "no reason found"), "orange");
     }
     // We see monsters of this type but none stands alone: hold position until one does,
-    // instead of walking on into the pack (waitForLone below).
-    // Where to wait for a lone one (player request 2026-11-19): just outside the edge of the
-    // nearest spawn box of the kind on our map, isolation.watchMargin px out - close enough to see
-    // the whole box, far enough not to draw aggro. Null when no box of it is on this map.
-    function watchPoint(type) {
-        const me = util.xy(character);
-        const margin = icfg.watchMargin || 150;
-        let best = null, bestD = Infinity;
-        ((G.maps[character.map] || {}).monsters || []).forEach(function (pack) {
-            if (pack.type !== type) return;
-            // A spawn with a rage zone (map data "rage", 2026-11-19: the mummies): every 4.2 s each
-            // free monster of that spawn goes for a player standing inside it - wait outside that.
-            const boxes = pack.rage ? [pack.rage] : util.spawnBoxes(pack, character.map);
-            boxes.forEach(function (b) {
-                const cx = (b[0] + b[2]) / 2, cy = (b[1] + b[3]) / 2;
-                // Nearest point of the box, then margin px further out along the way from its center.
-                const nx = Math.max(b[0], Math.min(b[2], me.x)), ny = Math.max(b[1], Math.min(b[3], me.y));
-                let dx = nx - cx, dy = ny - cy;
-                const len = Math.hypot(dx, dy) || 1;
-                const p = { map: character.map, x: Math.round(nx + dx / len * margin), y: Math.round(ny + dy / len * margin) };
-                const d = Math.hypot(p.x - me.x, p.y - me.y);
-                if (d < bestD && can_move_to(p.x, p.y)) { bestD = d; best = p; }
-            });
-        });
-        return best;
-    }
+    // instead of walking on into the pack (waitForLone below). Where to wait: spots.watchPoint.
     // Returns "lone" (only packs in sight), "strong" (only ones above our level check in
     // sight – skipped, but walking on towards the spawn's middle ran the team into the
     // level-12 White Wolves, 2026-11-17) or null (walk on).
@@ -993,39 +974,6 @@ module.exports = function createTargeting(ctx) {
     // While the check is open no free monster of the kind is picked (ones on us are still fought).
     const gcfg = cfg.spotCheck || {};
     let gate = null; // { key, state: "walk" | "watch" | "ok", since }
-    function spotBox(type, spot) {
-        const map = G.maps[spot.map];
-        let box = null;
-        ((map && map.monsters) || []).forEach(function (pack) {
-            if (box || pack.type !== type) return;
-            const boxes = util.spawnBoxes(pack, spot.map);
-            boxes.forEach(function (b) {
-                if (box || Math.round((b[0] + b[2]) / 2) !== spot.x || Math.round((b[1] + b[3]) / 2) !== spot.y) return;
-                // Spawn box and rage box together, whichever reaches farther out (player request 2026-11-22).
-                const r = pack.rage;
-                const u = r ? [Math.min(b[0], r[0]), Math.min(b[1], r[1]), Math.max(b[2], r[2]), Math.max(b[3], r[3])] : b;
-                box = { b: u, rage: !!r, count: pack.count || 1 };
-            });
-        });
-        return box;
-    }
-    function boxDist(p, b) {
-        const dx = Math.max(b[0] - p.x, 0, p.x - b[2]), dy = Math.max(b[1] - p.y, 0, p.y - b[3]);
-        return Math.hypot(dx, dy);
-    }
-    // Is p (on our map) within the spot check's edge of a spawn of this type? (party.travelDest)
-    function inSpotArea(p, type) {
-        const def = G.monsters[type];
-        if (!def || !p) return false;
-        const margin = Math.max(gcfg.margin || 150, Math.min((def.range || 0) + 50, gcfg.maxMargin || 450));
-        const mapName = p.map || character.map; // also a route end on another map (2026-11-22)
-        return ((G.maps[mapName] || {}).monsters || []).some(function (pk) {
-            if (pk.type !== type) return false;
-            const boxes = util.spawnBoxes(pk, mapName);
-            if (pk.rage) boxes.push(pk.rage);
-            return boxes.some(function (b) { return boxDist(p, b) < margin; });
-        });
-    }
     function gateApplies(f) {
         if (!gcfg.enabled || !f || !f.monster || f.any || f.dest || !G.monsters[f.monster] || G.monsters[f.monster].cooperative) return false;
         if (party.enabled && (party.isMember && !party.detached())) return false;
@@ -1810,7 +1758,7 @@ module.exports = function createTargeting(ctx) {
         if (!m || m.dead) return false;
         if (doomed(m)) return true;
         const def = G.monsters[m.mtype] || {};
-        const team = ctx.events && ctx.events.teamStats ? ctx.events.teamStats() : [util.combatStats()];
+        const team = ctx.teamStats ? ctx.teamStats.teamStats() : [util.combatStats()];
         let best = 0;
         team.forEach(function (f) {
             const hit = (f.attack || 0) * util.hitMultiplier(def, f.damage_type, f);
@@ -2049,7 +1997,7 @@ module.exports = function createTargeting(ctx) {
         // (reported stats) x mobbing.healShare, as it heals others now and then.
         let healing = 0;
         if (party.enabled) {
-            const team = ctx.events && ctx.events.teamStats ? ctx.events.teamStats() : [];
+            const team = ctx.teamStats ? ctx.teamStats.teamStats() : [];
             team.forEach(function (f) {
                 if (!f || !(f.heal > 0) || f.name === me.name) return;
                 const p = get_player(f.name);

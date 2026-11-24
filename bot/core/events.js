@@ -208,51 +208,11 @@ module.exports = function createEvents(ctx) {
     //   time:    the team alone kills it within maxFightMinutes (if set)
     // A death while fighting a boss pauses it for pauseAfterDeathMs (persisted).
     const bcfg = cfg.boss || {};
-    // The members' stats survive a restart of the leader (player decision 2026-11-20): members
-    // report only every 60 s, and until then the boss check said "waiting for the team's stats" -
-    // a Phoenix in sight was left alone for up to a minute. Stored copies up to 30 min old count
-    // as fresh right after the start (teamStats takes reports up to 3 min); new reports replace them.
-    const STATS_KEY = "bot_team_stats:" + character.name;
-    const stats = (function () {
-        const out = {};
-        try {
-            const saved = get(STATS_KEY) || {};
-            Object.keys(saved).forEach(function (n) {
-                if (saved[n] && saved[n].s && Date.now() - saved[n].at < 30 * 60 * 1000) out[n] = { s: saved[n].s, at: Date.now() };
-            });
-        } catch (e) { /* storage unavailable */ }
-        return out;
-    })();                            // fighter -> { s, at }
-    let lastStatsSent = 0;
+    // The team's combat stats (shareStats, teamStats) live in team/team-stats.js (stage 4a).
+    const shareStats = ctx.teamStats.shareStats, teamStats = ctx.teamStats.teamStats, stats = ctx.teamStats.reports;
     const PAUSE_KEY = "bot_boss_pause:" + character.name;
     const paused = (function () { try { return get(PAUSE_KEY) || {}; } catch (e) { return {}; } })();
     const verdicts = {};             // boss -> { ok, why, at }
-
-    ctx.comms.on("stats", function (data, from) {
-        if (!config.characters[from] || !data || !data.max_hp) return;
-        stats[from] = { s: data, at: Date.now() };
-        try { set(STATS_KEY, stats); } catch (e) { /* storage unavailable */ }
-    });
-
-    // Every fighter tells every other one (2026-11-22, was: members to the leader only): the warrior's live
-    // check (mobbing escape, protective Agitate) needs the priest's healing and the team's stats too.
-    function shareStats() {
-        if (!party.enabled || Date.now() - lastStatsSent < 60 * 1000) return;
-        lastStatsSent = Date.now();
-        const me = util.combatStats();
-        config.team.fighters.forEach(function (n) {
-            if (n !== character.name && party.inParty(n)) ctx.comms.send(n, "stats", me);
-        });
-    }
-
-    function teamStats() {
-        const list = [util.combatStats()];
-        const now = Date.now();
-        Object.keys(stats).forEach(function (name) {
-            if (party.inParty(name) && now - stats[name].at < 3 * 60 * 1000) list.push(stats[name].s);
-        });
-        return list;
-    }
 
     // `alone`: the stats of one fighter (a runner on its own) instead of the whole team.
     // `live` (optional): the boss as we see it - a grown one hits harder and has more HP
@@ -479,7 +439,8 @@ module.exports = function createEvents(ctx) {
 
     // The leader's wait for the team (fighter.waitForTeam) is going on: marked every waiting tick.
     function teamWaiting() {
-        return !!ctx.teamWaitAt && Date.now() - ctx.teamWaitAt < 1500;
+        const at = ctx.bus.get("teamWaitAt"); // fighter: when the leader last waited for the team
+        return !!at && Date.now() - at < 1500;
     }
 
     // Any target boss in sight ends a search at once (player decision 2026-11-20): the search
@@ -1146,7 +1107,7 @@ module.exports = function createEvents(ctx) {
         return "ok";
     }
 
-    return {
+    const api = {
         tick: tick,
         current: function () { return current; },
         // Leader: a parallel (split) boss search is under way - the members walk their own areas, no team wait.
@@ -1178,12 +1139,15 @@ module.exports = function createEvents(ctx) {
         // Checked live: the team wait runs before tick(), so `current` stays stale while waiting
         // (2026-11-20: the priest waited 45 s for the warrior with the Phoenix reported).
         engaging: function () { return !!(current && current.sighted) || (leads && !!visibleBoss()); },
-        teamStats: teamStats, // leader: own stats + fresh member reports
         publishScoutPlan: publishScoutPlan, // fighter.busyStep: every tick, before the team wait and supply can take it
         cipherFarm: cipherFarm,             // targeting.currentFarm: the Witch's Cipher ingredient spot list, or null
         cipherActive: cipherActive,         // fighter.busyStep: no Daisy trips in the gathering window
         acceptMagiport: acceptMagiport,     // main.js on_magiport
     };
+    // On the bus for the party (stage 4a): the current boss event and whether a boss search job runs.
+    ctx.bus.provide("boss", api.current);
+    ctx.bus.provide("search", api.searchJob);
+    return api;
 
     // Magiport consent (v1.236.0, player decision 2026-11-24): the game asks us (on_magiport) when a mage pulls us to it.
     // Accepted from a team fighter in our party while we are alive and

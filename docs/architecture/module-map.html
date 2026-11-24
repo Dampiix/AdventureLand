@@ -178,8 +178,8 @@ const M = [
   ["gear-goals", "workshop", "Ausrüstungsziele, Off-Plan-Rüstung, leere Slots, bessere Waffen.", "roles/workshop.js", ["wishes","upgrade","bank"], [], [], 0],
   ["value-report", "workshop", "Wertbericht: was bringt wie viel Stärke pro Stunde.", "roles/workshop.js", ["gear-value"], [], [], 0],
 
-  ["party", "team", "Mitglieder, Einladungen, Leader-Meldung, Folgen.", "core/party.js", ["comms","bus","geometry"], [], [], 0],
-  ["team-goal", "team", "Teamziel: Leader setzt das Endziel, alle gehen voraus und warten dort.", "core/party.js", ["party","travel","spot-check","geometry","bus"], ["goal"], ["boss","search","manual"], 1],
+  ["party", "team", "Mitglieder, Einladungen, Leader-Meldung, Folgen.", "team/party.js", ["comms","bus","geometry"], [], [], 0],
+  ["team-goal", "team", "Teamziel: Leader setzt das Endziel, alle gehen voraus und warten dort.", "team/party.js", ["party","travel","spot-check","geometry","bus"], ["goal"], ["boss","search","manual"], 1],
   ["team-safety", "safety", "Team-Modell, Monster-Level, Boss-Einschätzung.", "core/targeting.js + events.js", ["party","combat-math","comms"], [], [], 1],
   ["rage-zones", "safety", "Rage-Zonen der Spawns, Urteil pro Zone.", "core/targeting.js", ["combat-math","geometry"], [], [], 1],
   ["spot-check", "safety", "Spot-Check vom Rand, Spot-Bereich, Randpunkt.", "core/targeting.js", ["rage-zones","team-safety","geometry"], [], [], 0],

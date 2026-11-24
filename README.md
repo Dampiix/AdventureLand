@@ -3,7 +3,7 @@
 One bot for a whole Adventure Land team: up to three fighters and one merchant, all running the same code.
 The fighters farm, hunt bosses and level up; the merchant supplies them, sells, banks, trades with other players and upgrades their gear.
 
-> **Version:** `1.237.8-pilot` (`bot/config.js` → `version`) · **Teams:** `Dmpx…` (main account) and `Viz…` (second account) · **Code:** `bot/` → in-game CODE slots 20–41
+> **Version:** `1.237.9-pilot` (`bot/config.js` → `version`) · **Teams:** `Dmpx…` (main account) and `Viz…` (second account) · **Code:** `bot/` → in-game CODE slots 20–41
 
 ## Repository
 
@@ -307,14 +307,14 @@ Only `main.js` calls `require_code()`. Every other module is a factory that rece
 | [`config.js`](bot/config.js) | 21 `bot_config` | Everything you tune |
 | [`lib/util.js`](bot/lib/util.js) | 22 `bot_util` | Shared helpers (bundle, pilot step 2): a facade over `geometry`, `names`, `storage` (journal, heartbeat), `status`, `combat-math` (damage, hit factors, mobbing, fear, kite risk), `items`, `game` (the game layer: our HP/MP, skills, thin client wrappers), `walking`, `monster-rules`, `team`, `basics` |
 | [`lib/comms.js`](bot/lib/comms.js) | 23 `bot_comms` | CODE messages between our own characters |
-| [`core/targeting.js`](bot/core/targeting.js) | 24 `bot_targeting` | Farm spot, safety checks, target picking |
+| [`core/targeting.js`](bot/core/targeting.js) | 24 `bot_targeting` | Farm spot, safety checks, target picking (bundle: spot geometry in `safety/spots.js`) |
 | [`core/supply.js`](bot/core/supply.js) | 25 `bot_supply` | Fighter side of loot, gold and potions |
 | [`core/fighter.js`](bot/core/fighter.js) | 26 `bot_fighter` | Fighter main loop: potions, combat, kiting, Cavalry, deaths (bundle, stage 3b: with `travel/travel.js` - path walks, waypoints, goals without a path - and `travel/rage-walls.js` - rage zones as walls for the path search, the smart_move wrapper, stepping out of zones, the boss hold ring) |
 | [`classes/paladin/`](bot/classes/paladin/) | 27 `bot_class_paladin` | Paladin (bundle, stage 2): `paladin.js` (class, self-heal, Smash), `mana-shield.js`, `oath.js`, `cleansing.js` |
 | [`classes/mage/`](bot/classes/mage/) | 28 `bot_class_mage` | Mage (bundle, pilot step 4): `mage.js` - the class, `energize.js`, `reflect.js`, `blaster.js`, `blink.js`, `team-port.js` - one skill each, with own defaults and passed-in dependencies |
 | [`classes/priest/`](bot/classes/priest/) | 29 `bot_class_priest` | Priest (bundle, stage 2): `priest.js` - the class, `heal.js` (heal, Party Heal), `absorb.js`, `luck-catch.js`, `revive.js`, `curse.js`, `dark-blessing.js` |
 | [`roles/merchant.js`](bot/roles/merchant.js) | 30 `bot_merchant` | Merchant main loop, selling, banking, stand, trips, Ponty rounds |
-| [`core/party.js`](bot/core/party.js) | 31 `bot_party` | Invites, leader broadcast, following |
+| [`team/party.js`](bot/team/party.js) | 31 `bot_party` | Invites, leader broadcast, following, team goal (bundle, stage 4a: with `safety/spots.js`; reads boss, search and manual from the bus) |
 | [`farming/hunts.js`](bot/farming/hunts.js) | 32 `bot_hunts` | Monster Hunts and Daisy trips (stage 3c: explicit deps config, util, comms, party, targeting, drops) |
 | [`core/gear.js`](bot/core/gear.js) | 33 `bot_gear` | Fighter wishes and equipping |
 | [`roles/workshop.js`](bot/roles/workshop.js) | 34 `bot_workshop` | Merchant: upgrades, gear goals, weapons, materials, pots, Ponty |
@@ -323,6 +323,8 @@ Only `main.js` calls `require_code()`. Every other module is a factory that rece
 | [`core/drops.js`](bot/core/drops.js) | 37 `bot_drops` | Drop farming and spot gold |
 | [`classes/warrior/`](bot/classes/warrior/) | 38 `bot_class_warrior` | Warrior (bundle, stage 2): `warrior.js` (class, hooks, Hard Shell, War Cry, Cleave, Stomp), `common.js`, `protect.js` (Taunt, protective Agitate), `mobility.js` (Charge, Dash), `agitate-mode.js`, `agitate-point.js`, `agitate-stream.js`, `agitate.js` (pack tick), `splash.js`, `escape.js`, `sword-swap.js` - the Agitate parts share one internal state |
 | [`classes/rogue/`](bot/classes/rogue/) | 39 `bot_class_rogue` | Rogue (bundle, stage 2): `rogue.js`, `swiftness.js`, `stealth.js` (Assassin's Smoke, hiding), `fanofknives.js` (Knife Belt), `strikes.js` (Quick Stab/Punch, Mental Burst, Poisonous Touch) |
+| [`lib/bus.js`](bot/lib/bus.js) | 42 `bot_bus` | The bus (stage 4a): state a lower module reads without calling a higher one (boss, search, manual, teamWaitAt, memberLuck) |
+| [`team/team-stats.js`](bot/team/team-stats.js) | 43 `bot_team_stats` | Every fighter's combat stats for the team model (stage 4a, out of events) |
 
 [`slots.json`](bot/slots.json) holds the same file-to-slot mapping for the deploy script. A slot whose entry file loads other files with a relative `require("./x.js")` is uploaded as one bundle of them ([`scripts/bundle.mjs`](scripts/bundle.mjs), module plan pilot); tests: `node scripts/test-bundle.mjs`, `node scripts/test-mage.cjs`, `node scripts/test-classes.cjs <class>`, `node scripts/test-warrior.cjs`.
 

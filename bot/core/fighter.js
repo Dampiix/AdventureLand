@@ -1195,7 +1195,8 @@ module.exports = function createFighter(ctx, cls) {
     const chestSeen = {}; // chest id -> first time we saw it
     // The members' luck multipliers ride along (v1.227.5): the leader's drop estimate weighs each member's own luck
     // (drops.luckFactor - party drop rolls use the luck of the monster's target and of every contributor).
-    const luckOf = ctx.memberLuck = ctx.memberLuck || {}; // fighter -> { l, at }
+    const luckOf = {}; // fighter -> { l, at }
+    ctx.bus.provide("memberLuck", function () { return luckOf; }); // read by drops
     ctx.comms.on("goldm", function (data, from) {
         if (!data || typeof data.g !== "number" || !((config.team && config.team.fighters) || []).includes(from)) return;
         goldOf[from] = { g: data.g, at: Date.now() };
@@ -1299,6 +1300,8 @@ module.exports = function createFighter(ctx, cls) {
         waitShown = false;
         util.status("walking on", "white");
     }
+    let teamWaitAt = 0; // on the bus for events (a walk stopped by the team wait is no failed boss-search try)
+    ctx.bus.provide("teamWaitAt", function () { return teamWaitAt; });
     function waitForTeam() {
         const pc = config.party || {};
         if (!party.enabled || !party.isLeader || !pc.waitForTeam) return false;
@@ -1339,7 +1342,7 @@ module.exports = function createFighter(ctx, cls) {
         // A member strong enough to pick its own targets here (targeting isEasy, from its own stats) farms on
         // its own like a detached one - no waiting for it (player decision 2026-11-21: the warrior took his own
         // CGoos far away and priest and ranger stood waiting for him).
-        const stats = ctx.events && ctx.events.teamStats ? ctx.events.teamStats() : [];
+        const stats = ctx.teamStats ? ctx.teamStats.teamStats() : [];
         const ownTargets = function (n) {
             const s = config.party.spread, def = lastFarm && lastFarm.monster && G.monsters[lastFarm.monster];
             const st = stats.find(function (x) { return x && x.name === n; });
@@ -1374,7 +1377,7 @@ module.exports = function createFighter(ctx, cls) {
             util.log("party", "waiting for " + far.join(", ") + " again", "white");
         } else if (waited > max) { endWaitStatus(); return false; }
         // Marked for the boss search: a walk stopped by this wait is no failed try (2026-11-20).
-        ctx.teamWaitAt = now;
+        teamWaitAt = now;
         if (is_moving(character)) { walks.stopOnPurpose(); stop(); }
         util.status("waiting for " + far.join(", "), "yellow");
         waitShown = true;

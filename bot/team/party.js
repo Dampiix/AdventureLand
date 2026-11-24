@@ -9,12 +9,20 @@
 //          any more, see keepUp) and assist instead of opening fights
 //          themselves. party.leash is still read by the warrior (Agitate
 //          stays near the leader) and by targeting's rage-zone verdict.
+//
+// deps (module plan, stage 4a): { config, util, comms, bus } - the leader's goal reads the bus (boss, search, manual)
+// and the spot geometry (safety/spots.js) instead of events, cave and targeting: no dependency cycle.
 // =====================================================================
 
-module.exports = function createParty(ctx) {
-    const config = ctx.config;
-    const util = ctx.util;
-    const comms = ctx.comms;
+const game = require("../lib/game.js");
+const createSpots = require("../safety/spots.js");
+
+module.exports = function createParty(deps) {
+    const config = deps.config;
+    const util = deps.util;
+    const comms = deps.comms;
+    const bus = deps.bus;
+    const spots = createSpots({ game: game, util: util, config: config });
     const cfg = config.party;
     const leader = config.leader;
     const phase = config.phases[config.phase] || {};
@@ -96,11 +104,10 @@ module.exports = function createParty(ctx) {
         if (radius === undefined) radius = cfg.goalRadius || 200;
         const me = { map: character.map, x: character.real_x, y: character.real_y };
         if (g.kind === "spot") {
-            const tg = ctx.targeting;
-            if (!g.name || !tg || !tg.inSpotArea || !tg.watchPoint) return false;
+            if (!g.name) return false;
             if (g.map && g.map !== character.map) return false;
-            if (tg.inSpotArea(me, g.name)) return true;
-            const e = tg.watchPoint(g.name);
+            if (spots.inSpotArea(me, g.name)) return true;
+            const e = spots.watchPoint(g.name);
             return !!e && util.distanceTo(e) <= edge;
         }
         if (g.kind === "daisy" || g.kind === "point") {
@@ -111,9 +118,9 @@ module.exports = function createParty(ctx) {
     function leaderGoal() {
         if (!enabled || !isLeader) return null;
         let want = null;
-        const ev = ctx.events && ctx.events.current ? ctx.events.current() : null;
-        if (ctx.cave && ctx.cave.active && ctx.cave.active()) want = null;
-        else if (ctx.events && ctx.events.searchJob && ctx.events.searchJob()) want = { kind: "search", name: null, point: null };
+        const ev = bus.get("boss");           // events: the current boss event
+        if (bus.get("manual")) want = null;   // cave: manual rules
+        else if (bus.get("search")) want = { kind: "search", name: null, point: null };
         else if (ev && ev.join) want = null;
         else if (ev && ev.monster && !ev.solo) want = { kind: "boss", name: ev.monster, point: ev.dest && typeof ev.dest === "object" ? ev.dest : null };
         else want = setGoalNow;
@@ -178,7 +185,7 @@ module.exports = function createParty(ctx) {
             dest: cfg.goToDest !== false && typeof smart !== "undefined" && smart.moving && smart.map ? { map: smart.map, x: Math.round(smart.x), y: Math.round(smart.y) } : null,
             // dest: where a roaming boss was seen (a member's sighting) - members go there, not to its nearest spawn.
             event: event ? { name: event.name, join: !!event.join, monster: event.monster || null, dest: event.dest && typeof event.dest === "object" ? event.dest : null } : null,
-            manual: !!(ctx.cave && ctx.cave.ownManual && ctx.cave.ownManual()), // /manual: members use the manual rules too (v1.231.1)
+            manual: !!bus.get("manualOwn"), // /manual: members use the manual rules too (v1.231.1)
             // The team goal (v1.236.0): the end goal of the team's route, see leaderGoal.
             goal: g ? { id: g.id, kind: g.kind, name: g.name, map: g.map || null, x: g.x, y: g.y, reached: !!g.reached } : null,
         });
@@ -256,7 +263,7 @@ module.exports = function createParty(ctx) {
         const d = lead && lead.moving && lead.dest && lead.dest.map ? lead.dest : null;
         if (d && badDest && Date.now() < badDest.until && badDest.map === d.map && Math.hypot(badDest.x - d.x, badDest.y - d.y) < 60) return null;
         // Any map (2026-11-22: started in halloween, the walk went on into the booboo spawn in spookytown).
-        if (d && lead.farm && ctx.targeting && ctx.targeting.inSpotArea && ctx.targeting.inSpotArea(d, lead.farm)) return null;
+        if (d && lead.farm && spots.inSpotArea(d, lead.farm)) return null;
         return d;
     }
 
@@ -281,8 +288,8 @@ module.exports = function createParty(ctx) {
         if (!g.map || typeof g.x !== "number") return null; // a spot without a known point: follow the leader
         if (badDest && Date.now() < badDest.until && badDest.map === g.map && Math.hypot(badDest.x - g.x, badDest.y - g.y) < 60) return null;
         const label = "to goal: " + goalLabel(g);
-        if (g.kind === "spot" && character.map === g.map && ctx.targeting && ctx.targeting.watchPoint) {
-            const e = ctx.targeting.watchPoint(g.name);
+        if (g.kind === "spot" && character.map === g.map) {
+            const e = spots.watchPoint(g.name);
             if (e) { moveTowards({ map: character.map, x: e.x, y: e.y }, label, true); return "go"; }
         }
         moveTowards({ map: g.map, x: g.x, y: g.y }, label, true);

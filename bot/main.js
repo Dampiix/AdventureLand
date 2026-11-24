@@ -193,13 +193,15 @@ function startBot() {
 
     botComms = createBotComms(BOT_CONFIG, BOT_UTIL);
     const ctx = { config: BOT_CONFIG, util: BOT_UTIL, comms: botComms, me: me };
+    // The bus (stage 4a): state a lower module reads without calling the higher one (lib/bus.js lists the names).
+    ctx.bus = require_code("bot_bus")();
 
     if (me.role === "merchant") {
         ctx.workshop = require_code("bot_workshop")(ctx);
         ctx.scout = require_code("bot_scout")(ctx); // boss search + safe walking (2026-11-23)
         botRunner = require_code("bot_merchant")(ctx);
     } else {
-        ctx.party = require_code("bot_party")(ctx);
+        ctx.party = require_code("bot_party")({ config: ctx.config, util: ctx.util, comms: ctx.comms, bus: ctx.bus });
         // The whole group walks (2026-11-18): members following the leader re-planned on every
         // move and teleported back and forth; a leader alone on Town then waited in the map's
         // center for the walking members. Town stays for the merchant, solo play and members
@@ -211,7 +213,8 @@ function startBot() {
         };
         botParty = ctx.party;
         // Explicit deps (module plan, stage 3c); getters for what is created later (targeting, drops).
-        ctx.cave = require_code("bot_cave")({ config: ctx.config, util: ctx.util, comms: ctx.comms, get party() { return ctx.party; } }); // Cave of Many Dreams, manual mode
+        ctx.teamStats = require_code("bot_team_stats")({ config: ctx.config, util: ctx.util, comms: ctx.comms, get party() { return ctx.party; } });
+        ctx.cave = require_code("bot_cave")({ config: ctx.config, util: ctx.util, comms: ctx.comms, bus: ctx.bus, get party() { return ctx.party; } }); // Cave of Many Dreams, manual mode
         ctx.hunts = require_code("bot_hunts")({ config: ctx.config, util: ctx.util, comms: ctx.comms, get party() { return ctx.party; },
             get targeting() { return ctx.targeting; }, get drops() { return ctx.drops; } });
         ctx.events = require_code("bot_events")(ctx);

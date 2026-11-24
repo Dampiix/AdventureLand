@@ -1,6 +1,6 @@
 # Stage 4: break the party / targeting / events cycle, then split targeting and events (plan, 2026-11-24)
 
-Status: **plan, not built.** Same branch (`modular-pilot`), **no change in behaviour**. Step 4 of the module plan.
+Status: **4a done (v1.237.9-pilot)**, 4b and 4c open. Same branch (`modular-pilot`), **no change in behaviour**. Step 4 of the module plan.
 
 ## Where the cycle is (measured on v1.237.8-pilot)
 
@@ -35,6 +35,11 @@ cipherFarm, current - fine, no way back), team-stats, spots, cave, hunts, drops.
 
 Check: mechanical (moved function bodies identical), the bus read where the call was (same order), test old vs new for
 the team goal (leaderGoal with a boss, a search, manual, a spot), live: a boss goal, a search, a spot goal.
+
+4a result: `lib/bus.js` (slot 42 `bot_bus`), `team/team-stats.js` (slot 43 `bot_team_stats`, also `reports` for the
+runner check), `safety/spots.js` (bundled into party and targeting - pure), `core/party.js` -> `team/party.js` with deps
+{ config, util, comms, bus }. Test: `scripts/test-stage4a.cjs` (spots on 99 points x 4 kinds, the leader's team goal /
+atGoal / broadcasts over 16 states old vs new, the bus); team-stats is the old text unchanged.
 
 ## 4b. Split targeting (2,173 lines) into parts
 

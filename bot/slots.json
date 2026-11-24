@@ -57,7 +57,7 @@
       "name": "bot_merchant"
     },
     {
-      "file": "core/party.js",
+      "file": "team/party.js",
       "slot": 31,
       "name": "bot_party"
     },
@@ -110,6 +110,16 @@
       "file": "cave/cave.js",
       "slot": 41,
       "name": "bot_cave"
+    },
+    {
+      "file": "lib/bus.js",
+      "slot": 42,
+      "name": "bot_bus"
+    },
+    {
+      "file": "team/team-stats.js",
+      "slot": 43,
+      "name": "bot_team_stats"
     }
   ]
 }

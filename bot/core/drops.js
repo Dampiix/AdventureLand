@@ -77,7 +77,8 @@ module.exports = function createDrops(ctx) {
     // comes out a little small (the estimate errs low).
     function luckOfMember(name) {
         if (name === character.name) return Math.max(1, character.luckm || 1);
-        const r = ctx.memberLuck && ctx.memberLuck[name];
+        const luck = ctx.bus.get("memberLuck"); // fighter: the members' reported luck
+        const r = luck && luck[name];
         return r && Date.now() - r.at < 5 * 60 * 1000 ? Math.max(1, r.l) : 1;
     }
     function partyLuck(bonus) {
