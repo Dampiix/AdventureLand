@@ -361,6 +361,7 @@ module.exports = function createMage(ctx) {
         // search area as the route end - we pulled the team to our own empty search area.
         if (lead.farm && util.isBossKind(ctx.config, lead.farm)) return;
         if (ctx.events && ctx.events.searchJob && ctx.events.searchJob()) return;
+        if (lead.searching) return; // the leader's boss search: the members decline the port (v1.235.10, ~900 MP lost)
         if (character.map !== lead.dest.map || util.attackersOnMe().length) return;
         // Every route of the team (v1.235.2, player decision 2026-11-24: "whenever the group goes somewhere and he is
         // there"): a farm spot - we wait at its edge; any other route end (Daisy, town, ...) - we stand at it (we went

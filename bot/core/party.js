@@ -92,6 +92,8 @@ module.exports = function createParty(ctx) {
             manual: !!(ctx.cave && ctx.cave.ownManual && ctx.cave.ownManual()), // /manual: members use the manual rules too (v1.231.1)
             // The route end is only a leg (leaving spookytown, a via map), not the goal (v1.235.5).
             leg: !!(typeof smart !== "undefined" && smart.moving && (ctx.travelLeg || ctx.travelVia)),
+            // A boss search of ours runs (v1.235.10): the mage's travel magiport waits - the members decline it then.
+            searching: !!(ctx.events && ctx.events.searchJob && ctx.events.searchJob()),
         });
     }
 

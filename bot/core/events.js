@@ -1184,33 +1184,42 @@ module.exports = function createEvents(ctx) {
     // On the way to a farm spot (v1.235.0, magiport.travel, player decision 2026-11-24): the team mage waits at the
     // spot's edge and pulls us there. Accepted while we walk to the farm spot (leader: our path walk ends in its spawn;
     // member: the leader walks to its spawn), nothing attacks us and we are not under the manual rules.
-    function travelPortOk() {
+    // "" when a travel port is fine, else why not (v1.235.11: the reason is logged - a port on the way to Daisy was
+    // declined without saying which rule). Monsters on us no longer block it: on a route they are only chasing us, and
+    // the port takes us away from them.
+    function travelPortWhyNot() {
         const tp = ((((config.classes || {}).mage || {}).magiport) || {}).travel || {};
         const tg = ctx.targeting;
-        if (!tp.enabled || !tg || !tg.inSpotArea || (ctx.cave && ctx.cave.active()) || util.attackersOnMe().length) return false;
+        if (!tp.enabled || !tg || !tg.inSpotArea) return "travel ports off";
+        if (ctx.cave && ctx.cave.active()) return "manual mode";
         // Not during a boss search (ours or the leader's, v1.235.8): everyone walks its own areas.
-        if (job || searching) return false;
-        if (party.isLeader) { const f = tg.farmNow ? tg.farmNow() : null; if (f && f.monster && util.isBossKind(config, f.monster)) return false; }
-        else { const l = party.leaderInfo(); if (l && l.farm && util.isBossKind(config, l.farm)) return false; }
-        // Every team route since v1.235.2 (player decision): the leader on a path walk, a member while the leader walks
-        // one (it broadcasts its route end).
-        if (party.isLeader) return typeof smart !== "undefined" && !!smart.moving && !!smart.map;
+        if (job || searching) return "boss search";
+        if (party.isLeader) {
+            const f = tg.farmNow ? tg.farmNow() : null;
+            if (f && f.monster && util.isBossKind(config, f.monster)) return "boss target " + f.monster;
+            // Every team route since v1.235.2 (player decision): the leader on a path walk.
+            return typeof smart !== "undefined" && smart.moving && smart.map ? "" : "not on a route";
+        }
         const lead = party.leaderInfo();
-        return !!(lead && lead.moving && lead.dest && !lead.event);
+        if (!lead) return "no fresh leader info";
+        if (lead.farm && util.isBossKind(config, lead.farm)) return "boss target " + lead.farm;
+        if (lead.searching) return "the leader searches a boss";
+        if (lead.event) return "the leader has an event";
+        return lead.moving && lead.dest ? "" : "the leader is not on a route";
     }
     function acceptMagiport(name) {
         const mcfg = ((config.classes || {}).mage || {}).magiport || {};
         const fighters = (config.team && config.team.fighters) || [];
         const boss = !!(current && current.monster && !current.join && !current.solo);
-        const travel = !boss && travelPortOk();
+        const travelWhy = boss ? "" : travelPortWhyNot();
         const why = !mcfg.enabled ? "magiport off" : name === character.name ? "own" : !fighters.includes(name) ? "not one of our fighters" :
-            !party.inParty(name) ? "not in our party" : character.rip ? "dead" : !boss && !travel ? "no boss fight and not on the way to a farm spot" : null;
+            !party.inParty(name) ? "not in our party" : character.rip ? "dead" : !boss && travelWhy ? "no boss fight, no travel port: " + travelWhy : null;
         if (why) {
             util.log("event", "magiport from " + name + " declined: " + why, "orange");
             return;
         }
         try { stop(); } catch (e) { /* not walking */ }
-        const what = boss ? current.name : "the farm spot";
+        const what = boss ? current.name : "the team's route";
         // A path walk planned from where we stood before the port is dropped after it (v1.235.9, player report: priest
         // and warrior walked on to their old point first): the next tick plans from the landing point.
         const dropOldWalk = function () { try { if (typeof smart !== "undefined" && smart.moving) stop("smart"); } catch (e) { /* not walking */ } };
