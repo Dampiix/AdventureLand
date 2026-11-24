@@ -16,6 +16,7 @@ The fighters farm, hunt bosses and level up; the merchant supplies them, sells, 
 | [`docs/snapshots/`](docs/snapshots/) | Account snapshots (levels, gear, gold) and stats pictures over time |
 | [`docs/research/`](docs/research/) | Comparisons with other bots |
 | [`docs/headless/`](docs/headless/) | Plan for an own headless client |
+| [`docs/architecture/`](docs/architecture/) | Module plan for the modular rebuild (`module-plan.md`) and the interactive module map (`module-map.html`) |
 
 File paths in this README are relative to `bot/` unless they start with another folder.
 

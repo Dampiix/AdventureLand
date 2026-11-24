@@ -1,0 +1,328 @@
+<title>Bot-Modulkarte</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Sans:wght@400;500;600&family=Fira+Code:wght@400;500&display=swap">
+<style>
+/* Layout: layer bands top to bottom (start -> base), folders as groups of module chips; a detail panel on the right (below on phones). */
+:root {
+  --bg: #f5f6f8; --panel: #ffffff; --fg: #1d2330; --muted: #5d6677; --line: #d9dde5;
+  --accent: #2b6cb0; --accent-bg: #e3eefb; --uses: #1f8a5b; --uses-bg: #e2f4ea; --usedby: #b0541f; --usedby-bg: #fbeadf;
+  --l0: #eceef3; --l1: #ece9f7; --l2: #f6eee4; --l3: #e6f2f0; --l4: #eceef1;
+  --share: #8a5cc4;
+  --f-body: "Fira Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-code: "Fira Code", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #14171d; --panel: #1c2028; --fg: #e3e7ee; --muted: #9aa3b3; --line: #2f3542;
+  --accent: #7fb2ef; --accent-bg: #1f3350; --uses: #5fcf9b; --uses-bg: #18362a; --usedby: #f0a06a; --usedby-bg: #3d2617;
+  --l0: #1b1e25; --l1: #1f1d2b; --l2: #241f19; --l3: #18241f; --l4: #1b1e24; --share: #b99be6; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #14171d; --panel: #1c2028; --fg: #e3e7ee; --muted: #9aa3b3; --line: #2f3542;
+  --accent: #7fb2ef; --accent-bg: #1f3350; --uses: #5fcf9b; --uses-bg: #18362a; --usedby: #f0a06a; --usedby-bg: #3d2617;
+  --l0: #1b1e25; --l1: #1f1d2b; --l2: #241f19; --l3: #18241f; --l4: #1b1e24; --share: #b99be6; color-scheme: dark }
+body { background: var(--bg); color: var(--fg); font-family: var(--f-body); font-size: 15px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 24px 40px; }
+h1 { font-size: 1.6rem; font-weight: 600; margin: 0; text-wrap: balance; }
+.lead { color: var(--muted); max-width: 68ch; margin: 6px 0 0; }
+.wrap { max-width: 1240px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 13px; color: var(--muted); align-items: center; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.sw { width: 14px; height: 14px; border-radius: 4px; border: 2px solid; display: inline-block; }
+.main { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 16px; align-items: start; }
+@media (max-width: 900px) { .main { grid-template-columns: minmax(0, 1fr); } }
+.layer { border: 1px solid var(--line); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+.layer + .layer { margin-top: 10px; }
+.lhead { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.lname { font-weight: 600; font-size: 14px; letter-spacing: .04em; text-transform: uppercase; }
+.lnote { color: var(--muted); font-size: 13px; }
+.groups { display: flex; flex-wrap: wrap; gap: 10px; }
+.group { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px 10px; min-width: 0; flex: 1 1 200px; }
+.gname { font-family: var(--f-code); font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font-family: var(--f-code); font-size: 12.5px; padding: 3px 8px; border-radius: 6px; border: 1.5px solid var(--line); background: var(--panel); color: var(--fg); cursor: pointer; transition: opacity .15s; }
+.chip:hover { border-color: var(--accent); }
+.chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.chip.share::after { content: " ◆"; color: var(--share); font-size: 10px; }
+.chip.sel { background: var(--accent-bg); border-color: var(--accent); }
+.chip.uses { background: var(--uses-bg); border-color: var(--uses); }
+.chip.usedby { background: var(--usedby-bg); border-color: var(--usedby); border-style: dashed; }
+.focus .chip:not(.sel):not(.uses):not(.usedby) { opacity: .32; }
+.panel { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 12px); background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.panel h2 { font-size: 1.1rem; margin: 0; font-family: var(--f-code); font-weight: 500; overflow-wrap: anywhere; }
+.panel .d { margin: 0; }
+.kv { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 4px 10px; font-size: 13.5px; }
+.kv dt { color: var(--muted); }
+.kv dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.tag { font-family: var(--f-code); font-size: 12px; padding: 1px 6px; border-radius: 5px; border: 1px solid var(--line); display: inline-block; margin: 0 4px 4px 0; cursor: pointer; background: transparent; color: var(--fg); }
+.tag.u { border-color: var(--uses); } .tag.b { border-color: var(--usedby); border-style: dashed; }
+.hint { color: var(--muted); font-size: 13px; }
+.check { font-size: 13px; padding: 8px 10px; border-radius: 8px; background: var(--uses-bg); color: var(--fg); }
+.check.bad { background: var(--usedby-bg); }
+.bus { border: 1px solid var(--line); border-radius: 12px; background: var(--panel); padding: 12px 14px; }
+.bus h3 { margin: 0 0 8px; font-size: 14px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+.bus table { border-collapse: collapse; width: 100%; font-size: 13px; }
+.bus td, .bus th { text-align: left; padding: 5px 8px; border-top: 1px solid var(--line); vertical-align: top; }
+.bus th { color: var(--muted); font-weight: 500; border-top: 0; }
+.bus code { font-family: var(--f-code); font-size: 12.5px; }
+.scroll { overflow-x: auto; }
+@media (prefers-reduced-motion: reduce) { .chip { transition: none; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Bot-Modulkarte</h1>
+    <p class="lead">Finaler Plan für den modularen Aufbau des Bots, in fünf Schichten. Klick ein Modul an, um zu sehen, was es nutzt, wer es nutzt und welche Meldungen es über den Bus schickt. Abhängigkeiten gehen nur nach unten oder innerhalb einer Schicht ohne Kreise. Jeder Spielzugriff läuft über die Spiel-Schicht <code>game</code>, damit derselbe Bot im Steam-Client und headless läuft.</p>
+  </header>
+  <div class="legend" aria-label="Legende">
+    <span><i class="sw" style="border-color:var(--accent);background:var(--accent-bg)"></i>ausgewählt</span>
+    <span><i class="sw" style="border-color:var(--uses);background:var(--uses-bg)"></i>wird von ihm genutzt</span>
+    <span><i class="sw" style="border-color:var(--usedby);background:var(--usedby-bg);border-style:dashed"></i>nutzt es</span>
+    <span><b style="color:var(--share)">◆</b> teilbar (eigenständig nutzbar)</span>
+  </div>
+  <div class="main">
+    <div id="map"></div>
+    <aside class="panel" id="panel" aria-live="polite"></aside>
+  </div>
+  <section class="bus" aria-labelledby="bush">
+    <h3 id="bush">Meldungen auf dem Bus</h3>
+    <div class="scroll"><table id="bustable"><thead><tr><th>Meldung</th><th>Bedeutung</th><th>sendet</th><th>hört zu</th></tr></thead><tbody></tbody></table></div>
+  </section>
+</div>
+
+<script>
+const LAYERS = [
+  { id: "l0", name: "Start", note: "steckt die Module zusammen" },
+  { id: "l1", name: "Takt", note: "der Ablauf pro Tick" },
+  { id: "l2", name: "Klassen, Encounter, Rollen", note: "was ein Charakter ist und was gerade passiert" },
+  { id: "l3", name: "Dienste", note: "Wissen und Werkzeuge, die mehrere brauchen" },
+  { id: "l4", name: "Basis", note: "ohne eigene Spielentscheidungen" },
+];
+const GROUPS = [
+  ["start", "l0", "bot/"],
+  ["takt", "l1", "combat/ · roles/"],
+  ["warrior", "l2", "classes/warrior/"], ["mage", "l2", "classes/mage/"], ["priest", "l2", "classes/priest/"],
+  ["ranger", "l2", "classes/ranger/"], ["rogue", "l2", "classes/rogue/"], ["paladin", "l2", "classes/paladin/"],
+  ["enc", "l2", "encounters/"], ["events", "l2", "events/"], ["monsters", "l2", "monsters/"],
+  ["merch", "l2", "roles/merchant/"], ["workshop", "l2", "roles/workshop/"],
+  ["team", "l3", "team/"], ["safety", "l3", "safety/"], ["farming", "l3", "farming/"], ["travel", "l3", "travel/"],
+  ["combat", "l3", "combat/"], ["gear", "l3", "gear/"], ["misc", "l3", "supply/ · cave/"],
+  ["lib", "l4", "lib/"],
+];
+// id, group, description, today in, uses, sends (bus), hears (bus), shareable
+const M = [
+  ["main", "start", "Lädt jedes Modul einmal, übergibt die Abhängigkeiten und startet den passenden Takt.", "main.js", ["fighter","merchant","config","bus","comms","storage","status"], [], [], 0],
+  ["fighter", "takt", "Kampf- und Lauf-Takt der Fighter: Ziel, Angriff, Folgen, Tränke. Fragt die Klasse nach Eigenem.", "core/fighter.js", ["mage","warrior","priest","ranger","rogue","paladin","encounters","team-goal","party","target-pick","farm-choice","kiting","potions","strike-loop","chests","cavalry","travel","supply","equip","hunts","cave","status","bus"], [], ["boss","goal","plan","manual"], 0],
+  ["merchant", "takt", "Takt des Merchants: welcher Teil (Stand, Ponty, Werkstatt …) jetzt dran ist.", "roles/merchant.js", ["stand","fishing","elixirs","ponty","buy-orders","mluck","scout","bank","budget","crafting","compound","upgrade","dismantle","material-goals","exchange","gear-goals","value-report","comms","status"], [], [], 0],
+
+  ["warrior", "warrior", "Klasse Warrior: Nahkampf-Tank. Hängt seine Skill-Module ein, kennt ihre Arbeitsweise nicht.", "classes/warrior.js", ["agitate","area","mobility","taunt","defense","sword-swap","strike-loop"], [], [], 0],
+  ["area", "warrior", "Flächenschaden: Cleave und Stomp.", "classes/warrior.js", ["mobbing-guard","combat-math","geometry"], [], ["plan","manual"], 0],
+  ["mobility", "warrior", "Charge und Dash: schnell ans Ziel.", "classes/warrior.js", ["geometry"], [], [], 0],
+  ["taunt", "warrior", "Taunt: Monster von Mitgliedern auf sich ziehen.", "classes/warrior.js", ["party"], [], [], 0],
+  ["defense", "warrior", "Hardshell und Warcry.", "classes/warrior.js", ["party","combat-math"], [], [], 0],
+  ["agitate", "warrior", "Agitate: Rudel ziehen, Splash, Abstand zu fremden Arten, Gap-Step.", "classes/warrior.js", ["mobbing-guard","rage-zones","party","combat-math","geometry"], [], ["plan","manual"], 0],
+  ["sword-swap", "warrior", "Wechselt Schwerter je nach Ziel.", "classes/warrior.js", ["equip","items"], [], [], 0],
+  ["mage", "mage", "Klasse Mage: Fernkämpfer, kitet. Hängt seine Skill-Module ein, kennt ihre Arbeitsweise nicht.", "classes/mage.js", ["energize","reflect","blaster","blink","team-port","strike-loop"], [], [], 0],
+  ["energize", "mage", "MP an Mitglieder abgeben, Tempo-Schub auf den stärksten Kämpfer.", "classes/mage.js", ["party"], [], [], 0],
+  ["reflect", "mage", "Reflective Shield auf den, der am meisten magischen Schaden bekommt.", "classes/mage.js", ["party","combat-math"], [], [], 0],
+  ["blaster", "mage", "Blaster-Modus: Splash-Waffe an/aus, Zielwahl, Sicherheit beim Splash.", "classes/mage.js", ["equip","mobbing-guard","geometry","items"], [], ["plan","manual"], 0],
+  ["blink", "mage", "Blink unterwegs: zum weitesten Wegpunkt springen, nie in einen Spot.", "classes/mage.js", ["travel","spot-check","geometry"], [], ["goal","manual"], 1],
+  ["team-port", "mage", "Team-Magiport: am Teamziel alle Fernen holen, Tank zuerst.", "classes/mage.js", ["team-goal","party","geometry"], [], ["goal","manual"], 1],
+  ["priest", "priest", "Klasse Priest: Heiler. Hängt seine Skill-Module ein; Luck-Swap kommt aus gear/.", "classes/priest.js", ["heal","curse","support","revive","luck-swap","strike-loop"], [], [], 0],
+  ["heal", "priest", "Einzel- und Party-Heal: wer zuerst, wann Party-Heal.", "classes/priest.js", ["party","combat-math"], [], [], 0],
+  ["curse", "priest", "Curse auf das Ziel des Teams.", "classes/priest.js", ["party"], [], ["plan"], 0],
+  ["support", "priest", "Absorb und Dark Blessing.", "classes/priest.js", ["party"], [], [], 0],
+  ["revive", "priest", "Tote Mitglieder wiederbeleben.", "classes/priest.js", ["party"], [], [], 0],
+  ["ranger", "ranger", "Klasse Ranger: Fernkämpfer, kitet.", "classes/ranger.js", ["shots","strike-loop"], [], [], 0],
+  ["shots", "ranger", "Supershot, Hunter's Mark, Poison Arrow.", "classes/ranger.js", ["party","geometry"], [], ["plan"], 0],
+  ["rogue", "rogue", "Klasse Rogue: schneller Nahkämpfer.", "classes/rogue.js", ["stealth","rogue-buffs","mentalburst","fanofknives","strike-loop"], [], [], 0],
+  ["stealth", "rogue", "Invis: unsichtbar werden.", "classes/rogue.js", ["geometry"], [], [], 0],
+  ["rogue-buffs", "rogue", "Rogue Speed und Poison Coat für sich und das Team.", "classes/rogue.js", ["party"], [], [], 0],
+  ["mentalburst", "rogue", "Mental Burst als Finisher.", "classes/rogue.js", ["combat-math"], [], [], 0],
+  ["fanofknives", "rogue", "Fan of Knives: Skill vom Knife Belt, eingehängt, solange er getragen wird.", "classes/rogue.js", ["equip","mobbing-guard"], [], ["plan"], 0],
+  ["paladin", "paladin", "Klasse Paladin: Tank mit Heilung.", "classes/paladin.js", ["selfheal","mana-shield","smash","cleansing","strike-loop"], [], [], 0],
+  ["selfheal", "paladin", "Selbstheilung.", "classes/paladin.js", ["combat-math"], [], [], 0],
+  ["mana-shield", "paladin", "Mana Shield und Guardian's Oath.", "classes/paladin.js", ["party"], [], [], 0],
+  ["smash", "paladin", "Smash.", "classes/paladin.js", ["combat-math"], [], [], 0],
+  ["cleansing", "paladin", "Cleansing Light gegen Zustände.", "classes/paladin.js", ["party"], [], [], 0],
+
+  ["encounters", "enc", "Kern: welcher Encounter gerade aktiv ist. Hat ein Monster ein eigenes Modul in monsters/, gilt dessen Plan, sonst default. Gibt den Plan an Klassen und Skills.", "core/events.js", ["boss-tracker","boss-search","witch-cipher","giga-crab","goo-brawl","graveyard","default","phoenix","mvampire","fvampire","skeletor","jr","greenjr","snowman","team-safety","bus"], ["plan"], ["boss"], 0],
+  ["boss-tracker", "enc", "Sichtungen, aktueller Boss, Kill-Verbuchung und Respawn-Planung.", "core/events.js", ["party","comms","storage","bus"], ["boss"], [], 1],
+  ["boss-search", "enc", "Bosssuche: allein, geteilt, Runner, Merchant-Scout-Plan.", "core/events.js", ["boss-tracker","travel","party","comms","storage","bus"], ["search"], [], 1],
+  ["witch-cipher", "events", "Witch's Cipher: Zutaten-Fenster, Farm-Liste für die Zutaten.", "core/events.js", ["storage","bus"], ["cipher"], [], 0],
+  ["giga-crab", "events", "Giga Crab: Beitritt, 1-HP-Phasen, Priest greift nie an, Flucht.", "config.js + fighter.js", ["party","combat-math","geometry","travel"], [], [], 0],
+  ["goo-brawl", "events", "Goo Brawl: beitreten, alles in der Event-Karte bekämpfen.", "core/events.js", ["travel","bus"], [], [], 0],
+  ["graveyard", "events", "Graveyard Rising: Wellen, nur Event-Monster.", "core/events.js", ["travel","bus"], [], [], 0],
+  ["default", "monsters", "Standardplan für jeden Gegner ohne eigenes Modul: so kämpft der Bot heute überall. Bosse: halten bis das Team da ist.", "fighter.js + targeting.js", ["team-safety","geometry"], [], [], 0],
+  ["phoenix", "monsters", "Phoenix: darf allein angegriffen werden, wandert.", "config.js", ["default"], [], [], 0],
+  ["mvampire", "monsters", "Dracul: nur mit Team.", "config.js", ["default"], [], [], 0],
+  ["fvampire", "monsters", "Ms. Dracul: nur mit Team.", "config.js", ["default"], [], [], 0],
+  ["skeletor", "monsters", "Skeletor: nur mit Team, in der Arena.", "config.js", ["default"], [], [], 0],
+  ["jr", "monsters", "Jr.: Runner-Boss, Halte-Ring außerhalb der Spawn-Box.", "config.js", ["default"], [], [], 0],
+  ["greenjr", "monsters", "Green Jr.: Runner-Boss.", "config.js", ["default"], [], [], 0],
+  ["snowman", "monsters", "Snowman: Saison-Boss.", "config.js", ["default"], [], [], 0],
+
+  ["stand", "merch", "Marktstand: aufbauen, Preise, Merrit-Besuche.", "roles/merchant.js", ["items","comms","storage"], [], [], 0],
+  ["fishing", "merch", "Fischen und Minen.", "roles/merchant.js", ["travel","items"], [], [], 0],
+  ["elixirs", "merch", "Elixiere kaufen und an die Fighter liefern.", "roles/merchant.js", ["items","comms"], [], [], 0],
+  ["ponty", "merch", "Ponty-Runde über die Server.", "roles/merchant.js + workshop.js", ["travel","items","storage"], [], [], 1],
+  ["buy-orders", "merch", "In Kaufaufträge anderer Spieler verkaufen, fremde Stände.", "roles/merchant.js + workshop.js", ["items","storage"], [], [], 1],
+  ["mluck", "merch", "Merchant's Luck für alle in Reichweite.", "roles/merchant.js", ["geometry"], [], [], 0],
+  ["scout", "merch", "Merchant sucht Bosse ab und meldet sie.", "roles/scout.js", ["travel","rage-walls","comms"], [], ["search"], 1],
+  ["bank", "workshop", "Bank lesen, einlagern, holen; Vormerkungen und Lieferungen.", "roles/workshop.js", ["items","storage","comms"], [], [], 0],
+  ["budget", "workshop", "Einkommensbasiertes Budget für Ausrüstungsziele.", "roles/workshop.js", ["storage"], [], [], 0],
+  ["crafting", "workshop", "Craften inklusive Witch-Rezepte.", "roles/workshop.js", ["items","bank"], [], [], 0],
+  ["compound", "workshop", "Schmuck kombinieren.", "roles/workshop.js", ["items","bank","budget"], [], [], 0],
+  ["upgrade", "workshop", "Upgrade-Planer: Scroll-Wahl, Grace, Risiko.", "roles/workshop.js", ["items","bank","budget"], [], [], 1],
+  ["dismantle", "workshop", "Zerlegen (nie mit Titel oder gesperrt).", "roles/workshop.js", ["items","bank"], [], [], 0],
+  ["material-goals", "workshop", "Material-Ziele: Kopien als Basis oder Material.", "roles/workshop.js", ["upgrade","crafting","bank"], [], [], 0],
+  ["exchange", "workshop", "Tauschen, Elixiere aus dem Tausch, Token-Shops.", "roles/workshop.js", ["items","bank"], [], [], 0],
+  ["gear-goals", "workshop", "Ausrüstungsziele, Off-Plan-Rüstung, leere Slots, bessere Waffen.", "roles/workshop.js", ["wishes","upgrade","bank"], [], [], 0],
+  ["value-report", "workshop", "Wertbericht: was bringt wie viel Stärke pro Stunde.", "roles/workshop.js", ["gear-value"], [], [], 0],
+
+  ["party", "team", "Mitglieder, Einladungen, Leader-Meldung, Folgen.", "core/party.js", ["comms","bus","geometry"], [], [], 0],
+  ["team-goal", "team", "Teamziel: Leader setzt das Endziel, alle gehen voraus und warten dort.", "core/party.js", ["party","travel","spot-check","geometry","bus"], ["goal"], ["boss","search","manual"], 1],
+  ["team-safety", "safety", "Team-Modell, Monster-Level, Boss-Einschätzung.", "core/targeting.js + events.js", ["party","combat-math","comms"], [], [], 1],
+  ["rage-zones", "safety", "Rage-Zonen der Spawns, Urteil pro Zone.", "core/targeting.js", ["combat-math","geometry"], [], [], 1],
+  ["spot-check", "safety", "Spot-Check vom Rand, Spot-Bereich, Randpunkt.", "core/targeting.js", ["rage-zones","team-safety","geometry"], [], [], 0],
+  ["mobbing-guard", "safety", "Mobbing-Schutz, Live-Gefahr, totgeweihte Ziele.", "core/targeting.js", ["combat-math","geometry"], [], [], 0],
+  ["farm-choice", "farming", "Spot-Wahl: Guide, Drops, Hunts, Rotation, Kavallerie-Plan.", "core/targeting.js", ["drops","hunts","team-safety","spot-check","storage"], [], ["boss","cipher"], 0],
+  ["target-pick", "farming", "Ziel dieses Ticks: Angreifer, freie Einzelne, Assist.", "core/targeting.js", ["team-safety","mobbing-guard","rage-zones","party","geometry"], [], ["plan"], 0],
+  ["drops", "farming", "Drop-Wert pro Spot, Gold pro Spot, Luck-Abgleich.", "core/drops.js", ["items","storage","comms"], [], [], 0],
+  ["hunts", "farming", "Monster-Hunts: Daisy besuchen, Hunt-Ziele, Abgabe.", "core/hunts.js", ["travel","party","team-goal","drops"], [], [], 1],
+  ["travel", "travel", "Wege mit Zwischenkarten, schlechte Ziele, Hook in smart_move.", "core/fighter.js", ["geometry","storage"], [], [], 0],
+  ["rage-walls", "travel", "Rage-Zonen als Wände für die Wegsuche.", "core/fighter.js", ["rage-zones","travel"], [], [], 0],
+  ["kiting", "combat", "Kiten, Abstand halten, aus Ecken heraus.", "core/fighter.js", ["geometry","combat-math","rage-zones"], [], ["plan"], 0],
+  ["potions", "combat", "Tränke und Rast.", "core/fighter.js", ["items"], [], [], 0],
+  ["strike-loop", "combat", "Angriffs-Schleife mit Ping-Ausgleich.", "core/fighter.js", ["combat-math"], [], [], 0],
+  ["chests", "combat", "Truhen-Öffner nach Gold-Bonus.", "core/fighter.js", ["party","comms"], [], [], 0],
+  ["cavalry", "combat", "Kavallerie rufen, Reset von zu starken Spots.", "core/fighter.js", ["rage-zones","storage"], [], [], 0],
+  ["equip", "gear", "Ausrüsten, falsche Stats, Zweihänder, Waffen-Modi.", "core/gear.js", ["items","wishes","comms"], [], [], 0],
+  ["wishes", "gear", "Wunschliste der Fighter an den Merchant.", "core/gear.js", ["items","comms"], [], [], 0],
+  ["luck-swap", "gear", "Luck-Set beim Kill an, danach zurück.", "core/gear.js", ["equip","items"], [], [], 0],
+  ["gear-value", "gear", "Wert von Items und XP pro Stunde.", "core/gear.js", ["items","storage"], [], [], 0],
+  ["supply", "misc", "Tränke und Elixiere: Abholung beim Merchant, Selbstversorgung.", "core/supply.js", ["equip","items","comms"], [], ["manual"], 0],
+  ["cave", "misc", "Cave of Many Dreams: manueller Modus, Abstimmung, Recorder.", "core/cave.js", ["party","comms","storage","bus","status"], ["manual"], [], 1],
+
+  ["game", "lib", "Spiel-Schicht: einziger Zugriff aufs Spiel (Charakter, Monster, Laufen, Skills, Wegsuche). Zwei Varianten: Browser/Steam und headless. Jedes Modul mit Spielzugriff nutzt sie, hier nicht einzeln eingezeichnet.", "neu (heute überall verstreut)", [], [], [], 0],
+  ["config", "lib", "Nur noch unsere Abweichungen von den Modul-Standards; kurze Kommentare: was es macht, wie man es anpasst.", "config.js", [], [], [], 0],
+  ["bus", "lib", "Meldungen innerhalb eines Charakters: senden und zuhören. Nur dort, wo sonst ein Kreis entstünde.", "neu", [], [], [], 0],
+  ["comms", "lib", "Nachrichten zwischen den Charakteren, auch zwischen Steam und headless.", "lib/comms.js", ["game"], [], [], 0],
+  ["storage", "lib", "Gespeicherter Stand mit Modul-Präfix (Journal, Suchzeiten, Statistik). Browser-Speicher oder Datei; nimmt den Stand beim Wechsel Steam ↔ headless mit.", "lib/util.js", ["game"], [], [], 0],
+  ["status", "lib", "Statustext in der Box, Kurzformen.", "lib/util.js", ["names"], [], [], 0],
+  ["names", "lib", "Namen ohne Team-Präfix.", "lib/util.js", [], [], [], 0],
+  ["geometry", "lib", "Abstände, Boxen, Punkte, Wege.", "lib/util.js", [], [], [], 0],
+  ["items", "lib", "Items finden, zählen, Stack-Regeln.", "lib/util.js", [], [], [], 0],
+  ["combat-math", "lib", "Trefferfaktor, Mobbing, Fear, Kite-Risiko.", "lib/util.js", ["geometry"], [], [], 0],
+];
+const BUS = [
+  ["boss", "Aktueller Boss hat sich geändert (gefunden, getötet, weg).", "boss-tracker"],
+  ["goal", "Neues Teamziel oder Leader ist angekommen.", "team-goal"],
+  ["search", "Eine Bosssuche läuft oder ist vorbei.", "boss-search"],
+  ["plan", "Kampfplan des aktiven Encounters (erlaubt, verboten, Abstand).", "encounters"],
+  ["cipher", "Witch's-Cipher-Zutatenfenster offen oder zu.", "witch-cipher"],
+  ["manual", "Höhle oder /manual an oder aus.", "cave"],
+];
+
+const byId = {}; M.forEach(function (m) { byId[m[0]] = { id: m[0], g: m[1], d: m[2], from: m[3], uses: m[4], pub: m[5], sub: m[6], share: !!m[7], usedBy: [] }; });
+Object.values(byId).forEach(function (m) { m.uses.forEach(function (u) { if (byId[u]) byId[u].usedBy.push(m.id); }); });
+const groupOf = {}; GROUPS.forEach(function (g) { groupOf[g[0]] = { layer: g[1], name: g[2] }; });
+
+function findCycle() {
+  const state = {}; let found = null;
+  function dfs(id, path) {
+    if (found) return;
+    state[id] = 1; path.push(id);
+    byId[id].uses.forEach(function (u) {
+      if (found || !byId[u]) return;
+      if (state[u] === 1) found = path.slice(path.indexOf(u)).concat(u);
+      else if (!state[u]) dfs(u, path);
+    });
+    path.pop(); state[id] = 2;
+  }
+  Object.keys(byId).forEach(function (id) { if (!state[id]) dfs(id, []); });
+  return found;
+}
+
+const map = document.getElementById("map");
+LAYERS.forEach(function (L) {
+  const sec = document.createElement("section");
+  sec.className = "layer"; sec.style.background = "var(--" + L.id + ")";
+  const head = document.createElement("div"); head.className = "lhead";
+  head.innerHTML = '<span class="lname"></span><span class="lnote"></span>';
+  head.children[0].textContent = L.name; head.children[1].textContent = L.note;
+  sec.appendChild(head);
+  const groups = document.createElement("div"); groups.className = "groups";
+  GROUPS.filter(function (g) { return g[1] === L.id; }).forEach(function (g) {
+    const box = document.createElement("div"); box.className = "group";
+    const gn = document.createElement("div"); gn.className = "gname"; gn.textContent = g[2]; box.appendChild(gn);
+    const chips = document.createElement("div"); chips.className = "chips";
+    Object.values(byId).filter(function (m) { return m.g === g[0]; }).forEach(function (m) {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "chip" + (m.share ? " share" : ""); b.textContent = m.id; b.dataset.id = m.id; b.id = "chip-" + m.id;
+      b.addEventListener("click", function () { select(m.id); });
+      chips.appendChild(b);
+    });
+    box.appendChild(chips); groups.appendChild(box);
+  });
+  sec.appendChild(groups); map.appendChild(sec);
+});
+
+const panel = document.getElementById("panel");
+function tags(list, cls) {
+  if (!list.length) return '<span class="hint">–</span>';
+  return list.map(function (x) { return '<button type="button" class="tag ' + cls + '" data-go="' + x + '">' + x + '</button>'; }).join("");
+}
+function overview() {
+  const cyc = findCycle();
+  const n = Object.keys(byId).length, shares = Object.values(byId).filter(function (m) { return m.share; }).length;
+  const edges = Object.values(byId).reduce(function (s, m) { return s + m.uses.length; }, 0);
+  panel.innerHTML = '<h2>Übersicht</h2><p class="d">' + n + ' Module, ' + edges + ' Abhängigkeiten, ' + shares + ' davon teilbar.</p>' +
+    '<div class="check' + (cyc ? ' bad' : '') + '">' + (cyc ? 'Kreis gefunden: ' + cyc.join(' → ') : 'Kreis-Prüfung: keine Kreise. Jedes Modul lässt sich ohne seine Nutzer laden.') + '</div>' +
+    '<p class="hint">Klick ein Modul an. Grün umrandet: was es nutzt. Orange gestrichelt: wer es nutzt.</p>';
+}
+function select(id) {
+  const m = byId[id]; if (!m) return;
+  map.classList.add("focus");
+  document.querySelectorAll(".chip").forEach(function (c) {
+    const x = c.dataset.id;
+    c.classList.toggle("sel", x === id);
+    c.classList.toggle("uses", m.uses.includes(x));
+    c.classList.toggle("usedby", m.usedBy.includes(x));
+  });
+  const g = groupOf[m.g];
+  panel.innerHTML = '<h2></h2><p class="d"></p><dl class="kv">' +
+    '<dt>Ordner</dt><dd class="f"></dd><dt>Heute in</dt><dd class="t"></dd>' +
+    '<dt>Nutzt</dt><dd>' + tags(m.uses, "u") + '</dd>' +
+    '<dt>Genutzt von</dt><dd>' + tags(m.usedBy, "b") + '</dd>' +
+    '<dt>Sendet</dt><dd>' + (m.pub.length ? m.pub.map(function (p) { return '<code>' + p + '</code>'; }).join(", ") : '–') + '</dd>' +
+    '<dt>Hört zu</dt><dd>' + (m.sub.length ? m.sub.map(function (p) { return '<code>' + p + '</code>'; }).join(", ") : '–') + '</dd>' +
+    '<dt>Teilbar</dt><dd>' + (m.share ? 'ja, eigenständig nutzbar' : 'nein') + '</dd></dl>' +
+    '<button type="button" class="tag" id="reset">Auswahl aufheben</button>';
+  panel.querySelector("h2").textContent = m.id;
+  panel.querySelector(".d").textContent = m.d;
+  panel.querySelector(".f").textContent = g ? g.name : "";
+  panel.querySelector(".t").textContent = m.from;
+  panel.querySelectorAll("[data-go]").forEach(function (b) { b.addEventListener("click", function () { select(b.dataset.go); }); });
+  panel.querySelector("#reset").addEventListener("click", clearSel);
+  try { localStorage.setItem("modulkarte-sel", id); } catch (e) { /* storage blocked */ }
+}
+function clearSel() {
+  map.classList.remove("focus");
+  document.querySelectorAll(".chip").forEach(function (c) { c.classList.remove("sel", "uses", "usedby"); });
+  overview();
+  try { localStorage.removeItem("modulkarte-sel"); } catch (e) { /* storage blocked */ }
+}
+
+const tb = document.querySelector("#bustable tbody");
+BUS.forEach(function (b) {
+  const hear = Object.values(byId).filter(function (m) { return m.sub.includes(b[0]); }).map(function (m) { return m.id; });
+  const tr = document.createElement("tr");
+  tr.innerHTML = '<td><code></code></td><td></td><td><code></code></td><td></td>';
+  tr.children[0].firstChild.textContent = b[0]; tr.children[1].textContent = b[1]; tr.children[2].firstChild.textContent = b[2];
+  tr.children[3].textContent = hear.join(", ");
+  tb.appendChild(tr);
+});
+
+overview();
+let start = null; try { start = localStorage.getItem("modulkarte-sel"); } catch (e) { start = null; }
+if (start && byId[start]) select(start);
+</script>
