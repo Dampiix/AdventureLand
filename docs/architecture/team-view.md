@@ -1,6 +1,6 @@
 # Team view: direct communication between our characters (plan, 2026-11-24)
 
-Status: **steps 0 (v1.237.20-pilot) and 1 (v1.237.21-pilot) built**, steps 2-5 open. On `modular-pilot` after stages 1-7. Unlike the rebuild stages this **changes behaviour**
+Status: **steps 0 (v1.237.20-pilot), 1 (v1.237.21-pilot) and 2 (v1.237.22-pilot) built**; steps 3-5 are now value steps on top of step 2 (see below). On `modular-pilot` after stages 1-7. Unlike the rebuild stages this **changes behaviour**
 (information arrives at once instead of in messages every few seconds), so every step gets a live test, not only
 old-vs-new comparisons.
 
@@ -50,13 +50,15 @@ member; the entry is the contract (no reaching into another module's internals).
 |---|---|---|
 | 0 | `team-view.js`, every bot publishes its entry; `/team` chat command and a journal line show what each one sees. No reader yet - no behaviour change. | - |
 | 1 | Party and team goal: members read the leader's position, farm, goal, target, event, manual flag live; the mage's magiport reads positions and the goal live | `lead` (party, cave) |
-| 2 | Team stats and safety reports: the boss check and the team model read each fighter's combat stats and "safe" lists directly | `stats`, `safe`, `died`, `revive_wait` |
+| 2 | **Built differently than first planned (2026-11-25):** every message goes directly to a teammate in our client - `comms.send` hands it to the recipient's `actions.deliver` (a copy, one microtask later, so the order stays as over the network) - and through the server only to the others, decided per message and recipient. So all 29 types are direct at once when the team shares a client, with no flow rewritten. Plus: the team stats read each teammate's combat stats live (`bot.stats()`) | all, as transport (the server stays the fallback per recipient) |
 | 3 | Merchant: pickups, deliveries, gold, wishes and worn gear, potion needs, drop needs read directly; the fighters' "ready" ping becomes a look at the merchant's entry | `pickup`, `callpickup`, `pos`, `coming`, `served`, `gold`, `wishes`, `ready`, `drops`, `droptimes`, `timesfor`, `values`, `spotgold`, `hunt` |
 | 4 | Boss search: jobs, acks, finds, sightings and deaths through the entries (the leader hands out jobs by action) | `searchjob`, `searchack`, `searchdone`, `searchstop`, `scoutdone`, `bosssight`, `bossdeath` |
 | 5 | Chests and the cave: opener choice and gold multipliers, the cave vote | `goldm`, `opener`, `cavevote` |
 
 The shared storage (heartbeats, scout plan, Cipher stock, hop requests, Cavalry timer) is already one storage per client
 and stays as it is; it moves into the storage module with stage 8.
+
+Steps 3-5 no longer change the transport (step 2 does that for every type); they replace pushed state by live reads where that is better than a direct message - e.g. the merchant reading wishes, worn gear and potion needs live instead of waiting for the next report.
 
 ## Checks per step
 

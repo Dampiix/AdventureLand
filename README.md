@@ -3,7 +3,7 @@
 One bot for a whole Adventure Land team: up to three fighters and one merchant, all running the same code.
 The fighters farm, hunt bosses and level up; the merchant supplies them, sells, banks, trades with other players and upgrades their gear.
 
-> **Version:** `1.237.21-pilot` (`bot/config.js` → `version`) · **Teams:** `Dmpx…` (main account) and `Viz…` (second account) · **Code:** `bot/` → in-game CODE slots 20–41
+> **Version:** `1.237.22-pilot` (`bot/config.js` → `version`) · **Teams:** `Dmpx…` (main account) and `Viz…` (second account) · **Code:** `bot/` → in-game CODE slots 20–41
 
 ## Repository
 
@@ -306,7 +306,7 @@ Only `main.js` calls `require_code()`. Every other module is a factory that rece
 | [`main.js`](bot/main.js) | 20 `bot_main` | Entry point, role lookup, starts the team, chat commands, watchdog, hop watcher |
 | [`config.js`](bot/config.js) | 21 `bot_config` | Our decisions (team, prices, gear plan, bosses, farm targets, item names); the tuning comes from the `defaults.js` files next to the modules (bundle, stage 7b: filled in at load, ours win) |
 | [`lib/util.js`](bot/lib/util.js) | 22 `bot_util` | Shared helpers (bundle, pilot step 2): a facade over `geometry`, `names`, `storage` (journal, heartbeat), `status`, `combat-math` (damage, hit factors, mobbing, fear, kite risk), `items`, `game` (the game layer: our HP/MP, skills, thin client wrappers), `walking`, `monster-rules`, `team`, `basics` |
-| [`lib/comms.js`](bot/lib/comms.js) | 23 `bot_comms` | CODE messages between our own characters |
+| [`lib/comms.js`](bot/lib/comms.js) | 23 `bot_comms` | Messages between our own characters: directly to a teammate in our client (team view step 2), through the server otherwise (bundle with the team view) |
 | [`core/targeting.js`](bot/core/targeting.js) | 24 `bot_targeting` | Farm spot, safety checks, target picking - the facade (bundle, stage 4b) of `safety/` (spots, deaths, team-safety, live-safety, rage-zones, spot-check, boss-hold) and `farming/` (spots-taken, farm-choice, cavalry-plan, target-pick); the parts share one internal state `tgt` |
 | [`supply/supply.js`](bot/supply/supply.js) | 25 `bot_supply` | Fighter side of loot, gold and potions (deps: config, util, comms, gear, cave) |
 | [`combat/fighter.js`](bot/combat/fighter.js) | 26 `bot_fighter` | Fighter main loop: the tick (bundle, stage 5) with its parts - `combat/` (meters, death, potions, movement, kiting, passing, combat, cavalry, strike-loop, chests), `team/formation.js` (team wait, to the healer, covering members), `events/giga-crab.js`; travel and rage walls in `travel/` (stage 3b); the parts share one internal state `ftr` |
@@ -325,12 +325,12 @@ Only `main.js` calls `require_code()`. Every other module is a factory that rece
 | [`classes/warrior/`](bot/classes/warrior/) | 38 `bot_class_warrior` | Warrior (bundle, stage 2): `warrior.js` (class, hooks, Hard Shell, War Cry, Cleave, Stomp), `common.js`, `protect.js` (Taunt, protective Agitate), `mobility.js` (Charge, Dash), `agitate-mode.js`, `agitate-point.js`, `agitate-stream.js`, `agitate.js` (pack tick), `splash.js`, `escape.js`, `sword-swap.js` - the Agitate parts share one internal state |
 | [`classes/rogue/`](bot/classes/rogue/) | 39 `bot_class_rogue` | Rogue (bundle, stage 2): `rogue.js`, `swiftness.js`, `stealth.js` (Assassin's Smoke, hiding), `fanofknives.js` (Knife Belt), `strikes.js` (Quick Stab/Punch, Mental Burst, Poisonous Touch) |
 | [`lib/bus.js`](bot/lib/bus.js) | 42 `bot_bus` | The bus (stage 4a): state a lower module reads without calling a higher one (boss, search, manual, teamWaitAt, memberLuck) |
-| [`team/team-stats.js`](bot/team/team-stats.js) | 43 `bot_team_stats` | Every fighter's combat stats for the team model (stage 4a, out of events) |
+| [`team/team-stats.js`](bot/team/team-stats.js) | 43 `bot_team_stats` | Every fighter's combat stats for the team model (stage 4a, out of events); a teammate in our client counts live from its team view entry (step 2) |
 | [`team/team-view.js`](bot/team/team-view.js) | 44 `bot_team_view` | The team view (docs/architecture/team-view.md): every bot publishes its entry (live game object, what it is doing) in the client's team registry; `/team` shows them |
 
 [`slots.json`](bot/slots.json) holds the same file-to-slot mapping for the deploy script. A slot whose entry file loads other files with a relative `require("./x.js")` is uploaded as one bundle of them ([`scripts/bundle.mjs`](scripts/bundle.mjs), module plan pilot); tests: `node scripts/test-bundle.mjs`, `node scripts/test-mage.cjs`, `node scripts/test-classes.cjs <class>`, `node scripts/test-warrior.cjs`.
 
-**Messages between characters** (`comms.js`): `send_cm` with the envelope `{ p: "bot1", t: type, d: payload }`. A message is accepted only from a character of our own team (`config.characters`) and only for a known type. Other players' messages are ignored.
+**Messages between characters** (`comms.js`): `send_cm` with the envelope `{ p: "bot1", t: type, d: payload }`. A message is accepted only from a character of our own team (`config.characters`) and only for a known type. Other players' messages are ignored. A recipient that runs in our client (fresh team view entry with `actions.deliver`) gets the message handed over directly as a copy (a microtask after the send), every other one through the server; decided per message and recipient, the journal notes when a recipient switches ways and `/team` shows the counts.
 
 ## 7. Team, phases and roles
 

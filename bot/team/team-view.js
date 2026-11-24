@@ -9,7 +9,8 @@
 //   members()       every live entry, ours included
 // Rules: entries are read, never written by others; only listed actions are called; positions are real_x / real_y
 // (x / y are the little character frames' display values).
-// Step 0: published and shown by /team; nothing reads it yet.
+// Readers: party (step 1, the leader report), mage magiport (positions), comms (step 2, direct delivery via
+// actions.deliver), team-stats (step 2, bot.stats()).
 // deps: { game } (optional - the bundled lib/game.js otherwise)
 // =====================================================================
 

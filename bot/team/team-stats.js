@@ -2,15 +2,19 @@
 // bot_team_stats - every fighter's combat stats for the team model (module plan, stage 4a; moved out of
 // core/events.js unchanged). One instance per bot (main.js), used by events (boss check) and targeting (team model).
 //   shareStats()  every 60 s our stats to every other team fighter in the party (comms "stats")
-//   teamStats()   our stats + the fresh reports (3 min) of the fighters in our party
+//   teamStats()   our stats + each party fighter's: live from the team view when it runs in our client (step 2),
+//                 else its fresh report (3 min)
 //   reports       the raw reports by name ({ s, at })
 // The reports survive a restart (storage "bot_team_stats:<name>"): copies up to 30 min old count as fresh at the start,
 // else the boss check waited up to a minute for "the team's stats".
 // deps: { config, util, comms, party } - party may be a getter.
 // =====================================================================
 
+const createTeamView = require("./team-view.js");
+
 module.exports = function createTeamStats(deps) {
     const config = deps.config, util = deps.util, comms = deps.comms;
+    const teamView = createTeamView(); // read only: teammates in our client report their stats live (step 2)
 
     const STATS_KEY = "bot_team_stats:" + character.name;
     const stats = (function () {
@@ -43,15 +47,29 @@ module.exports = function createTeamStats(deps) {
         });
     }
 
+    // A teammate's combat stats live from its team view entry (it runs in our client), or null.
+    function liveStats(name) {
+        try {
+            const e = teamView.member(name);
+            return e && e.bot && e.bot.stats ? e.bot.stats() : null;
+        } catch (x) { return null; }
+    }
     function teamStats() {
         const party = deps.party;
         const list = [util.combatStats()];
         const now = Date.now();
-        Object.keys(stats).forEach(function (name) {
-            if (party.inParty(name) && now - stats[name].at < 3 * 60 * 1000) list.push(stats[name].s);
+        // Everyone we have a report of (in their order), then team fighters in the party we have none of yet.
+        const names = Object.keys(stats);
+        (config.team.fighters || []).forEach(function (n) { if (n !== character.name && !names.includes(n)) names.push(n); });
+        names.forEach(function (name) {
+            if (!party.inParty(name)) return;
+            const live = liveStats(name);
+            if (live) list.push(live);
+            else if (stats[name] && now - stats[name].at < 3 * 60 * 1000) list.push(stats[name].s);
         });
         return list;
     }
+
 
     // reports: the raw reports by name ({ s, at }) - events' runner check reads one fighter's last report.
     return { shareStats: shareStats, teamStats: teamStats, reports: stats };

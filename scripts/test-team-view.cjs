@@ -66,5 +66,56 @@ NOW += 11000;
 check(memberParty.leaderInfo() === null && memberParty.leadVia() === null, "a stale leader entry falls back to messages (none here)");
 check(logs.some(t => /live from the team view/.test(t)), "the journal notes the source");
 
-console.log(failed ? failed + " FAILED" : "all passed");
-process.exit(failed ? 1 : 0);
+// ---- step 2: direct delivery in comms ----
+(async function () {
+    NOW = 1e12 + 100000;
+    globalThis.top = {};
+    const cm = [];
+    globalThis.send_cm = (to, msg) => { cm.push([to, msg.t]); return Promise.resolve(); };
+    const mk = (name) => {
+        globalThis.character = { name, on: () => 1, remove: () => {} };
+        const c = fresh("lib/comms.js")(config, util);
+        const tv = fresh("team/team-view.js")();
+        tv.publish({ name, role: "x", game: () => ({}), bot: {}, actions: { deliver: (msg, from) => c.receive(msg, from) } });
+        return c;
+    };
+    config.characters.VizMerch = {};
+    const pri = mk("VizPri"), war = mk("VizWar");
+    const got = [];
+    war.on("stats", (d, from) => got.push([from, d.hp]));
+    globalThis.character = { name: "VizPri", on: () => 1, remove: () => {} };
+    const payload = { hp: 100 };
+    pri.send(["VizWar", "VizMerch"], "stats", payload);
+    payload.hp = 999; // the receiver gets a copy as sent, like over the network
+    check(got.length === 0, "direct delivery runs after the sending code (not inside send)");
+    await Promise.resolve(); await Promise.resolve();
+    check(got.length === 1 && got[0][0] === "VizPri" && got[0][1] === 100, "a teammate in our client gets the message directly, as a copy");
+    check(cm.length === 1 && JSON.stringify(cm[0][0]) === JSON.stringify(["VizMerch"]) && cm[0][1] === "stats", "a teammate not in our client gets it through the server");
+    check(pri.counts().direct === 1 && pri.counts().server === 1, "counts: 1 direct, 1 through the server");
+    NOW += 11000; // war's entry goes stale
+    pri.send("VizWar", "stats", { hp: 1 });
+    check(cm.length === 2 && cm[1][0] === "VizWar", "a stale entry: through the server again");
+
+    // ---- step 2: team stats live from the view ----
+    globalThis.top = {};
+    globalThis.character = { name: "VizPri", on: () => 1, remove: () => {} };
+    const tvWar = fresh("team/team-view.js")();
+    let warHp = 5000;
+    tvWar.publish({ name: "VizWar", role: "member", game: () => ({}), bot: { stats: () => ({ name: "VizWar", max_hp: warHp }) } });
+    const statsUtil = Object.assign({}, util, { combatStats: () => ({ name: "VizPri", max_hp: 3000 }) });
+    const cfgStats = Object.assign({}, config, { team: Object.assign({}, config.team, { fighters: ["VizPri", "VizWar", "VizMage"] }) });
+    const ts = fresh("team/team-stats.js")({ config: cfgStats, util: statsUtil, comms: { on: () => {}, send: () => {} },
+        party: { enabled: true, inParty: () => true } });
+    let list = ts.teamStats();
+    check(list.length === 2 && list[1].name === "VizWar" && list[1].max_hp === 5000, "team stats: a teammate in our client counts live, without any report");
+    warHp = 5200;
+    check(ts.teamStats()[1].max_hp === 5200, "team stats: a change is seen at once");
+    ts.reports.VizMage = { s: { name: "VizMage", max_hp: 2500 }, at: NOW };
+    list = ts.teamStats();
+    check(list.length === 3 && list.some(s => s.name === "VizMage"), "team stats: a teammate outside our client counts by its fresh report");
+    NOW += 11000;
+    list = ts.teamStats();
+    check(!list.some(s => s.name === "VizWar") && list.some(s => s.name === "VizMage"), "team stats: a stale entry without a report drops out (as before)");
+    console.log(failed ? failed + " FAILED" : "all passed");
+    process.exit(failed ? 1 : 0);
+})();

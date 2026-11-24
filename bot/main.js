@@ -101,7 +101,7 @@ function moduleView(ctx, names) {
 }
 
 // Our entry in the team view (step 0): who we are, our live game object, what the bot is doing - read through getters,
-// so a reader always gets the current value. No actions yet.
+// so a reader always gets the current value. Action: deliver (direct messages, step 2).
 function publishTeamEntry(ctx, me) {
     const opt = function (fn) { try { return fn(); } catch (e) { return null; } };
     const fighter = me.role !== "merchant";
@@ -119,7 +119,8 @@ function publishTeamEntry(ctx, me) {
             // Leader: its live report for the members (team view step 1; null on members and the merchant).
             lead: function () { return opt(function () { return ctx.party.leadData(); }); },
         },
-        actions: {},
+        // Messages from a teammate in our client, handed over directly (team view step 2, lib/comms.js).
+        actions: { deliver: function (msg, from) { botComms.receive(msg, from); } },
     });
     setTimeout(function () {
         const seen = ctx.teamView.members().map(function (e) { return e.name; });
@@ -130,7 +131,8 @@ function publishTeamEntry(ctx, me) {
 // "/team": what the team view shows from this character - every entry, its age and what it reports.
 function teamReport(teamView) {
     const list = teamView.members();
-    game_log("[team] " + list.length + " in this client", "white");
+    const c = botComms && botComms.counts ? botComms.counts() : null;
+    game_log("[team] " + list.length + " in this client" + (c ? " - messages sent: " + c.direct + " direct, " + c.server + " through the server" : ""), "white");
     list.forEach(function (e) {
         try {
             const c = e.game(), b = e.bot || {};
