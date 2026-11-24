@@ -1169,18 +1169,34 @@ module.exports = function createEvents(ctx) {
     // it. Accepted only from a team fighter in our party while the team fights a boss (the leader's boss event, not a
     // join event or a runner's solo kill) and we are alive - a stale, foreign or out-of-fight port is declined
     // (no answer). Our walk to the boss is stopped first, the port puts us next to the mage (classes/mage.js).
+    // On the way to a farm spot (v1.235.0, magiport.travel, player decision 2026-11-24): the team mage waits at the
+    // spot's edge and pulls us there. Accepted while we walk to the farm spot (leader: our path walk ends in its spawn;
+    // member: the leader walks to its spawn), nothing attacks us and we are not under the manual rules.
+    function travelPortOk() {
+        const tp = ((((config.classes || {}).mage || {}).magiport) || {}).travel || {};
+        const tg = ctx.targeting;
+        if (!tp.enabled || !tg || !tg.inSpotArea || (ctx.cave && ctx.cave.active()) || util.attackersOnMe().length) return false;
+        // Every team route since v1.235.2 (player decision): the leader on a path walk, a member while the leader walks
+        // one (it broadcasts its route end).
+        if (party.isLeader) return typeof smart !== "undefined" && !!smart.moving && !!smart.map;
+        const lead = party.leaderInfo();
+        return !!(lead && lead.moving && lead.dest && !lead.event);
+    }
     function acceptMagiport(name) {
         const mcfg = ((config.classes || {}).mage || {}).magiport || {};
         const fighters = (config.team && config.team.fighters) || [];
+        const boss = !!(current && current.monster && !current.join && !current.solo);
+        const travel = !boss && travelPortOk();
         const why = !mcfg.enabled ? "magiport off" : name === character.name ? "own" : !fighters.includes(name) ? "not one of our fighters" :
-            !party.inParty(name) ? "not in our party" : character.rip ? "dead" : !current || !current.monster || current.join || current.solo ? "no boss fight" : null;
+            !party.inParty(name) ? "not in our party" : character.rip ? "dead" : !boss && !travel ? "no boss fight and not on the way to a farm spot" : null;
         if (why) {
             util.log("event", "magiport from " + name + " declined: " + why, "orange");
             return;
         }
         try { stop(); } catch (e) { /* not walking */ }
+        const what = boss ? current.name : "the farm spot";
         accept_magiport(name)
-            .then(function () { util.log("event", "magiported to " + name + " for " + current.name, "green"); })
+            .then(function () { util.log("event", "magiported to " + name + " for " + what, "green"); })
             .catch(function (e) { util.log("event", "magiport from " + name + " failed: " + util.errReason(e), "orange"); });
     }
 };

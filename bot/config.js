@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.234.1",
+    version: "1.235.2",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -886,7 +886,13 @@ module.exports = {
             // retryMs apart. The members accept only our port during a boss fight (core/events.js). Bosses only for now;
             // a member that died could be pulled back later. graceMs (v1.228.3): the distance is judged on live positions (party info
             // lags behind); a member not in sight counts as far only after the boss has been in our sight this long.
-            magiport: { enabled: true, keepMp: 0.3, minDist: 600, bossRange: 800, tries: 3, retryMs: 8000, graceMs: 4000 },
+            // travel (v1.235.0, player decision 2026-11-24): on the way to a farm spot (since v1.235.2 any team route) the mage goes
+            // ahead to the spot's edge (party.spotAhead; never into the spawn, Blink stops outside it) and pulls the fighters
+            // still on another map or farther than minDist px - tank first, healer last - while keepMp stays; tries per
+            // member and route. They accept it only on that route and not fighting (events.acceptMagiport).
+            magiport: { enabled: true, keepMp: 0.3, minDist: 600, bossRange: 800, tries: 3, retryMs: 8000, graceMs: 4000,
+                // Every team route since v1.235.2 (player decision): farm spots (at the edge) and any other route end (atEnd px).
+                travel: { enabled: true, minDist: 800, keepMp: 0.3, tries: 2, atEdge: 100, atEnd: 200 } },
             // Blink on routes (v1.234.0, player decision 2026-11-24): on a path walk jump to the farthest step of the plan on
             // this map (next door or the goal) when it is at least minDist px away and our MP stays above keepMp after the
             // 1,600-MP cast; never in a fight or under the manual rules. No range limit on the server (test: 980 px).

@@ -343,6 +343,70 @@ module.exports = function createMage(ctx) {
             .finally(function () { portBusy = false; });
     }
 
+    // ---- Magiport on the way to a farm spot (v1.235.0, player decision 2026-11-24) ----------------------------------
+    // We go ahead of the leader to the edge of its farm spot (party.spotAhead - Blink makes us first) and pull the
+    // fighters still far away (another map, or more than travel.minDist px) to us there - the tank first, the healer last,
+    // while keepMp of our MP stays; up to travel.tries per member and route. Only farm spots (bosses: magiportTick).
+    // The members accept it only on a route to a farm spot, not fighting (events.acceptMagiport).
+    const tcfg = mpc.travel || {};
+    const travelTries = {}; // member -> { key, n, at }
+    let travelLowLogAt = 0;
+    function travelPortTick() {
+        if (!mpc.enabled || !tcfg.enabled || portBusy || character.rip || !ctx.party.enabled || ctx.party.isLeader || !G.skills.magiport) return;
+        if (ctx.cave && ctx.cave.active()) return;
+        const lead = ctx.party.leaderInfo();
+        const tg = ctx.targeting;
+        if (!lead || !lead.moving || !lead.dest || lead.event || !tg || !tg.inSpotArea || !tg.watchPoint) return;
+        if (character.map !== lead.dest.map || util.attackersOnMe().length) return;
+        // Every route of the team (v1.235.2, player decision 2026-11-24: "whenever the group goes somewhere and he is
+        // there"): a farm spot - we wait at its edge; any other route end (Daisy, town, ...) - we stand at it (we went
+        // ahead there). Boss events have their own magiport.
+        const toSpot = !!lead.farm && tg.inSpotArea(lead.dest, lead.farm);
+        if (toSpot) {
+            const edge = tg.watchPoint(lead.farm);
+            if (!edge || util.distanceTo(edge) > (tcfg.atEdge || 100)) return;
+        } else if (Math.hypot(character.real_x - lead.dest.x, character.real_y - lead.dest.y) > (tcfg.atEnd || 200)) return;
+        const daisy = util.daisyPos ? util.daisyPos() : null;
+        const toDaisy = !toSpot && !!daisy && lead.dest.map === "main" && Math.hypot(lead.dest.x - daisy.x, lead.dest.y - daisy.y) < 250;
+        const info = get_party() || {};
+        const fighters = (ctx.config.team && ctx.config.team.fighters) || [];
+        const tanks = ((ctx.config.targeting && ctx.config.targeting.teamSafety) || {}).tankClasses || ["warrior", "paladin"];
+        const healer = function (t) { return !!(G.skills.heal && (G.skills.heal.class || []).includes(t)); };
+        const key = lead.dest.map + ":" + Math.round(lead.dest.x / 100) + ":" + Math.round(lead.dest.y / 100);
+        const now = Date.now();
+        const far = ctx.party.memberNames().filter(function (n) {
+            const p = info[n];
+            if (n === character.name || !fighters.includes(n) || !p || p.rip) return false;
+            const live = get_player(n);
+            if (live && (live.rip || util.distanceTo(live) <= (tcfg.minDist || 800))) return false;
+            if (!live && p.map === character.map && Math.hypot(p.x - character.real_x, p.y - character.real_y) <= (tcfg.minDist || 800)) return false;
+            const t = travelTries[n];
+            return !(t && t.key === key && (t.n >= (tcfg.tries || 2) || now - t.at < (mpc.retryMs || 8000)));
+        }).sort(function (a, b) {
+            const rank = function (n) { const t = info[n].type; return tanks.includes(t) ? 0 : healer(t) ? 2 : 1; };
+            return rank(a) - rank(b);
+        });
+        if (!far.length) return;
+        const cost = G.skills.magiport.mp || 900;
+        const keep = tcfg.keepMp === undefined ? 0.3 : tcfg.keepMp;
+        if (character.mp - cost < character.max_mp * keep) {
+            if (now - travelLowLogAt > 60 * 1000) {
+                travelLowLogAt = now;
+                util.log("mage", "travel magiport for " + far.join(", ") + " waits: " + Math.round(character.mp) + " MP (keeping " + Math.round(keep * 100) + " %)", "white");
+            }
+            return;
+        }
+        if (is_on_cooldown("magiport")) return;
+        const who = far[0];
+        const prev = travelTries[who];
+        travelTries[who] = { key: key, n: prev && prev.key === key ? prev.n + 1 : 1, at: now };
+        portBusy = true;
+        util.log("mage", "magiport " + who + (toDaisy ? " to Daisy" : toSpot ? " to the " + lead.farm + " spot" : " to the route end on " + lead.dest.map) + " (" + (info[who].map !== character.map ? "on " + info[who].map : "far") + ", try " + travelTries[who].n + ")", "yellow");
+        Promise.resolve(use_skill("magiport", who))
+            .catch(function (e) { util.log("mage", "magiport " + who + ": " + util.errReason(e), "orange"); })
+            .finally(function () { portBusy = false; });
+    }
+
     // ---- Blink on routes (v1.234.0, player decision 2026-11-24) ------------------------------------------------------
     // Blink has no range limit on the server (any point of the same map; a test blinked 980 px and landed 35 px off).
     // On a path walk (smart_move, path found) we jump to the farthest step of the plan on this map - the next door or the
@@ -366,6 +430,14 @@ module.exports = function createMage(ctx) {
             if (!p || p.town || p.transport || p.map !== character.map) break;
             k = i;
         }
+        if (k < 0) return;
+        // Never into a farm spot (v1.235.0): the farthest step outside it - we wait at its edge (party.spotAhead), the
+        // spot check comes first.
+        const leadInfo = ctx.party.leaderInfo ? ctx.party.leaderInfo() : null;
+        const farmNow = ctx.targeting && ctx.targeting.farmNow ? ctx.targeting.farmNow() : null;
+        const farmType = (leadInfo && leadInfo.farm) || (farmNow && farmNow.monster) || null;
+        const inSpot = function (p) { return !!(farmType && ctx.targeting.inSpotArea && ctx.targeting.inSpotArea({ map: character.map, x: p.x, y: p.y }, farmType)); };
+        while (k >= 0 && inSpot(smart.plot[k])) k--;
         if (k < 0) return;
         const to = smart.plot[k];
         const d = Math.hypot(to.x - character.real_x, to.y - character.real_y);
@@ -394,7 +466,7 @@ module.exports = function createMage(ctx) {
 
         survive: function () { return false; },
 
-        always: function () { magiportTick(); blasterTick(); blinkTravelTick(); },
+        always: function () { magiportTick(); travelPortTick(); blasterTick(); blinkTravelTick(); },
 
         support: function () {
             reflectTick();

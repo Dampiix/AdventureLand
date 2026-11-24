@@ -174,10 +174,31 @@ module.exports = function createParty(ctx) {
     // 2026-11-21): we meet at the destination, and in a fight the distance to the leader only spoiled
     // kiting - members without a target go back to the leader anyway (idleFollow).
     // `loose` (join events): on the leader's map we roam freely after our own targets.
+    // The mage goes ahead to the leader's farm spot - to its edge, never into the spawn - so it can pull the others
+    // there by Magiport (v1.235.0, player decision 2026-11-24; classes.mage.magiport.travel). null for everyone else.
+    // { p, edge }: on another map the route end itself (path walk, Blink stops outside the spot), on the spot's map
+    // its nearest edge point (targeting.watchPoint).
+    function spotAhead(lead) {
+        const tp = ((((config.classes || {}).mage || {}).magiport) || {}).travel || {};
+        if (!tp.enabled || character.ctype !== "mage" || !lead || !lead.moving || !lead.dest || !lead.farm || lead.event) return null;
+        const tg = ctx.targeting;
+        if (!tg || !tg.inSpotArea || !tg.watchPoint || !tg.inSpotArea(lead.dest, lead.farm)) return null;
+        if (badDest && Date.now() < badDest.until && badDest.map === lead.dest.map && Math.hypot(badDest.x - lead.dest.x, badDest.y - lead.dest.y) < 60) return null;
+        if (character.map === lead.dest.map) {
+            const e = tg.watchPoint(lead.farm);
+            return e ? { p: e, edge: true } : null;
+        }
+        return { p: lead.dest, edge: false };
+    }
     function keepUp(loose) {
         const lead = leaderInfo();
         if (!lead || detached()) return false;
         if (loose && character.map === lead.map) return false;
+        const ahead = spotAhead(lead);
+        if (ahead) {
+            if (!ahead.edge) { moveTowards(ahead.p, "going ahead to " + ahead.p.map, true); return true; }
+            return false; // on the spot's map: idleFollow walks to the edge (not back to the leader's map)
+        }
         const dest = travelDest(lead);
         if (dest) {
             if (character.map !== dest.map || util.distanceTo(dest) > cfg.followDistance) { moveTowards(dest, "going ahead to " + dest.map, true); return true; }
@@ -216,6 +237,13 @@ module.exports = function createParty(ctx) {
         }
         if (!lead) {
             util.status("waiting for " + leader, "white");
+            return true;
+        }
+        const ahead = spotAhead(lead);
+        if (ahead) {
+            if (!ahead.edge) moveTowards(ahead.p, "going ahead to " + ahead.p.map, true);
+            else if (util.distanceTo(ahead.p) > 60) moveTowards(ahead.p, "ahead to the spot edge", true);
+            else util.status("at the spot edge", "white");
             return true;
         }
         const dest = travelDest(lead);

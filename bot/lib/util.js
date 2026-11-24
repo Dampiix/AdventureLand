@@ -398,6 +398,12 @@ function countItem(name) {
     }, 0);
 }
 
+// Daisy (the monster hunter NPC on main): her position, or null (v1.235.1, shared by the travel magiport).
+function daisyPos() {
+    const npc = ((G.maps.main || {}).npcs || []).find(function (n) { return n.id === "monsterhunter"; });
+    return npc ? { map: "main", x: npc.position[0], y: npc.position[1] } : null;
+}
+
 function findItemIndex(predicate) {
     return character.items.findIndex(function (item) { return !!item && predicate(item); });
 }
@@ -689,6 +695,7 @@ module.exports = {
     teamCycle: teamCycle,
     deriveTeam: deriveTeam,
     shortName: shortName,
+    daisyPos: daisyPos,
     weaponPower: weaponPower,
     viaFirst: viaFirst,
     kiteRisk: kiteRisk,
