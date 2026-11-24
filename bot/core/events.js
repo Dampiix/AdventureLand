@@ -979,6 +979,21 @@ module.exports = function createEvents(ctx) {
             return null;
         }
         const holding = boss && Date.now() - boss.seenAt < 30 * 1000 && !killedAt(boss.id);
+        // The boss we had is done - killed, or out of sight for 30 s: booked (journal, next search) before another one
+        // replaces it (v1.236.1, player report 2026-11-24: Ms. Dracul died while the merchant's Skeletor report waited -
+        // the Skeletor took her place at once, and her kill was never booked: no journal line, no respawn timing).
+        const endBoss = function () {
+            if (!boss) return;
+            const killed = killedAt(boss.id);
+            outcome(boss, killed ? "killed" : "gone without a kill seen");
+            if (killed) respawnLater(boss.name, killed);
+            else {
+                util.log("event", boss.name + " gone - back to farming", "white");
+                searchLater(boss.name);
+            }
+            boss = null;
+        };
+        const oldKilled = boss ? killedAt(boss.id) : 0;
         // Without a current boss (e.g. after a restart) one that already fights one of us comes first
         // (2026-11-21: Dracul at 5 % on the warrior, the event went to the fresh Phoenix next to it).
         const ours = [character.name].concat(party.memberNames());
@@ -991,6 +1006,8 @@ module.exports = function createEvents(ctx) {
             if (seen || told) {
                 // Engaged: the next search is due searchEveryMs from now (stored), so a
                 // restart right after the kill does not send us searching at once.
+                // The same boss again (not a fresh one of its kind after a kill): one fight, its first sighting kept.
+                if (boss && (boss.name !== name || oldKilled)) endBoss();
                 const prev = boss && boss.name === name ? boss : null;
                 if (!prev) searchLater(name);
                 const info = seen ? bossInfo(name, seen) : told.info;
@@ -1004,16 +1021,7 @@ module.exports = function createEvents(ctx) {
             }
         }
         if (boss && Date.now() - boss.seenAt < 30 * 1000 && !killedAt(boss.id)) return { name: boss.name, monster: boss.name, dest: boss.dest || boss.name, sighted: true };
-        if (boss) {
-            const killed = killedAt(boss.id);
-            outcome(boss, killed ? "killed" : "gone without a kill seen");
-            if (killed) respawnLater(boss.name, killed);
-            else {
-                util.log("event", boss.name + " gone - back to farming", "white");
-                searchLater(boss.name);
-            }
-            boss = null;
-        }
+        endBoss();
         return null;
     }
 
@@ -1177,49 +1185,36 @@ module.exports = function createEvents(ctx) {
         acceptMagiport: acceptMagiport,     // main.js on_magiport
     };
 
-    // Magiport consent (v1.228.1, player decision 2026-11-23): the game asks us (on_magiport) when a mage pulls us to
-    // it. Accepted only from a team fighter in our party while the team fights a boss (the leader's boss event, not a
-    // join event or a runner's solo kill) and we are alive - a stale, foreign or out-of-fight port is declined
-    // (no answer). Our walk to the boss is stopped first, the port puts us next to the mage (classes/mage.js).
-    // On the way to a farm spot (v1.235.0, magiport.travel, player decision 2026-11-24): the team mage waits at the
-    // spot's edge and pulls us there. Accepted while we walk to the farm spot (leader: our path walk ends in its spawn;
-    // member: the leader walks to its spawn), nothing attacks us and we are not under the manual rules.
-    // "" when a travel port is fine, else why not (v1.235.11: the reason is logged - a port on the way to Daisy was
-    // declined without saying which rule). Monsters on us no longer block it: on a route they are only chasing us, and
-    // the port takes us away from them.
-    function travelPortWhyNot() {
-        const tp = ((((config.classes || {}).mage || {}).magiport) || {}).travel || {};
-        const tg = ctx.targeting;
-        if (!tp.enabled || !tg || !tg.inSpotArea) return "travel ports off";
+    // Magiport consent (v1.236.0, player decision 2026-11-24): the game asks us (on_magiport) when a mage pulls us to it.
+    // Accepted from a team fighter in our party while we are alive and
+    //   - the team fights a boss (the leader's boss event, not a join event or a runner's solo kill), or
+    //   - the team has a goal (party.teamGoal: a farm spot, a boss, Daisy, ...) we have not been at yet.
+    // Declined in the cave or under /manual, during a boss search (ours or the team's - everyone walks its own areas;
+    // a find becomes the boss goal) and for a goal we have been at already (e.g. we left the spot for potions later).
+    // "" when the port is fine, else why not (logged).
+    function portWhyNot() {
         if (ctx.cave && ctx.cave.active()) return "manual mode";
-        // Not during a boss search (ours or the leader's, v1.235.8): everyone walks its own areas.
-        if (job || searching) return "boss search";
-        if (party.isLeader) {
-            const f = tg.farmNow ? tg.farmNow() : null;
-            if (f && f.monster && util.isBossKind(config, f.monster)) return "boss target " + f.monster;
-            // Every team route since v1.235.2 (player decision): the leader on a path walk.
-            return typeof smart !== "undefined" && smart.moving && smart.map ? "" : "not on a route";
-        }
-        const lead = party.leaderInfo();
-        if (!lead) return "no fresh leader info";
-        if (lead.farm && util.isBossKind(config, lead.farm)) return "boss target " + lead.farm;
-        if (lead.searching) return "the leader searches a boss";
-        if (lead.event) return "the leader has an event";
-        return lead.moving && lead.dest ? "" : "the leader is not on a route";
+        const g = party.teamGoal ? party.teamGoal() : null;
+        if (!g) return "no team goal";
+        if (g.kind === "search") return "the team searches a boss";
+        if (g.kind !== "boss" && (job || searching)) return "own boss search";
+        if (party.wasAtGoal(g)) return "already been at " + party.goalLabel(g);
+        return "";
     }
     function acceptMagiport(name) {
         const mcfg = ((config.classes || {}).mage || {}).magiport || {};
         const fighters = (config.team && config.team.fighters) || [];
         const boss = !!(current && current.monster && !current.join && !current.solo);
-        const travelWhy = boss ? "" : travelPortWhyNot();
+        const goalWhy = boss ? "" : portWhyNot();
         const why = !mcfg.enabled ? "magiport off" : name === character.name ? "own" : !fighters.includes(name) ? "not one of our fighters" :
-            !party.inParty(name) ? "not in our party" : character.rip ? "dead" : !boss && travelWhy ? "no boss fight, no travel port: " + travelWhy : null;
+            !party.inParty(name) ? "not in our party" : character.rip ? "dead" : goalWhy ? goalWhy : null;
         if (why) {
             util.log("event", "magiport from " + name + " declined: " + why, "orange");
             return;
         }
         try { stop(); } catch (e) { /* not walking */ }
-        const what = boss ? current.name : "the team's route";
+        const g = party.teamGoal ? party.teamGoal() : null;
+        const what = boss ? current.name : party.goalLabel(g);
         // A path walk planned from where we stood before the port is dropped after it (v1.235.9, player report: priest
         // and warrior walked on to their old point first): the next tick plans from the landing point.
         const dropOldWalk = function () { try { if (typeof smart !== "undefined" && smart.moving) stop("smart"); } catch (e) { /* not walking */ } };

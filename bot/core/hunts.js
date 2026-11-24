@@ -308,6 +308,9 @@ module.exports = function createHunts(ctx) {
         busy = true;
         try {
             util.status("visiting Daisy", "yellow");
+            // The team goal (v1.236.0): everyone goes to Daisy, the team's Magiport caster pulls the rest there.
+            const dp = daisyPos();
+            if (party.isLeader && party.setGoal && dp) party.setGoal("daisy", "Daisy", { map: "main", x: dp.x, y: dp.y });
             await smart_move("monsterhunter");
             await talk();
             // Members arrive and talk to her too: wait until each one reports it is done.

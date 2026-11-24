@@ -354,10 +354,14 @@ module.exports = function createFighter(ctx, cls) {
         if (!at || Math.hypot(character.real_x - at[0], character.real_y - at[1]) < 80) return destination;
         return { map: v, x: at[0], y: at[1] };
     }
-    function travel(destination, label) {
+    // farm: the farm target we walk to - the leader makes it the team goal (party.setGoal, v1.236.0); boss events are
+    // the leader's event goal (party.leaderGoal), not set here.
+    function travel(destination, label, farm) {
+        if (farm && farm.monster && party.isLeader && String(farm.source || "").indexOf("event ") !== 0) {
+            party.setGoal("spot", farm.monster, destination && typeof destination === "object" ? destination : (targeting.spotFor ? targeting.spotFor(farm.monster, farm.map) : null));
+        }
         const goal = destination; // the real goal: a failed walk marks it, not the waypoint (2026-11-22 review)
         destination = viaFor(destination);
-        ctx.travelVia = destination !== goal; // a via waypoint is a leg too (v1.235.5, party "lead" field leg)
         util.status(label, "yellow");
         if (is_moving(character) && travelGoal && !sameGoal(travelGoal, destination) && typeof smart !== "undefined" && smart.moving) {
             stoppedOnPurpose = true;
@@ -846,7 +850,7 @@ module.exports = function createFighter(ctx, cls) {
             lastTarget = null; // members see the leader travelling with no target: they follow, no fights
             startPassing(farm);
             util.status("passing " + target.mtype, "yellow");
-            travel(goalFor(farm), "searching " + farm.monster);
+            travel(goalFor(farm), "searching " + farm.monster, farm);
             return;
         }
         // Only time actually fighting counts for the crowded-spot check: running after a
@@ -919,7 +923,7 @@ module.exports = function createFighter(ctx, cls) {
                 util.status((hold === "strong" ? "too strong: " : "waiting for a lone ") + farm.monster, "white");
                 return;
             }
-            travel(goalFor(farm), "searching " + farm.monster);
+            travel(goalFor(farm), "searching " + farm.monster, farm);
             return;
         }
 
@@ -1702,11 +1706,8 @@ module.exports = function createFighter(ctx, cls) {
                 }
                 let leg = null;
                 try { leg = leaveLeg(args[0]); } catch (e) { /* walk as asked */ }
-                // A leg is not the goal (v1.235.5): the leader broadcasts it as such (party "lead" field leg) - members
-                // already at the farm spot stay there instead of walking back to it.
-                ctx.travelLeg = !!leg;
                 const first = leg ? run([leg]) : Promise.resolve();
-                return first.then(function () { ctx.travelLeg = false; return run(args); }).then(function (r) { rageWallReset(); return r; });
+                return first.then(function () { return run(args); }).then(function (r) { rageWallReset(); return r; });
             };
         }
         W.can_move = function (m, based) {

@@ -282,138 +282,96 @@ module.exports = function createMage(ctx) {
         } finally { blBusy = false; }
     }
 
-    // ---- Magiport (v1.228.1, player decision 2026-11-23) -----------------------------------------------------------
-    // We stand at a boss the team fights (the leader's boss event; we found it as the runner, or got there first): the
-    // fighters still on their way are pulled to us instead of walking - the tank first, the healer last. 900 MP each,
-    // only while keepMp of our MP stays for the fight (the potion rule refills; the rest walk on meanwhile). A member
-    // within minDist px or on its last tries for this boss (tries, retryMs apart) is skipped. The member accepts only
-    // our port during a boss fight (core/events.js acceptMagiport). Not for join events or a runner's solo kill.
-    // Distance (v1.228.3, player report 2026-11-23): get_party() positions lag behind - right after leaving the cave the
-    // warrior and the priest stood next to the mage and were pulled anyway (their party info still said "cave"; another
-    // check showed the warrior 370 px off). A member we can see is judged by its live position; one we can't see counts
-    // as far, but only after the boss has been in our sight for graceMs (map changes and new entities settle first).
+    // ---- Team Magiport (v1.236.0, player decision 2026-11-24) -----------------------------------------------------
+    // One rule for every team goal (party.teamGoal: a farm spot, a boss, Daisy, ...), whoever leads: the leader sets the
+    // goal, everyone walks there on its own path (we blink, see below), and once WE are there we pull every team fighter
+    // still farther than minDist px (or on another map) to us - the tank first, then in the team's order. 900 MP each,
+    // only while keepMp of our MP stays. At most `tries` per member and goal, retryMs apart.
+    //   there: a farm spot or Daisy - as the members' "there" (party.atGoal: party.goalEdge / goalRadius; we never blink
+    //          into a spawn); a boss - in our sight within bossRange px for graceMs (map changes and entities settle first).
+    //   never: in the cave or under /manual, without a goal, during a boss search (everyone walks its own areas - a find
+    //          becomes the leader's boss goal, and we pull from there), for a join event.
+    // A member we saw within minDist px while we were at the goal has been there: not pulled again for this goal (e.g.
+    // a potion trip later while the team farms there). The member accepts the port (events.acceptMagiport) unless it has
+    // been at this goal already. Positions: get_party() lags behind (v1.228.3) - a member we can see counts by its live
+    // position, one we can't see on our map by its party info.
     const mpc = c.magiport || {};
-    const portTries = {}; // member -> { boss, n, at }
-    let portBusy = false, portLowLogAt = 0, portBoss = null; // portBoss: { id, since } - the boss in our sight
-    function magiportTick() {
+    const portTries = {};  // member -> { goal, n, at }
+    const portSeen = {};   // goal id -> { member: true } - members seen at the goal with us
+    let portBusy = false, portBoss = null, portWhyAt = 0, portLowAt = 0; // portBoss: { id, since } - the boss in our sight
+    function teamPortTick() {
         if (!mpc.enabled || portBusy || character.rip || !ctx.party.enabled || !G.skills.magiport) return;
-        if (ctx.cave && ctx.cave.inCave()) return; // magiport can't enter or leave the cave
-        const ev = ctx.events && ctx.events.current ? ctx.events.current() : null;
-        if (!ev || ev.join || ev.solo || !ev.monster) return;
-        const boss = get_nearest_monster({ type: ev.monster });
-        if (!boss || boss.dead || util.distanceTo(boss) > (mpc.bossRange || 500)) return;
-        if (!portBoss || portBoss.id !== boss.id) portBoss = { id: boss.id, since: Date.now() };
-        if (Date.now() - portBoss.since < (mpc.graceMs || 4000)) return;
+        if (ctx.cave && ctx.cave.active()) return; // magiport can't enter or leave the cave; manual rules
+        const g = ctx.party.teamGoal();
+        if (!g || g.kind === "search") return;
+        // Our own share of a boss search without a find: no port (a find turns the goal into the boss).
+        if (g.kind !== "boss" && ctx.events && ctx.events.searchJob && ctx.events.searchJob()) return;
         const info = get_party() || {};
         const fighters = (ctx.config.team && ctx.config.team.fighters) || [];
-        const tanks = ((ctx.config.targeting && ctx.config.targeting.teamSafety) || {}).tankClasses || ["warrior", "paladin"];
-        const healer = function (t) { return !!(G.skills.heal && (G.skills.heal.class || []).includes(t)); };
+        const others = ctx.party.memberNames().filter(function (n) { return n !== character.name && fighters.includes(n) && info[n] && !info[n].rip; });
+        if (!others.length) return;
+        const label = ctx.party.goalLabel(g);
+        // Why we don't pull while someone is on another map - in the journal (tag party), at most every 30 s.
+        const why = function (r) {
+            if (Date.now() - portWhyAt < 30 * 1000) return;
+            const away = others.filter(function (n) { return info[n].map !== character.map; });
+            if (!away.length) return;
+            portWhyAt = Date.now();
+            util.log("party", "magiport to " + label + " for " + away.join(", ") + " waits: " + r, "white");
+        };
+        // Are we there?
+        if (g.kind === "boss") {
+            const boss = get_nearest_monster({ type: g.name });
+            if (!boss || boss.dead || util.distanceTo(boss) > (mpc.bossRange || 800)) { portBoss = null; return why("the " + g.name + " not in my sight yet"); }
+            if (!portBoss || portBoss.id !== boss.id) portBoss = { id: boss.id, since: Date.now() };
+            if (Date.now() - portBoss.since < (mpc.graceMs || 4000)) return;
+        } else if (!ctx.party.atGoal(g)) {
+            return why("not at " + label + " yet");
+        }
         const now = Date.now();
-        const me = { x: character.real_x, y: character.real_y };
-        const far = ctx.party.memberNames().filter(function (n) {
+        const seen = portSeen[g.id] || (portSeen[g.id] = {});
+        const ids = Object.keys(portSeen);
+        if (ids.length > 30) ids.slice(0, ids.length - 30).forEach(function (k) { delete portSeen[k]; });
+        const minDist = mpc.minDist || 600;
+        const waiting = [];
+        const far = others.filter(function (n) {
             const p = info[n];
-            if (n === character.name || !fighters.includes(n) || !p || p.rip) return false;
             const live = get_player(n);
-            if (live && (live.rip || util.distanceTo(live) <= (mpc.minDist || 600))) return false;
+            if (live && live.rip) return false;
+            if (live && util.distanceTo(live) <= minDist) { seen[n] = true; return false; }
+            if (!live && p.map === character.map && typeof p.x === "number" && Math.hypot(p.x - character.real_x, p.y - character.real_y) <= minDist) return false;
+            if (seen[n]) return false; // was here with us at this goal
             const t = portTries[n];
-            return !(t && t.boss === boss.id && (t.n >= (mpc.tries || 3) || now - t.at < (mpc.retryMs || 8000)));
-        }).sort(function (a, b) {
-            const rank = function (n) { const t = info[n].type; return tanks.includes(t) ? 0 : healer(t) ? 2 : 1; };
-            return rank(a) - rank(b);
+            if (t && t.goal === g.id && (t.n >= (mpc.tries || 3) || now - t.at < (mpc.retryMs || 8000))) { waiting.push(n); return false; }
+            return true;
         });
-        if (!far.length) return;
+        const tanks = ((ctx.config.targeting && ctx.config.targeting.teamSafety) || {}).tankClasses || ["warrior", "paladin"];
+        far.sort(function (a, b) {
+            const ta = tanks.includes(info[a].type) ? 0 : 1, tb = tanks.includes(info[b].type) ? 0 : 1;
+            return ta - tb || fighters.indexOf(a) - fighters.indexOf(b);
+        });
+        if (!far.length) {
+            if (waiting.length) why("tries for " + waiting.join(", "));
+            return;
+        }
         const cost = G.skills.magiport.mp || 900;
-        if (character.mp - cost < character.max_mp * (mpc.keepMp === undefined ? 0.3 : mpc.keepMp)) {
-            if (now - portLowLogAt > 30 * 1000) {
-                portLowLogAt = now;
-                util.log("mage", "magiport for " + far.join(", ") + " waits: " + Math.round(character.mp) + " MP, keeping " + Math.round((mpc.keepMp === undefined ? 0.3 : mpc.keepMp) * 100) + " % for the " + ev.monster, "white");
+        const keep = mpc.keepMp === undefined ? 0.3 : mpc.keepMp;
+        if (character.mp - cost < character.max_mp * keep) {
+            if (now - portLowAt > 30 * 1000) {
+                portLowAt = now;
+                util.log("party", "magiport to " + label + " for " + far.join(", ") + " waits: " + Math.round(character.mp) + " MP (keeping " + Math.round(keep * 100) + " %)", "white");
             }
             return;
         }
         if (is_on_cooldown("magiport")) return;
         const who = far[0];
         const prev = portTries[who];
-        portTries[who] = { boss: boss.id, n: prev && prev.boss === boss.id ? prev.n + 1 : 1, at: now };
+        portTries[who] = { goal: g.id, n: prev && prev.goal === g.id ? prev.n + 1 : 1, at: now };
         portBusy = true;
-        const seen = get_player(who);
-        util.log("mage", "magiport " + who + " to the " + ev.monster + " (" + (seen ? Math.round(util.distanceTo(seen)) + " px away" : "not in sight, party info: " + info[who].map +
-            (info[who].map === character.map ? " ~" + Math.round(Math.hypot(info[who].x - me.x, info[who].y - me.y)) + " px" : "")) + ", try " + portTries[who].n + ")", "yellow");
+        const lv = get_player(who);
+        util.log("party", "magiport " + who + " to " + label + " (" + (lv ? Math.round(util.distanceTo(lv)) + " px away" : "on " + info[who].map) + ", try " + portTries[who].n + ")", "yellow");
         Promise.resolve(use_skill("magiport", who))
-            .catch(function (e) { util.log("mage", "magiport " + who + ": " + util.errReason(e), "orange"); })
-            .finally(function () { portBusy = false; });
-    }
-
-    // ---- Magiport on the way to a farm spot (v1.235.0, player decision 2026-11-24) ----------------------------------
-    // We go ahead of the leader to the edge of its farm spot (party.spotAhead - Blink makes us first) and pull the
-    // fighters still far away (another map, or more than travel.minDist px) to us there - the tank first, the healer last,
-    // while keepMp of our MP stays; up to travel.tries per member and route. Only farm spots (bosses: magiportTick).
-    // The members accept it only on a route to a farm spot, not fighting (events.acceptMagiport).
-    const tcfg = mpc.travel || {};
-    const travelTries = {}; // member -> { key, n, at }
-    let travelLowLogAt = 0;
-    function travelPortTick() {
-        if (!mpc.enabled || !tcfg.enabled || portBusy || character.rip || !ctx.party.enabled || ctx.party.isLeader || !G.skills.magiport) return;
-        if (ctx.cave && ctx.cave.active()) return;
-        const lead = ctx.party.leaderInfo();
-        const tg = ctx.targeting;
-        if (!lead || !lead.moving || !lead.dest || lead.event || !tg || !tg.inSpotArea || !tg.watchPoint) return;
-        // Never for a boss kind (v1.235.8): a split Phoenix search reports "phoenix" as the leader's target and its
-        // search area as the route end - we pulled the team to our own empty search area.
-        if (lead.farm && util.isBossKind(ctx.config, lead.farm)) return;
-        if (ctx.events && ctx.events.searchJob && ctx.events.searchJob()) return;
-        if (lead.searching) return; // the leader's boss search: the members decline the port (v1.235.10, ~900 MP lost)
-        if (character.map !== lead.dest.map || util.attackersOnMe().length) return;
-        // Every route of the team (v1.235.2, player decision 2026-11-24: "whenever the group goes somewhere and he is
-        // there"): a farm spot - we wait at its edge; any other route end (Daisy, town, ...) - we stand at it (we went
-        // ahead there). Boss events have their own magiport.
-        const toSpot = !!lead.farm && tg.inSpotArea(lead.dest, lead.farm);
-        // Only at the real goal (v1.235.7): a leg of the leader's route (leaving spookytown, a via map) is no goal.
-        if (lead.leg && !toSpot) return;
-        if (toSpot) {
-            const edge = tg.watchPoint(lead.farm);
-            if (!edge || util.distanceTo(edge) > (tcfg.atEdge || 100)) return;
-        } else if (Math.hypot(character.real_x - lead.dest.x, character.real_y - lead.dest.y) > (tcfg.atEnd || 200)) return;
-        const daisy = util.daisyPos ? util.daisyPos() : null;
-        const toDaisy = !toSpot && !!daisy && lead.dest.map === "main" && Math.hypot(lead.dest.x - daisy.x, lead.dest.y - daisy.y) < 250;
-        const info = get_party() || {};
-        const fighters = (ctx.config.team && ctx.config.team.fighters) || [];
-        const tanks = ((ctx.config.targeting && ctx.config.targeting.teamSafety) || {}).tankClasses || ["warrior", "paladin"];
-        const healer = function (t) { return !!(G.skills.heal && (G.skills.heal.class || []).includes(t)); };
-        const key = lead.dest.map + ":" + Math.round(lead.dest.x / 100) + ":" + Math.round(lead.dest.y / 100);
-        const now = Date.now();
-        const far = ctx.party.memberNames().filter(function (n) {
-            const p = info[n];
-            if (n === character.name || !fighters.includes(n) || !p || p.rip) return false;
-            const live = get_player(n);
-            if (live && (live.rip || util.distanceTo(live) <= (tcfg.minDist || 800))) return false;
-            if (!live && p.map === character.map && Math.hypot(p.x - character.real_x, p.y - character.real_y) <= (tcfg.minDist || 800)) return false;
-            const t = travelTries[n];
-            // At most one travel port per member within cooldownMs (v1.235.6, player report: the warrior, ported to the
-            // stoneworm spot, still followed the leader back, and every new route end of the leader allowed new tries).
-            if (t && now - t.at < (tcfg.cooldownMs || 60 * 1000)) return false;
-            return !(t && t.key === key && t.n >= (tcfg.tries || 2));
-        }).sort(function (a, b) {
-            const rank = function (n) { const t = info[n].type; return tanks.includes(t) ? 0 : healer(t) ? 2 : 1; };
-            return rank(a) - rank(b);
-        });
-        if (!far.length) return;
-        const cost = G.skills.magiport.mp || 900;
-        const keep = tcfg.keepMp === undefined ? 0.3 : tcfg.keepMp;
-        if (character.mp - cost < character.max_mp * keep) {
-            if (now - travelLowLogAt > 60 * 1000) {
-                travelLowLogAt = now;
-                util.log("mage", "travel magiport for " + far.join(", ") + " waits: " + Math.round(character.mp) + " MP (keeping " + Math.round(keep * 100) + " %)", "white");
-            }
-            return;
-        }
-        if (is_on_cooldown("magiport")) return;
-        const who = far[0];
-        const prev = travelTries[who];
-        travelTries[who] = { key: key, n: prev && prev.key === key ? prev.n + 1 : 1, at: now };
-        portBusy = true;
-        util.log("mage", "magiport " + who + (toDaisy ? " to Daisy" : toSpot ? " to the " + lead.farm + " spot" : " to the route end on " + lead.dest.map) + " (" + (info[who].map !== character.map ? "on " + info[who].map : "far") + ", try " + travelTries[who].n + ")", "yellow");
-        Promise.resolve(use_skill("magiport", who))
-            .catch(function (e) { util.log("mage", "magiport " + who + ": " + util.errReason(e), "orange"); })
+            .catch(function (e) { util.log("party", "magiport " + who + ": " + util.errReason(e), "orange"); })
             .finally(function () { portBusy = false; });
     }
 
@@ -441,11 +399,12 @@ module.exports = function createMage(ctx) {
             k = i;
         }
         if (k < 0) return;
-        // Never into a farm spot (v1.235.0): the farthest step outside it - we wait at its edge (party.spotAhead), the
-        // spot check comes first.
+        // Never into a farm spot (v1.235.0): the farthest step outside it - we wait at its edge (party goal), the spot
+        // check comes first. The team goal's spot first (v1.236.0), else the farm target.
+        const goal = ctx.party.teamGoal ? ctx.party.teamGoal() : null;
         const leadInfo = ctx.party.leaderInfo ? ctx.party.leaderInfo() : null;
         const farmNow = ctx.targeting && ctx.targeting.farmNow ? ctx.targeting.farmNow() : null;
-        const farmType = (leadInfo && leadInfo.farm) || (farmNow && farmNow.monster) || null;
+        const farmType = (goal && goal.kind === "spot" && goal.name) || (leadInfo && leadInfo.farm) || (farmNow && farmNow.monster) || null;
         const inSpot = function (p) { return !!(farmType && ctx.targeting.inSpotArea && ctx.targeting.inSpotArea({ map: character.map, x: p.x, y: p.y }, farmType)); };
         while (k >= 0 && inSpot(smart.plot[k])) k--;
         if (k < 0) return;
@@ -459,6 +418,21 @@ module.exports = function createMage(ctx) {
                 const idx = smart.plot.indexOf(to);
                 if (idx > 0) smart.plot.splice(0, idx);
             }
+            // The server puts us on the nearest safe spot - sometimes behind an edge from the next step, and the game
+            // replanned ("Lost the path...", the arena, player report 2026-11-24). Once landed we go on with the
+            // farthest step of this map we can walk to straight; none reachable: the game replans as before.
+            setTimeout(function () {
+                try {
+                    if (!smart.moving || !Array.isArray(smart.plot) || !smart.plot.length) return;
+                    let best = -1;
+                    for (let i = 0; i < smart.plot.length; i++) {
+                        const p = smart.plot[i];
+                        if (!p || p.town || p.transport || p.map !== character.map) break;
+                        if (can_move_to(p.x, p.y)) best = i;
+                    }
+                    if (best > 0) smart.plot.splice(0, best);
+                } catch (e) { /* the plan as it is */ }
+            }, 350);
             blinkCount++;
             blinkPx += d;
             if (Date.now() - blinkLogAt > 60 * 1000) {
@@ -476,7 +450,7 @@ module.exports = function createMage(ctx) {
 
         survive: function () { return false; },
 
-        always: function () { magiportTick(); travelPortTick(); blasterTick(); blinkTravelTick(); },
+        always: function () { teamPortTick(); blasterTick(); blinkTravelTick(); },
 
         support: function () {
             reflectTick();

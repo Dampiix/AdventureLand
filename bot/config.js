@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.235.11",
+    version: "1.236.1",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -239,6 +239,10 @@ module.exports = {
         // ends; they walk there themselves and the leader waits only there, not at every door on the way.
         // toHealerBelow: a member below this HP share walks into the priest's range.
         goToDest: true, toHealerBelow: 0.5,
+        // Team goal (v1.236.0, player decision 2026-11-24): the leader sends the end goal of the team's route (party.js);
+        // members walk there themselves and wait until the leader is there too. There: a farm spot - inside its area or
+        // within goalEdge px of its edge point; Daisy or another point - within goalRadius px.
+        goalEdge: 250, goalRadius: 200,
         // Chest opener (player decision 2026-11-20): a party chest's gold uses the opener's gold
         // multiplier, so the fighter with the highest gold bonus opens (fixed: a name to force one).
         // The others open only when it is dead, out of sight or farther than awayRange px from the
@@ -882,19 +886,13 @@ module.exports = {
                 // fearMax (v1.225.9): a blast may pull at most courage + this many per damage type (those on us included), and only
                 // as many as the solo pack check allows - like the warrior's Lolipops (the mage died terrified at the Squigs)
                 fearMax: 0 },
-            // Magiport (v1.228.1, player decision 2026-11-23): at a boss the team fights (we found it as the runner), pull the
-            // fighters still on their way to us - tank first, healer last - while keepMp of our MP stays for the fight
-            // (900 MP each). Members farther than minDist px, we within bossRange px of the boss (800: the runner holds where it spotted it); tries per member and boss,
-            // retryMs apart. The members accept only our port during a boss fight (core/events.js). Bosses only for now;
-            // a member that died could be pulled back later. graceMs (v1.228.3): the distance is judged on live positions (party info
-            // lags behind); a member not in sight counts as far only after the boss has been in our sight this long.
-            // travel (v1.235.0, player decision 2026-11-24): on the way to a farm spot (since v1.235.2 any team route) the mage goes
-            // ahead to the spot's edge (party.spotAhead; never into the spawn, Blink stops outside it) and pulls the fighters
-            // still on another map or farther than minDist px - tank first, healer last - while keepMp stays; tries per
-            // member and route. They accept it only on that route and not fighting (events.acceptMagiport).
-            magiport: { enabled: true, keepMp: 0.3, minDist: 600, bossRange: 800, tries: 3, retryMs: 8000, graceMs: 4000,
-                // Every team route since v1.235.2 (player decision): farm spots (at the edge) and any other route end (atEnd px).
-                travel: { enabled: true, minDist: 800, keepMp: 0.3, tries: 2, atEdge: 100, atEnd: 200, cooldownMs: 60000 } },
+            // Team Magiport (v1.236.0, player decision 2026-11-24): one rule for every team goal the leader sets (a farm spot,
+            // a boss, Daisy, ...). Everyone walks there on its own path; once WE are there - a spot or Daisy: as for the
+            // members (party.goalEdge / goalRadius); a boss: in our sight within bossRange px for graceMs - we pull every team fighter farther than minDist px (or on another map): the tank first, then in the team's
+            // order, while keepMp of our MP stays (900 MP each); tries per member and goal, retryMs apart. A member seen
+            // at the goal with us is not pulled again for that goal. Never in the cave, under /manual or during a boss
+            // search. The members accept it for a goal they have not been at yet (core/events.js acceptMagiport).
+            magiport: { enabled: true, keepMp: 0.3, minDist: 600, bossRange: 800, graceMs: 4000, tries: 3, retryMs: 8000 },
             // Blink on routes (v1.234.0, player decision 2026-11-24): on a path walk jump to the farthest step of the plan on
             // this map (next door or the goal) when it is at least minDist px away and our MP stays above keepMp after the
             // 1,600-MP cast; never in a fight or under the manual rules. No range limit on the server (test: 980 px).

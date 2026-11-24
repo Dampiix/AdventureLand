@@ -68,9 +68,98 @@ module.exports = function createParty(ctx) {
             .catch(function (e) { util.log("party", "could not join: " + util.errReason(e), "red"); });
     }
 
+    // ---- Team goal (v1.236.0, player decision 2026-11-24) ----------------------------------------------------------
+    // The leader sets one goal for the whole team and sends it as the END goal - never a door, map edge or waypoint:
+    //   { id, kind, name, map, x, y, reached }
+    //   kind "spot"   - a farm spot (name = the monster), set by the leader's walk to it (fighter.travel)
+    //   kind "boss"   - the leader's boss event (name = the boss, map/x/y = where it was seen, if known)
+    //   kind "daisy"  - a trip to Daisy (hunts.visitDaisy)
+    //   kind "search" - a boss search: everyone walks its own areas, no team goal to go ahead to or port to
+    // A new goal gets a new id (also the same spot again after a boss in between). `reached`: the leader itself is there.
+    // Everyone walks there on its own path; whoever can cast Magiport pulls the team once it is there itself
+    // (classes/mage.js teamPortTick). Independent of who leads and of the classes in the team.
+    let setGoalNow = null; // leader: { kind, name, point } from the last route the leader chose
+    let goalNow = null;    // leader: the effective goal with its id
+    function setGoal(kind, name, point) {
+        if (!enabled || !isLeader) return;
+        setGoalNow = { kind: kind, name: name || null, point: point && typeof point === "object" && point.map ? { map: point.map, x: Math.round(point.x || 0), y: Math.round(point.y || 0) } : null };
+    }
+    function goalKey(g) {
+        const p = g.kind === "boss" || !g.point || g.point.x === undefined ? "" : ":" + g.point.map + ":" + Math.round(g.point.x / 100) + ":" + Math.round(g.point.y / 100);
+        return g.kind + ":" + (g.name || "") + p;
+    }
+    // Radius around a goal that counts as there: a farm spot - inside its area or within `edge` px of its edge point;
+    // any other goal - within `radius` px of its point. Bosses: in our sight (the caller's own check, it needs bossRange).
+    function atGoal(g, edge, radius) {
+        if (!g || character.rip) return false;
+        if (edge === undefined) edge = cfg.goalEdge || 250;
+        if (radius === undefined) radius = cfg.goalRadius || 200;
+        const me = { map: character.map, x: character.real_x, y: character.real_y };
+        if (g.kind === "spot") {
+            const tg = ctx.targeting;
+            if (!g.name || !tg || !tg.inSpotArea || !tg.watchPoint) return false;
+            if (g.map && g.map !== character.map) return false;
+            if (tg.inSpotArea(me, g.name)) return true;
+            const e = tg.watchPoint(g.name);
+            return !!e && util.distanceTo(e) <= edge;
+        }
+        if (g.kind === "daisy" || g.kind === "point") {
+            return g.map === character.map && typeof g.x === "number" && Math.hypot(me.x - g.x, me.y - g.y) <= radius;
+        }
+        return false;
+    }
+    function leaderGoal() {
+        if (!enabled || !isLeader) return null;
+        let want = null;
+        const ev = ctx.events && ctx.events.current ? ctx.events.current() : null;
+        if (ctx.cave && ctx.cave.active && ctx.cave.active()) want = null;
+        else if (ctx.events && ctx.events.searchJob && ctx.events.searchJob()) want = { kind: "search", name: null, point: null };
+        else if (ev && ev.join) want = null;
+        else if (ev && ev.monster && !ev.solo) want = { kind: "boss", name: ev.monster, point: ev.dest && typeof ev.dest === "object" ? ev.dest : null };
+        else want = setGoalNow;
+        // A boss, a search or a join event replaces the route goal from before: after it the leader's next walk sets a
+        // new one (an old spot or Daisy goal would come back for a moment and send the team there).
+        if (want !== setGoalNow) setGoalNow = null;
+        if (!want) { goalNow = null; return null; }
+        const key = goalKey(want);
+        if (!goalNow || goalNow.key !== key) {
+            goalNow = { key: key, id: key + "@" + Date.now(), kind: want.kind, name: want.name, reached: false };
+            util.log("party", "team goal: " + goalLabel(goalNow) + (want.point ? " (" + want.point.map + ")" : ""), "white");
+        }
+        if (want.point) { goalNow.map = want.point.map; goalNow.x = want.point.x; goalNow.y = want.point.y; }
+        if (!goalNow.reached && atGoal(goalNow)) goalNow.reached = true;
+        return goalNow;
+    }
+    function goalLabel(g) {
+        if (!g) return "none";
+        return g.kind === "spot" ? "the " + g.name + " spot" : g.kind === "boss" ? "the " + g.name : g.kind === "daisy" ? "Daisy" : g.kind === "search" ? "boss search" : (g.name || "the route end");
+    }
+    // The team's goal now: the leader's own, or the leader's last broadcast (members), or null.
+    function teamGoal() {
+        if (!enabled) return null;
+        if (isLeader) return goalNow;
+        const lead = leaderInfo();
+        return lead && lead.goal ? lead.goal : null;
+    }
+    // Goals we have been at (members; the leader uses `reached`): a goal we were at once is not one we are pulled to
+    // again - e.g. a member on a potion trip later, while the team farms at that spot.
+    const beenAt = {}; // goal id -> true
+    function markBeenAt(g) {
+        if (!g || !g.id || beenAt[g.id]) return;
+        beenAt[g.id] = Date.now();
+        const ids = Object.keys(beenAt);
+        if (ids.length > 30) ids.sort(function (a, b) { return beenAt[a] - beenAt[b]; }).slice(0, ids.length - 30).forEach(function (k) { delete beenAt[k]; });
+    }
+    function wasAtGoal(g) {
+        if (!g) return false;
+        if (isLeader) return !!g.reached;
+        return !!beenAt[g.id];
+    }
+
     function broadcast(farm, target, event) {
         if (!enabled || !isLeader) return;
         const now = Date.now();
+        const g = leaderGoal(); // every tick: the goal's id and `reached` stay current between broadcasts
         if (now - lastBroadcast < cfg.broadcastMs) return;
         lastBroadcast = now;
         // Only members in the party (2026-11-22 review): an offline member made every send fail - a red log line
@@ -90,10 +179,8 @@ module.exports = function createParty(ctx) {
             // dest: where a roaming boss was seen (a member's sighting) - members go there, not to its nearest spawn.
             event: event ? { name: event.name, join: !!event.join, monster: event.monster || null, dest: event.dest && typeof event.dest === "object" ? event.dest : null } : null,
             manual: !!(ctx.cave && ctx.cave.ownManual && ctx.cave.ownManual()), // /manual: members use the manual rules too (v1.231.1)
-            // The route end is only a leg (leaving spookytown, a via map), not the goal (v1.235.5).
-            leg: !!(typeof smart !== "undefined" && smart.moving && (ctx.travelLeg || ctx.travelVia)),
-            // A boss search of ours runs (v1.235.10): the mage's travel magiport waits - the members decline it then.
-            searching: !!(ctx.events && ctx.events.searchJob && ctx.events.searchJob()),
+            // The team goal (v1.236.0): the end goal of the team's route, see leaderGoal.
+            goal: g ? { id: g.id, kind: g.kind, name: g.name, map: g.map || null, x: g.x, y: g.y, reached: !!g.reached } : null,
         });
     }
 
@@ -178,51 +265,40 @@ module.exports = function createParty(ctx) {
     // 2026-11-21): we meet at the destination, and in a fight the distance to the leader only spoiled
     // kiting - members without a target go back to the leader anyway (idleFollow).
     // `loose` (join events): on the leader's map we roam freely after our own targets.
-    // The mage goes ahead to the leader's farm spot - to its edge, never into the spawn - so it can pull the others
-    // there by Magiport (v1.235.0, player decision 2026-11-24; classes.mage.magiport.travel). null for everyone else.
-    // { p, edge }: on another map the route end itself (path walk, Blink stops outside the spot), on the spot's map
-    // its nearest edge point (targeting.watchPoint).
-    // Already at the leader's farm spot (its edge or inside it) while the leader is still on its way (v1.235.5, player
-    // report 2026-11-24): the mage blinked ahead to the Giant Scorpions, then back to the leader's intermediate route end
-    // (an exit), walked back and came again. We stay at the spot while the leader's current route end is only a leg
-    // (lead.leg) or lies on this map; a route end on another map (e.g. Daisy) still takes us along.
-    function atLeaderSpot(lead) {
-        const tg = ctx.targeting;
-        if (!lead || !lead.moving || !lead.farm || lead.event || !tg || !tg.inSpotArea || !tg.watchPoint) return false;
-        if (util.isBossKind(config, lead.farm)) return false; // boss searches: everyone walks its own areas (v1.235.8)
-        const me = { map: character.map, x: character.real_x, y: character.real_y };
-        const edge = tg.watchPoint(lead.farm);
-        const here = tg.inSpotArea(me, lead.farm) || (!!edge && util.distanceTo(edge) <= 250);
-        if (!here) return false;
-        // The leader's route end: a leg, the spot itself, or a point next to it on this map (its own edge or approach).
-        // A real goal elsewhere (Daisy, another map) takes us along.
-        const d = lead.dest;
-        return !!(lead.leg || !d || tg.inSpotArea(d, lead.farm) ||
-            (d.map === character.map && edge && Math.hypot(d.x - edge.x, d.y - edge.y) < 500));
-    }
-    function spotAhead(lead) {
-        const tp = ((((config.classes || {}).mage || {}).magiport) || {}).travel || {};
-        if (!tp.enabled || character.ctype !== "mage" || !lead || !lead.moving || !lead.dest || !lead.farm || lead.event) return null;
-        if (util.isBossKind(config, lead.farm)) return null; // boss searches and fights: the boss logic (v1.235.8)
-        const tg = ctx.targeting;
-        if (!tg || !tg.inSpotArea || !tg.watchPoint || !tg.inSpotArea(lead.dest, lead.farm)) return null;
-        if (badDest && Date.now() < badDest.until && badDest.map === lead.dest.map && Math.hypot(badDest.x - lead.dest.x, badDest.y - lead.dest.y) < 60) return null;
-        if (character.map === lead.dest.map) {
-            const e = tg.watchPoint(lead.farm);
-            return e ? { p: e, edge: true } : null;
+    // Going ahead to the team goal (v1.236.0, player decision 2026-11-24): every member walks its own path to the goal
+    // the leader sent - a farm spot to its edge (never into the spawn: the spot check is the leader's), Daisy or another
+    // point to the point itself - and waits there until the leader is there too (goal.reached); it never walks back to
+    // the leader meanwhile. Boss goals: the boss logic walks us (events/targeting), searches: everyone its own areas.
+    // null: no goal for us to go to (follow the leader as before); "hold": we are there and wait; "go": walking there.
+    let holdingAt = 0; // we wait at the goal for the leader: no free pulls meanwhile (nearLeader)
+    function goalStep(lead) {
+        const g = lead && lead.goal;
+        if (!g || (g.kind !== "spot" && g.kind !== "daisy" && g.kind !== "point")) return null;
+        const here = atGoal(g);
+        if (here) markBeenAt(g);
+        if (g.reached) return null; // the leader is there too: back to the usual rules (fight, follow it in the spot)
+        if (here) { holdingAt = Date.now(); return "hold"; }
+        if (!g.map || typeof g.x !== "number") return null; // a spot without a known point: follow the leader
+        if (badDest && Date.now() < badDest.until && badDest.map === g.map && Math.hypot(badDest.x - g.x, badDest.y - g.y) < 60) return null;
+        const label = "to goal: " + goalLabel(g);
+        if (g.kind === "spot" && character.map === g.map && ctx.targeting && ctx.targeting.watchPoint) {
+            const e = ctx.targeting.watchPoint(g.name);
+            if (e) { moveTowards({ map: character.map, x: e.x, y: e.y }, label, true); return "go"; }
         }
-        return { p: lead.dest, edge: false };
+        moveTowards({ map: g.map, x: g.x, y: g.y }, label, true);
+        return "go";
+    }
+    function holdAtGoal(lead) {
+        if (is_moving(character) && typeof smart !== "undefined" && smart.moving) { try { stop("smart"); } catch (e) { /* not walking */ } }
+        util.status("at goal, waiting: " + goalLabel(lead.goal), "white");
     }
     function keepUp(loose) {
         const lead = leaderInfo();
         if (!lead || detached()) return false;
         if (loose && character.map === lead.map) return false;
-        if (atLeaderSpot(lead)) return false; // idleFollow holds us here (v1.235.5)
-        const ahead = spotAhead(lead);
-        if (ahead) {
-            if (!ahead.edge) { moveTowards(ahead.p, "going ahead to " + ahead.p.map, true); return true; }
-            return false; // on the spot's map: idleFollow walks to the edge (not back to the leader's map)
-        }
+        const step = goalStep(lead);
+        if (step === "hold") return false; // idleFollow holds us here while we have no target
+        if (step === "go") return true;
         const dest = travelDest(lead);
         if (dest) {
             if (character.map !== dest.map || util.distanceTo(dest) > cfg.followDistance) { moveTowards(dest, "going ahead to " + dest.map, true); return true; }
@@ -244,6 +320,8 @@ module.exports = function createParty(ctx) {
     // already on us are fought wherever they are. true when the point is fine.
     function nearLeader(p) {
         if (!enabled || isLeader || detached() || !p) return true;
+        // Waiting at the team goal for the leader (v1.236.0): no free monster alone - ones attacking us are fought anyway.
+        if (Date.now() - holdingAt < 1500) return false;
         const lead = leaderInfo();
         if (!lead || lead.map !== character.map) return true;
         const q = util.xy(p);
@@ -263,18 +341,9 @@ module.exports = function createParty(ctx) {
             util.status("waiting for " + leader, "white");
             return true;
         }
-        if (atLeaderSpot(lead)) {
-            if (is_moving(character) && typeof smart !== "undefined" && smart.moving) { try { stop("smart"); } catch (e) { /* not walking */ } }
-            util.status("waiting at the spot for " + leader, "white");
-            return true;
-        }
-        const ahead = spotAhead(lead);
-        if (ahead) {
-            if (!ahead.edge) moveTowards(ahead.p, "going ahead to " + ahead.p.map, true);
-            else if (util.distanceTo(ahead.p) > 60) moveTowards(ahead.p, "ahead to the spot edge", true);
-            else util.status("at the spot edge", "white");
-            return true;
-        }
+        const step = goalStep(lead);
+        if (step === "hold") { holdAtGoal(lead); return true; }
+        if (step === "go") return true;
         const dest = travelDest(lead);
         if (dest) lastLeadDest = { d: dest, at: Date.now() };
         // At the leader's last route end while it stops for a moment (2026-11-22): stay there instead of walking back
@@ -312,5 +381,11 @@ module.exports = function createParty(ctx) {
         nearLeader: nearLeader,
         detached: detached,
         leaderTravels: leaderTravels,
+        // Team goal (v1.236.0): the leader sets it (fighter.travel, hunts.visitDaisy), everyone reads it.
+        setGoal: setGoal,
+        teamGoal: teamGoal,
+        atGoal: atGoal,
+        wasAtGoal: wasAtGoal,
+        goalLabel: goalLabel,
     };
 };
