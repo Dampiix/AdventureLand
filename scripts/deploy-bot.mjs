@@ -22,6 +22,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { bundle } from "./bundle.mjs";
 
 const API = "https://adventure.land/mcp_api/";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -69,8 +70,17 @@ const counts = { uploaded: 0, unchanged: 0, pulled: 0, conflict: 0, failed: 0 };
 
 for (const entry of slots) {
     const file = path.join(botDir, entry.file);
-    const local = normalize(await readFile(file, "utf8"));
-    const label = `${entry.file.padEnd(20)} slot ${String(entry.slot).padStart(3)} ${entry.name}`;
+    // A slot may be built from several files (scripts/bundle.mjs, module plan pilot): the entry plus every file it
+    // loads with a relative require. An entry without such requires is uploaded exactly as it is.
+    let built;
+    try { built = bundle(botDir, entry.file); } catch (e) {
+        counts.failed++;
+        console.log(`FAILED        ${entry.file}: ${e.message}`);
+        continue;
+    }
+    const local = built.code;
+    const bundled = built.files.length > 1;
+    const label = `${entry.file.padEnd(20)} slot ${String(entry.slot).padStart(3)} ${entry.name}` + (bundled ? ` (bundle of ${built.files.length} files)` : "");
     const remote = await call("get_code", { slot: String(entry.slot) });
     const remoteCode = remote.success && remote.code ? normalize(remote.code.code || "") : null;
     const remoteHash = remoteCode === null ? null : hash(remoteCode);
@@ -84,6 +94,12 @@ for (const entry of slots) {
     }
 
     if (pull) {
+        // A bundle can't be pulled back into its source files: edit those in the repo.
+        if (bundled && (editedInGame || (!known && remoteCode !== null))) {
+            counts.conflict++;
+            console.log(`NOT PULLED    ${label} - a bundle; make the change in its source files`);
+            continue;
+        }
         if (editedInGame || (!known && remoteCode !== null)) {
             if (!dryRun) {
                 await writeFile(file, remoteCode);
