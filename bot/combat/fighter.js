@@ -57,7 +57,7 @@ module.exports = function createFighter(ctx, cls) {
         get util() { return ctx.util; }, get config() { return ctx.config; }, get comms() { return ctx.comms; }, get bus() { return ctx.bus; },
         get party() { return ctx.party; }, get targeting() { return ctx.targeting; }, get supply() { return ctx.supply; },
         get events() { return ctx.events; }, get cave() { return ctx.cave; }, get hunts() { return ctx.hunts; }, get gear() { return ctx.gear; },
-        get teamStats() { return ctx.teamStats; },
+        get teamStats() { return ctx.teamStats; }, get teamView() { return ctx.teamView; },
     };
     // The internal state shared by the parts; they put their functions here too (the tick's as well).
     const ftr = { tick: tick, busyStep: busyStep, loop: loop };
@@ -255,7 +255,17 @@ module.exports = function createFighter(ctx, cls) {
     // The members' luck multipliers ride along (v1.227.5): the leader's drop estimate weighs each member's own luck
     // (drops.luckFactor - party drop rolls use the luck of the monster's target and of every contributor).
     const luckOf = {}; // fighter -> { l, at }
-    ctx.bus.provide("memberLuck", function () { return luckOf; }); // read by drops
+    // Live from the team view (step 5, 2026-11-25): a member in our client on our server counts with its luck now (the
+    // report is up to 30 s old - the priest's luck swap changes it at once); the others by their report.
+    ctx.bus.provide("memberLuck", function () {
+        const out = Object.assign({}, luckOf);
+        ((config.team && config.team.fighters) || []).forEach(function (n) {
+            if (n === character.name) return;
+            const l = ftr.liveMult(n, "luckm");
+            if (l !== null) out[n] = { l: l, at: Date.now() };
+        });
+        return out;
+    }); // read by drops
     ctx.comms.on("goldm", function (data, from) {
         if (!data || typeof data.g !== "number" || !((config.team && config.team.fighters) || []).includes(from)) return;
         ftr.goldOf[from] = { g: data.g, at: Date.now() };
@@ -405,6 +415,8 @@ module.exports = function createFighter(ctx, cls) {
     return {
         start: function () { loop(); },
         stop: function () { ftr.running = false; },
+        // The leader's chest opener choice for its team view entry (step 5).
+        opener: function () { return ftr.chooseOpener(); },
     };
 
 };

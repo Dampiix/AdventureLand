@@ -118,6 +118,8 @@ function publishTeamEntry(ctx, me) {
             stats: function () { return opt(function () { return BOT_UTIL.combatStats(); }); },
             // Leader: its live report for the members (team view step 1; null on members and the merchant).
             lead: function () { return opt(function () { return ctx.party.leadData(); }); },
+            // Leader: its chest opener choice (team view step 5; members follow it live).
+            opener: function () { return opt(function () { return botRunner && botRunner.opener ? botRunner.opener() : null; }); },
         },
         // Messages from a teammate in our client, handed over directly (team view step 2, lib/comms.js).
         actions: { deliver: function (msg, from) { botComms.receive(msg, from); } },
@@ -287,7 +289,7 @@ function startBot() {
         ctx.gear = require_code("bot_gear")(moduleView(ctx, ["comms", "config", "supply", "util"]));
         ctx.supply = require_code("bot_supply")({ config: ctx.config, util: ctx.util, comms: ctx.comms, get gear() { return ctx.gear; }, get cave() { return ctx.cave; } });
         botSupply = ctx.supply;
-        botRunner = require_code("bot_fighter")(moduleView(ctx, ["bus", "cave", "comms", "config", "events", "gear", "hunts", "party", "strike", "supply", "targeting", "teamStats", "util"]), cls);
+        botRunner = require_code("bot_fighter")(moduleView(ctx, ["bus", "cave", "comms", "config", "events", "gear", "hunts", "party", "strike", "supply", "targeting", "teamStats", "teamView", "util"]), cls);
     }
 
     // The team view (docs/architecture/team-view.md): our entry for the others in this client (created after the modules;

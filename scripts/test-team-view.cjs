@@ -164,6 +164,46 @@ check(logs.some(t => /live from the team view/.test(t)), "the journal notes the 
         await mer.catchUp("VizWar");
         check(walks.length >= 1 && walks[0].x === 100, "pickup: a dead fighter's live spot is not used");
     }
+    // ---- step 5: chest opener and gold multipliers live ----
+    {
+        const clogs = [];
+        const cutil = Object.assign({}, util, { log: (tag, t) => clogs.push(t) });
+        const ccfg = Object.assign({}, config, { leader: "VizPri", team: Object.assign({}, config.team, { fighters: ["VizPri", "VizWar", "VizMage"] }),
+            party: { chestOpener: { enabled: true } } });
+        const games = { VizPri: { goldm: 1.1 }, VizWar: { goldm: 1.0 }, VizMage: { goldm: 1.0 } };
+        let leaderChoice = "VizPri";
+        const entries = { VizPri: { game: () => games.VizPri, bot: { opener: () => leaderChoice } }, VizWar: { game: () => games.VizWar, bot: {} }, VizMage: { game: () => games.VizMage, bot: {} } };
+        let viewOn = true;
+        const tv = { member: n => (viewOn ? entries[n] || null : null) };
+        const mkChests = (me, isLeader) => {
+            globalThis.character = Object.assign({ name: me }, games[me]);
+            const ftr = { goldOf: {}, leaderOpener: null, lastGoldSend: 0, lastOpenerSend: 0, lastOpenerSent: "", chestSeen: {} };
+            require(path.join(root, "bot", "combat", "chests.js"))(ftr, { config: ccfg, util: cutil, comms: { send: () => {} },
+                party: { isLeader: isLeader, enabled: true, memberNames: () => ["VizPri", "VizWar", "VizMage"] }, teamView: tv });
+            return ftr;
+        };
+        // leader: the mage's live goldm (no report at all) wins
+        const lead = mkChests("VizPri", true);
+        games.VizMage.goldm = 1.3;
+        check(lead.chooseOpener() === "VizMage", "opener: the leader sees a member's gold bonus live, without any report");
+        games.VizMage.goldm = 1.0;
+        check(lead.chooseOpener() === "VizPri", "opener: a change counts at once (the mage's swap back)");
+        viewOn = false;
+        check(lead.chooseOpener() === "VizPri", "opener: no entry and no report - the member does not count (as before)");
+        lead.goldOf.VizMage = { g: 1.5, at: NOW };
+        check(lead.chooseOpener() === "VizMage", "opener: no entry - its report counts as before");
+        viewOn = true;
+        // member: the leader's live choice beats its (older) message
+        const mem = mkChests("VizWar", false);
+        mem.leaderOpener = { name: "VizWar", at: NOW };
+        leaderChoice = "VizMage";
+        check(mem.chestOpener() === "VizMage", "opener: a member follows the leader's choice live");
+        check(clogs.some(t => /live from the leader/.test(t)), "opener: the journal notes the source");
+        viewOn = false;
+        check(mem.chestOpener() === "VizWar", "opener: no leader entry - its message as before");
+        viewOn = true;
+        check(mem.liveMult("VizPri", "luckm") === 1 && (games.VizPri.luckm = 1.4, mem.liveMult("VizPri", "luckm") === 1.4), "luck: read live (1 when the game leaves it out)");
+    }
     console.log(failed ? failed + " FAILED" : "all passed");
     process.exit(failed ? 1 : 0);
 })();

@@ -3,7 +3,9 @@
 // Part of bot_fighter (module plan, stage 5): moved verbatim from the old single-file core/fighter.js. The parts share
 // one internal state (ftr: the farm target, walks, waits, the strike intent, chests) and call each other through ftr;
 // outside dependencies come in deps (game, util, config, comms, bus, party, targeting, supply, events, cave, hunts,
-// gear, teamStats, cls - the class module).
+// gear, teamStats, teamView, cls - the class module).
+// Team view step 5 (2026-11-25): the leader reads the members' gold multipliers live and the members read the leader's
+// opener choice live (same client and server); the goldm / opener messages stay as the fallback.
 // =====================================================================
 
 module.exports = function install(ftr, deps) {
@@ -29,9 +31,41 @@ module.exports = function install(ftr, deps) {
         ftr.lastGoldSend = now;
         if (!party.isLeader && config.leader && others.includes(config.leader)) deps.comms.send(config.leader, "goldm", { g: character.goldm || 1, l: character.luckm || 1 });
     }
-    // Members: the leader's choice while it is fresh; the leader (or without it): our own.
+    // A teammate's multiplier (goldm, luckm) live from its team view entry, or null (not in our client / server).
+    function liveMult(name, key) {
+        try {
+            const tv = deps.teamView;
+            const e = tv && tv.member(name);
+            const c = e && e.game();
+            const v = c && c[key];
+            return typeof v === "number" ? v : (c ? 1 : null); // the game leaves it out at 1
+        } catch (x) { return null; }
+    }
+    // The leader's opener choice live from its entry, or null.
+    function liveLeaderOpener() {
+        try {
+            const tv = deps.teamView;
+            const e = tv && tv.member(config.leader);
+            const op = e && e.bot && e.bot.opener ? e.bot.opener() : null;
+            return typeof op === "string" && op ? op : null;
+        } catch (x) { return null; }
+    }
+    // Journal only when the team view comes in or drops out (not the leader's own choice at every start).
+    function noteOpenerSource(src) {
+        if (ftr.openerSource === src) return;
+        const was = ftr.openerSource;
+        ftr.openerSource = src;
+        if (src !== "view" && was !== "view") return;
+        util.log("party", "chest opener choice: " + (src === "view" ? "live from the leader (team view)" : src === "msg" ? "the leader's message" : "our own"), "white");
+    }
+    // Members: the leader's choice - live from its entry, else its message while fresh; the leader (or without it): our own.
     function chestOpener() {
-        if (!party.isLeader && ftr.leaderOpener && Date.now() - ftr.leaderOpener.at < 30 * 1000) return ftr.leaderOpener.name;
+        if (!party.isLeader) {
+            const live = liveLeaderOpener();
+            if (live) { noteOpenerSource("view"); return live; }
+            if (ftr.leaderOpener && Date.now() - ftr.leaderOpener.at < 30 * 1000) { noteOpenerSource("msg"); return ftr.leaderOpener.name; }
+        }
+        noteOpenerSource("own");
         return chooseOpener();
     }
     // The fighter that opens chests: config fixed one, else the highest gold multiplier among
@@ -43,7 +77,9 @@ module.exports = function install(ftr, deps) {
         let best = null, bestG = -1;
         const order = [config.leader].concat(team).filter(function (n, i, a) { return n && a.indexOf(n) === i && here.includes(n); });
         order.forEach(function (n) {
+            const live = n === character.name ? null : liveMult(n, "goldm"); // live first (step 5), else the report
             const g = n === character.name ? (character.goldm || 1)
+                : live !== null ? live
                 : (ftr.goldOf[n] && Date.now() - ftr.goldOf[n].at < 3 * 60 * 1000 ? ftr.goldOf[n].g : null);
             if (g !== null && g > bestG + 1e-9) { best = n; bestG = g; }
         });
@@ -70,7 +106,7 @@ module.exports = function install(ftr, deps) {
             if (oldIds.length >= 3) {
                 ftr.lastStuckLog = now;
                 const c0 = parent.chests[oldIds[0]] || {};
-                const fromLeader = !party.isLeader && ftr.leaderOpener && now - ftr.leaderOpener.at < 30 * 1000;
+                const fromLeader = !party.isLeader && (ftr.openerSource === "view" || ftr.openerSource === "msg");
                 util.log("loot", oldIds.length + " chests older than " + Math.round(2 * (co.fallbackMs || 10000) / 1000) + " s - opener " + opener +
                     (opener === character.name ? " (us)" : " (away: " + openerAway(opener, c0) + ")") + ", choice from " + (fromLeader ? "leader" : "own") +
                     ", first at " + Math.round(Math.hypot((c0.x || 0) - character.x, (c0.y || 0) - character.y)) + " px, items " + (c0.items || 0) + "/" + character.esize, "orange");
@@ -94,6 +130,7 @@ module.exports = function install(ftr, deps) {
         shareGold: shareGold,
         chestOpener: chestOpener,
         chooseOpener: chooseOpener,
+        liveMult: liveMult,
         openerAway: openerAway,
         lootChests: lootChests,
     });
