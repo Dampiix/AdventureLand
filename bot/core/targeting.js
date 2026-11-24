@@ -1488,6 +1488,7 @@ module.exports = function createTargeting(ctx) {
             const src = ctx.cave.caveManual() ? "cave" : "manual";
             if (!farm || farm.source !== src) util.log("target", "now: " + src + " (the player walks the leader; fights only what it starts or what attacks us)", "yellow");
             farm = { monster: null, any: true, types: [], cave: true, source: src };
+            nextPickAt = 0; // v1.231.2: after /manual off a fresh pick at once (the manual farm stuck until refreshMs)
             return farm;
         }
         shareSafe(); // members: tell the leader where we can fight safely

@@ -562,10 +562,15 @@ function noArea(config, m) {
     return !!m && ((config.events && config.events.noArea) || []).includes(m.mtype);
 }
 // A noArea monster within range px of us (or of point p).
+// The manual rules (bot_cave: in the cave, or /manual - ours or the leader's) switch area skills off too (v1.231.2).
+let noAreaHook = null;
+function setNoAreaHook(fn) { noAreaHook = typeof fn === "function" ? fn : null; }
 function noAreaNear(config, range, p) {
     // Cave of Many Dreams in manual mode (v1.231.0, player decision 2026-11-24): as if a Giga Crab stood next to us -
     // no Agitate, Cleave or Stomp (they would pull the next pack, the floor keeper or hit travelers and allies).
+    // /manual outside the cave the same (v1.231.2, player decision): the player walks, nobody pulls anything.
     if (character.cave && (config.cave || {}).mode === "manual" && (config.cave || {}).noArea !== false) return true;
+    try { if (noAreaHook && noAreaHook()) return true; } catch (e) { /* hook only */ }
     const at = p || { x: character.real_x, y: character.real_y };
     return Object.values(parent.entities || {}).some(function (e) {
         return e && e.type === "monster" && !e.dead && noArea(config, e) && Math.hypot(e.x - at.x, e.y - at.y) <= range;
@@ -660,6 +665,7 @@ module.exports = {
     foreignOnlyBlocks: foreignOnlyBlocks,
     noArea: noArea,
     noAreaNear: noAreaNear,
+    setNoAreaHook: setNoAreaHook,
     teamCycle: teamCycle,
     deriveTeam: deriveTeam,
     weaponPower: weaponPower,

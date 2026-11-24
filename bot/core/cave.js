@@ -44,6 +44,8 @@ module.exports = function createCave(ctx) {
     }
     function manualOn() { return manual || leaderManual(); }
     function active() { return caveManual() || manualOn(); }
+    // Agitate, Cleave and Stomp off under the manual rules, also with /manual outside the cave (v1.231.2).
+    if (util.setNoAreaHook) util.setNoAreaHook(function () { return cfg.noArea !== false && active(); });
     if (manual) util.log("cave", "manual mode still ON (/manual to end)", "yellow");
     function paused() { return !!(character.cave && character.cave.paused) || !!(lastState && lastState.paused); }
 
