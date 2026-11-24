@@ -92,7 +92,7 @@
       "name": "bot_drops"
     },
     {
-      "file": "classes/warrior.js",
+      "file": "classes/warrior/warrior.js",
       "slot": 38,
       "name": "bot_class_warrior"
     },

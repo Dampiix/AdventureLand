@@ -56,6 +56,9 @@ function isMoving(entity) { return is_moving(entity); }                 // stage
 function storageGet(key) { return get(key); }                         // shared storage (all our windows); may throw
 function moveTo(x, y) { return xmove(x, y); }                         // stage 2 (rogue): walk, path search if needed
 function stopAction(what) { return stop(what); }                      // e.g. stop("invis")
+function storageSet(key, value) { return set(key, value); }           // stage 2 (warrior); may throw
+function entityDistance(a, b) { return parent.distance(a, b); }        // hitbox edge to edge; throws in some clients
+function walkStraight(x, y) { return move(x, y); }                    // a straight move (no path search)
 
 module.exports = {
     hpRatio: hpRatio,
@@ -86,4 +89,7 @@ module.exports = {
     storageGet: storageGet,
     moveTo: moveTo,
     stopAction: stopAction,
+    storageSet: storageSet,
+    entityDistance: entityDistance,
+    walkStraight: walkStraight,
 };

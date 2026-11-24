@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.237.3-pilot",
+    version: "1.237.4-pilot",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -746,6 +746,8 @@ module.exports = {
             mpReserveRatio: 0.3,
             usePoisonArrow: true,           // consumes a Poison Sack
         },
+        // Warrior (classes/warrior/): agitate-*, protect, escape, splash, sword-swap, mobility parts; the comments below
+        // still carry their history - shortened in the config step of the module plan.
         warrior: {
             mpReserveRatio: 0.2,
             // Taunt a monster off an ally that is below allyHpBelow, or that hits for at

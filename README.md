@@ -3,7 +3,7 @@
 One bot for a whole Adventure Land team: up to three fighters and one merchant, all running the same code.
 The fighters farm, hunt bosses and level up; the merchant supplies them, sells, banks, trades with other players and upgrades their gear.
 
-> **Version:** `1.237.3-pilot` (`bot/config.js` → `version`) · **Teams:** `Dmpx…` (main account) and `Viz…` (second account) · **Code:** `bot/` → in-game CODE slots 20–41
+> **Version:** `1.237.4-pilot` (`bot/config.js` → `version`) · **Teams:** `Dmpx…` (main account) and `Viz…` (second account) · **Code:** `bot/` → in-game CODE slots 20–41
 
 ## Repository
 
@@ -321,10 +321,10 @@ Only `main.js` calls `require_code()`. Every other module is a factory that rece
 | [`core/events.js`](bot/core/events.js) | 35 `bot_events` | Events and world bosses |
 | [`classes/ranger/`](bot/classes/ranger/) | 36 `bot_class_ranger` | Ranger (bundle, stage 2): `ranger.js`, `three-shot.js`, `sturdy-shots.js` (Hunter's Mark, Supershot, Poison Arrow) |
 | [`core/drops.js`](bot/core/drops.js) | 37 `bot_drops` | Drop farming and spot gold |
-| [`classes/warrior.js`](bot/classes/warrior.js) | 38 `bot_class_warrior` | Warrior skills, Agitate, sword swap |
+| [`classes/warrior/`](bot/classes/warrior/) | 38 `bot_class_warrior` | Warrior (bundle, stage 2): `warrior.js` (class, hooks, Hard Shell, War Cry, Cleave, Stomp), `common.js`, `protect.js` (Taunt, protective Agitate), `mobility.js` (Charge, Dash), `agitate-mode.js`, `agitate-point.js`, `agitate-stream.js`, `agitate.js` (pack tick), `splash.js`, `escape.js`, `sword-swap.js` - the Agitate parts share one internal state |
 | [`classes/rogue/`](bot/classes/rogue/) | 39 `bot_class_rogue` | Rogue (bundle, stage 2): `rogue.js`, `swiftness.js`, `stealth.js` (Assassin's Smoke, hiding), `fanofknives.js` (Knife Belt), `strikes.js` (Quick Stab/Punch, Mental Burst, Poisonous Touch) |
 
-[`slots.json`](bot/slots.json) holds the same file-to-slot mapping for the deploy script. A slot whose entry file loads other files with a relative `require("./x.js")` is uploaded as one bundle of them ([`scripts/bundle.mjs`](scripts/bundle.mjs), module plan pilot); tests: `node scripts/test-bundle.mjs`, `node scripts/test-mage.cjs`, `node scripts/test-classes.cjs <class>`.
+[`slots.json`](bot/slots.json) holds the same file-to-slot mapping for the deploy script. A slot whose entry file loads other files with a relative `require("./x.js")` is uploaded as one bundle of them ([`scripts/bundle.mjs`](scripts/bundle.mjs), module plan pilot); tests: `node scripts/test-bundle.mjs`, `node scripts/test-mage.cjs`, `node scripts/test-classes.cjs <class>`, `node scripts/test-warrior.cjs`.
 
 **Messages between characters** (`comms.js`): `send_cm` with the envelope `{ p: "bot1", t: type, d: payload }`. A message is accepted only from a character of our own team (`config.characters`) and only for a known type. Other players' messages are ignored.
 
