@@ -100,6 +100,47 @@ function moduleView(ctx, names) {
     return v;
 }
 
+// Our entry in the team view (step 0): who we are, our live game object, what the bot is doing - read through getters,
+// so a reader always gets the current value. No actions yet.
+function publishTeamEntry(ctx, me) {
+    const opt = function (fn) { try { return fn(); } catch (e) { return null; } };
+    const fighter = me.role !== "merchant";
+    ctx.teamView.publish({
+        name: character.name, ctype: character.ctype, version: BOT_CONFIG.version,
+        role: !fighter ? "merchant" : !(ctx.party && ctx.party.enabled) ? "solo" : ctx.party.isLeader ? "leader" : "member",
+        game: function () { return character; },
+        bot: {
+            status: function () { return BOT_UTIL.currentStatus(); },
+            farm: function () { return opt(function () { return ctx.targeting.farmNow(); }); },
+            goal: function () { return opt(function () { return ctx.party.teamGoal(); }); },
+            event: function () { return opt(function () { const e = ctx.events.current(); return e ? { name: e.name, monster: e.monster, join: !!e.join } : null; }); },
+            manual: function () { return opt(function () { return ctx.cave.active(); }); },
+            stats: function () { return opt(function () { return BOT_UTIL.combatStats(); }); },
+        },
+        actions: {},
+    });
+    setTimeout(function () {
+        const seen = ctx.teamView.members().map(function (e) { return e.name; });
+        BOT_UTIL.log("party", "team view: " + seen.length + " in this client (" + seen.join(", ") + ")", "white");
+    }, 15000);
+}
+
+// "/team": what the team view shows from this character - every entry, its age and what it reports.
+function teamReport(teamView) {
+    const list = teamView.members();
+    game_log("[team] " + list.length + " in this client", "white");
+    list.forEach(function (e) {
+        try {
+            const c = e.game(), b = e.bot || {};
+            const farm = b.farm && b.farm(), goal = b.goal && b.goal(), ev = b.event && b.event();
+            game_log("[team] " + e.name + " (" + e.role + ", " + Math.round((Date.now() - e.beat) / 1000) + " s) " + c.map + " " +
+                Math.round(c.real_x) + "," + Math.round(c.real_y) + " HP " + Math.round(c.hp) + "/" + c.max_hp +
+                (farm && farm.monster ? " farm " + farm.monster : "") + (goal ? " goal " + goal.kind + ":" + (goal.name || "") : "") +
+                (ev ? " event " + ev.name : "") + (b.status ? " | " + b.status() : ""), "white");
+        } catch (x) { game_log("[team] " + e.name + ": " + x.message, "orange"); }
+    });
+}
+
 function installChatCommands(ctx) {
     try {
         const page = parent;
@@ -243,6 +284,11 @@ function startBot() {
         botSupply = ctx.supply;
         botRunner = require_code("bot_fighter")(moduleView(ctx, ["bus", "cave", "comms", "config", "events", "gear", "hunts", "party", "strike", "supply", "targeting", "teamStats", "util"]), cls);
     }
+
+    // The team view (docs/architecture/team-view.md, step 0): our entry for the others in this client; nothing reads
+    // it yet.
+    ctx.teamView = require_code("bot_team_view")();
+    publishTeamEntry(ctx, me);
 
     BOT_UTIL.log("bot", "v" + BOT_CONFIG.version + " " + character.name + " as " + me.role + " (phase: " + BOT_CONFIG.phase + ")", "green");
     botRunner.start();
@@ -445,6 +491,10 @@ function handle_command(command, args) {
     if (command === "manual" && BOT_CMD_CTX && BOT_CMD_CTX.cave) {
         const v = String((Array.isArray(args) ? args[0] : args) || "").toLowerCase();
         BOT_CMD_CTX.cave.setManual(v === "on" ? true : v === "off" ? false : !BOT_CMD_CTX.cave.ownManual());
+        return true;
+    }
+    if (command === "team" && BOT_CMD_CTX && BOT_CMD_CTX.teamView) {
+        teamReport(BOT_CMD_CTX.teamView);
         return true;
     }
     if (command === "pickup" && botSupply) {

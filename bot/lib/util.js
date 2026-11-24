@@ -65,6 +65,7 @@ module.exports = {
     mainhandType: game.mainhandType,
     errReason: basics.errReason,
     status: status.status,
+    currentStatus: status.currentStatus,
     log: status.log,
     xy: geometry.xy,
     distanceTo: geometry.distanceTo,

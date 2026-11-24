@@ -134,6 +134,9 @@ function status(text, color) {
     set_message(short, color || "white");
 }
 
+// The status text shown now (team view: what this character is doing).
+function currentStatus() { return lastStatus; }
+
 function log(tag, text, color) {
     game_log("[" + tag + "] " + text, color || "white");
     if (JOURNAL_TAGS.includes(tag)) journal("[" + tag + "] " + text);
@@ -142,5 +145,6 @@ function log(tag, text, color) {
 module.exports = {
     shortStatus: shortStatus,
     status: status,
+    currentStatus: currentStatus,
     log: log,
 };

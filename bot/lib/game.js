@@ -61,6 +61,14 @@ function entityDistance(a, b) { return parent.distance(a, b); }        // hitbox
 function walkStraight(x, y) { return move(x, y); }                    // a straight move (no path search)
 function smartMove(dest) { return smart_move(dest); }                 // stage 3b (travel): a path walk (a promise)
 
+// The team registry (team view, step 0): one object per client on the game page, reached by every CODE frame of this
+// client (the main character's and the #iframelist characters'). Headless: one object per process instead.
+function teamRegistry() {
+    const T = top;
+    if (!T.__botTeam) T.__botTeam = {};
+    return T.__botTeam;
+}
+
 // A listener on the game page's socket (stage 5): it lives on the page and outlasts a code reload, so it is kept there as
 // parent.__bot<Key>Fn and the previous one with the same key is taken off first - a reload never stacks them. Throws
 // without a socket (callers catch).
@@ -121,4 +129,5 @@ module.exports = {
     smartMove: smartMove,
     hook: hook,
     onSocket: onSocket,
+    teamRegistry: teamRegistry,
 };

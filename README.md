@@ -3,7 +3,7 @@
 One bot for a whole Adventure Land team: up to three fighters and one merchant, all running the same code.
 The fighters farm, hunt bosses and level up; the merchant supplies them, sells, banks, trades with other players and upgrades their gear.
 
-> **Version:** `1.237.19-pilot` (`bot/config.js` → `version`) · **Teams:** `Dmpx…` (main account) and `Viz…` (second account) · **Code:** `bot/` → in-game CODE slots 20–41
+> **Version:** `1.237.20-pilot` (`bot/config.js` → `version`) · **Teams:** `Dmpx…` (main account) and `Viz…` (second account) · **Code:** `bot/` → in-game CODE slots 20–41
 
 ## Repository
 
@@ -326,6 +326,7 @@ Only `main.js` calls `require_code()`. Every other module is a factory that rece
 | [`classes/rogue/`](bot/classes/rogue/) | 39 `bot_class_rogue` | Rogue (bundle, stage 2): `rogue.js`, `swiftness.js`, `stealth.js` (Assassin's Smoke, hiding), `fanofknives.js` (Knife Belt), `strikes.js` (Quick Stab/Punch, Mental Burst, Poisonous Touch) |
 | [`lib/bus.js`](bot/lib/bus.js) | 42 `bot_bus` | The bus (stage 4a): state a lower module reads without calling a higher one (boss, search, manual, teamWaitAt, memberLuck) |
 | [`team/team-stats.js`](bot/team/team-stats.js) | 43 `bot_team_stats` | Every fighter's combat stats for the team model (stage 4a, out of events) |
+| [`team/team-view.js`](bot/team/team-view.js) | 44 `bot_team_view` | The team view (docs/architecture/team-view.md): every bot publishes its entry (live game object, what it is doing) in the client's team registry; `/team` shows them |
 
 [`slots.json`](bot/slots.json) holds the same file-to-slot mapping for the deploy script. A slot whose entry file loads other files with a relative `require("./x.js")` is uploaded as one bundle of them ([`scripts/bundle.mjs`](scripts/bundle.mjs), module plan pilot); tests: `node scripts/test-bundle.mjs`, `node scripts/test-mage.cjs`, `node scripts/test-classes.cjs <class>`, `node scripts/test-warrior.cjs`.
 

@@ -120,6 +120,11 @@
       "file": "team/team-stats.js",
       "slot": 43,
       "name": "bot_team_stats"
+    },
+    {
+      "file": "team/team-view.js",
+      "slot": 44,
+      "name": "bot_team_view"
     }
   ]
 }
