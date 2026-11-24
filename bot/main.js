@@ -198,7 +198,7 @@ function startBot() {
 
     if (me.role === "merchant") {
         ctx.workshop = require_code("bot_workshop")(ctx);
-        ctx.scout = require_code("bot_scout")(ctx); // boss search + safe walking (2026-11-23)
+        ctx.scout = require_code("bot_scout")({ config: ctx.config, util: ctx.util, comms: ctx.comms }); // boss search + safe walking
         botRunner = require_code("bot_merchant")(ctx);
     } else {
         ctx.party = require_code("bot_party")({ config: ctx.config, util: ctx.util, comms: ctx.comms, bus: ctx.bus });

@@ -52,7 +52,7 @@
       "name": "bot_class_priest"
     },
     {
-      "file": "roles/merchant.js",
+      "file": "roles/merchant/merchant.js",
       "slot": 30,
       "name": "bot_merchant"
     },
@@ -102,7 +102,7 @@
       "name": "bot_class_rogue"
     },
     {
-      "file": "roles/scout.js",
+      "file": "roles/merchant/scout.js",
       "slot": 40,
       "name": "bot_scout"
     },

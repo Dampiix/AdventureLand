@@ -23,12 +23,14 @@
 // a Ms. Dracul hit (875 magical) kills it or nearly. Server rule: aggro picks players within the
 // neighbouring 32-px cells only, so ~100 px is clear. No path with the walls: walls off for
 // safeWalk.offMs and the walk is planned again.
+//
+// deps (module plan, stage 6b): { config, util, comms }.
 // =====================================================================
 
-module.exports = function createScout(ctx) {
-    const config = ctx.config;
-    const util = ctx.util;
-    const comms = ctx.comms;
+module.exports = function createScout(deps) {
+    const config = deps.config;
+    const util = deps.util;
+    const comms = deps.comms;
     const ev = config.events || {};
     const sc = ev.scout || {};
     const wcfg = sc.safeWalk || {};

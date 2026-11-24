@@ -1,6 +1,6 @@
 # Stage 6: workshop and merchant into their parts (plan, 2026-11-24)
 
-Status: **6a done (v1.237.14-pilot)**, 6b open. Same branch (`modular-pilot`), **no change in behaviour**. Step 6 of the module plan.
+Status: **done** - 6a v1.237.14-pilot, 6b v1.237.15-pilot. Same branch (`modular-pilot`), **no change in behaviour**. Step 6 of the module plan.
 
 ## Where we are
 
@@ -62,6 +62,14 @@ server (a dismantle removes the copy, ...).
 | facade `merchant.js` | the merchant's tick, survive, canSupply (2 + the tick) |
 
 `roles/scout.js` (419 lines) moves to `roles/merchant/scout.js` with explicit deps; it is small enough to stay one file.
+
+6b result: the merchant's sections mix topics (selling junk sat under fishing, deliveries and bank trips under
+elixirs, the work round under sell-to), so the parts follow the functions, not the headers: stand, fishing, selling,
+elixirs, delivery, bank-trips, ponty-round, sell-to, mluck + the facade (loop, work, survive, canSupply) - 63 of 63
+functions identical, 48 statements in order, shared state `mer`. The scout moved to `roles/merchant/scout.js` with
+deps { config, util, comms } (identical apart from the header). `scripts/test-merchant.cjs`: old vs new with a
+recording workshop and scout, 8 scenarios (a quiet round, selling with a full bag, a pickup, death, a Ponty round, a
+trade scan, Merchant's Luck).
 
 ## Checks
 

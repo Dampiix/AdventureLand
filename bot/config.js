@@ -4,7 +4,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.237.14-pilot",
+    version: "1.237.15-pilot",
 
     team: {
         // DampiixWar, Dampiix, DampiixPri, Dampiiix are an item archive: never list them (items would go to the merchant).
@@ -195,7 +195,7 @@ module.exports = {
                 verdantspore: ["spider", "croc", "bee", "goo"],
             },
         },
-        // Merchant scout (roles/scout.js): searches `bosses` between chores; the runner steps in while it is unavailable
+        // Merchant scout (roles/merchant/scout.js): searches `bosses` between chores; the runner steps in while it is unavailable
         // or a boss is overdue by fallbackMs. Finds are reported for reportMs, `watch` bosses until a fighter is within
         // teamNear px. safeWalk: its paths avoid aggressive monsters (pad px) and rage zones (ragePad px).
         scout: {

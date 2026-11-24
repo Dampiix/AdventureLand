@@ -111,7 +111,7 @@ const GROUPS = [
 const M = [
   ["main", "start", "Lädt jedes Modul einmal, übergibt die Abhängigkeiten und startet den passenden Takt.", "main.js", ["fighter","merchant","config","bus","comms","storage","status"], [], [], 0],
   ["fighter", "takt", "Kampf- und Lauf-Takt der Fighter: Ziel, Angriff, Folgen, Tränke. Fragt die Klasse nach Eigenem.", "core/fighter.js", ["mage","warrior","priest","ranger","rogue","paladin","encounters","team-goal","party","target-pick","farm-choice","kiting","potions","strike-loop","chests","cavalry","travel","supply","equip","hunts","cave","status","bus"], [], ["boss","goal","plan","manual"], 0],
-  ["merchant", "takt", "Takt des Merchants: welcher Teil (Stand, Ponty, Werkstatt …) jetzt dran ist.", "roles/merchant.js", ["stand","fishing","elixirs","ponty","buy-orders","mluck","scout","bank","budget","crafting","compound","upgrade","dismantle","material-goals","exchange","gear-goals","value-report","comms","status"], [], [], 0],
+  ["merchant", "takt", "Takt des Merchants: welcher Teil (Stand, Ponty, Werkstatt …) jetzt dran ist.", "roles/merchant/", ["stand","fishing","elixirs","ponty","buy-orders","mluck","scout","bank","budget","crafting","compound","upgrade","dismantle","material-goals","exchange","gear-goals","value-report","comms","status"], [], [], 0],
 
   ["warrior", "warrior", "Klasse Warrior: Nahkampf-Tank. Hängt seine Skill-Module ein, kennt ihre Arbeitsweise nicht.", "classes/warrior.js", ["agitate","area","mobility","taunt","defense","sword-swap","strike-loop"], [], [], 0],
   ["area", "warrior", "Flächenschaden: Cleave und Stomp.", "classes/warrior.js", ["mobbing-guard","combat-math","geometry"], [], ["plan","manual"], 0],
@@ -160,13 +160,13 @@ const M = [
   ["greenjr", "monsters", "Green Jr.: Runner-Boss.", "config.js", ["default"], [], [], 0],
   ["snowman", "monsters", "Snowman: Saison-Boss.", "config.js", ["default"], [], [], 0],
 
-  ["stand", "merch", "Marktstand: aufbauen, Preise, Merrit-Besuche.", "roles/merchant.js", ["items","comms","storage"], [], [], 0],
-  ["fishing", "merch", "Fischen und Minen.", "roles/merchant.js", ["travel","items"], [], [], 0],
-  ["elixirs", "merch", "Elixiere kaufen und an die Fighter liefern.", "roles/merchant.js", ["items","comms"], [], [], 0],
+  ["stand", "merch", "Marktstand: aufbauen, Preise, Merrit-Besuche.", "roles/merchant/", ["items","comms","storage"], [], [], 0],
+  ["fishing", "merch", "Fischen und Minen.", "roles/merchant/", ["travel","items"], [], [], 0],
+  ["elixirs", "merch", "Elixiere kaufen und an die Fighter liefern.", "roles/merchant/", ["items","comms"], [], [], 0],
   ["ponty", "merch", "Ponty-Runde über die Server.", "roles/merchant.js + workshop.js", ["travel","items","storage"], [], [], 1],
   ["buy-orders", "merch", "In Kaufaufträge anderer Spieler verkaufen, fremde Stände.", "roles/merchant.js + workshop.js", ["items","storage"], [], [], 1],
-  ["mluck", "merch", "Merchant's Luck für alle in Reichweite.", "roles/merchant.js", ["geometry"], [], [], 0],
-  ["scout", "merch", "Merchant sucht Bosse ab und meldet sie.", "roles/scout.js", ["travel","rage-walls","comms"], [], ["search"], 1],
+  ["mluck", "merch", "Merchant's Luck für alle in Reichweite.", "roles/merchant/", ["geometry"], [], [], 0],
+  ["scout", "merch", "Merchant sucht Bosse ab und meldet sie.", "roles/merchant/scout.js", ["travel","rage-walls","comms"], [], ["search"], 1],
   ["bank", "workshop", "Bank lesen, einlagern, holen; Vormerkungen und Lieferungen.", "roles/workshop/", ["items","storage","comms"], [], [], 0],
   ["budget", "workshop", "Einkommensbasiertes Budget für Ausrüstungsziele.", "roles/workshop/", ["storage"], [], [], 0],
   ["crafting", "workshop", "Craften inklusive Witch-Rezepte.", "roles/workshop/", ["items","bank"], [], [], 0],
