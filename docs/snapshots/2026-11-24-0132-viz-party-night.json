@@ -1,0 +1,14 @@
+{
+  "at": "2026-11-24T00:32:10.983Z",
+  "purpose": "End of the 2026-11-23 session - overnight baseline: Viz party (VizPri, VizWar, VizMage) farms XP at the Giant Scorpions with elixirs; compare in the morning",
+  "bot": "1.229.3",
+  "party": ["VizPri", "VizWar", "VizMage"],
+  "farm": "gscorpion (guide pick), hunts off, bosses on, Ponty every 3 h, budget pots reset to 0 at 2026-11-24 00:00 UTC without extras",
+  "VizPri": { "level": 67, "xp": 117795084, "max_xp": 170000000, "gold": 87558, "luckm": 1.64, "elixir": ["elixirluck", "2026-11-24T11:59:05Z"] },
+  "VizWar": { "level": 72, "xp": 258604367, "max_xp": 420000000, "gold": 187039, "elixir": ["elixirstr0", "2026-11-24T11:36:29Z"] },
+  "VizMage": { "level": 59, "xp": 27849081, "max_xp": 38000000, "gold": 24161, "elixir": ["elixirint0", "2026-11-24T11:34:35Z"] },
+  "VizMerch": { "level": 56, "gold": 67392217, "bag": { "elixirluck": 25, "elixirint0": 50, "elixirstr0": 44, "elixirdex0": 50 } },
+  "bank": { "seashell": 7234, "funtoken": 23, "elixirint1": 1, "elixirvit0": 3 },
+  "xp_value_per_hour": { "VizMage": 1.43, "VizPri": 0.18, "VizWar": 0.06, "unit": "% power per hour (merchant value report 2026-11-24 00:15 UTC)" },
+  "morning_plan": "drops.maxHoursPerCopy to ~100 h, weighted rotation (>= 90 % of the best, 4-6 h per pick), monster hunts on; first drop target likely Winged Boots +7"
+}

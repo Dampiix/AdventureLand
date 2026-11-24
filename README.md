@@ -3,7 +3,7 @@
 One bot for a whole Adventure Land team: up to three fighters and one merchant, all running the same code.
 The fighters farm, hunt bosses and level up; the merchant supplies them, sells, banks, trades with other players and upgrades their gear.
 
-> **Version:** `1.229.1` (`bot/config.js` → `version`) · **Teams:** `Dmpx…` (main account) and `Viz…` (second account) · **Code:** `bot/` → in-game CODE slots 20–39
+> **Version:** `1.229.3` (`bot/config.js` → `version`) · **Teams:** `Dmpx…` (main account) and `Viz…` (second account) · **Code:** `bot/` → in-game CODE slots 20–39
 
 ## Repository
 
@@ -757,7 +757,7 @@ While the merchant walks over, the fighter keeps farming and sends its position 
   - mage: INT, warrior: STR, ranger/rogue: DEX, each at tier 0 (+6, 12 h).
   - Tiers 1/2 and VIT stay in the bank.
 - **Fighter:**
-  - carries `carry` (4, two days) of its own elixir, asked for with every pickup and never handed over;
+  - carries `carry` (4, two days) of its own elixir, asked for with every pickup and never handed over; fewer than 2 in the bag call the merchant (v1.229.3, at most 5 min after its last visit, `callEveryMs`);
   - drinks one when none works or its own runs out within 10 min. The same elixir again extends the running one (server: + duration, the rest kept at 97.5 %).
   - Another elixir that works, such as a tier 1 drunk by hand, is left to run out.
 - **Merchant:**
@@ -1129,7 +1129,7 @@ The leader uses it to weigh drop spots ([§19](#19-drop-farming)).
 | `workshop.bruteForce` | Only its `incomeShare` is left: the ladder pot that pays the material goals. The weapon ladder and the stock upgrades were removed in v1.212.0 (all their items are on `dismantle.names`). |
 | `workshop.grace` | Off; all risk floors are 0, so every step is tried. |
 | `betterWeapons.names` | Only used for classes without a weapon list (all four of ours have one). |
-| `gearGoals.budget.extra`, `bruteForce.extra`, `grace.extra` | All pots reset to 0 at 2026-11-23 18:38 UTC (`budget.resetAt`), then 10M each until 2026-11-24 18:40 UTC (v1.226.3, player decision). |
+| `gearGoals.budget.extra`, `bruteForce.extra`, `grace.extra` | None since 2026-11-24 00:00 UTC: every pot started from 0 again without an extra (`budget.resetAt`, v1.229.2, player decision). Before: a reset at 2026-11-23 18:38 UTC with 10M each (v1.226.3). |
 | `classes.warrior.dash` | Off. |
 | `events.farmBosses` | Empty: no nonstop boss hunting. |
 | `cavalry.targets` | Empty: no nuking for loot. |

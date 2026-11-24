@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.229.1",
+    version: "1.229.3",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -902,6 +902,7 @@ module.exports = {
         byClass: { priest: "elixirluck", mage: "elixirint0", warrior: "elixirstr0", ranger: "elixirdex0", rogue: "elixirdex0", paladin: "elixirstr0" },
         carry: 4,                           // per fighter in the bag: 2 days
         drinkBeforeMs: 10 * 60 * 1000,
+        callEveryMs: 5 * 60 * 1000,         // fewer than carry/2 in the bag calls the merchant, at most this long after its last visit (v1.229.3)
         buy: { elixirluck: { min: 10, max: 30 } },
         exchange: { source: "seashell", min: 6, refill: 20, sourceKeep: 40 },
     },
@@ -1318,13 +1319,13 @@ module.exports = {
             // stacks still needed are built (measured gain per stack). A success resets them.
             maxFodderChance: 0.5,
             batch: 5,                // helmets prepared at once, then attempted back to back
-            extra: { amount: 10000000, until: "2026-11-24T18:40:00Z" }, // 2026-11-23: 10M like every pot (grace itself is off)
+            // extra removed 2026-11-24 00:00 UTC (player decision: every pot from 0, no extra) - was 10M until 2026-11-24 18:40.
         },
         // Ladder pot (player decision 2026-11-17): its own share of the last 24 h of income - it scales with
         // the account and is not stopped by the gear goals. The weapon ladder it was made for is gone
         // (2026-11-22: all its weapons are on the dismantle list); it pays the material goals now
         // (materialGoals ... budget: "ladder"). Optional extra: { amount, until } on top.
-        bruteForce: { incomeShare: 0.25, extra: { amount: 10000000, until: "2026-11-24T18:40:00Z" } }, // 10M for 24 h after the reset (2026-11-23)
+        bruteForce: { incomeShare: 0.25 }, // the 10M extra (until 2026-11-24 18:40) removed with the reset of 2026-11-24 00:00 UTC
         // Box armor (player decision 2026-11-17): while a fighter wishes any Rugged piece,
         // every spare copy from the armor boxes is upgraded towards upTo at once - failures
         // free bank slots and the next chain pieces are ready early (the bank has ~19 free
@@ -1422,8 +1423,9 @@ module.exports = {
                 incomeShare: 0.7, // transferAbove removed 2026-11-19 (direct booking, player decision)
                 // 2026-11-23 18:38 UTC (player decision): every pot back to 0 (resetAt) after the day's extra spending (Fiery Staff
                 // 30M, Primlings), then 10M per pot for 24 h. (Before: 10M, then 30M extra until 2026-11-24 16:00.)
-                resetAt: "2026-11-23T18:38:00Z",
-                extra: { amount: 10000000, until: "2026-11-24T18:40:00Z" },
+                // 2026-11-24 00:00 UTC (player decision): all income and spending forgotten again, every pot starts from 0
+                // without any extra - the evening's purchases (elixirs, Seashells, Liquid Luck) had emptied the gear pot.
+                resetAt: "2026-11-24T00:00:00Z",
                 // Optional (the old ones expired and were removed 2026-11-22):
                 //   extra: { amount, until } - a player-granted amount on top until that time (counts against
                 //          the last 24 h of spending);
