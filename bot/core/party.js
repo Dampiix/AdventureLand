@@ -187,6 +187,7 @@ module.exports = function createParty(ctx) {
     function atLeaderSpot(lead) {
         const tg = ctx.targeting;
         if (!lead || !lead.moving || !lead.farm || lead.event || !tg || !tg.inSpotArea || !tg.watchPoint) return false;
+        if (util.isBossKind(config, lead.farm)) return false; // boss searches: everyone walks its own areas (v1.235.8)
         const me = { map: character.map, x: character.real_x, y: character.real_y };
         const edge = tg.watchPoint(lead.farm);
         const here = tg.inSpotArea(me, lead.farm) || (!!edge && util.distanceTo(edge) <= 250);
@@ -200,6 +201,7 @@ module.exports = function createParty(ctx) {
     function spotAhead(lead) {
         const tp = ((((config.classes || {}).mage || {}).magiport) || {}).travel || {};
         if (!tp.enabled || character.ctype !== "mage" || !lead || !lead.moving || !lead.dest || !lead.farm || lead.event) return null;
+        if (util.isBossKind(config, lead.farm)) return null; // boss searches and fights: the boss logic (v1.235.8)
         const tg = ctx.targeting;
         if (!tg || !tg.inSpotArea || !tg.watchPoint || !tg.inSpotArea(lead.dest, lead.farm)) return null;
         if (badDest && Date.now() < badDest.until && badDest.map === lead.dest.map && Math.hypot(badDest.x - lead.dest.x, badDest.y - lead.dest.y) < 60) return null;

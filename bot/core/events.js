@@ -785,6 +785,7 @@ module.exports = function createEvents(ctx) {
     }
     // Members: walk the areas the leader gave us, stop on its "searchstop" or when we see the boss.
     let job = null; // { id, name, spots, stop }
+    let heldFind = null; // { name, until }: a boss we just found as the runner, held until the leader's event (v1.235.9)
     const nonstopUntil = {}; // member: boss -> until when we count as its nonstop runner (no team call)
     // Own death on a solo fight (fighter.handleDeath): tell the leader - it pauses the boss.
     function onOwnDeath() {
@@ -837,6 +838,7 @@ module.exports = function createEvents(ctx) {
                 return;
             }
             if (found) util.log("event", j.name + " found " + infoText(bossInfo(j.name, found)) + " - " + (holdsFor(j.name) ? "holding until the team is here" : "the team comes"), "green");
+            if (found && !j.stop) heldFind = { name: j.name, until: Date.now() + 60 * 1000 }; // wait at it (v1.235.9)
         } catch (e) {
             util.log("event", "search for " + j.name + " failed: " + util.errReason(e), "orange");
         } finally {
@@ -1064,6 +1066,14 @@ module.exports = function createEvents(ctx) {
                 return "busy";
             }
             current = ev || null;
+            // A boss we just found as the runner (v1.235.9, player report 2026-11-24): until the leader's event arrives
+            // we treat it as ours and wait at it - the mage blinked back towards the priest after reporting Dracul and
+            // only then came again. Ends with the leader's event, when the boss is out of sight, or after 60 s.
+            if (!current && heldFind && Date.now() < heldFind.until) {
+                const b = get_nearest_monster({ type: heldFind.name });
+                if (b && !b.dead) current = { name: heldFind.name, monster: heldFind.name, held: true };
+                else heldFind = null;
+            } else if (current) heldFind = null;
             return "ok";
         }
 
@@ -1133,6 +1143,8 @@ module.exports = function createEvents(ctx) {
         current: function () { return current; },
         // Leader: a parallel (split) boss search is under way - the members walk their own areas, no team wait.
         splitSearching: function () { return !!(split && searching); },
+        // Our own boss search: a member's share of a split search, or the leader's search walk (v1.235.8, travel magiport).
+        searchJob: function () { return !!job || !!searching; },
         // Leader: not waited for - the runner on a job, and the nonstop runner between its laps too.
         runnerOut: function () {
             if (runnerJob) return runnerJob.who;
@@ -1176,6 +1188,10 @@ module.exports = function createEvents(ctx) {
         const tp = ((((config.classes || {}).mage || {}).magiport) || {}).travel || {};
         const tg = ctx.targeting;
         if (!tp.enabled || !tg || !tg.inSpotArea || (ctx.cave && ctx.cave.active()) || util.attackersOnMe().length) return false;
+        // Not during a boss search (ours or the leader's, v1.235.8): everyone walks its own areas.
+        if (job || searching) return false;
+        if (party.isLeader) { const f = tg.farmNow ? tg.farmNow() : null; if (f && f.monster && util.isBossKind(config, f.monster)) return false; }
+        else { const l = party.leaderInfo(); if (l && l.farm && util.isBossKind(config, l.farm)) return false; }
         // Every team route since v1.235.2 (player decision): the leader on a path walk, a member while the leader walks
         // one (it broadcasts its route end).
         if (party.isLeader) return typeof smart !== "undefined" && !!smart.moving && !!smart.map;
@@ -1195,8 +1211,15 @@ module.exports = function createEvents(ctx) {
         }
         try { stop(); } catch (e) { /* not walking */ }
         const what = boss ? current.name : "the farm spot";
+        // A path walk planned from where we stood before the port is dropped after it (v1.235.9, player report: priest
+        // and warrior walked on to their old point first): the next tick plans from the landing point.
+        const dropOldWalk = function () { try { if (typeof smart !== "undefined" && smart.moving) stop("smart"); } catch (e) { /* not walking */ } };
         accept_magiport(name)
-            .then(function () { util.log("event", "magiported to " + name + " for " + what, "green"); })
+            .then(function () {
+                util.log("event", "magiported to " + name + " for " + what, "green");
+                setTimeout(dropOldWalk, 400);
+                setTimeout(dropOldWalk, 1500);
+            })
             .catch(function (e) { util.log("event", "magiport from " + name + " failed: " + util.errReason(e), "orange"); });
     }
 };

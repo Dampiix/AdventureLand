@@ -357,6 +357,10 @@ module.exports = function createMage(ctx) {
         const lead = ctx.party.leaderInfo();
         const tg = ctx.targeting;
         if (!lead || !lead.moving || !lead.dest || lead.event || !tg || !tg.inSpotArea || !tg.watchPoint) return;
+        // Never for a boss kind (v1.235.8): a split Phoenix search reports "phoenix" as the leader's target and its
+        // search area as the route end - we pulled the team to our own empty search area.
+        if (lead.farm && util.isBossKind(ctx.config, lead.farm)) return;
+        if (ctx.events && ctx.events.searchJob && ctx.events.searchJob()) return;
         if (character.map !== lead.dest.map || util.attackersOnMe().length) return;
         // Every route of the team (v1.235.2, player decision 2026-11-24: "whenever the group goes somewhere and he is
         // there"): a farm spot - we wait at its edge; any other route end (Daisy, town, ...) - we stand at it (we went

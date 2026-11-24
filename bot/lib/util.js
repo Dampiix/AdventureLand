@@ -398,6 +398,14 @@ function countItem(name) {
     }, 0);
 }
 
+// A boss kind (v1.235.8): cooperative, or named in events.policy - the travel magiport and "going ahead to the spot"
+// leave those to the boss logic (a split Phoenix search had the mage pull the team to its own empty search area).
+function isBossKind(config, name) {
+    const def = name && G.monsters[name];
+    if (!def) return false;
+    return !!def.cooperative || Object.prototype.hasOwnProperty.call(((config.events || {}).policy) || {}, name);
+}
+
 // Daisy (the monster hunter NPC on main): her position, or null (v1.235.1, shared by the travel magiport).
 function daisyPos() {
     const npc = ((G.maps.main || {}).npcs || []).find(function (n) { return n.id === "monsterhunter"; });
@@ -696,6 +704,7 @@ module.exports = {
     deriveTeam: deriveTeam,
     shortName: shortName,
     daisyPos: daisyPos,
+    isBossKind: isBossKind,
     weaponPower: weaponPower,
     viaFirst: viaFirst,
     kiteRisk: kiteRisk,
