@@ -95,17 +95,15 @@ module.exports = function createEvents(ctx) {
     // this listener off - since v1.227.5 every boss ended as "gone without a kill seen", 30 s after it was last seen
     // (the team stood ~10-30 s after each kill), and respawn-aware searching never ran.
     try {
-        if (PAGE.__botBossDeathFn) PAGE.socket.off("death", PAGE.__botBossDeathFn);
         PAGE.__botDeaths = PAGE.__botDeaths || {};
-        PAGE.__botBossDeathFn = function (d) {
+        game.onSocket("death", "BossDeath", function (d) {
             try {
                 if (!d || !d.id) return;
                 const now = Date.now();
                 PAGE.__botDeaths[d.id] = now;
                 Object.keys(PAGE.__botDeaths).forEach(function (id) { if (now - PAGE.__botDeaths[id] > 10 * 60 * 1000) delete PAGE.__botDeaths[id]; });
             } catch (e) { /* bookkeeping only */ }
-        };
-        PAGE.socket.on("death", PAGE.__botBossDeathFn);
+        });
     } catch (e) { /* no socket */ }
     evs.lastJoinTry = 0;
     evs.joined = null;         // leader: { name, map } once we stand on the event map

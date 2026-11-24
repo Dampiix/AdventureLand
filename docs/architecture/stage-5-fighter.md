@@ -1,6 +1,6 @@
 # Stage 5: fighter.js down to the tick (plan, 2026-11-24)
 
-Status: **plan, not built.** Same branch (`modular-pilot`), **no change in behaviour**. Step 5 of the module plan.
+Status: **step 1 done (v1.237.12-pilot: game.onSocket)**, step 2 (the split) open. Same branch (`modular-pilot`), **no change in behaviour**. Step 5 of the module plan.
 
 ## Where we are
 

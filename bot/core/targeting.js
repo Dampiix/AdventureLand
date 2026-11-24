@@ -255,23 +255,19 @@ module.exports = function createTargeting(ctx) {
     // multiplier x 0.9); evasion, reflection and avoidance count as "may miss" (no damage).
     // The listeners live on the game page and are swapped on each load (like the hit log).
     try {
-        if (PAGE.__botActFn) PAGE.socket.off("action", PAGE.__botActFn);
-        if (PAGE.__botActHitFn) PAGE.socket.off("hit", PAGE.__botActHitFn);
         PAGE.__botInflight = {};
         PAGE.__botDoomedSkips = PAGE.__botDoomedSkips || 0;
-        PAGE.__botActFn = function (d) {
+        game.onSocket("action", "Act", function (d) {
             try {
                 if (!d || !d.damage || d.heal || !d.target || !d.pid) return;
                 const t = PAGE.entities && PAGE.entities[d.target];
                 if (!t || t.type !== "monster") return;
                 PAGE.__botInflight[d.pid] = { target: d.target, attacker: d.attacker, type: d.type, damage: d.damage, until: Date.now() + (d.eta || 0) + 600 };
             } catch (e) { /* estimate only */ }
-        };
-        PAGE.__botActHitFn = function (d) {
+        });
+        game.onSocket("hit", "ActHit", function (d) {
             try { if (d && d.pid && PAGE.__botInflight) delete PAGE.__botInflight[d.pid]; } catch (e) { /* estimate only */ }
-        };
-        PAGE.socket.on("action", PAGE.__botActFn);
-        PAGE.socket.on("hit", PAGE.__botActHitFn);
+        });
     } catch (e) { /* no socket */ }
     tgt.lastRareId = null;
     tgt.holdLogged = 0;

@@ -61,6 +61,17 @@ function entityDistance(a, b) { return parent.distance(a, b); }        // hitbox
 function walkStraight(x, y) { return move(x, y); }                    // a straight move (no path search)
 function smartMove(dest) { return smart_move(dest); }                 // stage 3b (travel): a path walk (a promise)
 
+// A listener on the game page's socket (stage 5): it lives on the page and outlasts a code reload, so it is kept there as
+// parent.__bot<Key>Fn and the previous one with the same key is taken off first - a reload never stacks them. Throws
+// without a socket (callers catch).
+function onSocket(event, key, fn) {
+    const PAGE = parent;
+    const name = "__bot" + key + "Fn";
+    if (PAGE[name]) PAGE.socket.off(event, PAGE[name]);
+    PAGE[name] = fn;
+    PAGE.socket.on(event, fn);
+}
+
 // Wraps a client function of this frame (stage 3b, the rage walls): make(original) returns the replacement. The
 // original is kept on the window as __botOrig<Name> (can_move -> __botOrigCanMove), so a second install wraps the
 // original again, never our own wrapper. once: a function wrapped before stays as it is. False when nothing was wrapped.
@@ -109,4 +120,5 @@ module.exports = {
     walkStraight: walkStraight,
     smartMove: smartMove,
     hook: hook,
+    onSocket: onSocket,
 };

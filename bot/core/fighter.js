@@ -62,9 +62,8 @@ module.exports = function createFighter(ctx, cls) {
     // log filled with "{}", 2026-11-18), and each load swaps the previous listener for its own.
     const PAGE = parent;
     try {
-        if (PAGE.__botHitFn) PAGE.socket.off("hit", PAGE.__botHitFn);
         PAGE.__botHits = PAGE.__botHits || [];
-        PAGE.__botHitFn = function (d) {
+        game.onSocket("hit", "Hit", function (d) {
             try {
                 if (!d || !d.damage || !PAGE.character || d.id !== PAGE.character.id) return;
                 const a = PAGE.entities && PAGE.entities[d.hid];
@@ -72,17 +71,15 @@ module.exports = function createFighter(ctx, cls) {
                 util.noteHitTaken(d, a); // learned hit factor for the safety checks (2026-11-22)
                 while (PAGE.__botHits.length && Date.now() - PAGE.__botHits[0].t > HIT_LOG_MS) PAGE.__botHits.shift();
             } catch (e) { /* analysis only */ }
-        };
-        PAGE.socket.on("hit", PAGE.__botHitFn);
+        });
     } catch (e) { /* no socket */ }
     // Damage meter (player request 2026-11-19): real damage per second from the game's "hit"
     // events - ours, and on the leader every party member's it sees. Logged every
     // config.meter.everyMs, "/dps" prints it now. Listener swapped on each load like the one above.
     const meterCfg = config.meter || {};
     try {
-        if (PAGE.__botDpsFn) PAGE.socket.off("hit", PAGE.__botDpsFn);
         PAGE.__botDps = PAGE.__botDps || [];
-        PAGE.__botDpsFn = function (d) {
+        game.onSocket("hit", "Dps", function (d) {
             try {
                 if (!d || !d.damage || !PAGE.entities || !d.hid) return;
                 const target = PAGE.entities[d.id];
@@ -91,8 +88,7 @@ module.exports = function createFighter(ctx, cls) {
                 const keep = (meterCfg.windowMs || 5 * 60 * 1000) + 5000;
                 while (PAGE.__botDps.length && Date.now() - PAGE.__botDps[0].t > keep) PAGE.__botDps.shift();
             } catch (e) { /* meter only */ }
-        };
-        PAGE.socket.on("hit", PAGE.__botDpsFn);
+        });
     } catch (e) { /* no socket */ }
     const meterStart = Date.now();
     let lastMeterLog = Date.now();
@@ -130,9 +126,8 @@ module.exports = function createFighter(ctx, cls) {
         Object.keys(PAGE.__botLastTarget).forEach(function (id) { if (now - PAGE.__botLastTarget[id].t > 60 * 1000) delete PAGE.__botLastTarget[id]; });
     }
     try {
-        if (PAGE.__botDeathFn) PAGE.socket.off("death", PAGE.__botDeathFn);
         PAGE.__botKills = PAGE.__botKills || [];
-        PAGE.__botDeathFn = function (d) {
+        game.onSocket("death", "Death", function (d) {
             try {
                 const last = d && PAGE.__botLastTarget && PAGE.__botLastTarget[d.id];
                 if (!last) return; // not a monster we saw
@@ -140,8 +135,7 @@ module.exports = function createFighter(ctx, cls) {
                 const keep = (meterCfg.windowMs || 5 * 60 * 1000) * 2 + 5000;
                 while (PAGE.__botKills.length && Date.now() - PAGE.__botKills[0].t > keep) PAGE.__botKills.shift();
             } catch (err) { /* statistics only */ }
-        };
-        PAGE.socket.on("death", PAGE.__botDeathFn);
+        });
     } catch (e) { /* no socket */ }
     let lastKillLog = Date.now();
     function killReport(force) {
@@ -687,9 +681,7 @@ module.exports = function createFighter(ctx, cls) {
         quiet(move(x, y));
     }
     try {
-        if (parent.__botUnstackFn) parent.socket.off("hit", parent.__botUnstackFn);
-        parent.__botUnstackFn = function (data) { try { unstack(data); } catch (e) { /* cosmetic only */ } };
-        parent.socket.on("hit", parent.__botUnstackFn);
+        game.onSocket("hit", "Unstack", function (data) { try { unstack(data); } catch (e) { /* cosmetic only */ } });
     } catch (e) { /* no socket */ }
 
     let passing = null; // { until, dest } while we pass through attackers on the way
