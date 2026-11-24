@@ -1,6 +1,6 @@
 # Stage 7: explicit deps everywhere, defaults in the modules (plan, 2026-11-24)
 
-Status: **plan, not built.** Same branch (`modular-pilot`), **no change in behaviour**. Step 7 of the module plan.
+Status: **7a step 1 done (v1.237.16-pilot: gear, supply, drops)**, the rest open. Same branch (`modular-pilot`), **no change in behaviour**. Step 7 of the module plan.
 
 ## 7a. The last ctx users get explicit deps
 
@@ -15,6 +15,11 @@ Status: **plan, not built.** Same branch (`modular-pilot`), **no change in behav
 After 7a only `main.js` knows every module: its `ctx` becomes a plain registry it builds the deps from (getters for
 what is created later, as today). Same mechanical check (generator for gear, rename for the others) and the existing
 old-vs-new tests, plus a gear test (equip a better item, the luck swap, a wish sent).
+
+7a step 1 result: `gear/` = facade + wishes, equip, luck-swap, weapons, value (67 of 67 functions identical, shared
+state `gr`, five shadowing locals checked by hand), `supply/supply.js` and `farming/drops.js` with deps (identical apart
+from the header). `scripts/test-gear.cjs`: old vs new, 4 scenarios (equip from the guide, wishes, a better copy, the
+merchant's ready ping).
 
 ## 7b. Defaults in the modules, `config.js` keeps only ours
 

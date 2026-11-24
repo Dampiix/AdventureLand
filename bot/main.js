@@ -220,13 +220,14 @@ function startBot() {
         ctx.events = require_code("bot_events")(ctx);
         botEvents = ctx.events;
         installChatCommands(ctx);
-        ctx.drops = require_code("bot_drops")(ctx);
+        ctx.drops = require_code("bot_drops")({ config: ctx.config, util: ctx.util, comms: ctx.comms, bus: ctx.bus, party: ctx.party,
+            get targeting() { return ctx.targeting; } });
         const classSlot = BOT_CLASS_SLOTS[character.ctype];
         const cls = classSlot ? require_code(classSlot)(ctx) : noClassModule();
         ctx.targeting = require_code("bot_targeting")(ctx);
         botTargeting = ctx.targeting;
         ctx.gear = require_code("bot_gear")(ctx);
-        ctx.supply = require_code("bot_supply")(ctx);
+        ctx.supply = require_code("bot_supply")({ config: ctx.config, util: ctx.util, comms: ctx.comms, get gear() { return ctx.gear; }, get cave() { return ctx.cave; } });
         botSupply = ctx.supply;
         botRunner = require_code("bot_fighter")(ctx, cls);
     }

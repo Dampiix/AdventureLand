@@ -4,7 +4,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.237.15-pilot",
+    version: "1.237.16-pilot",
 
     team: {
         // DampiixWar, Dampiix, DampiixPri, Dampiiix are an item archive: never list them (items would go to the merchant).
@@ -382,7 +382,7 @@ module.exports = {
             // Luck catch: Absorb Sins on an ally whose monster dies within `hits` hits (at most maxPull, we above minHp, once per
             // everyMs per ally); without a tank within tankRange only what our courage holds. Summary every logEveryMs.
             luckCatch: { enabled: true, hits: 2, maxPull: 5, minHp: 0.6, everyMs: 1500, tankRange: 400, logEveryMs: 10 * 60 * 1000 },
-            // Luck swap (core/gear.js): these pieces go on with the luck catch and come off backMs after the last one; missing
+            // Luck swap (gear/): these pieces go on with the luck catch and come off backMs after the last one; missing
             // pieces are skipped, a piece listed twice fills both slots (two Clover Studs).
             luckSwap: { enabled: true, items: ["mshield", "rabbitsfoot", "wcap", "wattire", "wbreeches", "wgloves", "wshoes", "cloverstud", "cloverstud"], backMs: 3000 },
             // Dark Blessing (level 70): +25 % party damage for 8 s on targets needing sturdyHits+ of our hits, and on bosses.
@@ -556,7 +556,7 @@ module.exports = {
 
     // =================================================================
     // Gear plan: the ONE place for our gear progression. Class wishes are built from `wishes` (chainsFor, called by
-    // core/gear.js) and `equivalent`; scripts/gear-plan-guide.mjs renders the block as docs/gear-guide/gear-plan.pdf.
+    // gear/) and `equivalent`; scripts/gear-plan-guide.mjs renders the block as docs/gear-guide/gear-plan.pdf.
     // Items: "{stat}" = the class's main stat (str/int/dex). `for`: a class or a group.
     // =================================================================
     gearPlan: {
@@ -606,7 +606,7 @@ module.exports = {
             nontank: ["ranger", "priest", "rogue", "mage"],
             opener: ["priest"], // the chest opener and luck catcher: the only class on the Wanderer's set
         },
-        // Class wish chains for one class ({ name, level } or { steps: [...], replace, anytime, ... }); used by core/gear.js classChains.
+        // Class wish chains for one class ({ name, level } or { steps: [...], replace, anytime, ... }); used by gear/ classChains.
         chainsFor: function (ctype, mainStat) {
             const groups = this.groups;
             const inGroup = function (f) {

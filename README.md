@@ -3,7 +3,7 @@
 One bot for a whole Adventure Land team: up to three fighters and one merchant, all running the same code.
 The fighters farm, hunt bosses and level up; the merchant supplies them, sells, banks, trades with other players and upgrades their gear.
 
-> **Version:** `1.237.15-pilot` (`bot/config.js` → `version`) · **Teams:** `Dmpx…` (main account) and `Viz…` (second account) · **Code:** `bot/` → in-game CODE slots 20–41
+> **Version:** `1.237.16-pilot` (`bot/config.js` → `version`) · **Teams:** `Dmpx…` (main account) and `Viz…` (second account) · **Code:** `bot/` → in-game CODE slots 20–41
 
 ## Repository
 
@@ -308,7 +308,7 @@ Only `main.js` calls `require_code()`. Every other module is a factory that rece
 | [`lib/util.js`](bot/lib/util.js) | 22 `bot_util` | Shared helpers (bundle, pilot step 2): a facade over `geometry`, `names`, `storage` (journal, heartbeat), `status`, `combat-math` (damage, hit factors, mobbing, fear, kite risk), `items`, `game` (the game layer: our HP/MP, skills, thin client wrappers), `walking`, `monster-rules`, `team`, `basics` |
 | [`lib/comms.js`](bot/lib/comms.js) | 23 `bot_comms` | CODE messages between our own characters |
 | [`core/targeting.js`](bot/core/targeting.js) | 24 `bot_targeting` | Farm spot, safety checks, target picking - the facade (bundle, stage 4b) of `safety/` (spots, deaths, team-safety, live-safety, rage-zones, spot-check, boss-hold) and `farming/` (spots-taken, farm-choice, cavalry-plan, target-pick); the parts share one internal state `tgt` |
-| [`core/supply.js`](bot/core/supply.js) | 25 `bot_supply` | Fighter side of loot, gold and potions |
+| [`supply/supply.js`](bot/supply/supply.js) | 25 `bot_supply` | Fighter side of loot, gold and potions (deps: config, util, comms, gear, cave) |
 | [`combat/fighter.js`](bot/combat/fighter.js) | 26 `bot_fighter` | Fighter main loop: the tick (bundle, stage 5) with its parts - `combat/` (meters, death, potions, movement, kiting, passing, combat, cavalry, strike-loop, chests), `team/formation.js` (team wait, to the healer, covering members), `events/giga-crab.js`; travel and rage walls in `travel/` (stage 3b); the parts share one internal state `ftr` |
 | [`classes/paladin/`](bot/classes/paladin/) | 27 `bot_class_paladin` | Paladin (bundle, stage 2): `paladin.js` (class, self-heal, Smash), `mana-shield.js`, `oath.js`, `cleansing.js` |
 | [`classes/mage/`](bot/classes/mage/) | 28 `bot_class_mage` | Mage (bundle, pilot step 4): `mage.js` - the class, `energize.js`, `reflect.js`, `blaster.js`, `blink.js`, `team-port.js` - one skill each, with own defaults and passed-in dependencies |
@@ -317,11 +317,11 @@ Only `main.js` calls `require_code()`. Every other module is a factory that rece
 | [`roles/merchant/scout.js`](bot/roles/merchant/scout.js) | 40 `bot_scout` | The merchant's boss search and safe walking (deps: config, util, comms) |
 | [`team/party.js`](bot/team/party.js) | 31 `bot_party` | Invites, leader broadcast, following, team goal (bundle, stage 4a: with `safety/spots.js`; reads boss, search and manual from the bus) |
 | [`farming/hunts.js`](bot/farming/hunts.js) | 32 `bot_hunts` | Monster Hunts and Daisy trips (stage 3c: explicit deps config, util, comms, party, targeting, drops) |
-| [`core/gear.js`](bot/core/gear.js) | 33 `bot_gear` | Fighter wishes and equipping |
+| [`gear/`](bot/gear/) | 33 `bot_gear` | Fighter wishes and equipping - `gear.js` is the facade (bundle, stage 7a: tick, reserved items) of wishes, equip, luck-swap, weapons, value; shared state `gr` |
 | [`roles/workshop/`](bot/roles/workshop/) | 34 `bot_workshop` | Merchant: upgrades, gear goals, weapons, materials, pots, Ponty - `workshop.js` is the facade (bundle, stage 6a: one per character, the main step) of common, wishes, bank, budget, crafting, compound, dismantle, material-goals, exchange, grace, gear-goals, off-plan-armor, better-weapons, scrolls, ponty; the parts share one internal state `wks` |
 | [`core/events.js`](bot/core/events.js) | 35 `bot_events` | Events and world bosses - the facade (bundle, stage 4c) of `encounters/` (boss-check, boss-tracker, boss-search, encounters = the per-tick flow), `events/witch-cipher.js` and `team/team-port.js` (magiport consent); the parts share one internal state `evs` |
 | [`classes/ranger/`](bot/classes/ranger/) | 36 `bot_class_ranger` | Ranger (bundle, stage 2): `ranger.js`, `three-shot.js`, `sturdy-shots.js` (Hunter's Mark, Supershot, Poison Arrow) |
-| [`core/drops.js`](bot/core/drops.js) | 37 `bot_drops` | Drop farming and spot gold |
+| [`farming/drops.js`](bot/farming/drops.js) | 37 `bot_drops` | Drop farming and spot gold (deps: config, util, comms, bus, party, targeting) |
 | [`classes/warrior/`](bot/classes/warrior/) | 38 `bot_class_warrior` | Warrior (bundle, stage 2): `warrior.js` (class, hooks, Hard Shell, War Cry, Cleave, Stomp), `common.js`, `protect.js` (Taunt, protective Agitate), `mobility.js` (Charge, Dash), `agitate-mode.js`, `agitate-point.js`, `agitate-stream.js`, `agitate.js` (pack tick), `splash.js`, `escape.js`, `sword-swap.js` - the Agitate parts share one internal state |
 | [`classes/rogue/`](bot/classes/rogue/) | 39 `bot_class_rogue` | Rogue (bundle, stage 2): `rogue.js`, `swiftness.js`, `stealth.js` (Assassin's Smoke, hiding), `fanofknives.js` (Knife Belt), `strikes.js` (Quick Stab/Punch, Mental Burst, Poisonous Touch) |
 | [`lib/bus.js`](bot/lib/bus.js) | 42 `bot_bus` | The bus (stage 4a): state a lower module reads without calling a higher one (boss, search, manual, teamWaitAt, memberLuck) |

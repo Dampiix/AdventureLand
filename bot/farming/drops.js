@@ -14,12 +14,13 @@
 // and a configured farm target still come first.
 // =====================================================================
 
-module.exports = function createDrops(ctx) {
-    const config = ctx.config;
-    const util = ctx.util;
-    const comms = ctx.comms;
+// deps (module plan, stage 7a): { config, util, comms, bus, party, targeting } - targeting is created later (a getter).
+module.exports = function createDrops(deps) {
+    const config = deps.config;
+    const util = deps.util;
+    const comms = deps.comms;
     const cfg = config.drops;
-    const leads = !ctx.party || !ctx.party.isMember;
+    const leads = !deps.party || !deps.party.isMember;
 
     // [{ name, copies }] from the merchant; kept across restarts so a reload doesn't
     // send the team to the XP spot until the next report arrives.
@@ -77,12 +78,12 @@ module.exports = function createDrops(ctx) {
     // comes out a little small (the estimate errs low).
     function luckOfMember(name) {
         if (name === character.name) return Math.max(1, character.luckm || 1);
-        const luck = ctx.bus.get("memberLuck"); // fighter: the members' reported luck
+        const luck = deps.bus.get("memberLuck"); // fighter: the members' reported luck
         const r = luck && luck[name];
         return r && Date.now() - r.at < 5 * 60 * 1000 ? Math.max(1, r.l) : 1;
     }
     function partyLuck(bonus) {
-        const team = ctx.party.memberNames().filter(function (n) { return n !== config.merchant; });
+        const team = deps.party.memberNames().filter(function (n) { return n !== config.merchant; });
         const now = Date.now();
         const mean = team.reduce(function (s, n) { return s + luckOfMember(n); }, 0) / Math.max(1, team.length);
         // Normal roll: kills of ours by target (no target: the team's mean luck).
@@ -109,7 +110,7 @@ module.exports = function createDrops(ctx) {
     function luckFactor() {
         const t = character.encouragement && character.encouragement.totals;
         const bonus = t && t.luck > 1 ? t.luck : 1;
-        if (ctx.party && ctx.party.enabled && ctx.party.memberNames && ctx.party.memberNames().length > 1) return partyLuck(bonus);
+        if (deps.party && deps.party.enabled && deps.party.memberNames && deps.party.memberNames().length > 1) return partyLuck(bonus);
         return Math.max(1, character.luckm || 1) * bonus;
     }
 
@@ -220,13 +221,13 @@ module.exports = function createDrops(ctx) {
         try { routesNow = (get_progression() || {}).routes || []; } catch (e) { return []; }
         const luck = luckFactor();
         // Same safety rule as any farm target: safe for every member, trials only once proven.
-        const teamSafe = function (m) { return !ctx.targeting || ctx.targeting.isTeamSafe(m); };
+        const teamSafe = function (m) { return !deps.targeting || deps.targeting.isTeamSafe(m); };
         const out = [];
         routesNow.forEach(function (r) {
             if (!r) return;
             const rate = ((rates[r.monster] || 0) + (mapRates[r.map] || 0)) * luck;
             // The guide's own "safe" (for the leader alone) is not needed once the team model judges spots.
-            const teamModel = ctx.targeting && ctx.targeting.teamModelOn && ctx.targeting.teamModelOn();
+            const teamModel = deps.targeting && deps.targeting.teamModelOn && deps.targeting.teamModelOn();
             // isTeamSafe also knows our own solo check (targeting.soloRouteSafe, v1.226.8) - the guide's "safe" alone would
             // keep e.g. the Huge Crabs out solo.
             if (!(rate > 0) || !(r.cycle > 0) || (r.safe !== true && !teamModel && !teamSafe(r.monster)) || !teamSafe(r.monster)) return;
@@ -253,7 +254,7 @@ module.exports = function createDrops(ctx) {
     // Ponty limits with it.
     function partySize() {
         const team = (config.team && config.team.fighters) || [];
-        const n = team.filter(function (f) { return f === character.name || (ctx.party && ctx.party.inParty && ctx.party.inParty(f)); }).length;
+        const n = team.filter(function (f) { return f === character.name || (deps.party && deps.party.inParty && deps.party.inParty(f)); }).length;
         return Math.max(1, n);
     }
 
@@ -309,7 +310,7 @@ module.exports = function createDrops(ctx) {
         lastTick = now;
         lastGold = character.gold;
         if (!(dt > 0) || dt > 10) return; // paused or lagging: no guess
-        const f = ctx.targeting && ctx.targeting.farmNow ? ctx.targeting.farmNow() : null;
+        const f = deps.targeting && deps.targeting.farmNow ? deps.targeting.farmNow() : null;
         // Hunts count (v1.151.0): a monster's gold is the same whatever sent us there, and the
         // members got the leader's hunt target without its source and counted it anyway.
         if (character.rip || !f || !f.monster || f.any || /^event/.test(f.source || "")) return;
@@ -341,7 +342,7 @@ module.exports = function createDrops(ctx) {
         if (typeof own === "number") list.push(own);
         Object.keys(memberRates).forEach(function (n) {
             const r = memberRates[n];
-            if (Date.now() - r.at > 5 * 60 * 1000 || !(ctx.party && ctx.party.inParty && ctx.party.inParty(n))) return;
+            if (Date.now() - r.at > 5 * 60 * 1000 || !(deps.party && deps.party.inParty && deps.party.inParty(n))) return;
             if (typeof r.rates[monster] === "number") list.push(r.rates[monster]);
         });
         if (!list.length) return null;
@@ -354,7 +355,7 @@ module.exports = function createDrops(ctx) {
     // the pot caps keep it safe). Without a measured normal spot there is no basis at all.
     let normalSpot = null; // { monster, map } - the last farm target that was no drop, event or hunt
     function noteNormalSpot() {
-        const f = ctx.targeting && ctx.targeting.farmNow ? ctx.targeting.farmNow() : null;
+        const f = deps.targeting && deps.targeting.farmNow ? deps.targeting.farmNow() : null;
         if (!f || !f.monster || f.any || /^(drop|event|hunt)/.test(f.source || "")) return;
         normalSpot = { monster: f.monster, map: f.map || null };
     }
@@ -477,7 +478,7 @@ module.exports = function createDrops(ctx) {
         try {
             ((get_progression() || {}).routes || []).forEach(function (r) {
                 if (!r || !(r.cycle > 0) || !G.monsters[r.monster] || isBoss(r.monster)) return;
-                if (ctx.targeting && !ctx.targeting.isTeamSafe(r.monster)) return;
+                if (deps.targeting && !deps.targeting.isTeamSafe(r.monster)) return;
                 ref = Math.max(ref, xpRate(r));
             });
         } catch (e) { /* guide not ready */ }

@@ -27,7 +27,7 @@
       "name": "bot_targeting"
     },
     {
-      "file": "core/supply.js",
+      "file": "supply/supply.js",
       "slot": 25,
       "name": "bot_supply"
     },
@@ -67,7 +67,7 @@
       "name": "bot_hunts"
     },
     {
-      "file": "core/gear.js",
+      "file": "gear/gear.js",
       "slot": 33,
       "name": "bot_gear"
     },
@@ -87,7 +87,7 @@
       "name": "bot_class_ranger"
     },
     {
-      "file": "core/drops.js",
+      "file": "farming/drops.js",
       "slot": 37,
       "name": "bot_drops"
     },

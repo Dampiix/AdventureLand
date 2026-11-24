@@ -10,10 +10,11 @@
 // fighter skips combat during that time.
 // =====================================================================
 
-module.exports = function createSupply(ctx) {
-    const config = ctx.config;
-    const util = ctx.util;
-    const comms = ctx.comms;
+// deps (module plan, stage 7a): { config, util, comms, gear, cave } - read when used.
+module.exports = function createSupply(deps) {
+    const config = deps.config;
+    const util = deps.util;
+    const comms = deps.comms;
     const p = config.potions;
     const s = config.supply;
     const merchant = config.merchant && config.characters[config.merchant] ? config.merchant : null;
@@ -77,7 +78,7 @@ module.exports = function createSupply(ctx) {
         if (s.keep.includes(item.name)) return false;
         if (item.name === ownElixir()) return false; // our elixir stays with us
         if (((s.keepByClass || {})[character.ctype] || []).includes(item.name)) return false;
-        if (ctx.gear && ctx.gear.isReserved(item)) return false; // wished gear stays with us
+        if (deps.gear && deps.gear.isReserved(item)) return false; // wished gear stays with us
         const def = G.items[item.name];
         if (def && def.type === "pot") return isOutgrownPotion(item.name);
         return true;
@@ -226,7 +227,7 @@ module.exports = function createSupply(ctx) {
     // decision 2026-11-20): we ask for a pickup at once, so everyone is stocked and emptied.
     comms.on("callpickup", function (data, from) {
         if (!merchant || from !== merchant) return;
-        if (ctx.cave && ctx.cave.inCave()) return; // the merchant can't come into the cave (v1.231.0)
+        if (deps.cave && deps.cave.inCave()) return; // the merchant can't come into the cave (v1.231.0)
         requestPickup(counts());
         util.log("supply", "merchant calls before its Ponty round - pickup requested", "yellow");
     });
