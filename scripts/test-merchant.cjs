@@ -53,6 +53,10 @@ function world(sc, calls) {
     const rec = (what, ret) => function () { calls.push([what].concat([].slice.call(arguments).map(a => typeof a === "object" ? JSON.stringify(a) : a))); return Promise.resolve(ret === undefined ? { success: true } : ret); };
     ["buy", "sell", "send_item", "bank_store", "bank_retrieve", "use_skill", "equip", "unequip", "xmove", "move", "trade", "trade_buy", "trade_sell",
         "join", "respawn", "accept_party_invite"].forEach(n => { g[n] = rec(n); });
+    // sell takes the item out like the server (a sellable item stayed in the bag and sellJunk never ended)
+    const recSell = g.sell;
+    g.sell = function (index, q) { const r = recSell.apply(null, arguments); const it = character.items[index];
+        if (it) { if ((it.q || 1) > (q || 1)) it.q -= (q || 1); else { character.items[index] = null; character.esize++; } } return r; };
     g.smart_move = function (d) {
         calls.push(["smart_move", JSON.stringify(d)]);
         if (d === "bank") { character.map = character.in = "bank"; character.bank = { items0: [] }; }

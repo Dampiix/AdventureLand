@@ -83,7 +83,11 @@ module.exports = function install(mer, deps) {
         const buys = (market.buy || []).concat(wishOrders);
         mer.wishKeys = {};
         wishOrders.forEach(function (o) { mer.wishKeys[o.item + "|" + (o.level || 0)] = true; });
+        // whileWished (2026-11-25): the order stands only while some fighter wishes the item (the green Lolipops are a
+        // stand-in for the orange ones; once nobody wishes them they are sold, so buying more would be a loss).
+        const wished = function (o) { return !o.whileWished || workshop.isReserved({ name: o.item, level: o.level || 0 }); };
         const stillNeeded = function (o) {
+            if (!wished(o)) return false;
             return o.dynamic ? workshop.needsCopy(o.item, o.level || 0) : (o.want || 1) - workshop.ownedCount(o.item) > 0;
         };
         const samePrice = function (o, listed) {
@@ -102,7 +106,7 @@ module.exports = function install(mer, deps) {
             delete mer.watched[s]; // taken down by us, not sold to
             parent.socket.emit("unequip", { slot: s });
             const why = !o ? "not on the list"
-                : !needed ? "we hold " + workshop.ownedCount(o.item) + " of " + (o.want || 1)
+                : !needed ? (!wished(o) ? "nobody wishes it" : "we hold " + workshop.ownedCount(o.item) + " of " + (o.want || 1))
                 : "price " + it.price + " -> " + o.price + ", listed again";
             util.log("merchant", "buy order for " + it.name + " taken down (" + why + ")", "white");
         });
@@ -127,7 +131,7 @@ module.exports = function install(mer, deps) {
                 return it && it.b && it.name === o.item && (it.level || 0) === level;
             });
             if (listed || character.gold < o.price) return; // a buy order must be funded
-            const missing = o.dynamic ? (stillNeeded(o) ? 1 : 0) : (o.want || 1) - workshop.ownedCount(o.item);
+            const missing = !wished(o) ? 0 : o.dynamic ? (stillNeeded(o) ? 1 : 0) : (o.want || 1) - workshop.ownedCount(o.item);
             if (missing <= 0) { delete mer.missingSince[o.item]; return; }
             // Only a shortage that lasts: while the workshop moves a stack between bag and bank
             // (crafting from 85 essences) the count read 0 for a moment and a buy order for 10

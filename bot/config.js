@@ -7,7 +7,7 @@
 // =====================================================================
 
 const config = {
-    version: "1.237.23-pilot",
+    version: "1.237.24-pilot",
 
     team: {
         // DampiixWar, Dampiix, DampiixPri, Dampiiix are an item archive: never list them (items would go to the merchant).
@@ -24,7 +24,8 @@ const config = {
     ],
 
     // Market stand (16 slots for both, 24 from merchant level 70, 30 from 80; prices per unit in gold):
-    //   buy:  { item, price, want, level? }  - a buy order for what is missing up to "want" (bag + bank); level default +0.
+    //   buy:  { item, price, want, level?, whileWished? } - a buy order for what is missing up to "want" (bag + bank);
+    //         level default +0; whileWished: only while a fighter wishes the item.
     //   sell: { item, price, keep, level? }  - everything above "keep" is offered (bank copies fetched); wished items never.
     market: {
         buy: [
@@ -37,7 +38,7 @@ const config = {
             { item: "seashell",      price:    900, want: 3000 }, // elixirs: 20 of each main-stat elixir need ~2,100
             { item: "essenceoffire", price: 140000, want: 10 }, // = a fire weapon (+ shop weapon, 20k at Leo)
             { item: "ololipop",      price: 150000, want: 4  }, // orange Lolipop Mace (a player pays 300k)
-            { item: "glolipop",      price:  80000, want: 4  }, // green one as a stand-in
+            { item: "glolipop",      price:  80000, want: 4, whileWished: true }, // green one as a stand-in, only while wished
             { item: "offeringp",     price: 350000, want: 2  }, // Primling
             { item: "crossbow",      price: 400000, want: 1  }, // the ranger's long-term bow
         ],
@@ -547,6 +548,9 @@ const config = {
             { name: "quiver", maxLevel: 2 },
             // Materials without a plan.
             "rattail", "smush",
+            // Full bank (player decision 2026-11-25): Crab Claw and Reed Scythe weapons +0; the green Lolipop Maces +0 only
+            // while no fighter wishes them (the warrior holds the orange ones, which stand above the green - isReserved).
+            "cclaw", "cave_reedscythe", "glolipop",
             "dawnwardaegis", // Skeletor drop, paladin-only shield
             "vitscroll", "lspores", // VIT stat scrolls (we use STR/INT/DEX; the shop sells them), Large Spores
         ],
