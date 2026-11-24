@@ -144,6 +144,9 @@ const SCENARIOS = [
     { name: "a member on us: team wait / spacing", sleeps: 25, monsters: [mon("m1", "gscorpion", 320, -1380, { target: "VizWar" })],
         players: [{ id: "VizWar", name: "VizWar", ctype: "warrior", x: 340, y: -1390, real_x: 340, real_y: -1390, hp: 9000, max_hp: 12000, party: "VizPri" }] },
     { name: "solo, nothing in sight", solo: true, sleeps: 20 },
+    // 2026-11-24: two team wipes by Fire Roamers next to the gscorpion spot - old and new must pick the same
+    { name: "a grown Fire Roamer passing by (free)", sleeps: 25, players: TEAM, monsters: [mon("m1", "gscorpion", 380, -1420), mon("f1", "fireroamer", 520, -1200, { level: 8 })] },
+    { name: "a grown Fire Roamer on the mage", sleeps: 25, players: TEAM, monsters: [mon("m1", "gscorpion", 380, -1420), mon("f1", "fireroamer", 450, -1300, { level: 8, target: "VizMage" })] },
     { name: "a chest after a kill", sleeps: 20, players: TEAM, chests: { c1: { x: 310, y: -1400, map: "desertland", items: 2, skin: "chest3" } } },
     { name: "member: following the leader", sleeps: 25, me: { name: "VizWar", id: "VizWar", ctype: "warrior" }, players: [{ id: "VizPri", name: "VizPri", ctype: "priest", x: 600, y: -1200, real_x: 600, real_y: -1200, hp: 6000, max_hp: 6000, party: "VizPri" }], monsters: [mon("m1", "gscorpion", 620, -1210, { target: "VizPri" })] },
 ];
