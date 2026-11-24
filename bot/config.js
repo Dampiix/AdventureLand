@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.235.2",
+    version: "1.235.6",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -575,7 +575,9 @@ module.exports = {
         // groupRule false (v1.233.1, player decision 2026-11-24): off - it judged 8 CGoos (rage 0, aggro 0.1, speed 9)
         // as one pull from the edge; the splash users check their pull live (mage Blaster packVerdict, warrior splash
         // check since 2026-11-22, Agitate via the team model). Aggressive kinds and rage zones keep their own rule.
-        spotCheck: { enabled: true, party: true, margin: 150, maxMargin: 150, watchMs: 3000, maxWaitMs: 30000, groupGap: 60, groupRule: false },
+        // aggroPack false (v1.235.4, player report + server code 2026-11-24): a whole spawn is judged as one pull only in a
+        // map rage zone - aggro is an attack on touch (32 px), rage how long a monster pursues; stoneworms come one by one.
+        spotCheck: { enabled: true, party: true, margin: 150, maxMargin: 150, watchMs: 3000, maxWaitMs: 30000, groupGap: 60, groupRule: false, aggroPack: false },
         // Learned hit factor (2026-11-22, iceroamers hit 2.3x what the formula says): every hit we take is compared
         // with attack x damage multiplier; from minHits hits of a kind on, the safety checks multiply its hits by
         // real / predicted (1 .. max). Sums are halved above keepHits (old hits fade). "/safety" lists the factors.
@@ -892,7 +894,7 @@ module.exports = {
             // member and route. They accept it only on that route and not fighting (events.acceptMagiport).
             magiport: { enabled: true, keepMp: 0.3, minDist: 600, bossRange: 800, tries: 3, retryMs: 8000, graceMs: 4000,
                 // Every team route since v1.235.2 (player decision): farm spots (at the edge) and any other route end (atEnd px).
-                travel: { enabled: true, minDist: 800, keepMp: 0.3, tries: 2, atEdge: 100, atEnd: 200 } },
+                travel: { enabled: true, minDist: 800, keepMp: 0.3, tries: 2, atEdge: 100, atEnd: 200, cooldownMs: 60000 } },
             // Blink on routes (v1.234.0, player decision 2026-11-24): on a path walk jump to the farthest step of the plan on
             // this map (next door or the goal) when it is at least minDist px away and our MP stays above keepMp after the
             // 1,600-MP cast; never in a fight or under the manual rules. No range limit on the server (test: 980 px).

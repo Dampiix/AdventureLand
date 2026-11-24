@@ -37,6 +37,7 @@ module.exports = function createTargeting(ctx) {
     const cfg = config.targeting;
     let farm = null;
     let nextPickAt = 0;
+    let huntBlockLogAt = 0; // v1.235.3: a hunt waiting for its blocked spot
     const crowdedUntil = {}; // monster -> timestamp: skip this guide choice until then
     let idleSince = 0;       // on the farm map without a free target since
 
@@ -1110,11 +1111,16 @@ module.exports = function createTargeting(ctx) {
         // None in sight: fine - except where the whole spawn comes anyway (aggressive or a rage zone, 2026-11-22):
         // judged with its count at level 1.
         const none = !seen.length;
-        if (none && !(joinsFights(def) || box.rage)) return { ok: true, why: "none in sight" };
+        // The whole spawn comes at once only in a map rage zone (v1.235.4, player report + server code 2026-11-24): a
+        // monster's aggro means it attacks a player it touches (32 px), rage how long it pursues - the stoneworms
+        // (aggro 1, rage 1, no rage zone) were judged as a pack of 4 although they come one by one.
+        // spotCheck.aggroPack true brings the old rule back (aggressive kinds judged as a pack everywhere).
+        const pack = box.rage || (gcfg.aggroPack === true && joinsFights(def));
+        if (none && !pack) return { ok: true, why: "none in sight" };
         const free = seen.filter(function (e) { return !e.target; });
         const levels = none ? [1] : seen.map(function (e) { return e.level || 1; });
         const lv = (none ? "none in sight, level 1 assumed" : "levels " + Math.min.apply(null, levels) + "-" + Math.max.apply(null, levels));
-        if (joinsFights(def) || box.rage) {
+        if (pack) {
             if (!none && !free.length) return { ok: true, why: "all " + seen.length + " busy" };
             const strongest = none ? { mtype: type, attack: def.attack, max_hp: def.hp, hp: def.hp, frequency: def.frequency, level: 1 }
                 : free.slice().sort(function (a, b) { return (b.attack || 0) - (a.attack || 0) || (b.max_hp || 0) - (a.max_hp || 0); })[0];
@@ -1417,7 +1423,10 @@ module.exports = function createTargeting(ctx) {
             strongSpots[farm.monster] = now;
             saveStrong();
             const what = strong ? "spot check: " + why : noneSeen[farm.monster].unsafe + " of " + noneSeen[farm.monster].seen + " in sight";
-            util.log("target", farm.monster + " too strong here (" + what + ") - blocked until the Cavalry is ready (~" + Math.max(1, Math.round((until - now) / 60000)) + " min), then reset", "orange");
+            // The ~10 min were only the fallback block when the Cavalry is ready already (v1.235.4): then the reset comes
+            // right away (cavalryPlan) and lifts the block.
+            util.log("target", farm.monster + " too strong here (" + what + ") - " + (cavalryNext() <= now ? "the Cavalry is ready: reset first" :
+                "blocked until the Cavalry is ready (~" + Math.max(1, Math.round((until - now) / 60000)) + " min), then reset"), "orange");
             idleSince = 0;
             win = null;
             nextPickAt = 0;
@@ -1541,7 +1550,14 @@ module.exports = function createTargeting(ctx) {
 
         // An open, safe Monster Hunt beats both the guide and a configured farm target;
         // the configured target only replaces the guide's choice.
-        const hunt = ctx.hunts ? ctx.hunts.target() : null;
+        // A hunt whose kind is blocked (too strong here, waiting for the Cavalry - or crowded) waits too (v1.235.3): the
+        // stoneworm hunt was picked again every 3 s, the spot check blocked it again, and the team stood idle there.
+        const huntPick = ctx.hunts ? ctx.hunts.target() : null;
+        const hunt = huntPick && !(crowdedUntil[huntPick.monster] > Date.now()) ? huntPick : null;
+        if (huntPick && !hunt && Date.now() - huntBlockLogAt > 5 * 60 * 1000) {
+            huntBlockLogAt = Date.now();
+            util.log("hunt", huntPick.monster + " hunt waits: the spot is blocked for " + Math.max(1, Math.round((crowdedUntil[huntPick.monster] - Date.now()) / 60000)) + " min - farming meanwhile", "white");
+        }
         if (hunt) {
             if (!farm || farm.monster !== hunt.monster || srcKind(farm) !== srcKind(hunt)) util.log("target", "farm target: " + hunt.monster + " (" + hunt.source + ")", "yellow");
             farm = hunt;

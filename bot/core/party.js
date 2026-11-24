@@ -90,6 +90,8 @@ module.exports = function createParty(ctx) {
             // dest: where a roaming boss was seen (a member's sighting) - members go there, not to its nearest spawn.
             event: event ? { name: event.name, join: !!event.join, monster: event.monster || null, dest: event.dest && typeof event.dest === "object" ? event.dest : null } : null,
             manual: !!(ctx.cave && ctx.cave.ownManual && ctx.cave.ownManual()), // /manual: members use the manual rules too (v1.231.1)
+            // The route end is only a leg (leaving spookytown, a via map), not the goal (v1.235.5).
+            leg: !!(typeof smart !== "undefined" && smart.moving && (ctx.travelLeg || ctx.travelVia)),
         });
     }
 
@@ -178,6 +180,23 @@ module.exports = function createParty(ctx) {
     // there by Magiport (v1.235.0, player decision 2026-11-24; classes.mage.magiport.travel). null for everyone else.
     // { p, edge }: on another map the route end itself (path walk, Blink stops outside the spot), on the spot's map
     // its nearest edge point (targeting.watchPoint).
+    // Already at the leader's farm spot (its edge or inside it) while the leader is still on its way (v1.235.5, player
+    // report 2026-11-24): the mage blinked ahead to the Giant Scorpions, then back to the leader's intermediate route end
+    // (an exit), walked back and came again. We stay at the spot while the leader's current route end is only a leg
+    // (lead.leg) or lies on this map; a route end on another map (e.g. Daisy) still takes us along.
+    function atLeaderSpot(lead) {
+        const tg = ctx.targeting;
+        if (!lead || !lead.moving || !lead.farm || lead.event || !tg || !tg.inSpotArea || !tg.watchPoint) return false;
+        const me = { map: character.map, x: character.real_x, y: character.real_y };
+        const edge = tg.watchPoint(lead.farm);
+        const here = tg.inSpotArea(me, lead.farm) || (!!edge && util.distanceTo(edge) <= 250);
+        if (!here) return false;
+        // The leader's route end: a leg, the spot itself, or a point next to it on this map (its own edge or approach).
+        // A real goal elsewhere (Daisy, another map) takes us along.
+        const d = lead.dest;
+        return !!(lead.leg || !d || tg.inSpotArea(d, lead.farm) ||
+            (d.map === character.map && edge && Math.hypot(d.x - edge.x, d.y - edge.y) < 500));
+    }
     function spotAhead(lead) {
         const tp = ((((config.classes || {}).mage || {}).magiport) || {}).travel || {};
         if (!tp.enabled || character.ctype !== "mage" || !lead || !lead.moving || !lead.dest || !lead.farm || lead.event) return null;
@@ -194,6 +213,7 @@ module.exports = function createParty(ctx) {
         const lead = leaderInfo();
         if (!lead || detached()) return false;
         if (loose && character.map === lead.map) return false;
+        if (atLeaderSpot(lead)) return false; // idleFollow holds us here (v1.235.5)
         const ahead = spotAhead(lead);
         if (ahead) {
             if (!ahead.edge) { moveTowards(ahead.p, "going ahead to " + ahead.p.map, true); return true; }
@@ -237,6 +257,11 @@ module.exports = function createParty(ctx) {
         }
         if (!lead) {
             util.status("waiting for " + leader, "white");
+            return true;
+        }
+        if (atLeaderSpot(lead)) {
+            if (is_moving(character) && typeof smart !== "undefined" && smart.moving) { try { stop("smart"); } catch (e) { /* not walking */ } }
+            util.status("waiting at the spot for " + leader, "white");
             return true;
         }
         const ahead = spotAhead(lead);

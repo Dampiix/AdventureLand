@@ -381,7 +381,10 @@ module.exports = function createMage(ctx) {
             if (live && (live.rip || util.distanceTo(live) <= (tcfg.minDist || 800))) return false;
             if (!live && p.map === character.map && Math.hypot(p.x - character.real_x, p.y - character.real_y) <= (tcfg.minDist || 800)) return false;
             const t = travelTries[n];
-            return !(t && t.key === key && (t.n >= (tcfg.tries || 2) || now - t.at < (mpc.retryMs || 8000)));
+            // At most one travel port per member within cooldownMs (v1.235.6, player report: the warrior, ported to the
+            // stoneworm spot, still followed the leader back, and every new route end of the leader allowed new tries).
+            if (t && now - t.at < (tcfg.cooldownMs || 60 * 1000)) return false;
+            return !(t && t.key === key && t.n >= (tcfg.tries || 2));
         }).sort(function (a, b) {
             const rank = function (n) { const t = info[n].type; return tanks.includes(t) ? 0 : healer(t) ? 2 : 1; };
             return rank(a) - rank(b);

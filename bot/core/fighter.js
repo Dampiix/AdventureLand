@@ -357,6 +357,7 @@ module.exports = function createFighter(ctx, cls) {
     function travel(destination, label) {
         const goal = destination; // the real goal: a failed walk marks it, not the waypoint (2026-11-22 review)
         destination = viaFor(destination);
+        ctx.travelVia = destination !== goal; // a via waypoint is a leg too (v1.235.5, party "lead" field leg)
         util.status(label, "yellow");
         if (is_moving(character) && travelGoal && !sameGoal(travelGoal, destination) && typeof smart !== "undefined" && smart.moving) {
             stoppedOnPurpose = true;
@@ -1701,8 +1702,11 @@ module.exports = function createFighter(ctx, cls) {
                 }
                 let leg = null;
                 try { leg = leaveLeg(args[0]); } catch (e) { /* walk as asked */ }
+                // A leg is not the goal (v1.235.5): the leader broadcasts it as such (party "lead" field leg) - members
+                // already at the farm spot stay there instead of walking back to it.
+                ctx.travelLeg = !!leg;
                 const first = leg ? run([leg]) : Promise.resolve();
-                return first.then(function () { return run(args); }).then(function (r) { rageWallReset(); return r; });
+                return first.then(function () { ctx.travelLeg = false; return run(args); }).then(function (r) { rageWallReset(); return r; });
             };
         }
         W.can_move = function (m, based) {
