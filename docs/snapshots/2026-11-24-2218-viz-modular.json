@@ -1,0 +1,55 @@
+{
+  "account": "viz",
+  "taken": "2026-11-24T22:17:57Z",
+  "purpose": "After the modular rebuild stages 2-7 (no behaviour change intended): compare with the 15:47Z baseline",
+  "compareWith": "2026-11-24-1547-viz-team-magiport-start.json (15:46:43Z, bot 1.236.1)",
+  "bot": "fighters 1.237.18-pilot, merchant 1.237.19-pilot (modular-pilot branch)",
+  "party": ["VizPri", "VizWar", "VizMage"],
+  "farm": "gscorpion (guide, team model) in desertland; hunts on, bosses on (merchant scouts); two team wipes by Fire Roamers at 20:35Z and 20:40Z",
+  "VizPri": {
+    "level": 69, "xp": 192838076, "max_xp": 240000000, "gold": 18884,
+    "elixir": ["elixirluck", "2026-11-25T00:00:37Z"],
+    "stats": { "hp": 6045, "mp": 5145, "attack": 813, "heal": 1935, "frequency": 0.988, "armor": 123, "resistance": 244, "str": 60, "int": 266, "dex": 31, "vit": 55, "speed": 55, "range": 206, "goldm": 1.2, "xpm": 1.66, "luckm": 1.49, "courage": 2, "mcourage": 14, "pcourage": 2 },
+    "gear": { "mainhand": "staffofthedead+7", "offhand": "wbook0+2", "helmet": "wcap+8 (int)", "chest": "wattire+8 (int)", "pants": "wbreeches+8 (int)", "shoes": "wshoes+8 (int)", "gloves": "wgloves+8 (int)", "cape": "horsecape+0 (int)", "belt": "intbelt+2", "amulet": "intamulet+3", "ring1": "intring+3", "ring2": "intring+2", "earring1": "intearring+3", "earring2": "intearring+3", "orb": "orbg+1" },
+    "inv": ["tracker", "mpot1 x105", "hpot1 x300", "elixirluck x4"]
+  },
+  "VizWar": {
+    "level": 73, "xp": 281997288, "max_xp": 510000000, "gold": 29212,
+    "elixir": ["elixirstr0", "2026-11-24T23:37:12Z"],
+    "stats": { "hp": 12221, "mp": 1315, "attack": 1125, "frequency": 0.895, "armor": 432, "resistance": 204, "str": 321, "int": 40, "dex": 41, "vit": 61, "speed": 69, "range": 31, "goldm": 1.1, "xpm": 1.26, "luckm": 1.17, "courage": 16, "mcourage": 2, "pcourage": 2 },
+    "gear": { "mainhand": "ololipop+7", "offhand": "ololipop+7", "helmet": "helmet1+8 (str)", "chest": "mcape+7 (str)", "pants": "pants1+7 (str)", "shoes": "shoes1+7 (str)", "gloves": "gloves1+8 (str)", "cape": "cape+0 (str)", "belt": "strbelt+3", "amulet": "stramulet+4", "ring1": "strring+3", "ring2": "strring+2", "earring1": "strearring+3", "earring2": "strearring+3", "orb": "orbg+1" },
+    "inv": ["tracker", "mpot1 x118", "hpot1 x270", "fireblade+7", "fireblade+7", "elixirstr0 x4"]
+  },
+  "VizMage": {
+    "level": 68, "xp": 120294235, "max_xp": 200000000, "gold": 32754,
+    "elixir": ["elixirint0", "2026-11-24T23:36:07Z"],
+    "stats": { "hp": 4087, "mp": 4675, "attack": 1277, "frequency": 0.873, "armor": 93, "resistance": 254, "str": 30, "int": 247, "dex": 33, "vit": 41, "speed": 51, "range": 221, "goldm": 1.15, "xpm": 2.66, "luckm": 1.22, "courage": 2, "mcourage": 3, "pcourage": 2, "note": "Blaster (gstaff+3) in hand at the time" },
+    "gear": { "mainhand": "gstaff+3", "helmet": "helmet+8 (int)", "chest": "coat+8 (int)", "pants": "pants+8 (int)", "shoes": "shoes+8 (int)", "gloves": "gloves+8 (int)", "cape": "horsecape+0 (int)", "belt": "intbelt+2", "amulet": "intamulet+3", "ring1": "intring+2", "ring2": "ringsj+2", "earring1": "intearring+3", "earring2": "intearring+3", "orb": "orbg+1" },
+    "inv": ["tracker", "hpot1 x300", "mpot1 x289", "elixirint0 x4", "firestaff+7", "wbook0+2"]
+  },
+  "VizMerch": {
+    "level": 56, "xp": 11656262, "max_xp": 20000000, "gold": 99970448,
+    "where": "main -120,-112, stand open; no trade trip, no Ponty round",
+    "stand": ["snakefang @3,500,000", "leather x4 @120,000", "BUY cloverstud @15,000", "BUY gslime x99 @60", "BUY frogt x8 @10", "BUY crossbow @400,000", "BUY essenceoffire x5 @140,000", "BUY spores x20 @360"],
+    "inv": ["stand0", "dexearring+2", "hpot1 x900", "mpot1 x900", "elixirdex0 x50", "elixirstr0 x43", "elixirint0 x49", "elixirluck x24", "intamulet+2", "intamulet+2", "dexamulet+3", "dexamulet+2", "strring+1", "strearring+3", "strearring+1", "scroll1", "scroll0", "intearring+2", "intearring+2", "intearring+1", "intearring+1", "dexring+1", "dexring+2", "dexbelt+2", "strbelt+2", "intring+1", "stramulet+1"],
+    "trades_in_window": ["2026-11-24T20:07:34Z sold vitearring+2 to ArchMerch for 10,000,000", "2026-11-24T21:48:29Z bought pants1+0 from Ratchant for 95,472"]
+  },
+  "boss_kills": {
+    "source": "tracker (socket 'tracker' -> monsters), per character, read 2026-11-24T22:17:57Z",
+    "VizPri": { "phoenix": 322, "mvampire": 136, "fvampire": 51, "jr": 4, "greenjr": 4, "skeletor": 83, "snowman": 5, "rgoo": 6, "fireroamer": 12 },
+    "VizWar": { "phoenix": 367, "mvampire": 136, "fvampire": 51, "jr": 2, "greenjr": 2, "skeletor": 83, "snowman": 6, "rgoo": 6, "fireroamer": 10 },
+    "VizMage": { "phoenix": 88, "mvampire": 48, "fvampire": 25, "jr": 4, "greenjr": 1, "skeletor": 43, "snowman": 1, "fireroamer": 1 },
+    "since_1547Z_VizPri": { "phoenix": 23, "mvampire": 14, "fvampire": 12, "jr": 1, "greenjr": 1, "skeletor": 16 }
+  },
+  "bank_changes_since_1547Z": {
+    "source": "MCP get_bank (last account snapshot, freshness unverified, read 2026-11-24T22:18:17Z)",
+    "up": ["monstertoken 13 -> 29", "gem1 1224 -> 1279", "stormfeather 3657 -> 3932", "offeringp 1 -> 6", "marketparcel 49 -> 55", "armorbox 8 -> 12", "voidthread 56 -> 67", "essenceofether 14 -> 16", "ashleaf 100 -> 140", "frostscale 0 -> 50", "embercore 36 -> 39", "frostcore 5 -> 9"]
+  },
+  "summary": {
+    "hours": 6.52,
+    "team_xp": 545906370, "team_xp_per_hour": 83.7e6,
+    "xp": { "VizPri": 115771460, "VizWar": 125109800, "VizMage": 305025110 },
+    "gold_all_characters_delta": 9336708, "gold_per_hour": 1.43e6, "gold_note": "includes the 10M Vitality Earring +2 sale",
+    "boss_kills_VizPri": 67, "boss_kills_per_hour": 10.3
+  }
+}
