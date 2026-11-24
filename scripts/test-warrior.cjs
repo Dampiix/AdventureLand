@@ -24,13 +24,13 @@ function setup(scenario) {
         items: { fireblade: { type: "weapon", wtype: "sword", attack: 60, ability: "burn" }, swordofthedead: { type: "weapon", wtype: "sword", attack: 70 },
             ololipop: { type: "weapon", wtype: "mace", attack: 40, explosion: 30 } },
         classes: { warrior: { damage_type: "physical", mainhand: { sword: {}, mace: {} } } },
-        maps: { desertland: { monsters: [{ type: "gscorpion", boundary: [0, 0, 600, 600], count: 6 }] } },
+        maps: { desertland: { monsters: [{ type: "gscorpion", boundary: sc.dense ? [100, 100, 400, 400] : [0, 0, 600, 600], count: 6 }] } }, // dense: splash pays
         conditions: {},
     };
     g.character = Object.assign({ name: "VizWar", ctype: "warrior", level: 73, hp: 12000, max_hp: 12221, mp: 1295, max_mp: 1295,
         x: 300, y: 300, real_x: 300, real_y: 300, map: "desertland", speed: 69, range: 31, attack: 1092, armor: 432, resistance: 204,
         courage: 16, mcourage: 2, pcourage: 2, rip: false, s: {}, esize: 10,
-        items: [{ name: "swordofthedead", level: 7 }, { name: "swordofthedead", level: 7 }, null],
+        items: [{ name: "swordofthedead", level: 7 }, { name: "swordofthedead", level: 7 }, null].concat(sc.maces ? [{ name: "ololipop", level: 7 }, { name: "ololipop", level: 7 }] : []),
         slots: { mainhand: { name: "fireblade", level: 7 }, offhand: { name: "fireblade", level: 7 } } }, sc.me || {});
     g.parent = { entities: sc.entities || {}, distance: (a, b) => Math.max(0, Math.hypot(a.x - b.x, a.y - b.y) - 20),
         calculate_item_properties: it => ({ explosion: (G.items[it.name] || {}).explosion || 0, attack: (G.items[it.name] || {}).attack || 0 }) };
@@ -138,6 +138,12 @@ const SCENARIOS = {
         party: PARTY, moving: true,
         run: c => c.always(),
         expect: calls => calls.some(c => c[0] === "skill" && c[1] === "charge"),
+    },
+    "splash stream puts the Lolipops on": {
+        party: PARTY, players: { VizPri: Object.assign({}, PRI, { hp: 5900 }) }, dense: true, maces: true,
+        entities: { a: M("a", 400, 300), b: M("b", 420, 330), c: M("c", 380, 260) },
+        run: c => c.support(),
+        expect: calls => calls.some(c => c[0] === "equip" && /mainhand/.test(c[1])) && !calls.some(c => c[0] === "log" && /before initialization/.test(c[1])),
     },
     "a death after an Agitate blocks the killer's kind": {
         party: PARTY, players: { VizPri: Object.assign({}, PRI, { hp: 5900 }) },

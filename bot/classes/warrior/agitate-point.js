@@ -36,11 +36,11 @@ module.exports = function install(w, deps) {
             // Both maces in ONE equip_batch call (v1.223.6, player request): before, the mainhand went on, the warrior
             // waited for the server, and only then the offhand. Each swapped-out weapon lands on its mace's bag slot,
             // so the second index stays valid.
-            const w = w.splashWeapons();
+            const maces = w.splashWeapons(); // "w" in the old single file - renamed: w is the warrior's shared state here
             const off = game.me().slots && game.me().slots.offhand;
             const batch = [];
-            if (w[0]) batch.push({ num: w[0].num, slot: "mainhand" });
-            if (w[1] && (!off || game.data().items[off.name].type === "weapon")) batch.push({ num: w[1].num, slot: "offhand" });
+            if (maces[0]) batch.push({ num: maces[0].num, slot: "mainhand" });
+            if (maces[1] && (!off || game.data().items[off.name].type === "weapon")) batch.push({ num: maces[1].num, slot: "offhand" });
             if (batch.length) await deps.gear.equipBatch(batch);
             util.log("warrior", "splash weapons on: " + ["mainhand", "offhand"].map(function (s) {
                 const i = game.me().slots[s]; return i ? i.name + " +" + (i.level || 0) : "-";
