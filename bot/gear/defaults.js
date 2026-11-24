@@ -8,5 +8,6 @@ module.exports = {
         maxWishes: 12,  // class chains alone are up to 9; a longer list shifts less (the merchant works through it one by one)
         // Class wishes for slots the guide leaves empty: the chains of gearPlan.wishes (only the first step not reached).
         classWishesEnabled: true,
+        classWishes: {}, // fixed wishes per class ("all" for every class): { warrior: [{ name, level }] } - none set now
     },
 };

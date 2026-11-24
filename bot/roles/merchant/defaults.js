@@ -27,7 +27,9 @@ module.exports = {
         // Merchant's Luck on ourselves, our fighters and (strangers) every other non-merchant player in reach; ours is
         // renewed below refreshBelowMs, strangers' strong mluck is left alone.
         mluck: { enabled: true, strangers: true, refreshBelowMs: 30 * 60 * 1000, mpReserve: 100 },
-        pontyRound: { prepMaxMs: 8 * 60 * 1000, hopTimeoutMs: 2 * 60 * 1000 },
+        // leaderFreshMs: the leader's beat must be this fresh (it makes the hops); prepSettleMs: quiet time before leaving;
+        // bankRetries: bank-and-back visits when the bag runs full at one Ponty.
+        pontyRound: { prepMaxMs: 8 * 60 * 1000, hopTimeoutMs: 2 * 60 * 1000, leaderFreshMs: 2 * 60 * 1000, prepSettleMs: 20 * 1000, bankRetries: 2 },
         // Workshop rhythm: after a round that did something the next one comes after this; a round that only found locked
         // jobs tries the next at once; 30 s only when there is nothing to do.
         workshopFastMs: 3000,

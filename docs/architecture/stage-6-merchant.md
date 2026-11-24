@@ -27,7 +27,7 @@ start-up statements in the old order and the same interface. The facades stay in
 |---|---|
 | `common.js` | the helpers before the first section: team and online checks, NPC positions, walking to an NPC, boost, bag index, main stat (18) |
 | `wishes.js` | the fighters' wishes and deliveries: wish list, delivered marks, earmarks, delivery, the merchant's own wishes, drop shortages (21) |
-| `bank.js` | bank, develop (one wish: bag -> bank -> upgrade) (9) |
+| `bank.js` | the bank snapshot and fetching copies; spending per wish: pauses, budget per wish, gold kept, paying (9). `develop` (one wish: bag -> bank -> upgrade) landed in `grace.js` |
 | `budget.js` | income-based budget for gear goals, risk tiers (12) |
 | `crafting.js` | crafting (8) |
 | `compound.js` | compound (4) |

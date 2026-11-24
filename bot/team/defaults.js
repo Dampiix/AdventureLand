@@ -16,7 +16,8 @@ module.exports = {
         // The highest gold bonus opens chests (fixed: a name); others only if it is away (awayRange px) or after fallbackMs.
         chestOpener: { enabled: true, fixed: null, awayRange: 400, fallbackMs: 10000 },
         // Ranged fighters keep out of the monsters' melee reach (+margin px) while a tank class is near.
-        spacing: { enabled: true, minOwnRange: 100, margin: 50, gap: 130, step: 80, everyMs: 700 },
+        // holdGoalMs: keep a spacing step's goal this long while walking; slack: px a member may stand too close.
+        spacing: { enabled: true, minOwnRange: 100, margin: 50, gap: 130, step: 80, everyMs: 700, holdGoalMs: 2500, slack: 15 },
         // Easy targets members pick themselves near the leader; harmlessRatio: hits for at most this share of our max HP.
         spread: { enabled: true, maxHits: 3, maxDamageRatio: 0.05, harmlessRatio: 0.02 },
     },

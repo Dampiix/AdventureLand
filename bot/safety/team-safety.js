@@ -30,7 +30,7 @@ module.exports = function install(tgt, deps) {
 
     // Monsters the guide doesn't list at all (e.g. goos once we outgrew them) are not
     // "unsafe", just unknown: harmless if every fighter survives 20+ of their hits
-    // (team stats from bot_events, the game's damage formula).
+    // (team stats from bot_team_stats, the game's damage formula).
     // attack (optional): a live monster's real attack instead of the level-1 value.
     // n (optional, 2026-11-22): how many come at once - above 3 the hits count with the full
     // mobbing multiplier (util.mobbing): nothing is harmless in a mob.

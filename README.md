@@ -3,20 +3,20 @@
 One bot for a whole Adventure Land team: up to three fighters and one merchant, all running the same code.
 The fighters farm, hunt bosses and level up; the merchant supplies them, sells, banks, trades with other players and upgrades their gear.
 
-> **Version:** `1.237.26-pilot` (`bot/config.js` → `version`) · **Teams:** `Dmpx…` (main account) and `Viz…` (second account) · **Code:** `bot/` → in-game CODE slots 20–41
+> **Version:** `1.237.27-pilot` (`bot/config.js` → `version`) · **Teams:** `Dmpx…` (main account) and `Viz…` (second account) · **Code:** `bot/` → in-game CODE slots 20–44
 
 ## Repository
 
 | Folder | Content |
 |---|---|
-| [`bot/`](bot/) | The bot: `main.js`, `config.js`, `core/` (fighter, targeting, party, events, hunts, drops, gear, supply), `classes/`, `roles/` (merchant, workshop), `lib/` (util, comms) |
+| [`bot/`](bot/) | The bot (modular since stages 1-7, see [§6](#6-architecture)): `main.js`, `config.js` + a `defaults.js` per area, `core/` (the targeting and events facades), `combat/` (the fighter loop), `safety/`, `farming/`, `encounters/`, `events/`, `team/` (party, team stats, team view, formation, magiport), `travel/`, `cave/`, `supply/`, `gear/`, `classes/<class>/`, `roles/merchant/`, `roles/workshop/`, `lib/` (util, comms, bus, game layer) |
 | [`scripts/`](scripts/) | `deploy-bot.mjs` (uploads the bot into its CODE slots), gear catalog and gear plan generators |
 | [`docs/gear-guide/`](docs/gear-guide/) | Gear plan and gear progression guide (HTML/PDF) with the source charts |
 | [`docs/gear-catalog/`](docs/gear-catalog/) | Item data for the gear catalog |
 | [`docs/snapshots/`](docs/snapshots/) | Account snapshots (levels, gear, gold) and stats pictures over time |
 | [`docs/research/`](docs/research/) | Comparisons with other bots |
 | [`docs/headless/`](docs/headless/) | Plan for an own headless client |
-| [`docs/architecture/`](docs/architecture/) | Module plan for the modular rebuild (`module-plan.md`) and the interactive module map (`module-map.html`) |
+| [`docs/architecture/`](docs/architecture/) | The modular rebuild: module plan (`module-plan.md`), one document per stage (`stage-*.md`), the team view (`team-view.md`) and the interactive module map (`module-map.html`) |
 
 File paths in this README are relative to `bot/` unless they start with another folder.
 
@@ -83,6 +83,8 @@ Type these in the chat box of a game client that runs the bot. The game passes u
 | `/dps` | leader or solo fighter | Print the damage meter now ([§16](#16-party-play)). |
 | `/kills` | leader or solo fighter | Kills by target at death over the last 10 min, with the average luck the game rolled them with (v1.217.1, for the luck catch). Logged on its own every 10 min (`kills` tag, also in the journal). |
 | `/safety [map]` | leader | Log every member's guide verdict and the team model's verdict for every monster on the map. |
+| `/manual [on|off]` | leader | The player walks the leader without stopping its code; the members follow ([§17](#17-events-and-world-bosses)). Without an argument it toggles. |
+| `/team` | any of our clients | What the team view shows from this character: every teammate in this client, its age, server, map, HP, farm, goal, event and status, plus how many messages went directly and how many through the server. |
 
 Boss commands answer in chat with `[bot] …` (for example `only the leader (X) searches`).
 
@@ -296,10 +298,11 @@ budget: goals Xk, ladder Yk, shopping 0k (24h: in G - fighters F, sales/other S;
 
 `main.js` runs on every character. It loads the config, finds the character's role and team, and loads the modules for that role:
 
-- **fighter:** party, hunts, events, drops, class module, targeting, gear, supply, then the fighter loop;
-- **merchant:** workshop, then the merchant loop.
+- **fighter:** party, team stats, cave, hunts, events, drops, class module, targeting, gear, supply, then the fighter loop;
+- **merchant:** workshop, scout, then the merchant loop;
+- **everyone:** the bus, comms and its entry in the team view.
 
-Only `main.js` calls `require_code()`. Every other module is a factory that receives a shared context (`ctx`), so nothing is evaluated twice.
+Only `main.js` calls `require_code()`. Every other module is a factory: it gets either a view of the modules it uses (`moduleView(ctx, names)`, read and written through to `ctx`; `scripts/check-views.cjs` keeps the lists complete) or an explicit deps object. A slot whose entry file loads others with a relative `require("./x.js")` is a bundle; small stateless helpers (`lib/game.js`, `team/team-view.js`, `safety/spots.js`) may ride along in several bundles - they keep their state on the page, not in the module.
 
 | File | Slot | Purpose |
 |---|---|---|
@@ -315,7 +318,7 @@ Only `main.js` calls `require_code()`. Every other module is a factory that rece
 | [`classes/priest/`](bot/classes/priest/) | 29 `bot_class_priest` | Priest (bundle, stage 2): `priest.js` - the class, `heal.js` (heal, Party Heal), `absorb.js`, `luck-catch.js`, `revive.js`, `curse.js`, `dark-blessing.js` |
 | [`roles/merchant/`](bot/roles/merchant/) | 30 `bot_merchant` | Merchant main loop - `merchant.js` is the facade (bundle, stage 6b: the loop, work, survive, canSupply) of stand, fishing, selling (NPC sales, potion restock), elixirs, delivery, bank-trips, ponty-round, sell-to (trade trips), mluck; the parts share one internal state `mer` |
 | [`roles/merchant/scout.js`](bot/roles/merchant/scout.js) | 40 `bot_scout` | The merchant's boss search and safe walking (deps: config, util, comms) |
-| [`team/party.js`](bot/team/party.js) | 31 `bot_party` | Invites, leader broadcast, following, team goal (bundle, stage 4a: with `safety/spots.js`; reads boss, search and manual from the bus) |
+| [`team/party.js`](bot/team/party.js) | 31 `bot_party` | Invites, leader broadcast, following, team goal (bundle, stage 4a: with `safety/spots.js` and `team/team-view.js`; reads boss, search and manual from the bus) |
 | [`farming/hunts.js`](bot/farming/hunts.js) | 32 `bot_hunts` | Monster Hunts and Daisy trips (stage 3c: explicit deps config, util, comms, party, targeting, drops) |
 | [`gear/`](bot/gear/) | 33 `bot_gear` | Fighter wishes and equipping - `gear.js` is the facade (bundle, stage 7a: tick, reserved items) of wishes, equip, luck-swap, weapons, value; shared state `gr` |
 | [`roles/workshop/`](bot/roles/workshop/) | 34 `bot_workshop` | Merchant: upgrades, gear goals, weapons, materials, pots, Ponty - `workshop.js` is the facade (bundle, stage 6a: one per character, the main step) of common, wishes, bank, budget, crafting, compound, dismantle, material-goals, exchange, grace, gear-goals, off-plan-armor, better-weapons, scrolls, ponty; the parts share one internal state `wks` |
@@ -324,6 +327,7 @@ Only `main.js` calls `require_code()`. Every other module is a factory that rece
 | [`farming/drops.js`](bot/farming/drops.js) | 37 `bot_drops` | Drop farming and spot gold (deps: config, util, comms, bus, party, targeting) |
 | [`classes/warrior/`](bot/classes/warrior/) | 38 `bot_class_warrior` | Warrior (bundle, stage 2): `warrior.js` (class, hooks, Hard Shell, War Cry, Cleave, Stomp), `common.js`, `protect.js` (Taunt, protective Agitate), `mobility.js` (Charge, Dash), `agitate-mode.js`, `agitate-point.js`, `agitate-stream.js`, `agitate.js` (pack tick), `splash.js`, `escape.js`, `sword-swap.js` - the Agitate parts share one internal state |
 | [`classes/rogue/`](bot/classes/rogue/) | 39 `bot_class_rogue` | Rogue (bundle, stage 2): `rogue.js`, `swiftness.js`, `stealth.js` (Assassin's Smoke, hiding), `fanofknives.js` (Knife Belt), `strikes.js` (Quick Stab/Punch, Mental Burst, Poisonous Touch) |
+| [`cave/cave.js`](bot/cave/cave.js) | 41 `bot_cave` | Cave of Many Dreams, manual mode and `/manual` ([§17](#17-events-and-world-bosses)); deps: config, util, comms, bus, party |
 | [`lib/bus.js`](bot/lib/bus.js) | 42 `bot_bus` | The bus (stage 4a): state a lower module reads without calling a higher one (boss, search, manual, teamWaitAt, memberLuck) |
 | [`team/team-stats.js`](bot/team/team-stats.js) | 43 `bot_team_stats` | Every fighter's combat stats for the team model (stage 4a, out of events); a teammate in our client counts live from its team view entry (step 2) |
 | [`team/team-view.js`](bot/team/team-view.js) | 44 `bot_team_view` | The team view (docs/architecture/team-view.md): every bot publishes its entry (live game object, what it is doing) in the client's team registry; `/team` shows them |
@@ -1147,12 +1151,12 @@ The leader uses it to weigh drop spots ([§19](#19-drop-farming)).
 |---|---|
 | `workshop.bruteForce` | Only its `incomeShare` is left: the ladder pot that pays the material goals. The weapon ladder and the stock upgrades were removed in v1.212.0 (all their items are on `dismantle.names`). |
 | `workshop.grace` | Off; all risk floors are 0, so every step is tried. |
-| `betterWeapons.names` | Only used for classes without a weapon list (all four of ours have one). |
+| `betterWeapons.names` | Only used for classes without a weapon list (every class in `gearPlan.weapons` has one). |
 | `gearGoals.budget.extra`, `bruteForce.extra`, `grace.extra` | None since 2026-11-24 00:00 UTC: every pot started from 0 again without an extra (`budget.resetAt`, v1.229.2, player decision). Before: a reset at 2026-11-23 18:38 UTC with 10M each (v1.226.3). |
 | `classes.warrior.dash` | Off. |
 | `events.farmBosses` | Empty: no nonstop boss hunting. |
 | `cavalry.targets` | Empty: no nuking for loot. |
-| `hunts.enabled` | Off during the warrior's solo phase. |
+| `hunts.enabled` | On (`farming/defaults.js`); set it to `false` in config.js for a solo phase (see the team switch table). |
 | `combat.dangerShare` | Not in config; the code default (1) applies. |
 | `party.leash` | No follow or kite leash any more. Read only by the warrior's Agitate (gap steps, stream walks, catching up) and by the rage-zone check: a member with the leader within 300 px judges a zone with the team model ([§11](#11-safety-checks)). |
 | Fixed thresholds | Priest Curse (5 hits), paladin Smash (2 hits) and Guardian's Oath (own HP > 50 %) are in the code, not the config. |

@@ -1,6 +1,6 @@
 # Pilot: the mage as modules (plan, 2026-11-24)
 
-Status: **plan for discussion, nothing built.** Part of [module-plan.md](module-plan.md), step 1 of "Order".
+Status: **built and live (2026-11-24)** - see "Result" below. Part of [module-plan.md](module-plan.md), step 1 of "Order".
 
 ## Goal
 

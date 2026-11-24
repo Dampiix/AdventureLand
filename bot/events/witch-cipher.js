@@ -23,6 +23,7 @@ module.exports = function install(evs, deps) {
         });
         return ev ? { at: ev.at, until: ev.at + gatherMs } : null;
     }
+    // The ingredient to farm now: { ingredient, list, until, at } while the gathering window is open, else null.
     function cipherFarm() {
         const win = cipherWindow();
         if (!win) { evs.cipherLogged = null; return null; }

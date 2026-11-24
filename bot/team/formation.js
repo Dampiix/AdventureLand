@@ -115,6 +115,9 @@ module.exports = function install(ftr, deps) {
         }
         return true;
     }
+    // A healer leader stays with a member under attack instead of walking on to the next spot
+    // (2026-11-19: the priest left for the arctic bees, the warrior left the mummies alone and
+    // died). Moves into heal range; heals go on as usual (cls.support).
     function coverMembers() {
         if (!party.enabled || !party.isLeader) return false;
         const heal = G.skills.heal;

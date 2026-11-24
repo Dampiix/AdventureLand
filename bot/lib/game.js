@@ -1,9 +1,10 @@
 // =====================================================================
 // lib/game.js - the game layer (module plan): the only place a module should touch the game. This is the browser
 // version (Steam / web client); a headless client later implements the same names.
-// First part (pilot steps 2-3): our own character's HP/MP, skills and weapon (from util.js), plus thin wrappers for
-// what the mage's skill modules need. No logic here - every function is a plain call into the client.
-// Stateless, so a bundle may carry its own copy.
+// Our own character's HP/MP, skills and weapon, thin wrappers around client calls (pilot steps 2-3, stages 2-3b), plus
+// the page-level helpers: hook (wrap a client function once), onSocket (one socket listener per key), teamRegistry and
+// serverName (team view). No game logic here. It keeps no state of its own - what it keeps lives on the page or window
+// (named keys, safe across reloads) - so a bundle may carry its own copy.
 // =====================================================================
 
 function hpRatio() { return character.hp / character.max_hp; }

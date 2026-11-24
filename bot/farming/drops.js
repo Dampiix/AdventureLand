@@ -73,7 +73,7 @@ module.exports = function createDrops(deps) {
     //   normal roll: the luck of the monster's target at death (kill log by target, last 10 min: the luck catcher's
     //                share and the tank's), plus
     //   bonus rolls: (bonus - 1) x each member's contribution share x its own luck (damage meter, last 5 min).
-    // Members report their luckm with the goldm message (fighter.js); a member without a fresh report counts 1.
+    // Members report their luckm with the goldm message (combat/chests.js; live from the team view in our client); a member without a fresh report counts 1.
     // Heal points count as contribution on the server too, the meter sees damage only - the priest's bonus share
     // comes out a little small (the estimate errs low).
     function luckOfMember(name) {

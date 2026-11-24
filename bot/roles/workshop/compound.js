@@ -1,5 +1,5 @@
 // =====================================================================
-// roles/workshop/compound.js - compounding spare copies.
+// roles/workshop/compound.js - compounding spare copies (developCompound; the automatic pass: material-goals.js autoCompound).
 // Part of bot_workshop (module plan, stage 6): moved verbatim from the old single-file roles/workshop.js. The parts
 // share one internal state (wks: wishes, bank snapshot, budgets, blocks, caches) and call each other through wks;
 // outside dependencies come in deps (config, util, comms).

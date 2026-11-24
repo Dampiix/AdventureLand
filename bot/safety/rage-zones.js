@@ -90,6 +90,8 @@ module.exports = function install(tgt, deps) {
         const v = zoneVerdict(z);
         return v.ok ? null : { type: z.type, b: z.b, why: v.why };
     }
+    // The failing rage zone that hitting e would take us into (e, our stand point, or the straight way
+    // there lies in it), or null.
     function rageBlocks(e) {
         if (rcfg.enabled === false) return null;
         const me = util.xy(character), stand = tgt.standPoint(e), at = util.xy(e);

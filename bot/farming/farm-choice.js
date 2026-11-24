@@ -39,6 +39,10 @@ module.exports = function install(tgt, deps) {
         if (unlisted && !tgt.harmless(monster)) return "the team (" + monster + " unknown to the guide, not harmless)";
         return null;
     }
+    // Like objector(), but the spot we farm right now is only given up when an
+    // objection lasts objectionGraceMs: a guide verdict near the edge flips with HP,
+    // buffs and gear, and each flip used to send the team across the map. A death
+    // there still counts at once.
     function lastingObjector(monster, own) {
         const who = objector(monster, own);
         if (!who) { delete tgt.objectedSince[monster]; return null; }

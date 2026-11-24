@@ -2,7 +2,7 @@
 // gear/value.js - the value of gear: XP per hour, power from stats and attack, the gain of a piece.
 // Part of bot_gear (module plan, stage 7a): moved verbatim from the old single-file core/gear.js. The parts share
 // one internal state (gr: wishes, the luck swap, held weapons, timers) and call each other through gr; outside
-// dependencies come in deps (config, util, comms, supply, WEARABLE).
+// dependencies come in deps (config, util, comms, WEARABLE).
 // =====================================================================
 
 module.exports = function install(gr, deps) {

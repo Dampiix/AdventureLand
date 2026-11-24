@@ -1,8 +1,8 @@
 // =====================================================================
 // roles/merchant/elixirs.js - elixirs for the team.
 // Part of bot_merchant (module plan, stage 6b): moved verbatim from the old single-file roles/merchant.js. The parts
-// share one internal state (mer: pickup requests, busy, trips, the stand, timers) and call each other through mer;
-// outside dependencies come in deps (config, util, comms, workshop, scout).
+// share one internal state (mer: pickup requests, trips, the stand, timers) and call each other through mer;
+// outside dependencies come in deps (config, util, comms, workshop).
 // =====================================================================
 
 module.exports = function install(mer, deps) {

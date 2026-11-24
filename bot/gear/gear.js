@@ -29,8 +29,8 @@ const PARTS = [
 ];
 
 module.exports = function createGear(ctx) {
-    // Outside dependencies of the parts (module plan, stage 7a); supply is created after gear, so it is read when used.
-    const deps = { config: ctx.config, util: ctx.util, comms: ctx.comms, get supply() { return ctx.supply; }, WEARABLE: WEARABLE };
+    // Outside dependencies of the parts (module plan, stage 7a). Supply is created after gear; only this facade uses it (ctx.supply).
+    const deps = { config: ctx.config, util: ctx.util, comms: ctx.comms, WEARABLE: WEARABLE };
     // The internal state shared by the parts; they put their functions here too (the facade's as well).
     const gr = { tick: tick, equivalentOf: equivalentOf, swapSword: swapSword, isReserved: isReserved, guideWantsOn: guideWantsOn };
     PARTS.forEach(function (install) { install(gr, deps); });
@@ -41,7 +41,6 @@ module.exports = function createGear(ctx) {
     const util = ctx.util;
     const comms = ctx.comms;
     const cfg = config.gear;
-    const merchant = config.merchant && config.characters[config.merchant] ? config.merchant : null;
 
     gr.wishes = [];          // [{ name, level }]
     gr.lastWishSent = "";
@@ -73,9 +72,6 @@ module.exports = function createGear(ctx) {
         helmet: ["helmet"], chest: ["chest"], pants: ["pants"], gloves: ["gloves"], shoes: ["shoes"], cape: ["cape"],
         amulet: ["amulet"], belt: ["belt"], orb: ["orb"], ring: ["ring1", "ring2"], earring: ["earring1", "earring2"],
     };
-    // Can our class wear it at all (class-bound items, weapon and offhand types)?
-    // Jewelry that only raises another class's main stat (e.g. a DEX earring on a
-    // paladin) is no help, and its copy is worth more to that class (compounds).
     gr.JEWELRY = ["ring", "earring", "amulet", "belt", "orb"];
     gr.MAIN_STATS = ["str", "int", "dex"];
     // config.gear.noEquip (player decision 2026-11-18): never put on automatically, and taken off
@@ -83,11 +79,10 @@ module.exports = function createGear(ctx) {
     gr.NO_EQUIP = new Set(((cfg.noEquip) || []).map(function (n) { return G.items[n]; }).filter(Boolean));
 
     // ---- luck swap (classes.<ctype>.luckSwap; priest, 2026-11-22 player decision) --------------------------
-    // The INT gear in normal fights; right before Absorb Sins (luck catch, classes/priest.js) the luck pieces go on with
+    // The INT gear in normal fights; right before Absorb Sins (luck catch, classes/priest/) the luck pieces go on with
     // ONE equip_batch call (one server round trip), and backMs after the last catch the worn pieces come back. While the
     // luck gear is on, the equip pass and the wish report pause (the merchant keeps seeing the normal gear), and the
     // swapped-out pieces stay in the bag. The best copy of each luck piece is never handed to the merchant.
-    const LS = ((config.classes || {})[character.ctype] || {}).luckSwap || null;
     gr.luck = null;      // { until, back: [{ slot, name, level }] } while the luck gear is on
     gr.lockedUntil = 0;  // equip pass and wish report pause until then
 

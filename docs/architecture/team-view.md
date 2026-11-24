@@ -27,7 +27,10 @@ A small module `team/team-view.js` with one registry per client:
   `maincode` frame and the `#iframelist` character frames);
 - **headless (later):** an object in the process - same interface.
 
-Each bot publishes one entry at start (and again after a reload, replacing the old one):
+Each bot publishes one entry at start (and again after a reload, replacing the old one). The table is the plan's full
+contract; **built** (main.js publishTeamEntry): name, ctype, role, version, server, `game()`, the getters status, farm,
+goal, event, manual, stats, lead and opener, and the one action `deliver` (direct messages) - the rest was not needed
+(see the steps below):
 
 | Part | What | How |
 |---|---|---|
@@ -62,7 +65,7 @@ member; the entry is the contract (no reaching into another module's internals).
 The shared storage (heartbeats, scout plan, Cipher stock, hop requests, Cavalry timer) is already one storage per client
 and stays as it is; it moves into the storage module with stage 8.
 
-Steps 3-5 no longer change the transport (step 2 does that for every type); they replace pushed state by live reads where that is better than a direct message - e.g. the merchant reading wishes, worn gear and potion needs live instead of waiting for the next report.
+Steps 3-5 no longer change the transport (step 2 does that for every type); they replace pushed state by live reads only where a report comes on a timer: the fighter's position on a pickup (step 3) and the chest opener's gold / luck multipliers and choice (step 5). Wishes and worn gear need none (resent at once after an equip), potion needs were left as a later idea, and step 4 is all events.
 
 ## Checks per step
 

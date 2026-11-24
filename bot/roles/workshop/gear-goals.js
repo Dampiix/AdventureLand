@@ -1,5 +1,6 @@
 // =====================================================================
-// roles/workshop/gear-goals.js - gear goals (the fighters' worn gear pushed up) and filling empty slots.
+// roles/workshop/gear-goals.js - gear-goal stages (team stage, final stage, the shop weapon goal), filling empty slots and
+// delivering better copies (the goal work itself: off-plan-armor.js workOnGoals).
 // Part of bot_workshop (module plan, stage 6): moved verbatim from the old single-file roles/workshop.js. The parts
 // share one internal state (wks: wishes, bank snapshot, budgets, blocks, caches) and call each other through wks;
 // outside dependencies come in deps (config, util, comms).

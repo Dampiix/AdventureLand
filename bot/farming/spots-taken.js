@@ -125,6 +125,10 @@ module.exports = function install(tgt, deps) {
         });
         return any && !free;
     }
+    // Where to walk for a farm target: the spawn pack on its map (guide routes name one),
+    // else the biggest pack of that monster anywhere. smart_move("cgoo") picked the nearest
+    // spawn, through the vampire rats at the underground entrance, while 32 CGoos wait in
+    // the arena right next to town.
     function spotFor(type, mapName) {
         // The spot a Cavalry reset was planned for (hunt reset, 2026-11-22) - even though it is marked too strong.
         if (tgt.cavPlan && tgt.cavPlan.spot && tgt.cavPlan.monster === type) {
@@ -188,6 +192,12 @@ module.exports = function install(tgt, deps) {
         tgt.win = null;
         tgt.nextPickAt = 0; // pick again right away
     }
+    // Called by the fighter every combat tick. If we stand on the farm map for
+    // a while without any free target (other players clear the spot), mark the
+    // spot as crowded and move on to the guide's next choice (or the next drop route).
+    // Besides a long gap without any target, a spot where other players leave us only
+    // the odd monster is crowded too: we measure the share of time without a target over
+    // a sliding window (crowdedWindowMs) and give up above crowdedIdleShare.
     function reportSearch(found) {
         const src = tgt.farm ? String(tgt.farm.source) : "";
         const now = Date.now();

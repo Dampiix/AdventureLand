@@ -87,7 +87,7 @@ module.exports = function createParty(deps) {
     //   kind "search" - a boss search: everyone walks its own areas, no team goal to go ahead to or port to
     // A new goal gets a new id (also the same spot again after a boss in between). `reached`: the leader itself is there.
     // Everyone walks there on its own path; whoever can cast Magiport pulls the team once it is there itself
-    // (classes/mage.js teamPortTick). Independent of who leads and of the classes in the team.
+    // (team/team-port.js tick, run by the mage). Independent of who leads and of the classes in the team.
     let setGoalNow = null; // leader: { kind, name, point } from the last route the leader chose
     let goalNow = null;    // leader: the effective goal with its id
     function setGoal(kind, name, point) {

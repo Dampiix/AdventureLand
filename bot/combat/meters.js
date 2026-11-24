@@ -1,5 +1,6 @@
 // =====================================================================
-// combat/meters.js - the hit, DPS and kill logs from the game's socket events, the /dps and /kills reports, the death analysis.
+// combat/meters.js - the hit, DPS and kill logs (filled by the socket listeners in combat/fighter.js), the /dps and /kills
+// reports, the death analysis.
 // Part of bot_fighter (module plan, stage 5): moved verbatim from the old single-file core/fighter.js. The parts share
 // one internal state (ftr: the farm target, walks, waits, the strike intent, chests) and call each other through ftr;
 // outside dependencies come in deps (game, util, config, comms, bus, party, targeting, supply, events, cave, hunts,

@@ -17,7 +17,7 @@ module.exports = {
                 singleTarget: true, singleMargin: 0.03, aim: true, blockMs: 6000, fearMax: 0 },
             // Team Magiport at the team goal: pulls fighters farther than minDist px (tank first) while keepMp stays; a boss
             // goal counts once it is in sight within bossRange px for graceMs; tries per member and goal, retryMs apart.
-            // events.js reads enabled for the members' consent.
+            // team/team-port.js (in bot_events) reads enabled for the members' consent.
             magiport: { enabled: true, keepMp: 0.3, minDist: 600, bossRange: 800, graceMs: 4000, tries: 3, retryMs: 8000 },
             // Blink on routes: jump to the farthest step on this map at least minDist px away, keeping keepMp of our MP.
             blinkTravel: { enabled: true, minDist: 400, keepMp: 0.4 },

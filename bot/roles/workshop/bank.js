@@ -1,5 +1,6 @@
 // =====================================================================
-// roles/workshop/bank.js - the bank snapshot and developing one wish: bag -> bank -> upgrade.
+// roles/workshop/bank.js - the bank snapshot and fetching copies; spending per wish: pauses after failures, the budget
+// per wish, the gold we keep, paying from a pot (developing a wish: grace.js develop).
 // Part of bot_workshop (module plan, stage 6): moved verbatim from the old single-file roles/workshop.js. The parts
 // share one internal state (wks: wishes, bank snapshot, budgets, blocks, caches) and call each other through wks;
 // outside dependencies come in deps (config, util, comms).

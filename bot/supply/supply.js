@@ -141,7 +141,7 @@ module.exports = function createSupply(deps) {
 
     // Short on our elixir (v1.229.3, player report 2026-11-24: the priest had none and the warrior one spare, and both
     // waited for the 20-min routine): fewer than half of `carry` in the bag calls the merchant - at most every
-    // elixirCallMs after its last visit, so a merchant without elixirs is not called every minute.
+    // elixirs.callEveryMs after its last visit, so a merchant without elixirs is not called every minute.
     function elixirShort() {
         const it = ownElixir();
         return !!it && util.countItem(it) < Math.ceil((el.carry || 4) / 2) && Date.now() - lastPickup > (el.callEveryMs || 5 * 60 * 1000);

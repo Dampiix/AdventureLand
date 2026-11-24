@@ -1,5 +1,6 @@
 // =====================================================================
-// roles/workshop/grace.js - grace: the upgrade chance bonus and its 24 h budget.
+// roles/workshop/grace.js - grace (the upgrade chance bonus, its 24 h budget, fodder), the daily tries per rare item, and
+// develop(): working one wish up bag -> bank -> upgrade (opts: replaceable, spare, minChance, budgetKey).
 // Part of bot_workshop (module plan, stage 6): moved verbatim from the old single-file roles/workshop.js. The parts
 // share one internal state (wks: wishes, bank snapshot, budgets, blocks, caches) and call each other through wks;
 // outside dependencies come in deps (config, util, comms).
@@ -211,6 +212,9 @@ module.exports = function install(wks, deps) {
         try { set(wks.TRY_KEY, wks.tries); } catch (e) { /* storage unavailable */ }
     }
 
+    // opts.replaceable overrides the shop check (e.g. a spare we hold many copies of);
+    // opts.spare: no stronger scrolls and no grace farming for this item;
+    // opts.minChance overrides the risk tier; opts.budgetKey spends from another budget.
     async function develop(fighter, w, opts) {
         const k = (opts && opts.budgetKey) || wks.key(fighter, w);
         const def = G.items[w.name];

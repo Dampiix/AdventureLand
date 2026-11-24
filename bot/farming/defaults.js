@@ -31,6 +31,8 @@ module.exports = {
     },
 
     targeting: {
+        // Waiting at a farm zone for the Cavalry: within this many px of the zone (farming/cavalry-plan.js).
+        cavalryEdge: 90,
         // Rare monsters attacked first when in sight within range px; skipped while invulnerable.
         rare: { enabled: true, range: 400 },
         // Guide "careful trial" routes count only once proven (own fights or 15 min of team farming without a death).

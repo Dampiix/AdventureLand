@@ -1,5 +1,7 @@
 // =====================================================================
-// roles/workshop/off-plan-armor.js - off-plan armor: armor outside the gear plan.
+// roles/workshop/off-plan-armor.js - the gear goals' core and off-plan armor: which worn pieces are goals (goalNames,
+// goalNeeds), when a goal is done or a copy outgrown, the stat scroll before delivery, workOnGoals; shop armor outside the
+// gear plan (offPlanNeed).
 // Part of bot_workshop (module plan, stage 6): moved verbatim from the old single-file roles/workshop.js. The parts
 // share one internal state (wks: wishes, bank snapshot, budgets, blocks, caches) and call each other through wks;
 // outside dependencies come in deps (config, util, comms).

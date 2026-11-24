@@ -18,7 +18,7 @@ module.exports = {
         // splitSearch: spawn areas split between the fighters; holdForTeam: open only with everyone within holdRange px.
         splitSearch: true, splitWaitMs: 4 * 60 * 1000, holdForTeam: false, holdRange: 350,
         searchEveryMs: 20 * 60 * 1000,  // search again this long after a miss or a kill
-        // Witch's Cipher (events.js cipherFarm): from leadMs before a round until its gathering ends the team farms the
+        // Witch's Cipher (events/witch-cipher.js cipherFarm): from leadMs before a round until its gathering ends the team farms the
         // scarcest ingredient at the first safe spot of spots[ingredient] (highest HP first); no report: fallback.
         witchCipher: { farm: true, leadMs: 10 * 60 * 1000, fallback: "embercoal" },
         // Merchant scout (roles/merchant/scout.js): searches `bosses` between chores; the runner steps in while it is
@@ -48,6 +48,7 @@ module.exports = {
         // Boss check (bosses only; the guide never calls them safe): from everyone's stats
         // and the game's damage formula. Other players are not counted on.
         boss: {
+            bossDeathRange: 600,        // a boss death counts as ours when one of us is in sight within this many px
             minHits: 6,                 // every fighter must survive this many hits in a row
             minHitsNonTank: 4,          // ...the others only this many while a tank (warrior/paladin) is in the team
             minHitsNonTankBy: { skeletor: 2 }, // per boss instead of minHitsNonTank

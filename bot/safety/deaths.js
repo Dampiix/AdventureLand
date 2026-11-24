@@ -33,7 +33,7 @@ module.exports = function install(tgt, deps) {
         // (a death on the way or at a hunt somewhere else must not mark this monster).
         // Only fresh deaths (2026-11-19): a member still lying dead after the farm target changed
         // closed the NEW spot too (booboos after a mummy death). Every fighter reports its own
-        // death with the monster that killed it (fighter.js), so this is only a fallback.
+        // death with the monster that killed it (combat/death.js), so this is only a fallback.
         if (tgt.farm.monster !== tgt.clockMonster) { tgt.clockMonster = tgt.farm.monster; tgt.clockSince = now; }
         // The fallback waits for the dead fighter's own report (2026-11-22): the warrior killed by a Fire Spirit next to
         // the Giant Scorpions reported "fireroamer", but this check saw a gscorpion within 500 px in the same tick and
@@ -71,7 +71,7 @@ module.exports = function install(tgt, deps) {
     }
 
     // A fighter died while its farm target was `monster`: not safe for an hour. Every
-    // fighter reports its own death (fighter.js), so a whole-team wipe counts too – the
+    // fighter reports its own death (combat/death.js), so a whole-team wipe counts too – the
     // leader's clock() only sees deaths while it is alive itself.
     function diedAt(monster, who) {
         if (who) tgt.deathReported[who] = Date.now();

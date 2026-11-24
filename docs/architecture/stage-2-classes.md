@@ -1,6 +1,6 @@
 # Stage 2: all classes as modules (plan, 2026-11-24)
 
-Status: **plan, not built.** After the mage pilot ([pilot-mage.md](pilot-mage.md)), same rules, same branch
+Status: **built and live (every class done, see the table).** After the mage pilot ([pilot-mage.md](pilot-mage.md)), same rules, same branch
 (`modular-pilot`), **no change in behaviour**. Each class becomes `classes/<class>/<class>.js` (what it is, which skill
 modules it has, their deps from ctx) plus one module per skill (or group of small skills); the slot names stay, each
 slot becomes a bundle. The fighter's class interface stays: `name, survive, always, support, fight` and the optional

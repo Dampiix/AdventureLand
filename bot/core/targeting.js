@@ -57,7 +57,6 @@ module.exports = function createTargeting(ctx) {
     const util = deps.util;
     const party = deps.party;
     const comms = deps.comms;
-    const cfg = config.targeting;
     const PAGE = parent;
     const EXP_KEY = "bot_farm_experience:" + character.name;
     const CROWD_KEY = "bot_crowded:" + character.name;
@@ -142,10 +141,6 @@ module.exports = function createTargeting(ctx) {
     tgt.liveChecked = {}; // entity id -> { level, ok, at }
     tgt.liveLogged = {};  // "type:level" -> last log
     tgt.soloCostById = {}; // entity id -> HP a solo fight against it costs (soloCheck)
-    // Where to walk for a farm target: the spawn pack on its map (guide routes name one),
-    // else the biggest pack of that monster anywhere. smart_move("cgoo") picked the nearest
-    // spawn, through the vampire rats at the underground entrance, while 32 CGoos wait in
-    // the arena right next to town.
     // Spots where other players farm (2026-11-18: the warrior joined the Eagle party at the
     // biggest bat group while three other bat groups were free): skipped for occupiedForMs,
     // and their free monsters are left alone - ones on us are still fought.
@@ -189,9 +184,7 @@ module.exports = function createTargeting(ctx) {
     //   - standing in such a box we step out (fighter.leaveRageZone).
     tgt.zonesByMap = {};
     tgt.zoneCache = {}; // key -> { at, ok, why }
-    // The failing rage zone that hitting e would take us into (e, our stand point, or the straight way
-    // there lies in it), or null.
-    tgt.rageLogged = {};
+    tgt.rageLogged = {}; // zone key -> last log (safety/rage-zones.js rageBlocks)
     // Why none of the farm target's monsters in sight was picked (player request 2026-11-20: the
     // warrior stood idle among free crocs and nothing said why) - once a minute per type.
     tgt.noneLogged = {};
@@ -213,11 +206,7 @@ module.exports = function createTargeting(ctx) {
     // While the check is open no free monster of the kind is picked (ones on us are still fought).
     tgt.gate = null; // { key, state: "walk" | "watch" | "ok", since }
 
-    // Like objector(), but the spot we farm right now is only given up when an
-    // objection lasts objectionGraceMs: a guide verdict near the edge flips with HP,
-    // buffs and gear, and each flip used to send the team across the map. A death
-    // there still counts at once.
-    tgt.objectedSince = {}; // monster -> first objection in the current streak
+    tgt.objectedSince = {}; // monster -> first objection in the current streak (farming/farm-choice.js lastingObjector)
     // Routes we can walk to (2026-11-21): the guide also lists monsters that only live in an instance
     // (a4 = Orlok in the crypt) - the leader picked it after the squigtoads were taken on EU IV, and
     // every route to "a4" failed ("Unrecognized location").
@@ -227,12 +216,7 @@ module.exports = function createTargeting(ctx) {
     // while the guide has no routes. Cached 60 s. For hunts.xpTop (player decision 2026-11-20).
     tgt.rankCache = null;
 
-    // Called by the fighter every combat tick. If we stand on the farm map for
-    // a while without any free target (other players clear the spot), mark the
-    // spot as crowded and move on to the guide's next choice (or the next drop route).
-    // Besides a long gap without any target, a spot where other players leave us only
-    // the odd monster is crowded too: we measure the share of time without a target over
-    // a sliding window (crowdedWindowMs) and give up above crowdedIdleShare.
+    // The crowded check's sliding window (farming/spots-taken.js reportSearch).
     tgt.win = null; // { monster, start, last, idle }
     // A spot found crowded again soon after the last time is skipped longer each time
     // (crowdedForMs, doubled per repeat up to crowdedMaxMs). Kept across restarts.

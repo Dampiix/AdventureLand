@@ -16,7 +16,10 @@ module.exports = {
         },
         // Aggro/rage monsters are pulled only with no other free one within radius px of the target or the way there.
         // strongHold / watchMargin: px to stop from too-strong ones / to wait outside the spawn box for a lone one.
-        isolation: { enabled: true, minAggro: 0.3, minRage: 0.3, radius: 120, strongHold: 300, watchMargin: 150 },
+        // packOf: how many we must take at once (null: the team model's pullAggressive, else 3).
+        isolation: { enabled: true, minAggro: 0.3, minRage: 0.3, radius: 120, strongHold: 300, watchMargin: 150, packOf: null },
+        // Solo: our own check of a guide route (false switches it off).
+        soloOwnCheck: true,
         // Spot check: the picker stops margin..maxMargin px outside the spawn/rage box, watches watchMs and judges the pack.
         // groupGap: passive kinds chained this close are one pull (groupRule); aggroPack: a whole aggro spawn is one pull.
         spotCheck: { enabled: true, party: true, margin: 150, maxMargin: 150, watchMs: 3000, maxWaitMs: 30000, groupGap: 60, groupRule: false, aggroPack: false },

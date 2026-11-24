@@ -1,6 +1,6 @@
 // =====================================================================
 // combat/chests.js - the chest opener: the fighter with the highest gold bonus opens party chests; gold and luck multipliers shared.
-// Part of bot_fighter (module plan, stage 5): moved verbatim from the old single-file core/fighter.js. The parts share
+// Part of bot_fighter (module plan, stage 5): moved from the old single-file core/fighter.js (verbatim; since then team view step 5). The parts share
 // one internal state (ftr: the farm target, walks, waits, the strike intent, chests) and call each other through ftr;
 // outside dependencies come in deps (game, util, config, comms, bus, party, targeting, supply, events, cave, hunts,
 // gear, teamStats, teamView, cls - the class module).

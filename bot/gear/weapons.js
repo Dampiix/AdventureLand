@@ -2,7 +2,7 @@
 // gear/weapons.js - weapons: one- and two-handers, pairs, offhands, splash weapons, holding a weapon set and restoring the usual one.
 // Part of bot_gear (module plan, stage 7a): moved verbatim from the old single-file core/gear.js. The parts share
 // one internal state (gr: wishes, the luck swap, held weapons, timers) and call each other through gr; outside
-// dependencies come in deps (config, util, comms, supply, WEARABLE).
+// dependencies come in deps (config, util, comms, WEARABLE).
 // =====================================================================
 
 module.exports = function install(gr, deps) {
@@ -10,6 +10,9 @@ module.exports = function install(gr, deps) {
     const util = deps.util;
 
     function quiet(p) { if (p && typeof p.catch === "function") p.catch(function () {}); return p; }
+    // Can our class wear it at all (class-bound items, weapon and offhand types)?
+    // Jewelry that only raises another class's main stat (e.g. a DEX earring on a
+    // paladin) is no help, and its copy is worth more to that class (compounds).
     function usable(def) {
         if (gr.NO_EQUIP.has(def)) return false;
         const cls = G.classes[character.ctype] || {};

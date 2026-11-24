@@ -1,5 +1,5 @@
 // =====================================================================
-// roles/workshop/wishes.js - the fighters' wishes and deliveries: wish list, delivered marks, earmarks, delivery, the merchant's own wishes, drop shortages.
+// roles/workshop/wishes.js - the fighters' wishes and deliveries: wish list, delivered marks, earmarks, delivery, the merchant's own wishes, shortage notes (the drop report: material-goals.js reportDrops).
 // Part of bot_workshop (module plan, stage 6): moved verbatim from the old single-file roles/workshop.js. The parts
 // share one internal state (wks: wishes, bank snapshot, budgets, blocks, caches) and call each other through wks;
 // outside dependencies come in deps (config, util, comms).

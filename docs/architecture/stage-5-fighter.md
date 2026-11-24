@@ -27,7 +27,7 @@ stays exactly as it is.
 | `combat/combat.js` | handleCombat | target, class fight hook, basic attack, moving into range |
 | `combat/cavalry.js` | cavalryReady, callCavalry, cavalryBlock, guardedCall, cavalryTick | walking to a grown pack and calling the Cavalry |
 | `combat/strike-loop.js` | msToAttack, pingComp, fire, strikeLoop, defendInPlace | the strike loop (attacks / heals on time), `ctx.strike` for the warrior |
-| `combat/chests.js` | shareGold, chestOpener, chooseOpener, openerAway, lootChests | the chest opener (gold / luck multipliers, `memberLuck` on the bus) |
+| `combat/chests.js` | shareGold, chestOpener, chooseOpener, openerAway, lootChests (+ liveMult, liveLeaderOpener, noteOpenerSource: team view step 5) | the chest opener (gold / luck multipliers, `memberLuck` on the bus) |
 | `team/formation.js` | endWaitStatus, waitForTeam, toHealer, coverMembers | the leader waits for the team (`teamWaitAt` on the bus), a hurt member walks to the healer, the healer covers members |
 | `events/giga-crab.js` | gigaFlee | fleeing a Giga Crab (events.foreignRules) |
 | facade | tick, busyStep, loop | the tick, unchanged order |

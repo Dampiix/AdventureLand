@@ -1,8 +1,8 @@
 // =====================================================================
 // roles/merchant/delivery.js - deliveries to the fighters: pickups, gifts, class items, one of each.
-// Part of bot_merchant (module plan, stage 6b): moved verbatim from the old single-file roles/merchant.js. The parts
-// share one internal state (mer: pickup requests, busy, trips, the stand, timers) and call each other through mer;
-// outside dependencies come in deps (config, util, comms, workshop, scout, teamView - optional).
+// Part of bot_merchant (module plan, stage 6b): moved from the old single-file roles/merchant.js (verbatim; since then team view step 3: liveSpot). The parts
+// share one internal state (mer: pickup requests, trips, the stand, timers) and call each other through mer;
+// outside dependencies come in deps (config, util, comms, workshop, teamView - optional).
 // =====================================================================
 
 module.exports = function install(mer, deps) {

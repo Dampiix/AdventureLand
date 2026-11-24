@@ -64,20 +64,19 @@ module.exports = function createEvents(ctx) {
         });
         return stored;
     })();
-    // A runner boss has its own interval (config.events.runner.bosses), everything else searchEveryMs.
     // ---- Witch's Cipher: farming its ingredients (events.witchCipher, 2026-11-23, player decision) ----------------
     // The ingredients (verdantspore, frostscale, embercoal, gloomfeather) drop only during the event's 20-minute
     // gathering phase - 0.3 % per 1,000 monster HP at luck 1, so the yield follows our damage, not the spot. From
     // witchCipher.leadMs before the start until gather_end the leader farms the ingredient the merchant reports as
-    // scarcest (roles/scout.js: bot_cipher_stock, ties at random, fixed per round): the first spot of
+    // scarcest (roles/merchant/scout.js: bot_cipher_stock, ties at random, fixed per round): the first spot of
     // witchCipher.spots[ingredient] that is not blocked (crowded, too strong, a recent death) - targeting.currentFarm,
     // above hunts, drop routes and the guide. Meanwhile no roaming bosses, boss searches or Daisy trips (the whole
     // window counts). No spot passes: the normal choice. The schedule comes from server.status (a week ahead).
-    // { ingredient, list, until, at } while the window is open, else null.
+    // The parts: events/witch-cipher.js (cipherFarm).
     evs.cipherLogged = null;
 
     // ---- the merchant searches bosses (events.scout, 2026-11-23, player decision) ---------------------
-    // The bosses on scout.bosses are searched by the merchant (roles/scout.js) while the fighters farm on; the
+    // The bosses on scout.bosses are searched by the merchant (roles/merchant/scout.js) while the fighters farm on; the
     // leader writes what is due into the shared storage (bot_scout_plan) and takes the merchant's results
     // (scoutdone). Fallback: the runner / team search as before while the merchant is not available (no fresh
     // heartbeat on our server, Ponty round, trade trip, paused after a death) or a boss is overdue by
@@ -180,7 +179,7 @@ module.exports = function createEvents(ctx) {
     // reports a sighting (bosssight) - the team then meets there. Nobody opens the fight alone
     // (targeting holds an unengaged boss until the team is there).
     evs.split = null; // leader: { id, name, members, pending }
-    // The merchant's search round is done (roles/scout.js): a boss it did not find (or found, but the team did not
+    // The merchant's search round is done (roles/merchant/scout.js): a boss it did not find (or found, but the team did not
     // engage it) is searched again on its timer; an engaged one is booked by decide().
     deps.comms.on("scoutdone", function (data, from) {
         if (!leads || !data || !data.name || from !== config.merchant) return;

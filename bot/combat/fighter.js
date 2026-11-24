@@ -65,8 +65,6 @@ module.exports = function createFighter(ctx, cls) {
 
     // ---- state, start-up and the tick, in the old order (the parts' functions are all there already, as the hoisted
     // functions were) ----
-    // A move promise rejects when the next move interrupts it: swallow it (the log filled with "{}", 2026-11-18).
-    const quiet = ctx.util.quiet;
     const config = ctx.config;
     const util = ctx.util;
     const targeting = ctx.targeting;
@@ -208,7 +206,6 @@ module.exports = function createFighter(ctx, cls) {
     //   emergency: any fighter low on HP with level-3+ monsters on it
     //   reset:     the one who picks the spot (leader, solo, farming on its own) at its farm target
     //              when several of them in reach have grown (resetFromLevel)
-    const CAV_KEY = "bot_cavalry_next"; // account-wide: next possible call (ms)
     ftr.cavTryAt = 0;
     ftr.cavBlocked = { why: "", at: 0 };
     ftr.cavWalk = null, ftr.cavWalkLog = 0;
@@ -246,10 +243,10 @@ module.exports = function createFighter(ctx, cls) {
     // others leave a chest to it - unless it is dead, out of sight or farther than awayRange
     // from the chest (its bonus would not count anyway), or the chest has waited fallbackMs.
     // The game's own loot() opens every chest on the map, whoever is first.
-    const co = (config.party && config.party.chestOpener) || {};
     ftr.goldOf = {}; // fighter -> { g, at } gold multipliers the others reported
     ftr.lastGoldSend = 0, ftr.lastLootAt = 0, ftr.lastOpenerSend = 0, ftr.lastOpenerSent = "";
     ftr.leaderOpener = null; // { name, at } - the leader's choice (members follow it)
+    ftr.openerSource = null; // "view" | "msg" | "own": where a member's opener choice came from last (step 5, journal)
     ftr.lastStuckLog = 0;
     ftr.chestSeen = {}; // chest id -> first time we saw it
     // The members' luck multipliers ride along (v1.227.5): the leader's drop estimate weighs each member's own luck
@@ -392,10 +389,7 @@ module.exports = function createFighter(ctx, cls) {
         return false;
     }
 
-    // A healer leader stays with a member under attack instead of walking on to the next spot
-    // (2026-11-19: the priest left for the arctic bees, the warrior left the mummies alone and
-    // died). Moves into heal range; heals go on as usual (cls.support).
-    ftr.coverMoveAt = 0;
+    ftr.coverMoveAt = 0; // team/formation.js coverMembers: last move to a member under attack
 
     async function loop() {
         ftr.running = true;

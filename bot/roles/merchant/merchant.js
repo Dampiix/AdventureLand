@@ -32,7 +32,7 @@ const PARTS = [
 
 module.exports = function createMerchant(ctx) {
     // Outside dependencies of the parts (module plan, stage 6b).
-    const deps = { config: ctx.config, util: ctx.util, comms: ctx.comms, workshop: ctx.workshop, get scout() { return ctx.scout; },
+    const deps = { config: ctx.config, util: ctx.util, comms: ctx.comms, workshop: ctx.workshop,
         get teamView() { return ctx.teamView; } }; // teamView: optional (team view step 3, delivery.js)
     // The internal state shared by the parts; they put their functions here too (the facade's as well).
     const mer = { canSupply: canSupply, survive: survive, work: work, loop: loop };
@@ -94,7 +94,6 @@ module.exports = function createMerchant(ctx) {
     }
 
     // ---- market stand (config.merchantRole.stand) ----------------------------------
-    const st = m.stand || {};
     // Every walk goes through util.walk, which closes the stand first (speed 10 with it open).
     mer.nextOrdersAt = 0;
     mer.missingSince = {}; // item -> first time a buy-order shortage was seen
@@ -146,7 +145,6 @@ module.exports = function createMerchant(ctx) {
     //   home:   back on the home server, normal work again.
     // The hop itself is done by the client that hosts our bot window (main.js hop watcher):
     // we only write a request into the shared storage (CODE messages don't cross servers).
-    const prc = m.pontyRound || {};
     mer.ROUND_KEY = "bot_ponty_round:" + character.name;
     mer.HOP_KEY = "bot_hop_request:" + character.name;
     mer.LAST_KEY = "bot_ponty_round_last:" + character.name;
@@ -161,7 +159,6 @@ module.exports = function createMerchant(ctx) {
     // take the surplus above "keep" out of the bank, hop to that server (same hop as the Ponty
     // round), walk to the buyer's stand, sell into the order, hop home. The server only sells
     // near the stand and when the buyer still has the gold (trade_sell: distance, buyer_gold).
-    const stc = (config.market && config.market.sellTo) || {};
     mer.TRIP_KEY = "bot_trade_trip:" + character.name;
     // The next scan time survives a hop (review 2026-11-20): the 5-min wait after a buyer or seller
     // was away from its stand was set on the far server and lost on the way home - with a stale
@@ -251,7 +248,6 @@ module.exports = function createMerchant(ctx) {
     // The server only overwrites another merchant's mluck when it is not "strong" (strong =
     // cast by the target's own account), so those are skipped. 10 MP per cast; potions below
     // 20 % MP as before (survive).
-    const mlc = (config.merchantRole && config.merchantRole.mluck) || {};
     mer.lastMluck = 0, mer.mluckCasts = 0, mer.mluckSince = Date.now();
 
     async function loop() {

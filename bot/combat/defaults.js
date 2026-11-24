@@ -6,6 +6,8 @@ module.exports = {
     tickMs: 250,
 
     combat: {
+        // Drink a potion when the damage coming at us reaches this share of our HP (combat/potions.js).
+        dangerShare: 1,
         // Kiting (fighter.kiteStep): outranging (by margin px) a slower attacker (charge <= maxSpeedRatio x our speed), we
         // circle it at charge + range + extra px. anchorRadius / farmAnchorMargin: stay near the spawn (boss / normal).
         // farmRisk: a kiteable monster still counts with this share of its damage in the farm checks.

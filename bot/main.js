@@ -5,8 +5,10 @@
 // other characters of the current phase as CODE-only characters in the
 // same client, each running this same slot. Every character looks itself
 // up in bot_config and loads its role:
-//   fighter  -> bot_fighter + its class module + party + hunts + events + drops + targeting + gear + supply
-//   merchant -> bot_merchant + bot_workshop
+//   fighter  -> bot_fighter + its class module + party + team stats + cave + hunts + events + drops + targeting + gear +
+//               supply
+//   merchant -> bot_merchant + bot_workshop + bot_scout
+//   everyone -> bot_bus, bot_comms (direct to teammates in this client, else the server) and the team view entry
 // =====================================================================
 
 const BOT_CONFIG = require_code("bot_config");
@@ -84,13 +86,6 @@ function startTeam() {
     });
 }
 
-// Chat commands for the player (player request 2026-11-21), typed in the leader's chat:
-//   /phoenix, /jr, /greenjr, /mvampire, /fvampire, /skeletor (also /phönix, /vampir, /dracul, /gjr, /msdracul) - search that boss now (lifts a pause)
-//   /search <boss>               - the same for another watched boss (mvampire, jr, greenjr)
-// The game hands every command it doesn't know to handle_command(command, args) of the running
-// CODE ("Command not found. You can add a handle_command function..."); -1 = not ours.
-// 1.182.3-1.182.5 wrapped the game's say() instead - a wrapper from an earlier code load stopped
-// working after a reload, so that wrapper is taken out again here.
 // A module's view of ctx (stage 7a): only the named modules, each read and written through to ctx.
 function moduleView(ctx, names) {
     const v = {};
@@ -148,6 +143,14 @@ function teamReport(teamView) {
     });
 }
 
+// Chat commands for the player (player request 2026-11-21), typed in the leader's chat:
+//   /phoenix, /jr, /greenjr, /mvampire, /fvampire, /skeletor (also /phönix, /vampir, /dracul, /gjr, /msdracul) - search that boss now (lifts a pause)
+//   /search <boss>               - the same for another watched boss (mvampire, jr, greenjr)
+// The game hands every command it doesn't know to handle_command(command, args) of the running
+// CODE ("Command not found. You can add a handle_command function..."); -1 = not ours.
+// 1.182.3-1.182.5 wrapped the game's say() instead - a wrapper from an earlier code load stopped
+// working after a reload, so that wrapper is taken out again here.
+// The others (handle_command below): /ponty, /manual, /team, /pickup, /agitate, /kills, /dps, /safety.
 function installChatCommands(ctx) {
     try {
         const page = parent;
@@ -520,7 +523,7 @@ function handle_command(command, args) {
         }
         return true;
     }
-    // "/dps": the damage meter now (bot_fighter, the leader counts the whole party).
+    // "/kills" and "/dps": the kill log and the damage meter now (bot_fighter, the leader counts the whole party).
     if (command === "kills") {
         if (typeof BOT_KILLS_REPORT === "function") BOT_KILLS_REPORT(); else game_log("no kill log here", "orange");
         return true;

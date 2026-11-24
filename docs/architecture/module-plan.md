@@ -1,6 +1,8 @@
 # Module plan (final, 2026-11-24)
 
-Status: **agreed plan, not built yet.** Next step: the mage pilot (see "Order").
+Status: **built (2026-11-24/25): the mage pilot and stages 1-7 are done and live on `modular-pilot`**; stage 8 (storage) is
+deferred until the headless client is decided (player decision 2026-11-25). Per stage: `pilot-mage.md`, `stage-*.md`;
+the team view on top: `team-view.md`.
 Interactive map: [module-map.html](module-map.html) (98 modules, 276 dependencies, no cycles; open it in a browser).
 
 Goal (player decision): every feature of the bot is a self-contained module with a clear interface - the project is

@@ -1,8 +1,8 @@
 // =====================================================================
 // roles/merchant/stand.js - the market stand: buy and sell orders, filled orders, keeping it open.
-// Part of bot_merchant (module plan, stage 6b): moved verbatim from the old single-file roles/merchant.js. The parts
-// share one internal state (mer: pickup requests, busy, trips, the stand, timers) and call each other through mer;
-// outside dependencies come in deps (config, util, comms, workshop, scout).
+// Part of bot_merchant (module plan, stage 6b): moved from the old single-file roles/merchant.js (verbatim; since then the whileWished buy orders, 2026-11-25). The parts
+// share one internal state (mer: pickup requests, trips, the stand, timers) and call each other through mer;
+// outside dependencies come in deps (config, util, comms, workshop).
 // =====================================================================
 
 module.exports = function install(mer, deps) {

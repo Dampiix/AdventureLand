@@ -2,7 +2,7 @@
 // gear/equip.js - equipping upgrades from the bag (the guide's equip rows, main stat, min / max levels, blocked slots).
 // Part of bot_gear (module plan, stage 7a): moved verbatim from the old single-file core/gear.js. The parts share
 // one internal state (gr: wishes, the luck swap, held weapons, timers) and call each other through gr; outside
-// dependencies come in deps (config, util, comms, supply, WEARABLE).
+// dependencies come in deps (config, util, comms, WEARABLE).
 // =====================================================================
 
 module.exports = function install(gr, deps) {

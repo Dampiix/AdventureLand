@@ -293,9 +293,6 @@ module.exports = function createWorkshop(ctx) {
     // blocks that item and level for a day.
     wks.noGraceUntil = {}; // "item:level" -> timestamp
 
-    // opts.replaceable overrides the shop check (e.g. a spare we hold many copies of);
-    // opts.spare: no stronger scrolls and no grace farming for this item;
-    // opts.minChance overrides the risk tier; opts.budgetKey spends from another budget.
     // Upgrade tries per day for "item:level" (workshop.dailyTries, 2026-11-22: Dracul's Attire +8 at most 3 a day).
     wks.TRY_KEY = "workshop_tries:" + character.name;
     wks.tries = (function () { try { return get(wks.TRY_KEY) || {}; } catch (e) { return {}; } })();
@@ -368,9 +365,7 @@ module.exports = function createWorkshop(ctx) {
     wks.FINDS_KEY = "bot_ponty_finds";
     // Every Ponty purchase, kept across restarts for the player's review (last 200).
     wks.BOUGHT_KEY = "bot_ponty_bought";
-    // Chance that one copy of name +from gets to +target, with the scroll the workshop would choose per
-    // step (same choice as upgradeCost). Cached for a minute per name.
-    wks.reachCache = {};
+    wks.reachCache = {}; // ponty.js reachChance: name -> cached chances (a minute)
     wks.lastPontyVisit = null; // { items, bought }
 
     // ---- one per character ----------------------------------------------------

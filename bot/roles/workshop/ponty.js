@@ -159,6 +159,8 @@ module.exports = function install(wks, deps) {
         const expected = below.reduce(function (sum, l) { return sum + reachChance(name, l, target); }, 0);
         return expected < (count - done) * (cfg.baseTargetPieces || 1) && below.length < (cfg.maxBaseCopies || 20);
     }
+    // Chance that one copy of name +from gets to +target, with the scroll the workshop would choose per
+    // step (same choice as upgradeCost). Cached for a minute per name.
     function reachChance(name, from, target) {
         let c = wks.reachCache[name];
         if (!c || Date.now() - c.at > 60 * 1000 || c.target !== target) {

@@ -1,5 +1,6 @@
 // =====================================================================
-// encounters/boss-tracker.js - bosses in sight and their deaths: ours and the members' sightings, the death listener, what became of a boss.
+// encounters/boss-tracker.js - bosses in sight and their deaths: ours and the members' sightings, the deaths the listener
+// in core/events.js records, what became of a boss.
 // Part of bot_events (module plan, stage 4c): moved verbatim from the old single-file core/events.js. The parts
 // share one internal state (evs: the current event, searches, runners, sightings) and call each other through evs;
 // outside dependencies come in deps (game, util, config, comms, party, cave, bus, teamStats).

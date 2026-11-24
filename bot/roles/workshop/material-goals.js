@@ -1,5 +1,6 @@
 // =====================================================================
-// roles/workshop/material-goals.js - material goals: weapons crafted from a dismantled material and pushed up the upgrade ladder.
+// roles/workshop/material-goals.js - material goals: weapons crafted from a dismantled material and pushed up the upgrade
+// ladder; also the missing-copies / drop shortage report (reportDrops) and automatic compounding (autoCompound).
 // Part of bot_workshop (module plan, stage 6): moved verbatim from the old single-file roles/workshop.js. The parts
 // share one internal state (wks: wishes, bank snapshot, budgets, blocks, caches) and call each other through wks;
 // outside dependencies come in deps (config, util, comms).

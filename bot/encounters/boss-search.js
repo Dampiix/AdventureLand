@@ -23,6 +23,7 @@ module.exports = function install(evs, deps) {
         return out;
     }
     function runnerBosses() { return rcfg.enabled ? Object.keys(rcfg.bosses || {}) : []; }
+    // A runner boss has its own interval (config.events.runner.bosses), everything else searchEveryMs.
     function everyMs(name) {
         return (rcfg.enabled && rcfg.bosses && rcfg.bosses[name]) || cfg.searchEveryMs;
     }
