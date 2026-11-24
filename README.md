@@ -3,7 +3,7 @@
 One bot for a whole Adventure Land team: up to three fighters and one merchant, all running the same code.
 The fighters farm, hunt bosses and level up; the merchant supplies them, sells, banks, trades with other players and upgrades their gear.
 
-> **Version:** `1.237.10-pilot` (`bot/config.js` → `version`) · **Teams:** `Dmpx…` (main account) and `Viz…` (second account) · **Code:** `bot/` → in-game CODE slots 20–41
+> **Version:** `1.237.11-pilot` (`bot/config.js` → `version`) · **Teams:** `Dmpx…` (main account) and `Viz…` (second account) · **Code:** `bot/` → in-game CODE slots 20–41
 
 ## Repository
 
@@ -318,7 +318,7 @@ Only `main.js` calls `require_code()`. Every other module is a factory that rece
 | [`farming/hunts.js`](bot/farming/hunts.js) | 32 `bot_hunts` | Monster Hunts and Daisy trips (stage 3c: explicit deps config, util, comms, party, targeting, drops) |
 | [`core/gear.js`](bot/core/gear.js) | 33 `bot_gear` | Fighter wishes and equipping |
 | [`roles/workshop.js`](bot/roles/workshop.js) | 34 `bot_workshop` | Merchant: upgrades, gear goals, weapons, materials, pots, Ponty |
-| [`core/events.js`](bot/core/events.js) | 35 `bot_events` | Events and world bosses |
+| [`core/events.js`](bot/core/events.js) | 35 `bot_events` | Events and world bosses - the facade (bundle, stage 4c) of `encounters/` (boss-check, boss-tracker, boss-search, encounters = the per-tick flow), `events/witch-cipher.js` and `team/team-port.js` (magiport consent); the parts share one internal state `evs` |
 | [`classes/ranger/`](bot/classes/ranger/) | 36 `bot_class_ranger` | Ranger (bundle, stage 2): `ranger.js`, `three-shot.js`, `sturdy-shots.js` (Hunter's Mark, Supershot, Poison Arrow) |
 | [`core/drops.js`](bot/core/drops.js) | 37 `bot_drops` | Drop farming and spot gold |
 | [`classes/warrior/`](bot/classes/warrior/) | 38 `bot_class_warrior` | Warrior (bundle, stage 2): `warrior.js` (class, hooks, Hard Shell, War Cry, Cleave, Stomp), `common.js`, `protect.js` (Taunt, protective Agitate), `mobility.js` (Charge, Dash), `agitate-mode.js`, `agitate-point.js`, `agitate-stream.js`, `agitate.js` (pack tick), `splash.js`, `escape.js`, `sword-swap.js` - the Agitate parts share one internal state |

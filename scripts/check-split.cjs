@@ -13,7 +13,7 @@ function items(file) {
         if (/^    \/\//.test(l) || l.trim() === "") { if (cur) cur.lines.push(l); continue; }
         if (/^    \S/.test(l) && !/^    [}\])]/.test(l)) {
             flush();
-            const m = /^    function (\w+)\(/.exec(l);
+            const m = /^    (?:async )?function (\w+)\(/.exec(l);
             cur = { name: m ? m[1] : null, lines: [l] };
             continue;
         }
@@ -49,13 +49,16 @@ Object.keys(old.fns).forEach(n => { if (!seen[n]) { console.log("MISSING " + n);
 const fac = items(facadeFile);
 const decl = /^    (?:let|const) /;
 const oldStmts = old.stmts.map(s => s.replace(decl, "    "));
-const facStmts = fac.stmts.map(s => norm(s)).filter(s => !/^    (?:const|let) /.test(s) && !/^    (?:return|PARTS\.forEach)/.test(s));
+// Declarations are compared without let/const (state became a plain assignment, facade-only state kept its own); only
+// statements after the parts are installed count for the order (the facade's alias preamble comes first by design).
+const facStmts = fac.stmts.map(s => norm(s).replace(decl, "    "));
+const partsAt = facStmts.findIndex(s => /^    PARTS\.forEach/.test(s));
 const missing = oldStmts.filter(s => !facStmts.includes(s));
 // the old alias declarations (config.targeting, ctx.comms, ...) are expected to be "missing": print them for review
 console.log("functions: " + Object.keys(seen).length + " of " + Object.keys(old.fns).length + ", statements in the facade: " +
     (oldStmts.length - missing.length) + " of " + oldStmts.length + " (not found, expected: the alias declarations):");
 missing.forEach(s => console.log("  " + s.split("\n")[0].trim()));
-const order = oldStmts.filter(s => facStmts.includes(s)).map(s => facStmts.indexOf(s));
+const order = oldStmts.filter(s => facStmts.indexOf(s) > partsAt).map(s => facStmts.indexOf(s));
 const inOrder = order.every((v, i) => i === 0 || v > order[i - 1]);
 console.log("statement order kept: " + inOrder);
 console.log(bad || !inOrder ? "FAILED (" + bad + ")" : "all functions identical");

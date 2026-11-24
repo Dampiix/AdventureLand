@@ -1,6 +1,6 @@
 # Stage 4: break the party / targeting / events cycle, then split targeting and events (plan, 2026-11-24)
 
-Status: **4a done (v1.237.9-pilot), 4b done (v1.237.10-pilot)**, 4c open. Same branch (`modular-pilot`), **no change in behaviour**. Step 4 of the module plan.
+Status: **done** - 4a v1.237.9-pilot, 4b v1.237.10-pilot, 4c v1.237.11-pilot. Same branch (`modular-pilot`), **no change in behaviour**. Step 4 of the module plan.
 
 ## Where the cycle is (measured on v1.237.8-pilot)
 
@@ -83,6 +83,14 @@ Same way, `events.js` stays the facade:
 | `events/witch-cipher.js` | cipherWindow, cipherFarm, cipherActive |
 | `team/team-port.js` | portWhyNot, acceptMagiport (consent; uses party and the bus `boss`) |
 | `encounters/encounters.js` | decide, tick, onOwnDeath, teamWaiting, walkTo - the per-tick flow |
+
+4c result: six parts as planned (teamLevel went to boss-check, ours to boss-tracker, runJob / searchBoss / holdsFor to
+boss-search, teamWaiting / walkTo to encounters), shared state `evs`; state only the facade uses (the interface object
+`api`) stays a local there. Two locals keep their names (decide's `ours` list, acceptMagiport's `boss` flag - neither
+function uses the outer one). Checks: `scripts/check-split.cjs` (52 of 52 functions identical, statement order kept),
+`scripts/test-events.cjs` (old vs new in a fake game with the real G and config, 7 scenarios: a Phoenix in sight, a
+split boss search, a member's sighting and the death, a member's search job, a join event, the Witch's Cipher window,
+manual mode with the team wait).
 
 `monsters/<type>.js` (per-boss settings) waits until the encounters part exists - it needs the plan message, a feature
 change, so after the rebuild.
