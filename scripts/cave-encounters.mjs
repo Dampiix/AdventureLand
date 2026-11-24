@@ -170,17 +170,26 @@ function what(o) {
     return t && !/unverified/.test(e) && ["pay", "careful", "guide", "tool", "lamp", "decoy", "recipes", "story", "inspect", "gift", "exchange", "plant"].includes(o.effect) ? t : esc(e);
 }
 
+// v2 (player request 2026-11-24): only 2 of the 6 options are offered per vote - the options are listed by value
+// (scripts/cave-scores.mjs, docs/cave/cave-scores.json), best first: go down the list and take the first one offered.
+const SCORES = JSON.parse(readFileSync(path.join(outDir, "cave-scores.json"), "utf8"));
+const scoreOf = {};
+SCORES.encounters.forEach((se) => { scoreOf[se.id] = {}; se.options.forEach((o) => { scoreOf[se.id][o.id] = o; }); });
 function card(e) {
-    const rows = e.options.map((o) => {
-        const rec = REC[e.id] === o.id, avoid = (AVOID[e.id] || []).includes(o.id);
-        const tag = rec ? "<span class='tag rec'>PICK</span>" : avoid ? "<span class='tag avoid'>NEVER</span>" : "";
-        return `<tr class="${rec ? "rec" : avoid ? "avoid" : ""}"><td class=oid>${esc(o.id)}</td><td>${names(o.label)} ${tag}</td><td class=cost>${esc(cost(o))}</td><td>${what(o)}</td></tr>`;
+    const sc = scoreOf[e.id] || {};
+    const opts = e.options.slice().sort((a, b) => ((sc[a.id] || {}).rank || 9) - ((sc[b.id] || {}).rank || 9));
+    const rows = opts.map((o) => {
+        const s = sc[o.id] || { v: 0, rank: "?", notes: [] };
+        const best = s.rank === 1, never = s.v <= -50;
+        const tag = best ? "<span class='tag rec'>BEST</span>" : never ? "<span class='tag avoid'>NEVER</span>" : "";
+        const val = never ? "never" : (s.v > 0 ? "+" : "") + s.v.toFixed(2);
+        const est = (s.notes || []).some((n) => /est/.test(n)) ? " <span class=est>est</span>" : "";
+        return `<tr class="${best ? "rec" : never ? "avoid" : s.v < 0 ? "neg" : ""}"><td class=rank>${s.rank}</td><td class="val${s.v < 0 ? " minus" : ""}">${val}${est}</td><td class=oid>${esc(o.id)}</td><td>${names(o.label)} ${tag}</td><td class=cost>${esc(cost(o))}</td><td>${what(o)}</td></tr>`;
     }).join("");
     const grp = { bad: "toll", positive: "helpful", mixed: "mixed" }[e.group] || e.group;
     return `<section class="card ${e.group}"><header><span class=id>${e.id}</span><h2>${esc(e.name)}</h2><span class="grp ${e.group}">${grp}</span></header>
 <p class=text>${names(e.text)}</p>
-<table><thead><tr><th>id</th><th>option</th><th>cost</th><th>what happens</th></tr></thead><tbody>${rows}</tbody></table>
-<p class=why><b>Pick:</b> ${esc(WHY[e.id] || "")}</p></section>`;
+<table><thead><tr><th>#</th><th>Amber</th><th>id</th><th>option</th><th>cost</th><th>what happens</th></tr></thead><tbody>${rows}</tbody></table></section>`;
 }
 
 const css = `@page { size: A4; margin: 9mm 9mm 10mm; }
@@ -197,7 +206,10 @@ th { text-align: left; color: #8fa3c7; font-weight: 600; font-size: 9.5px; borde
 td { padding: 3px 4px; border-bottom: 1px solid #252a35; vertical-align: top; line-height: 1.35; }
 td.oid { color: #7d8597; font-family: Consolas, monospace; font-size: 9.5px; white-space: nowrap; }
 td.cost { white-space: nowrap; color: #c9b27a; }
-tr.rec td { background: #16301f; } tr.avoid td { background: #3a1a1c; }
+tr.rec td { background: #16301f; } tr.avoid td { background: #3a1a1c; } tr.neg td { color: #9aa1ae; }
+td.rank { color: #8fa3c7; font-weight: 700; text-align: center; width: 14px; }
+td.val { white-space: nowrap; font-weight: 700; color: #7fd39a; text-align: right; width: 66px; } td.val.minus { color: #e08a8f; }
+.est { font-size: 8px; font-weight: 400; color: #c9b27a; border: 1px solid #5a4d2c; border-radius: 3px; padding: 0 2px; }
 .tag { font-size: 8.5px; font-weight: 700; border-radius: 3px; padding: 0 4px; margin-left: 3px; }
 .tag.rec { background: #3fb36b; color: #0e1a12; } .tag.avoid { background: #e0525a; color: #1a0d0e; }
 b.bad { color: #ff7b81; } b.fight { color: #f0b86b; font-weight: 600; }
@@ -216,11 +228,14 @@ const rulesHtml = `<ul class=rules>
 <li><b>3 characters, 3 floors, 24 minutes</b>; forced votes pause the clock (1 minute to vote, a majority ends it early). One visit per account per day.</li>
 <li>Each floor: guard camp (3 packs; each cleared pack: a camp roll + a chest with 1,500 cave gold + 1 Amber), floor keeper (a BOSS roll + chest: 4,000 cave gold), marked encounter - all three open the stairs. Floor 3 done: a finish roll + 10,000 cave gold + 5 Amber.</li>
 <li><b>A "roll"</b> (parcel, rescue, BOSS, camp, finish) is one draw from that table right away - not an item to keep. Items go to a random member of the original party (bag, or MAIL when full).</li>
-<li><b>Value of cave gold:</b> about 1,000 cave gold = 1 Amber (Loaded Die: 10,000 cave gold or 10 Amber at Cole).</li>
+<li><b>How to use a card:</b> the options are sorted by value, best first. Only 2 of the 6 are offered per vote - go down the list and take the first one offered. "est" = an estimate for an effect without game data.</li>
+<li><b>Values in Amber</b> (agreed 2026-11-24): 1,000 cave gold = 0.65 (it is lost at the end unless a shop has something useful - only the Loaded Die really counts); 1 second = -0.02 (the first run made ~1.2 Amber a minute); a regular cave monster = +0.05 (8 % Amber minus its time); a traveler or rogue fight -0.16 (+ a parcel roll if hostile, est); a keeper from an encounter -0.2; an ally +0.3, pry bar +0.2, lamp +0.1. Items: Loaded Die 10, Tunnel Axe 0.2, gem1/scroll1 0.1, Counterweight, Locktooth, Mothstep Boots, Reed Scythe ~0.</li>
+<li><b>One roll is worth:</b> parcel ${SCORES.rolls.cave_parcel.toFixed(2)} · rescue ${SCORES.rolls.cave_rescue.toFixed(2)} · BOSS ${SCORES.rolls.cave_boss.toFixed(2)} · finish ${SCORES.rolls.cave_finish.toFixed(2)} Amber.</li>
 <li><b>Death costs nothing</b>; revive at the floor doorway is free, in place 1 Amber. Exit leaves for good.</li>
 <li><b>Cave gold stays in the cave</b> - spend it (merchant near each floor's doorway, upper wall). Unspent Amber goes to the party. Limits per run: 60,000 cave gold, 36 Amber.</li>
 <li><b>Never:</b> the red chain / red rope (six level 100 wolves), the copying shadow, the Dark Mage (100,000 magic damage, mages first - run).</li>
-<li><b>Time is the scarcest currency:</b> a 50/50 with an easy fight is usually better than a 20-45 s option.</li>
+<li><b>Monsters scale to the party level</b> (first run, level 73): every regular cave monster had 3,665 HP, 187 attack, 110 armor, 73 resistance - wolves probably too. Travelers: 19,732 HP, 281 attack. The base values below are the game data, not what you meet.</li>
+<li><b>Stairs:</b> a vote ("landing") at the open stairs takes the whole party down. INFO -> Directions lists every room with a "Go" button.</li>
 <li>Our bots: you vote on the priest, warrior and mage copy your vote at once.</li></ul>`;
 const tables = `<div class=grid>
 <div class=box><h3 style="margin-top:0">Reward tables (one roll each)</h3><table>
@@ -232,17 +247,17 @@ const tables = `<div class=grid>
 <div class=box><h3 style="margin-top:0">Fights (HP / attack)</h3><table>
 <tr><td>rat 820/80 · crab 400/24 · snake 720/24 · guard, traveler 1,200/35</td><td>trivial</td></tr>
 <tr><td>bat 9.6k/50 · broodmother 8k/80 · spider 18k/80 · scorpion 24k/100</td><td>easy</td></tr>
-<tr><td>Lockbreaker 12k/100 · Moth Keeper 14k/90 (magic) · Sentinel 16k/140</td><td>keepers, easy</td></tr>
+<tr><td>Lockbreaker 12k/100 · Moth Keeper 14k/90 (magic) · Sentinel 16k/140</td><td>keepers, easy</td></tr><tr><td colspan=2 style="color:#c9b27a">base values from the game data - in the cave they scale to your level (see above)</td></tr>
 <tr><td><b class=bad>Cave Wolf 48k/480</b>, armor 300, res 200, speed 80</td><td>the real test</td></tr></table>
 <h3>Monster drops (own table, luck counts)</h3><div>Every cave monster: 8 % 1 Amber - plus spider 3 % Spider Silk, scorpion 3 % Cobra Scale, snake 3 % Snake Oil. <b>Broodmother 100 % 1 Amber</b> + 10 % Spider Silk. Travelers, rogue and keepers: nothing (their reward is the roll). Dark Mage: 100 % Nightjudge (staff, 1.2M) - only his own reflected spell kills him. XP x10 in the cave (guard 1,000, wolf 488,000).</div>
 <h3>Cave merchant (cave gold)</h3><div>Loaded Die 10,000 · Counterweight 8,000 · Tunnel Axe 6,000 · Locktooth 6,000 · Mothstep Boots 6,000 · Reed Scythe 2,500 · gem1 5,000 · scroll1 2,000 · tshirts 16,000 · broom 48,000</div></div></div>`;
 
 const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Cave of Many Dreams - encounters</title><style>${css}</style></head><body>
 <div class=cover><h1>Cave of Many Dreams - the 50 encounters</h1>
-<p class=lead>Every vote the cave can put to us, with each option's cost, what happens (weights from the game data) and our pick.
-<b style="color:#3fb36b">PICK</b> = our choice, <b style="color:#e0525a">NEVER</b> = never take it. Effects marked "unverified" come from the guide and the option text - the first runs will tell.</p>
+<p class=lead>Every vote the cave can put to us. The options are <b>sorted by their value in Amber, best first</b> - only 2 of 6 are offered per vote, so take the first one offered.
+<b style="color:#3fb36b">BEST</b> = the top option, <b style="color:#e0525a">NEVER</b> = never take it. Effects marked "unverified" / "est" come from the guide and the option text.</p>
 <h3>Rules that matter</h3>${rulesHtml}${tables}
-<p class=src>Source: G.events.dreams (game data version ${ev.version}, ${ev.retrieved}), guide "Cave of Many Dreams", G.drops/G.monsters cave_*. Picks: draft 2026-11-24, reviewed with the player the same day (docs/cave-of-many-dreams.md). Generated by scripts/cave-encounters.mjs.</p></div>
+<p class=src>Source: G.events.dreams (game data version ${ev.version}, ${ev.retrieved}), guide "Cave of Many Dreams", G.drops/G.monsters cave_*. Ranking: values agreed with the player 2026-11-24 (scripts/cave-scores.mjs). Generated by scripts/cave-encounters.mjs.</p></div>
 ${D.encounters.map(card).join("\n")}
 </body></html>`;
 

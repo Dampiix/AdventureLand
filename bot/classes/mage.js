@@ -232,7 +232,9 @@ module.exports = function createMage(ctx) {
         if (isBlaster(worn)) {
             if (t && !t.dead && packAround(t, blastRadius(worn)) >= (bl.minNeighbours || 2)) packSeenAt = Date.now();
             const better = blasterBetter(worn);
-            const why = ctx.cave && ctx.cave.active() ? "cave" : t && !t.dead && bossy(t) ? "boss" : Date.now() < noBlasterUntil ? "dangerous bystander" : util.mpRatio() < (bl.offMp || 0.2) ? "MP low" : better ? null :
+            // Off under /manual outside the cave; inside the cave it is allowed (v1.231.4, player decision 2026-11-24: the
+            // groups are small and apart there).
+            const why = ctx.cave && ctx.cave.active() && !ctx.cave.caveManual() ? "manual" : t && !t.dead && bossy(t) ? "boss" : Date.now() < noBlasterUntil ? "dangerous bystander" : util.mpRatio() < (bl.offMp || 0.2) ? "MP low" : better ? null :
                 travelling() ? "on the way" : Date.now() - packSeenAt > (bl.keepMs || 4000) ? "no pack" : null;
             if (!why) { ctx.gear.holdWeapons(bl.holdMs || 60000); return; }
             const batch = usualBatch();
@@ -250,7 +252,7 @@ module.exports = function createMage(ctx) {
             return;
         }
         if (Date.now() < noBlasterUntil || util.mpRatio() < (bl.minMp || 0.5) || character.esize < 1) return;
-        if (ctx.cave && ctx.cave.active()) return; // no blast splash in the cave (manual mode, v1.231.0)
+        if (ctx.cave && ctx.cave.active() && !ctx.cave.caveManual()) return; // /manual outside the cave: no blast splash (v1.231.4: allowed in the cave)
         const idx = blasterIndex();
         if (idx === -1) return;
         if (t && !t.dead && bossy(t)) return; // bosses: staff + book, whatever is stronger (v1.226.0)

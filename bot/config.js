@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.231.2",
+    version: "1.231.5",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -924,7 +924,8 @@ module.exports = {
         mode: "manual",
         noArea: true,
         neverFight: ["cave_darkmage"],
-        record: true, recordMaxChars: 3000, recordCapLeader: 300, recordCapMember: 120, entsEveryMs: 10000,
+        // v1.231.5: states only when more than the clock changed, slimmed, up to recordMaxChars; rewards once each.
+        record: true, recordMaxChars: 12000, recordCapLeader: 400, recordCapMember: 150, entsEveryMs: 10000,
     },
 
     // Fighter side of the item/gold flow

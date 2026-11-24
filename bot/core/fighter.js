@@ -1540,7 +1540,8 @@ module.exports = function createFighter(ctx, cls) {
         if (gigaFlee()) return; // a Giga Crab on us: run, nothing else (2026-11-24)
         ctx.gear.tick();
         if (cave) {
-            if (party.keepUp(false)) { defendInPlace(); return; } // members: on the leader's map first
+            // Members: on the leader's map first - never inside the cave (v1.231.3: a path walk led out of it).
+            if (!inCave && party.keepUp(false)) { defendInPlace(); return; }
         } else {
             if (cavalryTick() === true) return; // walking to a grown pack for the Cavalry
             if (leaveRageZone()) return; // standing in a rage zone we can't take: out first (2026-11-22)

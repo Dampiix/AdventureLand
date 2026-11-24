@@ -103,6 +103,14 @@ module.exports = function createParty(ctx) {
     // isDest: the end of the leader's route - a new destination replaces our current walk.
     let lastGoal = null;
     function moveTowards(point, label, isDest) {
+        // In the cave (v1.231.3, 2026-11-24 first run): never a path walk to another map - the warrior's smart_move to
+        // the leader's map walked him out of the cave a minute after entering. Same cave map: a straight move only.
+        if (character.cave) {
+            if (point.map !== character.map) { util.status("leader on another cave map - waiting", "yellow"); return; }
+            util.status(label, "yellow");
+            if (!is_moving(character)) xmove(point.x, point.y);
+            return;
+        }
         util.status(label, "yellow");
         if (isDest) {
             const same = lastGoal && lastGoal.map === point.map && Math.hypot(lastGoal.x - point.x, lastGoal.y - point.y) < 100;

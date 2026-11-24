@@ -55,15 +55,19 @@ module.exports = function createCave(ctx) {
         if (!rec) { try { rec = get(REC_KEY) || []; } catch (e) { rec = []; } }
         return rec;
     }
+    // v1.231.5 (after the first run 2026-11-24): the clock made every state "new" - 236 of the leader's 300 entries were
+    // states one second apart, truncated at 3,000 chars, and floor 1 was overwritten. Now a state is kept only when
+    // something besides the clock changed; it is slimmed (no *_message phrase objects, rewards recorded once each as
+    // "reward") and kept up to recordMaxChars; entities keep only game fields. A full storage drops the oldest half.
     let recSavedAt = 0, recDirty = false;
     function record(kind, data) {
         if (cfg.record === false) return;
         const buf = recBuf();
         let s;
         try { s = JSON.stringify(data); } catch (e) { s = String(data); }
-        const max = cfg.recordMaxChars || 3000;
+        const max = cfg.recordMaxChars || 12000;
         buf.push([Date.now(), kind, s.length > max ? s.slice(0, max) + "...(" + s.length + ")" : s]);
-        const cap = isLeader ? (cfg.recordCapLeader || 300) : (cfg.recordCapMember || 120);
+        const cap = isLeader ? (cfg.recordCapLeader || 400) : (cfg.recordCapMember || 150);
         if (buf.length > cap) buf.splice(0, buf.length - cap);
         recDirty = true;
         if (Date.now() - recSavedAt > 3000) saveRec();
@@ -72,36 +76,61 @@ module.exports = function createCave(ctx) {
         if (!recDirty) return;
         recSavedAt = Date.now();
         recDirty = false;
-        try { set(REC_KEY, recBuf()); } catch (e) { /* storage full or unavailable */ }
+        try { set(REC_KEY, recBuf()); } catch (e) {
+            const buf = recBuf(); // storage full: keep the newer half
+            buf.splice(0, Math.ceil(buf.length / 2));
+            try { set(REC_KEY, buf); } catch (e2) { /* still full or unavailable */ }
+        }
     }
 
-    // Cave state pushes (character.on("cave")): every distinct one, at most one per 2 s unless the choice changed.
-    let lastState = null, lastStateJson = "", lastStateAt = 0, lastChoiceId = null;
+    // A cave state without the clock and the phrase objects; rewards go out once each as "reward" entries.
+    const CLOCK = { expires: 1, server_time: 1, remaining_ms: 1, paused_at: 1, deadline: 1 };
+    function strip(v, top) {
+        if (Array.isArray(v)) return v.map(function (x) { return strip(x, false); });
+        if (!v || typeof v !== "object") return v;
+        const o = {};
+        Object.keys(v).forEach(function (k) {
+            if (/_message$|_messages$/.test(k) || k === "cx") return;
+            if (top && (CLOCK[k] || k === "rewards")) return;
+            if (!top && k === "deadline") return;
+            o[k] = strip(v[k], false);
+        });
+        return o;
+    }
+    const rewardSeen = {};
+    function slimState(state) {
+        if (!state || typeof state !== "object") return state;
+        (state.rewards || []).forEach(function (r) {
+            if (!r || r.id == null || rewardSeen[r.id]) return;
+            rewardSeen[r.id] = true;
+            record("reward", r);
+        });
+        return strip(state, true);
+    }
+
+    // Cave state pushes (character.on("cave")): only when something besides the clock changed.
+    let lastState = null, lastSig = "";
     function onState(state) {
         lastState = state || null;
-        const choiceId = state && state.choice ? state.choice.id + (state.choice.resolved ? ":done" : "") : null;
-        let json = "";
-        try { json = JSON.stringify(state); } catch (e) { return; }
-        if (json === lastStateJson) return;
-        if (choiceId === lastChoiceId && Date.now() - lastStateAt < 2000) return;
-        lastStateJson = json;
-        lastStateAt = Date.now();
-        lastChoiceId = choiceId;
-        record("state", state);
+        const slim = slimState(state);
+        let sig = "";
+        try { sig = JSON.stringify(slim); } catch (e) { return; }
+        if (sig === lastSig) return;
+        lastSig = sig;
+        record("state", Object.assign({ remaining_ms: state && state.remaining_ms }, slim));
     }
     try { character.on("cave", onState); } catch (e) { util.log("cave", "no cave state events: " + util.errReason(e), "orange"); }
 
-    // Entities on the cave map (every entsEveryMs, when the set of ids/targets changed): monsters with every flat
-    // field (cave flags, ally/owner markers are unknown yet), cave NPCs, chests.
+    // Entities on the cave map (every entsEveryMs, when the set of ids/targets changed): game fields only (the first
+    // run stored the renderer's sprite fields too).
     let entsSig = "", entsAt = 0;
+    const ENT_KEYS = ["id", "type", "mtype", "name", "level", "hp", "max_hp", "attack", "armor", "resistance", "xp", "speed", "range",
+        "frequency", "rage", "aggro", "damage_type", "target", "npc", "ctype", "cave", "owner", "ally", "citizen"];
     function flat(e) {
         const o = {};
-        Object.keys(e).forEach(function (k) {
-            const v = e[k];
-            if (v === null || ["string", "number", "boolean"].includes(typeof v)) {
-                if (!/^(real_|from_|going_|last_|move_num|engaged_move|walking|frame|width|height|lx|ly|mvx|mvy|angle|ref_speed|resync|u$)/.test(k)) o[k] = v;
-            } else if (k === "cave" || k === "s") o[k] = v;
-        });
+        ENT_KEYS.forEach(function (k) { if (e[k] !== undefined && e[k] !== null) o[k] = e[k]; });
+        o.x = Math.round(e.x || 0); o.y = Math.round(e.y || 0);
+        if (e.s && typeof e.s === "object") { const s = Object.keys(e.s); if (s.length) o.s = s; }
         return o;
     }
     function recordEntities() {
@@ -146,7 +175,14 @@ module.exports = function createCave(ctx) {
     };
     PAGE.__dmpxCaveDone = function (name, args, result, error) {
         if (name === "info") return;
-        record("res", { name: name, ok: !error, result: result, error: error ? util.errReason(error) : null });
+        // A result carrying the whole cave state (talk, enter): the state goes through onState, the entry keeps the rest.
+        let r = result;
+        if (r && typeof r === "object" && r.state && typeof r.state === "object") {
+            const st = r.state;
+            r = Object.assign({}, r, { state: "(recorded as state)" });
+            try { onState(st); } catch (e) { /* record only */ }
+        }
+        record("res", { name: name, ok: !error, result: r, error: error ? util.errReason(error) : null });
     };
 
     // ---- members vote what the leader voted ---------------------------------------------------------------------
@@ -223,7 +259,7 @@ module.exports = function createCave(ctx) {
             if (now !== wasIn) {
                 wasIn = now;
                 util.log("cave", now ? "in the Cave of Many Dreams - manual mode" + (cfg.mode === "manual" ? "" : " OFF (cave.mode)") : "left the cave", now ? "green" : "white");
-                record(now ? "enter" : "leave", { map: character.map, cave: character.cave || null });
+                record(now ? "enter" : "leave", { map: character.map, floor: character.cave ? character.cave.floor : null });
                 if (now && character.cave) onState(character.cave);
             }
             if (!now) { saveRec(); return; }

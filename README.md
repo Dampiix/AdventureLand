@@ -3,7 +3,7 @@
 One bot for a whole Adventure Land team: up to three fighters and one merchant, all running the same code.
 The fighters farm, hunt bosses and level up; the merchant supplies them, sells, banks, trades with other players and upgrades their gear.
 
-> **Version:** `1.231.2` (`bot/config.js` → `version`) · **Teams:** `Dmpx…` (main account) and `Viz…` (second account) · **Code:** `bot/` → in-game CODE slots 20–41
+> **Version:** `1.231.5` (`bot/config.js` → `version`) · **Teams:** `Dmpx…` (main account) and `Viz…` (second account) · **Code:** `bot/` → in-game CODE slots 20–41
 
 ## Repository
 
@@ -639,7 +639,7 @@ A visible boss is checked with its live stats (bosses grow).
 - **Off in the cave:** events, boss searches, supply calls (the merchant's call too), Daisy, Cavalry, rage-zone walks, magiport; Agitate, Cleave and Stomp (`noArea`: `util.noAreaNear` answers "yes"), the mage's Blaster (staff and book back). Nothing at all while the cave is paused (a vote). No respawn of our own (Nera: free at the doorway, 1 Amber in place - the player decides).
 - **Votes:** every member votes what its leader voted - the leader's `cave_request("vote")` (by hand in the UI or by code) is wrapped and sent as a CODE message `cavevote`; a leader vote found in the cave state wins. Members never vote on their own.
 - **Chests:** everyone opens cave chests within 400 px (cave gold and Amber go to the shared purse).
-- **Recorder** (`record`): cave states (`character.on("cave")`), every cave request and its result, and every `entsEveryMs` the cave's monsters/NPCs with all flat fields - in the storage `dmpx_cave_rec:<name>` (leader 300 entries, members 120), for the later automation.
+- **Recorder** (`record`): cave states (`character.on("cave")`), every cave request and its result, and every `entsEveryMs` the cave's monsters/NPCs with all flat fields - in the storage `dmpx_cave_rec:<name>` (leader 400 entries, members 150), for the later automation. Since v1.231.5 a state is kept only when more than the clock changed (the first run filled 236 of 300 entries with one-second clock states), without the phrase objects, up to 12,000 chars; every reward goes in once as a `reward` entry; entities keep only game fields; a full storage drops the oldest half.
 - **`/manual [on|off]`** (v1.231.1, chat command in the leader's client): the same fight rules outside the cave, so the player can walk the leader (e.g. to Dorr) without stopping its code. The leader keeps broadcasting its position (field `manual`), the members follow it across maps and use the same rules. Kept across code loads (`dmpx_manual:<name>`) until `/manual` again; no events, supply, Daisy or Cavalry meanwhile, and no Agitate, Cleave or Stomp (v1.231.2, `util.setNoAreaHook`). Switching it off picks a farm target again at once (v1.231.2). Respawn and chests stay normal outside the cave. Healing walks of the priest stay (a hurt member counts as a fight).
 - Entering: whether every member must choose Enter at Dorr itself is unknown until the first run - start warrior and mage in their own clients beforehand.
 

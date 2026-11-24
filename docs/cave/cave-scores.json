@@ -1,0 +1,3136 @@
+{
+ "values": {
+  "goldPer1000": 0.65,
+  "perSecond": 0.02,
+  "monster": 0.05,
+  "traveler": -0.16,
+  "keeper": -0.2,
+  "ally": 0.3,
+  "tool": 0.2,
+  "lamp": 0.1,
+  "decoy": 0.05,
+  "truce": 0,
+  "hostileTravelerParcel": true
+ },
+ "items": {
+  "cave_loaded_die": 10,
+  "cave_tunnelaxe": 0.2,
+  "gem1": 0.1,
+  "scroll1": 0.1,
+  "cave_amber": 1
+ },
+ "rolls": {
+  "cave_parcel": 0.965,
+  "cave_rescue": 1.82,
+  "cave_boss": 1.6700000000000002,
+  "cave_finish": 2.77
+ },
+ "encounters": [
+  {
+   "id": "e01",
+   "name": "Dice in a Tin Cup",
+   "kind": "dice",
+   "group": "mixed",
+   "options": [
+    {
+     "id": "favor",
+     "label": "Roll 4–6 for a helper; 1–3 brings two guards",
+     "effect": "favor",
+     "v": 0.2,
+     "notes": [
+      "helper or two guards"
+     ],
+     "rank": 1
+    },
+    {
+     "id": "door",
+     "label": "Roll for a fight: four rats or four crabs",
+     "effect": "dice_room",
+     "v": 0.2,
+     "notes": [
+      "four rats or crabs"
+     ],
+     "rank": 2
+    },
+    {
+     "id": "small",
+     "label": "Bet 2,000 shared gold; roll 4–6 to get 4,000",
+     "effect": "dice",
+     "v": 0,
+     "notes": [
+      "even bet (0 on average)"
+     ],
+     "rank": 3
+    },
+    {
+     "id": "large",
+     "label": "Bet 5,000 shared gold; roll 4–6 to get 10,000",
+     "effect": "dice",
+     "v": 0,
+     "notes": [
+      "even bet (0 on average)"
+     ],
+     "rank": 4
+    },
+    {
+     "id": "six",
+     "label": "Bet 2,000 on a six; win 12,000",
+     "effect": "dice6",
+     "v": 0,
+     "notes": [
+      "even bet (0 on average)"
+     ],
+     "rank": 5
+    },
+    {
+     "id": "die",
+     "label": "Bet 6 Amber on a Loaded Die; win on a six",
+     "effect": "die",
+     "v": -99,
+     "notes": [
+      "NEVER: 6 Amber for a 1-in-6 Loaded Die"
+     ],
+     "rank": 6
+    }
+   ]
+  },
+  {
+   "id": "e02",
+   "name": "The Unclaimed Parcel",
+   "kind": "parcel",
+   "group": "mixed",
+   "options": [
+    {
+     "id": "e02_1",
+     "label": "Pry the hinges off quietly.",
+     "effect": "venture",
+     "v": 0.97,
+     "notes": [
+      "needs a pry bar"
+     ],
+     "rank": 1
+    },
+    {
+     "id": "e02_0",
+     "label": "Cut the seal. Something inside is scratching.",
+     "effect": "venture",
+     "v": 0.56,
+     "notes": [],
+     "rank": 2
+    },
+    {
+     "id": "e02_2",
+     "label": "Spend 20 seconds checking the trap.",
+     "effect": "careful",
+     "v": 0.56,
+     "notes": [
+      "parcel roll - 20 s (est)"
+     ],
+     "rank": 3
+    },
+    {
+     "id": "e02_4",
+     "label": "Ring the alarm and take what the guards carry.",
+     "effect": "venture",
+     "v": 0.15,
+     "notes": [],
+     "rank": 4
+    },
+    {
+     "id": "e02_5",
+     "label": "Leave it and keep going.",
+     "effect": "leave",
+     "v": 0,
+     "notes": [],
+     "rank": 5
+    },
+    {
+     "id": "e02_3",
+     "label": "Buy the box for 2,000 shared gold",
+     "effect": "venture",
+     "v": -0.34,
+     "notes": [],
+     "rank": 6
+    }
+   ]
+  },
+  {
+   "id": "e03",
+   "name": "Feed the Vault",
+   "kind": "lure",
+   "group": "mixed",
+   "options": [
+    {
+     "id": "e03_4",
+     "label": "Sell the spare feed for 2,000 cave gold",
+     "effect": "venture",
+     "v": 1.3,
+     "notes": [],
+     "rank": 1
+    },
+    {
+     "id": "e03_1",
+     "label": "Put your hand through the bars.",
+     "effect": "venture",
+     "v": 0.53,
+     "notes": [],
+     "rank": 2
+    },
+    {
+     "id": "e03_0",
+     "label": "Open the rat gate. Fight six rats for the parcel.",
+     "effect": "venture",
+     "v": 0.3,
+     "notes": [],
+     "rank": 3
+    },
+    {
+     "id": "e03_3",
+     "label": "Free the tame rat. Let it follow us.",
+     "effect": "venture",
+     "v": 0.3,
+     "notes": [],
+     "rank": 4
+    },
+    {
+     "id": "e03_5",
+     "label": "Leave it and keep going.",
+     "effect": "leave",
+     "v": 0,
+     "notes": [],
+     "rank": 5
+    },
+    {
+     "id": "e03_2",
+     "label": "Buy a rattling feed tin for 2 Amber",
+     "effect": "venture",
+     "v": -1.95,
+     "notes": [],
+     "rank": 6
+    }
+   ]
+  },
+  {
+   "id": "e04",
+   "name": "The Hot Forge",
+   "kind": "forge",
+   "group": "mixed",
+   "options": [
+    {
+     "id": "e04_4",
+     "label": "Sell the scraps to the smith for 2 Amber",
+     "effect": "venture",
+     "v": 2,
+     "notes": [],
+     "rank": 1
+    },
+    {
+     "id": "e04_0",
+     "label": "Pull the box out now; the guard may hear",
+     "effect": "venture",
+     "v": 0.74,
+     "notes": [],
+     "rank": 2
+    },
+    {
+     "id": "e04_3",
+     "label": "Borrow the smith’s pry bar.",
+     "effect": "venture",
+     "v": 0.2,
+     "notes": [],
+     "rank": 3
+    },
+    {
+     "id": "e04_5",
+     "label": "Leave it and keep going.",
+     "effect": "leave",
+     "v": 0,
+     "notes": [],
+     "rank": 4
+    },
+    {
+     "id": "e04_2",
+     "label": "Wake the forge keeper on purpose.",
+     "effect": "venture",
+     "v": -0.2,
+     "notes": [],
+     "rank": 5
+    },
+    {
+     "id": "e04_1",
+     "label": "Buy the cooled box for 4 shared Amber",
+     "effect": "venture",
+     "v": -3.03,
+     "notes": [],
+     "rank": 6
+    }
+   ]
+  },
+  {
+   "id": "e05",
+   "name": "The Guard’s Contract",
+   "kind": "hire",
+   "group": "mixed",
+   "options": [
+    {
+     "id": "e05_2",
+     "label": "Fight the guard for the contract chest",
+     "effect": "venture",
+     "v": 0.81,
+     "notes": [],
+     "rank": 1
+    },
+    {
+     "id": "e05_1",
+     "label": "Let the guard lead. No money up front.",
+     "effect": "venture",
+     "v": 0.23,
+     "notes": [],
+     "rank": 2
+    },
+    {
+     "id": "e05_3",
+     "label": "Take a route with fewer guards",
+     "effect": "venture",
+     "v": 0,
+     "notes": [],
+     "rank": 3
+    },
+    {
+     "id": "e05_5",
+     "label": "Leave it and keep going.",
+     "effect": "leave",
+     "v": 0,
+     "notes": [],
+     "rank": 4
+    },
+    {
+     "id": "e05_4",
+     "label": "Buy a spare lamp for 1 Amber",
+     "effect": "venture",
+     "v": -0.9,
+     "notes": [],
+     "rank": 5
+    },
+    {
+     "id": "e05_0",
+     "label": "Hire the guard for 2,000 shared gold",
+     "effect": "venture",
+     "v": -1,
+     "notes": [],
+     "rank": 6
+    }
+   ]
+  },
+  {
+   "id": "e06",
+   "name": "The Trapped Surveyor",
+   "kind": "rescue",
+   "group": "mixed",
+   "options": [
+    {
+     "id": "save",
+     "label": "Save {npc}: fight the wolves",
+     "effect": "save",
+     "v": 1.97,
+     "notes": [
+      "fight the wolves (est 3), rescue roll"
+     ],
+     "rank": 1
+    },
+    {
+     "id": "lure",
+     "label": "Draw the wolves away from {npc}",
+     "effect": "lure",
+     "v": 1.42,
+     "notes": [
+      "draw the wolves off (est)"
+     ],
+     "rank": 2
+    },
+    {
+     "id": "aid",
+     "label": "Save and hire {npc} for 2,000 shared gold",
+     "effect": "hire",
+     "v": 0.97,
+     "notes": [
+      "save + hire (cost below)"
+     ],
+     "rank": 3
+    },
+    {
+     "id": "cover",
+     "label": "Bring {npc} behind us; take a smaller reward",
+     "effect": "cover",
+     "v": 0.97,
+     "notes": [
+      "smaller reward: parcel roll, probably no fight (est)"
+     ],
+     "rank": 4
+    },
+    {
+     "id": "finish",
+     "label": "Attack {npc} and the wolves",
+     "effect": "both",
+     "v": 0.96,
+     "notes": [
+      "attack them and the wolves (est)"
+     ],
+     "rank": 5
+    },
+    {
+     "id": "watch",
+     "label": "Wait; loot the pack if {npc} dies",
+     "effect": "watch",
+     "v": 0.48,
+     "notes": [
+      "loot the pack if they die (est)"
+     ],
+     "rank": 6
+    }
+   ]
+  },
+  {
+   "id": "e07",
+   "name": "Borrow a Uniform",
+   "kind": "disguise",
+   "group": "mixed",
+   "options": [
+    {
+     "id": "e07_4",
+     "label": "Search the pockets for supplies",
+     "effect": "venture",
+     "v": 0.97,
+     "notes": [],
+     "rank": 1
+    },
+    {
+     "id": "e07_2",
+     "label": "Challenge the captain for the coat",
+     "effect": "venture",
+     "v": 0.81,
+     "notes": [],
+     "rank": 2
+    },
+    {
+     "id": "e07_1",
+     "label": "Steal the captain’s coat; he may catch us",
+     "effect": "venture",
+     "v": 0.73,
+     "notes": [],
+     "rank": 3
+    },
+    {
+     "id": "e07_3",
+     "label": "Take a discarded lamp from the locker",
+     "effect": "venture",
+     "v": 0.1,
+     "notes": [],
+     "rank": 4
+    },
+    {
+     "id": "e07_5",
+     "label": "Leave it and keep going.",
+     "effect": "leave",
+     "v": 0,
+     "notes": [],
+     "rank": 5
+    },
+    {
+     "id": "e07_0",
+     "label": "Pay 2 Amber for a guard’s coat. Skip the next guardroom.",
+     "effect": "venture",
+     "v": -2,
+     "notes": [],
+     "rank": 6
+    }
+   ]
+  },
+  {
+   "id": "e08",
+   "name": "Pick a Fighter",
+   "kind": "arena",
+   "group": "mixed",
+   "options": [
+    {
+     "id": "e08_4",
+     "label": "Let the handler choose your opponent",
+     "effect": "venture",
+     "v": 1.56,
+     "notes": [],
+     "rank": 1
+    },
+    {
+     "id": "e08_1",
+     "label": "Fight six bats",
+     "effect": "venture",
+     "v": 0.3,
+     "notes": [],
+     "rank": 2
+    },
+    {
+     "id": "e08_0",
+     "label": "Choose three crabs. Slow, but armored.",
+     "effect": "venture",
+     "v": 0.15,
+     "notes": [],
+     "rank": 3
+    },
+    {
+     "id": "e08_2",
+     "label": "Choose the wolf pair. They move together.",
+     "effect": "venture",
+     "v": 0.1,
+     "notes": [],
+     "rank": 4
+    },
+    {
+     "id": "e08_5",
+     "label": "Leave it and keep going.",
+     "effect": "leave",
+     "v": 0,
+     "notes": [],
+     "rank": 5
+    },
+    {
+     "id": "e08_3",
+     "label": "Choose the Lockbreaker. One large opponent.",
+     "effect": "venture",
+     "v": -0.2,
+     "notes": [],
+     "rank": 6
+    }
+   ]
+  },
+  {
+   "id": "e09",
+   "name": "Finish the Golem",
+   "kind": "construct",
+   "group": "mixed",
+   "options": [
+    {
+     "id": "e09_3",
+     "label": "Sell the broken plates for 2 Amber",
+     "effect": "venture",
+     "v": 2,
+     "notes": [],
+     "rank": 1
+    },
+    {
+     "id": "e09_4",
+     "label": "Spend 20 seconds opening its storage hatch",
+     "effect": "careful",
+     "v": 0.56,
+     "notes": [
+      "parcel roll - 20 s (est)"
+     ],
+     "rank": 2
+    },
+    {
+     "id": "e09_1",
+     "label": "Fit the loose power stone",
+     "effect": "venture",
+     "v": 0.05,
+     "notes": [],
+     "rank": 3
+    },
+    {
+     "id": "e09_5",
+     "label": "Leave it and keep going.",
+     "effect": "leave",
+     "v": 0,
+     "notes": [],
+     "rank": 4
+    },
+    {
+     "id": "e09_2",
+     "label": "Remove the stone while it’s awake",
+     "effect": "venture",
+     "v": -0.2,
+     "notes": [],
+     "rank": 5
+    },
+    {
+     "id": "e09_0",
+     "label": "Use 4 Amber to repair its chest",
+     "effect": "venture",
+     "v": -3.7,
+     "notes": [],
+     "rank": 6
+    }
+   ]
+  },
+  {
+   "id": "e10",
+   "name": "The Handler and the Wolves",
+   "kind": "wolves",
+   "group": "mixed",
+   "options": [
+    {
+     "id": "e10_3",
+     "label": "Reach for the handler’s purse",
+     "effect": "venture",
+     "v": 0.58,
+     "notes": [],
+     "rank": 1
+    },
+    {
+     "id": "e10_1",
+     "label": "Open the small pen instead",
+     "effect": "venture",
+     "v": 0.1,
+     "notes": [],
+     "rank": 2
+    },
+    {
+     "id": "e10_5",
+     "label": "Leave it and keep going.",
+     "effect": "leave",
+     "v": 0,
+     "notes": [],
+     "rank": 3
+    },
+    {
+     "id": "e10_4",
+     "label": "Pay 2,000 cave gold for the locked crate",
+     "effect": "venture",
+     "v": -0.34,
+     "notes": [],
+     "rank": 4
+    },
+    {
+     "id": "e10_2",
+     "label": "Buy a tin rattle for 2 shared Amber",
+     "effect": "venture",
+     "v": -1.95,
+     "notes": [],
+     "rank": 5
+    },
+    {
+     "id": "e10_0",
+     "label": "Pull the red chain: six level 100 wolves",
+     "effect": "wolves",
+     "v": -99,
+     "notes": [
+      "NEVER: six level 100 wolves"
+     ],
+     "rank": 6
+    }
+   ]
+  },
+  {
+   "id": "e11",
+   "name": "Two People Claim the Chest",
+   "kind": "conflict",
+   "group": "mixed",
+   "options": [
+    {
+     "id": "testimony",
+     "label": "Help whichever fighter hits harder",
+     "effect": "testimony",
+     "v": 1.3,
+     "notes": [
+      "help the harder hitter (est 80 % win)"
+     ],
+     "rank": 1
+    },
+    {
+     "id": "neither",
+     "label": "Let them fight; collect what’s left",
+     "effect": "neither",
+     "v": 0.77,
+     "notes": [
+      "collect what is left (est)"
+     ],
+     "rank": 2
+    },
+    {
+     "id": "left",
+     "label": "Help {npc} fight {rival}",
+     "effect": "left",
+     "v": 0.75,
+     "notes": [
+      "rescue roll only if our side wins (est 50 %)"
+     ],
+     "rank": 3
+    },
+    {
+     "id": "right",
+     "label": "Help {rival} fight {npc}",
+     "effect": "right",
+     "v": 0.75,
+     "notes": [
+      "rescue roll only if our side wins (est 50 %)"
+     ],
+     "rank": 4
+    },
+    {
+     "id": "both",
+     "label": "Fight both and take the chest",
+     "effect": "both",
+     "v": 0.65,
+     "notes": [
+      "fight both NPCs for the chest (est)"
+     ],
+     "rank": 5
+    },
+    {
+     "id": "peace",
+     "label": "Pay 3,000 shared gold to stop the fight",
+     "effect": "peace",
+     "v": -0.99,
+     "notes": [
+      "pay to stop it (est: parcel roll)"
+     ],
+     "rank": 6
+    }
+   ]
+  },
+  {
+   "id": "e12",
+   "name": "The Bell Ropes",
+   "kind": "bell",
+   "group": "mixed",
+   "options": [
+    {
+     "id": "e12_4",
+     "label": "Use a pry bar to open the bell’s base",
+     "effect": "use_tool",
+     "v": 0.97,
+     "notes": [
+      "pry bar: a reward (est: parcel roll)",
+      "needs a pry bar"
+     ],
+     "rank": 1
+    },
+    {
+     "id": "e12_0",
+     "label": "Pull the short rope. Wake three guards.",
+     "effect": "venture",
+     "v": 0.15,
+     "notes": [],
+     "rank": 2
+    },
+    {
+     "id": "e12_3",
+     "label": "Take the loose bell as a decoy",
+     "effect": "venture",
+     "v": 0.05,
+     "notes": [],
+     "rank": 3
+    },
+    {
+     "id": "e12_5",
+     "label": "Leave it and keep going.",
+     "effect": "leave",
+     "v": 0,
+     "notes": [],
+     "rank": 4
+    },
+    {
+     "id": "e12_1",
+     "label": "Pull the long rope. Wake the keeper.",
+     "effect": "venture",
+     "v": -0.2,
+     "notes": [],
+     "rank": 5
+    },
+    {
+     "id": "e12_2",
+     "label": "Cut the red rope: level 100 wolves",
+     "effect": "wolves",
+     "v": -99,
+     "notes": [
+      "NEVER: six level 100 wolves"
+     ],
+     "rank": 6
+    }
+   ]
+  },
+  {
+   "id": "e13",
+   "name": "The Strong Magnet",
+   "kind": "magnet",
+   "group": "mixed",
+   "options": [
+    {
+     "id": "e13_1",
+     "label": "Sell the loose metal for 2 Amber",
+     "effect": "venture",
+     "v": 2,
+     "notes": [],
+     "rank": 1
+    },
+    {
+     "id": "e13_0",
+     "label": "Turn the magnet all the way up",
+     "effect": "venture",
+     "v": 0.74,
+     "notes": [],
+     "rank": 2
+    },
+    {
+     "id": "e13_4",
+     "label": "Take the magnetic latch for a stuck hatch",
+     "effect": "venture",
+     "v": 0.2,
+     "notes": [],
+     "rank": 3
+    },
+    {
+     "id": "e13_5",
+     "label": "Leave it and keep going.",
+     "effect": "leave",
+     "v": 0,
+     "notes": [],
+     "rank": 4
+    },
+    {
+     "id": "e13_2",
+     "label": "Pull the sentinel’s shield toward the party",
+     "effect": "venture",
+     "v": -0.2,
+     "notes": [],
+     "rank": 5
+    },
+    {
+     "id": "e13_3",
+     "label": "Pay 2 Amber to use the small magnet",
+     "effect": "venture",
+     "v": -1.04,
+     "notes": [],
+     "rank": 6
+    }
+   ]
+  },
+  {
+   "id": "e14",
+   "name": "Two Couriers, One Badge",
+   "kind": "conflict",
+   "group": "mixed",
+   "options": [
+    {
+     "id": "testimony",
+     "label": "Help whichever fighter hits harder",
+     "effect": "testimony",
+     "v": 1.3,
+     "notes": [
+      "help the harder hitter (est 80 % win)"
+     ],
+     "rank": 1
+    },
+    {
+     "id": "neither",
+     "label": "Let them fight; collect what’s left",
+     "effect": "neither",
+     "v": 0.77,
+     "notes": [
+      "collect what is left (est)"
+     ],
+     "rank": 2
+    },
+    {
+     "id": "left",
+     "label": "Help {npc} fight {rival}",
+     "effect": "left",
+     "v": 0.75,
+     "notes": [
+      "rescue roll only if our side wins (est 50 %)"
+     ],
+     "rank": 3
+    },
+    {
+     "id": "right",
+     "label": "Help {rival} fight {npc}",
+     "effect": "right",
+     "v": 0.75,
+     "notes": [
+      "rescue roll only if our side wins (est 50 %)"
+     ],
+     "rank": 4
+    },
+    {
+     "id": "both",
+     "label": "Fight both and take the chest",
+     "effect": "both",
+     "v": 0.65,
+     "notes": [
+      "fight both NPCs for the chest (est)"
+     ],
+     "rank": 5
+    },
+    {
+     "id": "peace",
+     "label": "Pay 3,000 shared gold to stop the fight",
+     "effect": "peace",
+     "v": -0.99,
+     "notes": [
+      "pay to stop it (est: parcel roll)"
+     ],
+     "rank": 6
+    }
+   ]
+  },
+  {
+   "id": "e15",
+   "name": "Letter to the Captain",
+   "kind": "letter",
+   "group": "mixed",
+   "options": [
+    {
+     "id": "e15_0",
+     "label": "Deliver the letter; the captain may blame us",
+     "effect": "venture",
+     "v": 2.21,
+     "notes": [],
+     "rank": 1
+    },
+    {
+     "id": "e15_1",
+     "label": "Open the letter in front of the captain",
+     "effect": "venture",
+     "v": 0.81,
+     "notes": [],
+     "rank": 2
+    },
+    {
+     "id": "e15_4",
+     "label": "Spend 20 seconds reading the letter, then collect the supplies",
+     "effect": "careful",
+     "v": 0.56,
+     "notes": [
+      "parcel roll - 20 s (est)"
+     ],
+     "rank": 3
+    },
+    {
+     "id": "e15_3",
+     "label": "Take the messenger’s spare lamp",
+     "effect": "venture",
+     "v": 0.1,
+     "notes": [],
+     "rank": 4
+    },
+    {
+     "id": "e15_5",
+     "label": "Leave it and keep going.",
+     "effect": "leave",
+     "v": 0,
+     "notes": [],
+     "rank": 5
+    },
+    {
+     "id": "e15_2",
+     "label": "Hire the messenger for 2,000 shared gold",
+     "effect": "venture",
+     "v": -1,
+     "notes": [],
+     "rank": 6
+    }
+   ]
+  },
+  {
+   "id": "e16",
+   "name": "Trade the Crates",
+   "kind": "trade",
+   "group": "mixed",
+   "options": [
+    {
+     "id": "e16_0",
+     "label": "Take the sealed crate; it may contain bats",
+     "effect": "venture",
+     "v": 1.93,
+     "notes": [],
+     "rank": 1
+    },
+    {
+     "id": "e16_3",
+     "label": "Sell the empty crates for 1,500 cave gold",
+     "effect": "venture",
+     "v": 0.98,
+     "notes": [],
+     "rank": 2
+    },
+    {
+     "id": "e16_2",
+     "label": "Take the guarded crate",
+     "effect": "venture",
+     "v": 0.65,
+     "notes": [],
+     "rank": 3
+    },
+    {
+     "id": "e16_4",
+     "label": "Take the loose hinges as a pry bar",
+     "effect": "venture",
+     "v": 0.2,
+     "notes": [],
+     "rank": 4
+    },
+    {
+     "id": "e16_5",
+     "label": "Leave it and keep going.",
+     "effect": "leave",
+     "v": 0,
+     "notes": [],
+     "rank": 5
+    },
+    {
+     "id": "e16_1",
+     "label": "Pay 3 Amber to open both crates",
+     "effect": "venture",
+     "v": -2.03,
+     "notes": [],
+     "rank": 6
+    }
+   ]
+  },
+  {
+   "id": "e17",
+   "name": "The Copying Shadow",
+   "kind": "shadow",
+   "group": "mixed",
+   "options": [
+    {
+     "id": "e17_1",
+     "label": "Throw a stone into the shadow",
+     "effect": "venture",
+     "v": 0.61,
+     "notes": [],
+     "rank": 1
+    },
+    {
+     "id": "e17_4",
+     "label": "Watch the shadow for 20 seconds",
+     "effect": "careful",
+     "v": 0.56,
+     "notes": [
+      "parcel roll - 20 s (est)"
+     ],
+     "rank": 2
+    },
+    {
+     "id": "e17_3",
+     "label": "Borrow the watcher’s lamp",
+     "effect": "venture",
+     "v": 0.1,
+     "notes": [],
+     "rank": 3
+    },
+    {
+     "id": "e17_5",
+     "label": "Leave it and keep going.",
+     "effect": "leave",
+     "v": 0,
+     "notes": [],
+     "rank": 4
+    },
+    {
+     "id": "e17_2",
+     "label": "Pay 2 Amber to keep the lamp burning",
+     "effect": "venture",
+     "v": -1.04,
+     "notes": [],
+     "rank": 5
+    },
+    {
+     "id": "e17_0",
+     "label": "Step into the shadow. Fight a copy of your strongest fighter.",
+     "effect": "venture",
+     "v": -99,
+     "notes": [
+      "NEVER: copy of our strongest"
+     ],
+     "rank": 6
+    }
+   ]
+  },
+  {
+   "id": "e18",
+   "name": "The Broken Lift",
+   "kind": "lift",
+   "group": "mixed",
+   "options": [
+    {
+     "id": "e18_3",
+     "label": "Sell the loose cable for 2 Amber",
+     "effect": "venture",
+     "v": 2,
+     "notes": [],
+     "rank": 1
+    },
+    {
+     "id": "e18_0",
+     "label": "Turn the lift wheel hard",
+     "effect": "venture",
+     "v": 1.11,
+     "notes": [],
+     "rank": 2
+    },
+    {
+     "id": "e18_2",
+     "label": "Pry open the service hatch",
+     "effect": "use_tool",
+     "v": 0.97,
+     "notes": [
+      "pry bar: a reward (est: parcel roll)",
+      "needs a pry bar"
+     ],
+     "rank": 3
+    },
+    {
+     "id": "e18_4",
+     "label": "Call down to the lower landing",
+     "effect": "venture",
+     "v": 0.1,
+     "notes": [],
+     "rank": 4
+    },
+    {
+     "id": "e18_5",
+     "label": "Leave it and keep going.",
+     "effect": "leave",
+     "v": 0,
+     "notes": [],
+     "rank": 5
+    },
+    {
+     "id": "e18_1",
+     "label": "Hire the lift guard for 2,000 cave gold",
+     "effect": "venture",
+     "v": -1,
+     "notes": [],
+     "rank": 6
+    }
+   ]
+  },
+  {
+   "id": "e19",
+   "name": "The Farmer’s Guess",
+   "kind": "mushroom",
+   "group": "mixed",
+   "options": [
+    {
+     "id": "e19_1",
+     "label": "Pick the plain patch for 2 Amber",
+     "effect": "venture",
+     "v": 2,
+     "notes": [],
+     "rank": 1
+    },
+    {
+     "id": "e19_2",
+     "label": "Plant a crop. Return after one minute for 3 Amber.",
+     "effect": "plant",
+     "v": 1.7,
+     "notes": [
+      "3 Amber if we come back after 1 min (est 70 %)"
+     ],
+     "rank": 2
+    },
+    {
+     "id": "e19_0",
+     "label": "Pick the spotted patch; it may wake bats",
+     "effect": "venture",
+     "v": 1.61,
+     "notes": [],
+     "rank": 3
+    },
+    {
+     "id": "e19_4",
+     "label": "Clear the farmer’s rat pen",
+     "effect": "venture",
+     "v": 0.3,
+     "notes": [],
+     "rank": 4
+    },
+    {
+     "id": "e19_3",
+     "label": "Borrow the farmer’s empty seed tin",
+     "effect": "venture",
+     "v": 0.05,
+     "notes": [],
+     "rank": 5
+    },
+    {
+     "id": "e19_5",
+     "label": "Leave it and keep going.",
+     "effect": "leave",
+     "v": 0,
+     "notes": [],
+     "rank": 6
+    }
+   ]
+  },
+  {
+   "id": "e20",
+   "name": "The Cornered Rogue",
+   "kind": "rogue",
+   "group": "mixed",
+   "options": [
+    {
+     "id": "save",
+     "label": "Save {npc}: fight the wolves",
+     "effect": "save",
+     "v": 1.97,
+     "notes": [
+      "fight the wolves (est 3), rescue roll"
+     ],
+     "rank": 1
+    },
+    {
+     "id": "lure",
+     "label": "Draw the wolves away from {npc}",
+     "effect": "lure",
+     "v": 1.42,
+     "notes": [
+      "draw the wolves off (est)"
+     ],
+     "rank": 2
+    },
+    {
+     "id": "aid",
+     "label": "Save and hire {npc} for 2,000 shared gold",
+     "effect": "hire",
+     "v": 0.97,
+     "notes": [
+      "save + hire (cost below)"
+     ],
+     "rank": 3
+    },
+    {
+     "id": "cover",
+     "label": "Bring {npc} behind us; take a smaller reward",
+     "effect": "cover",
+     "v": 0.97,
+     "notes": [
+      "smaller reward: parcel roll, probably no fight (est)"
+     ],
+     "rank": 4
+    },
+    {
+     "id": "finish",
+     "label": "Attack {npc} and the wolves",
+     "effect": "both",
+     "v": 0.96,
+     "notes": [
+      "attack them and the wolves (est)"
+     ],
+     "rank": 5
+    },
+    {
+     "id": "watch",
+     "label": "Wait; loot the pack if {npc} dies",
+     "effect": "watch",
+     "v": 0.68,
+     "notes": [
+      "loot the pack if they die (est)",
+      "1 % Last Word (~20 Amber)"
+     ],
+     "rank": 6
+    }
+   ]
+  },
+  {
+   "id": "e21",
+   "name": "Change the Map",
+   "kind": "route",
+   "group": "mixed",
+   "options": [
+    {
+     "id": "e21_2",
+     "label": "Trust the crossed-out route",
+     "effect": "venture",
+     "v": 0.56,
+     "notes": [],
+     "rank": 1
+    },
+    {
+     "id": "e21_1",
+     "label": "Take the guarded shortcut",
+     "effect": "venture",
+     "v": 0.15,
+     "notes": [],
+     "rank": 2
+    },
+    {
+     "id": "e21_4",
+     "label": "Take the spare lantern",
+     "effect": "venture",
+     "v": 0.1,
+     "notes": [],
+     "rank": 3
+    },
+    {
+     "id": "e21_5",
+     "label": "Leave it and keep going.",
+     "effect": "leave",
+     "v": 0,
+     "notes": [],
+     "rank": 4
+    },
+    {
+     "id": "e21_3",
+     "label": "Hire the mapmaker for 2,000 cave gold",
+     "effect": "venture",
+     "v": -1,
+     "notes": [],
+     "rank": 5
+    },
+    {
+     "id": "e21_0",
+     "label": "Buy a pass for 3 shared Amber; skip one guardroom",
+     "effect": "venture",
+     "v": -3,
+     "notes": [],
+     "rank": 6
+    }
+   ]
+  },
+  {
+   "id": "e22",
+   "name": "One More Turn",
+   "kind": "pressure",
+   "group": "mixed",
+   "options": [
+    {
+     "id": "e22_4",
+     "label": "Sell the loose fittings for 2 Amber",
+     "effect": "venture",
+     "v": 2,
+     "notes": [],
+     "rank": 1
+    },
+    {
+     "id": "e22_3",
+     "label": "Use a pry bar on the jammed latch",
+     "effect": "use_tool",
+     "v": 0.97,
+     "notes": [
+      "pry bar: a reward (est: parcel roll)",
+      "needs a pry bar"
+     ],
+     "rank": 2
+    },
+    {
+     "id": "e22_0",
+     "label": "Give the wheel one more turn",
+     "effect": "venture",
+     "v": 0.74,
+     "notes": [],
+     "rank": 3
+    },
+    {
+     "id": "e22_2",
+     "label": "Open the valve slowly: 20 seconds",
+     "effect": "careful",
+     "v": 0.56,
+     "notes": [
+      "parcel roll - 20 s (est)"
+     ],
+     "rank": 4
+    },
+    {
+     "id": "e22_5",
+     "label": "Leave it and keep going.",
+     "effect": "leave",
+     "v": 0,
+     "notes": [],
+     "rank": 5
+    },
+    {
+     "id": "e22_1",
+     "label": "Release all the pressure at once",
+     "effect": "venture",
+     "v": -0.2,
+     "notes": [],
+     "rank": 6
+    }
+   ]
+  },
+  {
+   "id": "e23",
+   "name": "Keep the Crate Cold",
+   "kind": "escort",
+   "group": "mixed",
+   "options": [
+    {
+     "id": "e23_0",
+     "label": "Escort the porter to the stairs",
+     "effect": "escort",
+     "v": 3.47,
+     "notes": [
+      "3,000 gold + rescue roll, walking with it (est)"
+     ],
+     "rank": 1
+    },
+    {
+     "id": "e23_1",
+     "label": "Open the crate before moving it",
+     "effect": "venture",
+     "v": 1.01,
+     "notes": [],
+     "rank": 2
+    },
+    {
+     "id": "e23_3",
+     "label": "Ask the porter to fight beside us",
+     "effect": "guide",
+     "v": 0.3,
+     "notes": [
+      "NPC joins"
+     ],
+     "rank": 3
+    },
+    {
+     "id": "e23_4",
+     "label": "Take the spare lamp from the cart",
+     "effect": "venture",
+     "v": 0.1,
+     "notes": [],
+     "rank": 4
+    },
+    {
+     "id": "e23_5",
+     "label": "Leave it and keep going.",
+     "effect": "leave",
+     "v": 0,
+     "notes": [],
+     "rank": 5
+    },
+    {
+     "id": "e23_2",
+     "label": "Pay 2,000 cave gold to unload it here",
+     "effect": "venture",
+     "v": -0.34,
+     "notes": [],
+     "rank": 6
+    }
+   ]
+  },
+  {
+   "id": "e24",
+   "name": "The Same Prisoner Twice",
+   "kind": "twins",
+   "group": "mixed",
+   "options": [
+    {
+     "id": "testimony",
+     "label": "Help whichever fighter hits harder",
+     "effect": "testimony",
+     "v": 1.3,
+     "notes": [
+      "help the harder hitter (est 80 % win)"
+     ],
+     "rank": 1
+    },
+    {
+     "id": "neither",
+     "label": "Let them fight; collect what’s left",
+     "effect": "neither",
+     "v": 0.77,
+     "notes": [
+      "collect what is left (est)"
+     ],
+     "rank": 2
+    },
+    {
+     "id": "left",
+     "label": "Help {npc} fight {rival}",
+     "effect": "left",
+     "v": 0.75,
+     "notes": [
+      "rescue roll only if our side wins (est 50 %)"
+     ],
+     "rank": 3
+    },
+    {
+     "id": "right",
+     "label": "Help {rival} fight {npc}",
+     "effect": "right",
+     "v": 0.75,
+     "notes": [
+      "rescue roll only if our side wins (est 50 %)"
+     ],
+     "rank": 4
+    },
+    {
+     "id": "both",
+     "label": "Fight both and take the chest",
+     "effect": "both",
+     "v": 0.65,
+     "notes": [
+      "fight both NPCs for the chest (est)"
+     ],
+     "rank": 5
+    },
+    {
+     "id": "peace",
+     "label": "Pay 3,000 shared gold to stop the fight",
+     "effect": "peace",
+     "v": -0.99,
+     "notes": [
+      "pay to stop it (est: parcel roll)"
+     ],
+     "rank": 6
+    }
+   ]
+  },
+  {
+   "id": "e25",
+   "name": "The Prisoner and the Captain",
+   "kind": "conflict",
+   "group": "mixed",
+   "options": [
+    {
+     "id": "testimony",
+     "label": "Help whichever fighter hits harder",
+     "effect": "testimony",
+     "v": 1.3,
+     "notes": [
+      "help the harder hitter (est 80 % win)"
+     ],
+     "rank": 1
+    },
+    {
+     "id": "neither",
+     "label": "Let them fight; collect what’s left",
+     "effect": "neither",
+     "v": 0.77,
+     "notes": [
+      "collect what is left (est)"
+     ],
+     "rank": 2
+    },
+    {
+     "id": "left",
+     "label": "Help {npc} fight {rival}",
+     "effect": "left",
+     "v": 0.75,
+     "notes": [
+      "rescue roll only if our side wins (est 50 %)"
+     ],
+     "rank": 3
+    },
+    {
+     "id": "right",
+     "label": "Help {rival} fight {npc}",
+     "effect": "right",
+     "v": 0.75,
+     "notes": [
+      "rescue roll only if our side wins (est 50 %)"
+     ],
+     "rank": 4
+    },
+    {
+     "id": "both",
+     "label": "Fight both and take the chest",
+     "effect": "both",
+     "v": 0.65,
+     "notes": [
+      "fight both NPCs for the chest (est)"
+     ],
+     "rank": 5
+    },
+    {
+     "id": "peace",
+     "label": "Pay 3,000 shared gold to stop the fight",
+     "effect": "peace",
+     "v": -0.99,
+     "notes": [
+      "pay to stop it (est: parcel roll)"
+     ],
+     "rank": 6
+    }
+   ]
+  },
+  {
+   "id": "e26",
+   "name": "The Toll Patrol",
+   "kind": "collapse",
+   "group": "bad",
+   "options": [
+    {
+     "id": "e26_5",
+     "label": "Fight {npc} and six guards",
+     "effect": "bad_double",
+     "v": 1.11,
+     "notes": [
+      "the NPC (hostile: parcel roll, est) + six guards"
+     ],
+     "rank": 1
+    },
+    {
+     "id": "e26_1",
+     "label": "Fight the three guards",
+     "effect": "bad_fight",
+     "v": 0.15,
+     "notes": [
+      "three guards"
+     ],
+     "rank": 2
+    },
+    {
+     "id": "e26_4",
+     "label": "Wait for a way past; lose 45 seconds",
+     "effect": "time",
+     "v": -0.9,
+     "notes": [
+      "seconds of the clock"
+     ],
+     "rank": 3
+    },
+    {
+     "id": "e26_3",
+     "label": "Pay 1,000 gold and spend 30 seconds getting past",
+     "effect": "time",
+     "v": -1.25,
+     "notes": [
+      "seconds of the clock"
+     ],
+     "rank": 4
+    },
+    {
+     "id": "e26_0",
+     "label": "Pay the 3,000 gold toll",
+     "effect": "pay",
+     "v": -1.95,
+     "notes": [
+      "cost only"
+     ],
+     "rank": 5
+    },
+    {
+     "id": "e26_2",
+     "label": "Pay 2 shared Amber instead",
+     "effect": "pay",
+     "v": -2,
+     "notes": [
+      "cost only"
+     ],
+     "rank": 6
+    }
+   ]
+  },
+  {
+   "id": "e27",
+   "name": "Stopped by a Guard",
+   "kind": "toll",
+   "group": "bad",
+   "options": [
+    {
+     "id": "e27_5",
+     "label": "Fight {npc} and six guards",
+     "effect": "bad_double",
+     "v": 1.11,
+     "notes": [
+      "the NPC (hostile: parcel roll, est) + six guards"
+     ],
+     "rank": 1
+    },
+    {
+     "id": "e27_1",
+     "label": "Fight the three guards",
+     "effect": "bad_fight",
+     "v": 0.15,
+     "notes": [
+      "three guards"
+     ],
+     "rank": 2
+    },
+    {
+     "id": "e27_4",
+     "label": "Wait for a way past; lose 45 seconds",
+     "effect": "time",
+     "v": -0.9,
+     "notes": [
+      "seconds of the clock"
+     ],
+     "rank": 3
+    },
+    {
+     "id": "e27_3",
+     "label": "Pay 1,000 gold and spend 30 seconds getting past",
+     "effect": "time",
+     "v": -1.25,
+     "notes": [
+      "seconds of the clock"
+     ],
+     "rank": 4
+    },
+    {
+     "id": "e27_0",
+     "label": "Pay 3,000 shared gold to pass",
+     "effect": "pay",
+     "v": -1.95,
+     "notes": [
+      "cost only"
+     ],
+     "rank": 5
+    },
+    {
+     "id": "e27_2",
+     "label": "Pay 2 shared Amber instead",
+     "effect": "pay",
+     "v": -2,
+     "notes": [
+      "cost only"
+     ],
+     "rank": 6
+    }
+   ]
+  },
+  {
+   "id": "e28",
+   "name": "The Rope Snaps",
+   "kind": "alarm",
+   "group": "bad",
+   "options": [
+    {
+     "id": "e28_5",
+     "label": "Fight {npc} and six guards",
+     "effect": "bad_double",
+     "v": 1.11,
+     "notes": [
+      "the NPC (hostile: parcel roll, est) + six guards"
+     ],
+     "rank": 1
+    },
+    {
+     "id": "e28_1",
+     "label": "Fight the three guards",
+     "effect": "bad_fight",
+     "v": 0.15,
+     "notes": [
+      "three guards"
+     ],
+     "rank": 2
+    },
+    {
+     "id": "e28_4",
+     "label": "Wait for a way past; lose 45 seconds",
+     "effect": "time",
+     "v": -0.9,
+     "notes": [
+      "seconds of the clock"
+     ],
+     "rank": 3
+    },
+    {
+     "id": "e28_3",
+     "label": "Pay 1,000 gold and spend 30 seconds getting past",
+     "effect": "time",
+     "v": -1.25,
+     "notes": [
+      "seconds of the clock"
+     ],
+     "rank": 4
+    },
+    {
+     "id": "e28_0",
+     "label": "Pay 3,000 shared gold to stop the alarm",
+     "effect": "pay",
+     "v": -1.95,
+     "notes": [
+      "cost only"
+     ],
+     "rank": 5
+    },
+    {
+     "id": "e28_2",
+     "label": "Pay 2 shared Amber instead",
+     "effect": "pay",
+     "v": -2,
+     "notes": [
+      "cost only"
+     ],
+     "rank": 6
+    }
+   ]
+  },
+  {
+   "id": "e29",
+   "name": "The Cargo Is Stuck",
+   "kind": "cargo",
+   "group": "bad",
+   "options": [
+    {
+     "id": "e29_5",
+     "label": "Fight {npc} and six guards",
+     "effect": "bad_double",
+     "v": 1.11,
+     "notes": [
+      "the NPC (hostile: parcel roll, est) + six guards"
+     ],
+     "rank": 1
+    },
+    {
+     "id": "e29_1",
+     "label": "Fight the three guards",
+     "effect": "bad_fight",
+     "v": 0.15,
+     "notes": [
+      "three guards"
+     ],
+     "rank": 2
+    },
+    {
+     "id": "e29_4",
+     "label": "Wait for a way past; lose 45 seconds",
+     "effect": "time",
+     "v": -0.9,
+     "notes": [
+      "seconds of the clock"
+     ],
+     "rank": 3
+    },
+    {
+     "id": "e29_3",
+     "label": "Pay 1,000 gold and spend 30 seconds getting past",
+     "effect": "time",
+     "v": -1.25,
+     "notes": [
+      "seconds of the clock"
+     ],
+     "rank": 4
+    },
+    {
+     "id": "e29_0",
+     "label": "Pay 3,000 shared gold to move the cart",
+     "effect": "pay",
+     "v": -1.95,
+     "notes": [
+      "cost only"
+     ],
+     "rank": 5
+    },
+    {
+     "id": "e29_2",
+     "label": "Pay 2 shared Amber instead",
+     "effect": "pay",
+     "v": -2,
+     "notes": [
+      "cost only"
+     ],
+     "rank": 6
+    }
+   ]
+  },
+  {
+   "id": "e30",
+   "name": "The Wrong Receipt",
+   "kind": "debt",
+   "group": "bad",
+   "options": [
+    {
+     "id": "e30_5",
+     "label": "Fight {npc} and six guards",
+     "effect": "bad_double",
+     "v": 1.11,
+     "notes": [
+      "the NPC (hostile: parcel roll, est) + six guards"
+     ],
+     "rank": 1
+    },
+    {
+     "id": "e30_1",
+     "label": "Fight the three guards",
+     "effect": "bad_fight",
+     "v": 0.15,
+     "notes": [
+      "three guards"
+     ],
+     "rank": 2
+    },
+    {
+     "id": "e30_4",
+     "label": "Wait for a way past; lose 45 seconds",
+     "effect": "time",
+     "v": -0.9,
+     "notes": [
+      "seconds of the clock"
+     ],
+     "rank": 3
+    },
+    {
+     "id": "e30_3",
+     "label": "Pay 1,000 gold and spend 30 seconds getting past",
+     "effect": "time",
+     "v": -1.25,
+     "notes": [
+      "seconds of the clock"
+     ],
+     "rank": 4
+    },
+    {
+     "id": "e30_0",
+     "label": "Pay 3,000 shared gold to settle the debt",
+     "effect": "pay",
+     "v": -1.95,
+     "notes": [
+      "cost only"
+     ],
+     "rank": 5
+    },
+    {
+     "id": "e30_2",
+     "label": "Pay 2 shared Amber instead",
+     "effect": "pay",
+     "v": -2,
+     "notes": [
+      "cost only"
+     ],
+     "rank": 6
+    }
+   ]
+  },
+  {
+   "id": "e31",
+   "name": "The Shop with One Item",
+   "kind": "merchant",
+   "group": "positive",
+   "options": [
+    {
+     "id": "e31_0",
+     "label": "Open the shop",
+     "effect": "inspect",
+     "v": 0.3,
+     "notes": [
+      "a shop: ~8 % the Loaded Die (10 Amber for 6.5 worth of gold)"
+     ],
+     "rank": 1
+    },
+    {
+     "id": "e31_3",
+     "label": "Check the price and the item",
+     "effect": "inspect",
+     "v": 0.3,
+     "notes": [
+      "a shop: ~8 % the Loaded Die (10 Amber for 6.5 worth of gold)"
+     ],
+     "rank": 2
+    },
+    {
+     "id": "e31_1",
+     "label": "Keep our gold and move on",
+     "effect": "leave",
+     "v": 0,
+     "notes": [],
+     "rank": 3
+    },
+    {
+     "id": "e31_2",
+     "label": "Ask where the item came from",
+     "effect": "story",
+     "v": 0,
+     "notes": [],
+     "rank": 4
+    },
+    {
+     "id": "e31_4",
+     "label": "We don't need it",
+     "effect": "leave",
+     "v": 0,
+     "notes": [],
+     "rank": 5
+    },
+    {
+     "id": "e31_5",
+     "label": "Leave it for another day",
+     "effect": "leave",
+     "v": 0,
+     "notes": [],
+     "rank": 6
+    }
+   ]
+  },
+  {
+   "id": "e32",
+   "name": "Clear the Crab Pens",
+   "kind": "hunt",
+   "group": "positive",
+   "options": [
+    {
+     "id": "e32_1",
+     "label": "Kill 12 crabs in 90s for twice the supplies",
+     "effect": "hunt_double",
+     "v": 7.78,
+     "notes": [
+      "twice the supplies (est: 2 parcel rolls + gold + Amber)"
+     ],
+     "rank": 1
+    },
+    {
+     "id": "e32_3",
+     "label": "Take a helper: 6 crabs in 90s",
+     "effect": "hunt_helper",
+     "v": 6.82,
+     "notes": [
+      "with a helper (est)"
+     ],
+     "rank": 2
+    },
+    {
+     "id": "e32_0",
+     "label": "Kill 6 crabs in 90s for supplies, 5,000 gold and 2 Amber",
+     "effect": "hunt",
+     "v": 6.52,
+     "notes": [
+      "parcel roll + 5,000 gold + 2 Amber"
+     ],
+     "rank": 3
+    },
+    {
+     "id": "e32_4",
+     "label": "Take 120s to kill 6 crabs; earn 2 Amber",
+     "effect": "hunt_late",
+     "v": 2.3,
+     "notes": [
+      "2 Amber, more time"
+     ],
+     "rank": 4
+    },
+    {
+     "id": "e32_2",
+     "label": "Kill 3 crabs in 90s for 2 Amber",
+     "effect": "hunt_quick",
+     "v": 2.15,
+     "notes": [
+      "2 Amber"
+     ],
+     "rank": 5
+    },
+    {
+     "id": "e32_5",
+     "label": "Skip this hunt",
+     "effect": "leave",
+     "v": 0,
+     "notes": [],
+     "rank": 6
+    }
+   ]
+  },
+  {
+   "id": "e33",
+   "name": "Catch the Bats",
+   "kind": "hunt_bats",
+   "group": "positive",
+   "options": [
+    {
+     "id": "e33_1",
+     "label": "Kill 16 bats in 75s for twice the supplies",
+     "effect": "hunt_double",
+     "v": 7.98,
+     "notes": [
+      "twice the supplies (est: 2 parcel rolls + gold + Amber)"
+     ],
+     "rank": 1
+    },
+    {
+     "id": "e33_3",
+     "label": "Take a helper: 8 bats in 75s",
+     "effect": "hunt_helper",
+     "v": 6.92,
+     "notes": [
+      "with a helper (est)"
+     ],
+     "rank": 2
+    },
+    {
+     "id": "e33_0",
+     "label": "Kill 8 bats in 75s for supplies, 5,000 gold and 2 Amber",
+     "effect": "hunt",
+     "v": 6.62,
+     "notes": [
+      "parcel roll + 5,000 gold + 2 Amber"
+     ],
+     "rank": 3
+    },
+    {
+     "id": "e33_4",
+     "label": "Take 105s to kill 8 bats; earn 2 Amber",
+     "effect": "hunt_late",
+     "v": 2.4,
+     "notes": [
+      "2 Amber, more time"
+     ],
+     "rank": 4
+    },
+    {
+     "id": "e33_2",
+     "label": "Kill 4 bats in 75s for 2 Amber",
+     "effect": "hunt_quick",
+     "v": 2.2,
+     "notes": [
+      "2 Amber"
+     ],
+     "rank": 5
+    },
+    {
+     "id": "e33_5",
+     "label": "Skip this hunt",
+     "effect": "leave",
+     "v": 0,
+     "notes": [],
+     "rank": 6
+    }
+   ]
+  },
+  {
+   "id": "e34",
+   "name": "Rats with Silver Teeth",
+   "kind": "hunt_rats",
+   "group": "positive",
+   "options": [
+    {
+     "id": "e34_1",
+     "label": "Kill 20 rats in 60s for twice the supplies",
+     "effect": "hunt_double",
+     "v": 8.18,
+     "notes": [
+      "twice the supplies (est: 2 parcel rolls + gold + Amber)"
+     ],
+     "rank": 1
+    },
+    {
+     "id": "e34_3",
+     "label": "Take a helper: 10 rats in 60s",
+     "effect": "hunt_helper",
+     "v": 7.02,
+     "notes": [
+      "with a helper (est)"
+     ],
+     "rank": 2
+    },
+    {
+     "id": "e34_0",
+     "label": "Kill 10 rats in 60s for supplies, 5,000 gold and 2 Amber",
+     "effect": "hunt",
+     "v": 6.72,
+     "notes": [
+      "parcel roll + 5,000 gold + 2 Amber"
+     ],
+     "rank": 3
+    },
+    {
+     "id": "e34_4",
+     "label": "Take 90s to kill 10 rats; earn 2 Amber",
+     "effect": "hunt_late",
+     "v": 2.5,
+     "notes": [
+      "2 Amber, more time"
+     ],
+     "rank": 4
+    },
+    {
+     "id": "e34_2",
+     "label": "Kill 5 rats in 60s for 2 Amber",
+     "effect": "hunt_quick",
+     "v": 2.25,
+     "notes": [
+      "2 Amber"
+     ],
+     "rank": 5
+    },
+    {
+     "id": "e34_5",
+     "label": "Skip this hunt",
+     "effect": "leave",
+     "v": 0,
+     "notes": [],
+     "rank": 6
+    }
+   ]
+  },
+  {
+   "id": "e35",
+   "name": "Move the Caravan",
+   "kind": "escort_safe",
+   "group": "positive",
+   "options": [
+    {
+     "id": "e35_0",
+     "label": "Walk {npc} to the stairs for a reward",
+     "effect": "escort",
+     "v": 3.47,
+     "notes": [
+      "3,000 gold + rescue roll, walking with it (est)"
+     ],
+     "rank": 1
+    },
+    {
+     "id": "e35_4",
+     "label": "Take 1 Amber instead of escorting",
+     "effect": "venture",
+     "v": 1,
+     "notes": [],
+     "rank": 2
+    },
+    {
+     "id": "e35_1",
+     "label": "Ask {npc} to join us as a fighter",
+     "effect": "guide",
+     "v": 0.3,
+     "notes": [
+      "NPC joins"
+     ],
+     "rank": 3
+    },
+    {
+     "id": "e35_3",
+     "label": "Ask for a pry bar for the locked hatches",
+     "effect": "venture",
+     "v": 0.2,
+     "notes": [],
+     "rank": 4
+    },
+    {
+     "id": "e35_2",
+     "label": "Borrow a lamp for the walk",
+     "effect": "venture",
+     "v": 0.1,
+     "notes": [],
+     "rank": 5
+    },
+    {
+     "id": "e35_5",
+     "label": "Sorry. We can’t take you with us.",
+     "effect": "leave",
+     "v": 0,
+     "notes": [],
+     "rank": 6
+    }
+   ]
+  },
+  {
+   "id": "e36",
+   "name": "Craft with Cave Amber",
+   "kind": "recipes",
+   "group": "positive",
+   "options": [
+    {
+     "id": "e36_1",
+     "label": "Take a sample: 1 Amber",
+     "effect": "venture",
+     "v": 1,
+     "notes": [],
+     "rank": 1
+    },
+    {
+     "id": "e36_4",
+     "label": "Ask the smith’s helper to join us",
+     "effect": "venture",
+     "v": 0.3,
+     "notes": [],
+     "rank": 2
+    },
+    {
+     "id": "e36_2",
+     "label": "Borrow a pry bar to find more supplies",
+     "effect": "venture",
+     "v": 0.2,
+     "notes": [],
+     "rank": 3
+    },
+    {
+     "id": "e36_3",
+     "label": "Borrow the spare lamp",
+     "effect": "venture",
+     "v": 0.1,
+     "notes": [],
+     "rank": 4
+    },
+    {
+     "id": "e36_0",
+     "label": "Show Cole’s recipes",
+     "effect": "recipes",
+     "v": 0,
+     "notes": [],
+     "rank": 5
+    },
+    {
+     "id": "e36_5",
+     "label": "We’ll visit Cole later",
+     "effect": "leave",
+     "v": 0,
+     "notes": [],
+     "rank": 6
+    }
+   ]
+  },
+  {
+   "id": "e37",
+   "name": "Try the Dice",
+   "kind": "practice_dice",
+   "group": "positive",
+   "options": [
+    {
+     "id": "e37_3",
+     "label": "Ask the dealer to come along instead",
+     "effect": "venture",
+     "v": 0.3,
+     "notes": [],
+     "rank": 1
+    },
+    {
+     "id": "e37_0",
+     "label": "Roll for free; a six wins 1 Amber",
+     "effect": "free_die",
+     "v": 0.17,
+     "notes": [
+      "a six: 1 Amber"
+     ],
+     "rank": 2
+    },
+    {
+     "id": "e37_2",
+     "label": "Ask the dealer to roll for us",
+     "effect": "free_die",
+     "v": 0.17,
+     "notes": [
+      "a six: 1 Amber"
+     ],
+     "rank": 3
+    },
+    {
+     "id": "e37_1",
+     "label": "Ask how the Loaded Die works",
+     "effect": "story",
+     "v": 0,
+     "notes": [],
+     "rank": 4
+    },
+    {
+     "id": "e37_4",
+     "label": "Save the game for later",
+     "effect": "leave",
+     "v": 0,
+     "notes": [],
+     "rank": 5
+    },
+    {
+     "id": "e37_5",
+     "label": "No thanks. We don’t want to roll",
+     "effect": "leave",
+     "v": 0,
+     "notes": [],
+     "rank": 6
+    }
+   ]
+  },
+  {
+   "id": "e38",
+   "name": "Borrow a Tool",
+   "kind": "tool",
+   "group": "positive",
+   "options": [
+    {
+     "id": "e38_4",
+     "label": "Trade the scrap for 1 Amber",
+     "effect": "venture",
+     "v": 1,
+     "notes": [],
+     "rank": 1
+    },
+    {
+     "id": "e38_3",
+     "label": "Ask the cartographer to come with us",
+     "effect": "venture",
+     "v": 0.3,
+     "notes": [],
+     "rank": 2
+    },
+    {
+     "id": "e38_0",
+     "label": "Take a pry bar for locked hatches",
+     "effect": "tool",
+     "v": 0.2,
+     "notes": [
+      "pry bar"
+     ],
+     "rank": 3
+    },
+    {
+     "id": "e38_1",
+     "label": "Take a lamp for the moths",
+     "effect": "lamp",
+     "v": 0.1,
+     "notes": [
+      "lamp"
+     ],
+     "rank": 4
+    },
+    {
+     "id": "e38_2",
+     "label": "Take the tin rattle",
+     "effect": "decoy",
+     "v": 0.05,
+     "notes": [
+      "rattle / message"
+     ],
+     "rank": 5
+    },
+    {
+     "id": "e38_5",
+     "label": "We have what we need.",
+     "effect": "leave",
+     "v": 0,
+     "notes": [],
+     "rank": 6
+    }
+   ]
+  },
+  {
+   "id": "e39",
+   "name": "The Amber Garden",
+   "kind": "plant",
+   "group": "positive",
+   "options": [
+    {
+     "id": "e39_0",
+     "label": "Plant a crop; collect 3 Amber after one minute",
+     "effect": "plant",
+     "v": 1.7,
+     "notes": [
+      "3 Amber if we come back after 1 min (est 70 %)"
+     ],
+     "rank": 1
+    },
+    {
+     "id": "e39_1",
+     "label": "Take 1 Amber now instead",
+     "effect": "venture",
+     "v": 1,
+     "notes": [],
+     "rank": 2
+    },
+    {
+     "id": "e39_3",
+     "label": "Ask the farmhand to join us",
+     "effect": "venture",
+     "v": 0.3,
+     "notes": [],
+     "rank": 3
+    },
+    {
+     "id": "e39_4",
+     "label": "Borrow the farmer’s spare lamp",
+     "effect": "lamp",
+     "v": 0.1,
+     "notes": [
+      "lamp"
+     ],
+     "rank": 4
+    },
+    {
+     "id": "e39_2",
+     "label": "Take the farmer’s spare rattle",
+     "effect": "decoy",
+     "v": 0.05,
+     "notes": [
+      "rattle / message"
+     ],
+     "rank": 5
+    },
+    {
+     "id": "e39_5",
+     "label": "Leave the seeds with the farmer.",
+     "effect": "leave",
+     "v": 0,
+     "notes": [],
+     "rank": 6
+    }
+   ]
+  },
+  {
+   "id": "e40",
+   "name": "Practice with Wooden Swords",
+   "kind": "practice",
+   "group": "positive",
+   "options": [
+    {
+     "id": "e40_1",
+     "label": "Try an easier fight for 1 Amber",
+     "effect": "practice",
+     "v": 0.8,
+     "notes": [
+      "spar with the trainer (cannot kill us)"
+     ],
+     "rank": 1
+    },
+    {
+     "id": "e40_0",
+     "label": "Try the 30-second fight for a supply prize",
+     "effect": "practice",
+     "v": 0.67,
+     "notes": [
+      "spar with the trainer (cannot kill us)"
+     ],
+     "rank": 2
+    },
+    {
+     "id": "e40_4",
+     "label": "Take a 20-second lesson and the trainer’s supplies",
+     "effect": "careful",
+     "v": 0.56,
+     "notes": [
+      "parcel roll - 20 s (est)"
+     ],
+     "rank": 3
+    },
+    {
+     "id": "e40_2",
+     "label": "Win within 15 seconds for a supply prize",
+     "effect": "practice",
+     "v": 0.38,
+     "notes": [
+      "spar with the trainer (cannot kill us)"
+     ],
+     "rank": 4
+    },
+    {
+     "id": "e40_3",
+     "label": "Ask {npc} to fight beside us instead",
+     "effect": "guide",
+     "v": 0.3,
+     "notes": [
+      "NPC joins"
+     ],
+     "rank": 5
+    },
+    {
+     "id": "e40_5",
+     "label": "No thanks. We do not want to spar.",
+     "effect": "leave",
+     "v": 0,
+     "notes": [],
+     "rank": 6
+    }
+   ]
+  },
+  {
+   "id": "e41",
+   "name": "Trade Materials",
+   "kind": "exchange",
+   "group": "positive",
+   "options": [
+    {
+     "id": "e41_4",
+     "label": "Ask the trader’s guard to join us",
+     "effect": "venture",
+     "v": 0.3,
+     "notes": [],
+     "rank": 1
+    },
+    {
+     "id": "e41_1",
+     "label": "Borrow a pry bar instead",
+     "effect": "tool",
+     "v": 0.2,
+     "notes": [
+      "pry bar"
+     ],
+     "rank": 2
+    },
+    {
+     "id": "e41_2",
+     "label": "Take the trader’s spare lamp",
+     "effect": "lamp",
+     "v": 0.1,
+     "notes": [
+      "lamp"
+     ],
+     "rank": 3
+    },
+    {
+     "id": "e41_3",
+     "label": "Take a tin rattle for the road",
+     "effect": "decoy",
+     "v": 0.05,
+     "notes": [
+      "rattle / message"
+     ],
+     "rank": 4
+    },
+    {
+     "id": "e41_5",
+     "label": "Keep our Amber.",
+     "effect": "leave",
+     "v": 0,
+     "notes": [],
+     "rank": 5
+    },
+    {
+     "id": "e41_0",
+     "label": "Trade 2 shared Amber for the supply box",
+     "effect": "exchange",
+     "v": -3.03,
+     "notes": [
+      "2 Amber for a parcel roll"
+     ],
+     "rank": 6
+    }
+   ]
+  },
+  {
+   "id": "e42",
+   "name": "The Rat’s Shortcuts",
+   "kind": "ratdoor",
+   "group": "positive",
+   "options": [
+    {
+     "id": "e42_4",
+     "label": "Take the Amber the rat brought back",
+     "effect": "venture",
+     "v": 1,
+     "notes": [],
+     "rank": 1
+    },
+    {
+     "id": "e42_1",
+     "label": "Let the rat follow us",
+     "effect": "venture",
+     "v": 0.3,
+     "notes": [],
+     "rank": 2
+    },
+    {
+     "id": "e42_3",
+     "label": "Take the pry bar by the rat’s hole",
+     "effect": "tool",
+     "v": 0.2,
+     "notes": [
+      "pry bar"
+     ],
+     "rank": 3
+    },
+    {
+     "id": "e42_2",
+     "label": "Borrow a lamp to check the wall",
+     "effect": "lamp",
+     "v": 0.1,
+     "notes": [
+      "lamp"
+     ],
+     "rank": 4
+    },
+    {
+     "id": "e42_0",
+     "label": "Mark the rooms the rat found",
+     "effect": "reveal",
+     "v": 0.05,
+     "notes": [
+      "marks rooms"
+     ],
+     "rank": 5
+    },
+    {
+     "id": "e42_5",
+     "label": "Leave the rat with its keeper.",
+     "effect": "leave",
+     "v": 0,
+     "notes": [],
+     "rank": 6
+    }
+   ]
+  },
+  {
+   "id": "e43",
+   "name": "Call a Guard Away",
+   "kind": "decoy",
+   "group": "positive",
+   "options": [
+    {
+     "id": "e43_1",
+     "label": "Ask {npc} to fight beside us",
+     "effect": "guide",
+     "v": 0.3,
+     "notes": [
+      "NPC joins"
+     ],
+     "rank": 1
+    },
+    {
+     "id": "e43_4",
+     "label": "Borrow {npc}’s pry bar",
+     "effect": "tool",
+     "v": 0.2,
+     "notes": [
+      "pry bar"
+     ],
+     "rank": 2
+    },
+    {
+     "id": "e43_3",
+     "label": "Borrow {npc}’s spare lamp",
+     "effect": "lamp",
+     "v": 0.1,
+     "notes": [
+      "lamp"
+     ],
+     "rank": 3
+    },
+    {
+     "id": "e43_0",
+     "label": "Take a message for a guard",
+     "effect": "decoy",
+     "v": 0.05,
+     "notes": [
+      "rattle / message"
+     ],
+     "rank": 4
+    },
+    {
+     "id": "e43_2",
+     "label": "Ask where the other travelers are",
+     "effect": "reveal",
+     "v": 0.05,
+     "notes": [
+      "marks rooms"
+     ],
+     "rank": 5
+    },
+    {
+     "id": "e43_5",
+     "label": "We will deal with the guards ourselves.",
+     "effect": "leave",
+     "v": 0,
+     "notes": [],
+     "rank": 6
+    }
+   ]
+  },
+  {
+   "id": "e44",
+   "name": "Find the Rogue",
+   "kind": "appraise",
+   "group": "positive",
+   "options": [
+    {
+     "id": "e44_4",
+     "label": "Take a sample of the local Amber",
+     "effect": "venture",
+     "v": 1,
+     "notes": [],
+     "rank": 1
+    },
+    {
+     "id": "e44_2",
+     "label": "Ask {npc} to join us",
+     "effect": "guide",
+     "v": 0.3,
+     "notes": [
+      "NPC joins"
+     ],
+     "rank": 2
+    },
+    {
+     "id": "e44_3",
+     "label": "Borrow a lamp to see the blades",
+     "effect": "lamp",
+     "v": 0.1,
+     "notes": [
+      "lamp"
+     ],
+     "rank": 3
+    },
+    {
+     "id": "e44_0",
+     "label": "Mark where the rogue was seen",
+     "effect": "appraise",
+     "v": 0.05,
+     "notes": [
+      "marks the rogue"
+     ],
+     "rank": 4
+    },
+    {
+     "id": "e44_1",
+     "label": "Explain how to spot the rare dagger",
+     "effect": "story",
+     "v": 0,
+     "notes": [],
+     "rank": 5
+    },
+    {
+     "id": "e44_5",
+     "label": "We will look for him ourselves.",
+     "effect": "leave",
+     "v": 0,
+     "notes": [],
+     "rank": 6
+    }
+   ]
+  },
+  {
+   "id": "e45",
+   "name": "The Lost Traveler",
+   "kind": "escort_safe",
+   "group": "positive",
+   "options": [
+    {
+     "id": "e45_0",
+     "label": "Walk {npc} to the stairs for a reward",
+     "effect": "escort",
+     "v": 3.47,
+     "notes": [
+      "3,000 gold + rescue roll, walking with it (est)"
+     ],
+     "rank": 1
+    },
+    {
+     "id": "e45_4",
+     "label": "Take 1 Amber instead of escorting",
+     "effect": "venture",
+     "v": 1,
+     "notes": [],
+     "rank": 2
+    },
+    {
+     "id": "e45_1",
+     "label": "Ask {npc} to join us as a fighter",
+     "effect": "guide",
+     "v": 0.3,
+     "notes": [
+      "NPC joins"
+     ],
+     "rank": 3
+    },
+    {
+     "id": "e45_3",
+     "label": "Ask for a pry bar for the locked hatches",
+     "effect": "venture",
+     "v": 0.2,
+     "notes": [],
+     "rank": 4
+    },
+    {
+     "id": "e45_2",
+     "label": "Borrow a lamp for the walk",
+     "effect": "venture",
+     "v": 0.1,
+     "notes": [],
+     "rank": 5
+    },
+    {
+     "id": "e45_5",
+     "label": "Sorry. We cannot take you with us.",
+     "effect": "leave",
+     "v": 0,
+     "notes": [],
+     "rank": 6
+    }
+   ]
+  },
+  {
+   "id": "e46",
+   "name": "Is It Worth the Price?",
+   "kind": "merchant",
+   "group": "positive",
+   "options": [
+    {
+     "id": "e46_0",
+     "label": "Open the shop",
+     "effect": "inspect",
+     "v": 0.3,
+     "notes": [
+      "a shop: ~8 % the Loaded Die (10 Amber for 6.5 worth of gold)"
+     ],
+     "rank": 1
+    },
+    {
+     "id": "e46_3",
+     "label": "Check the price and the item",
+     "effect": "inspect",
+     "v": 0.3,
+     "notes": [
+      "a shop: ~8 % the Loaded Die (10 Amber for 6.5 worth of gold)"
+     ],
+     "rank": 2
+    },
+    {
+     "id": "e46_1",
+     "label": "Keep our gold and move on.",
+     "effect": "leave",
+     "v": 0,
+     "notes": [],
+     "rank": 3
+    },
+    {
+     "id": "e46_2",
+     "label": "Ask where the item came from",
+     "effect": "story",
+     "v": 0,
+     "notes": [],
+     "rank": 4
+    },
+    {
+     "id": "e46_4",
+     "label": "We do not need it.",
+     "effect": "leave",
+     "v": 0,
+     "notes": [],
+     "rank": 5
+    },
+    {
+     "id": "e46_5",
+     "label": "Leave it for another day.",
+     "effect": "leave",
+     "v": 0,
+     "notes": [],
+     "rank": 6
+    }
+   ]
+  },
+  {
+   "id": "e47",
+   "name": "Follow the Thread",
+   "kind": "moths",
+   "group": "positive",
+   "options": [
+    {
+     "id": "e47_1",
+     "label": "Take 2 Amber without disturbing the moths",
+     "effect": "venture",
+     "v": 2,
+     "notes": [],
+     "rank": 1
+    },
+    {
+     "id": "e47_3",
+     "label": "Ask the moth keeper to follow us",
+     "effect": "venture",
+     "v": 0.3,
+     "notes": [],
+     "rank": 2
+    },
+    {
+     "id": "e47_2",
+     "label": "Borrow a lamp for another moth nest",
+     "effect": "lamp",
+     "v": 0.1,
+     "notes": [
+      "lamp"
+     ],
+     "rank": 3
+    },
+    {
+     "id": "e47_4",
+     "label": "Mark the nearby rooms on our map",
+     "effect": "reveal",
+     "v": 0.05,
+     "notes": [
+      "marks rooms"
+     ],
+     "rank": 4
+    },
+    {
+     "id": "e47_0",
+     "label": "Use our lamp to uncover the boots",
+     "effect": "moths",
+     "v": 0,
+     "notes": [
+      "boots in the wall (Mothsteps, worth ~0) - needs a lamp"
+     ],
+     "rank": 5
+    },
+    {
+     "id": "e47_5",
+     "label": "Leave the moths alone.",
+     "effect": "leave",
+     "v": 0,
+     "notes": [],
+     "rank": 6
+    }
+   ]
+  },
+  {
+   "id": "e48",
+   "name": "The Supply Cart",
+   "kind": "merchant",
+   "group": "positive",
+   "options": [
+    {
+     "id": "e48_0",
+     "label": "See the item and its price",
+     "effect": "inspect",
+     "v": 0.3,
+     "notes": [
+      "a shop: ~8 % the Loaded Die (10 Amber for 6.5 worth of gold)"
+     ],
+     "rank": 1
+    },
+    {
+     "id": "e48_4",
+     "label": "Take a pry bar from the supply cart",
+     "effect": "tool",
+     "v": 0.2,
+     "notes": [
+      "pry bar"
+     ],
+     "rank": 2
+    },
+    {
+     "id": "e48_3",
+     "label": "Borrow a lamp for the return trip",
+     "effect": "lamp",
+     "v": 0.1,
+     "notes": [
+      "lamp"
+     ],
+     "rank": 3
+    },
+    {
+     "id": "e48_1",
+     "label": "Ask what happens to leftover cave gold",
+     "effect": "story",
+     "v": 0,
+     "notes": [],
+     "rank": 4
+    },
+    {
+     "id": "e48_2",
+     "label": "Ask where other merchants wait",
+     "effect": "story",
+     "v": 0,
+     "notes": [],
+     "rank": 5
+    },
+    {
+     "id": "e48_5",
+     "label": "Keep the gold in the shared purse.",
+     "effect": "leave",
+     "v": 0,
+     "notes": [],
+     "rank": 6
+    }
+   ]
+  },
+  {
+   "id": "e49",
+   "name": "Make a Tool",
+   "kind": "tool",
+   "group": "positive",
+   "options": [
+    {
+     "id": "e49_4",
+     "label": "Trade the scrap for 1 Amber",
+     "effect": "venture",
+     "v": 1,
+     "notes": [],
+     "rank": 1
+    },
+    {
+     "id": "e49_3",
+     "label": "Ask the toolmaker to come with us",
+     "effect": "venture",
+     "v": 0.3,
+     "notes": [],
+     "rank": 2
+    },
+    {
+     "id": "e49_0",
+     "label": "Take a pry bar for locked hatches",
+     "effect": "tool",
+     "v": 0.2,
+     "notes": [
+      "pry bar"
+     ],
+     "rank": 3
+    },
+    {
+     "id": "e49_1",
+     "label": "Take a lamp for the moths",
+     "effect": "lamp",
+     "v": 0.1,
+     "notes": [
+      "lamp"
+     ],
+     "rank": 4
+    },
+    {
+     "id": "e49_2",
+     "label": "Take the tin rattle",
+     "effect": "decoy",
+     "v": 0.05,
+     "notes": [
+      "rattle / message"
+     ],
+     "rank": 5
+    },
+    {
+     "id": "e49_5",
+     "label": "We have what we need.",
+     "effect": "leave",
+     "v": 0,
+     "notes": [],
+     "rank": 6
+    }
+   ]
+  },
+  {
+   "id": "e50",
+   "name": "Before You Leave",
+   "kind": "farewell",
+   "group": "positive",
+   "options": [
+    {
+     "id": "e50_0",
+     "label": "Take 2 Amber",
+     "effect": "gift",
+     "v": 2,
+     "notes": [
+      "2 Amber"
+     ],
+     "rank": 1
+    },
+    {
+     "id": "e50_1",
+     "label": "Open the little supply box",
+     "effect": "venture",
+     "v": 0.97,
+     "notes": [],
+     "rank": 2
+    },
+    {
+     "id": "e50_4",
+     "label": "Ask {npc} to stay with us",
+     "effect": "guide",
+     "v": 0.3,
+     "notes": [
+      "NPC joins"
+     ],
+     "rank": 3
+    },
+    {
+     "id": "e50_3",
+     "label": "Take a spare pry bar",
+     "effect": "tool",
+     "v": 0.2,
+     "notes": [
+      "pry bar"
+     ],
+     "rank": 4
+    },
+    {
+     "id": "e50_2",
+     "label": "Take a spare lamp",
+     "effect": "lamp",
+     "v": 0.1,
+     "notes": [
+      "lamp"
+     ],
+     "rank": 5
+    },
+    {
+     "id": "e50_5",
+     "label": "Thanks. We have enough.",
+     "effect": "leave",
+     "v": 0,
+     "notes": [],
+     "rank": 6
+    }
+   ]
+  }
+ ]
+}

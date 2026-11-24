@@ -133,6 +133,42 @@ One merchant per floor near the doorway, along an upper wall. Cave gold never le
   later or with a tool, 1 Amber. A lamp only for `e47 moths` - free ones (`e21_4`, `e23_4`, ...) are fine.
 - Spend all cave gold; Loaded Die first, then cave items by use.
 
+## First run 2026-11-24 (manual, priest + mage; extracts in `docs/cave/runs/2026-11-24-run1-*.json`)
+
+Result: 29 Amber, 4 Reed Scythes, Mothstep Boots (+ a Tunnel Axe), floors 1 and part of 2 in 24 min with two
+characters. Recorder gaps: the priest's 300 entries only reach back to 10:44 (one state per clock tick, 3,000 chars
+each - truncated), so floor 1's votes are missing; to fix before the next run.
+
+- **Entering:** Dorr's "Enter together" takes the whole party (it must stand close). A member that calls
+  `cave_enter()` alone gets `bring_party_to_keeper`.
+- **The warrior left after one minute** (10:28:18, right after the first vote resolved) and could not return
+  (`roster[].left: true`; re-entering gives `bring_party_to_keeper`). Most likely our follow logic walked him out;
+  v1.231.3 forbids path walks to another map inside the cave.
+- **Votes:** only **2 of the 6 options** are offered per encounter - we need a ranking of all six, not one pick.
+  `If nobody wins the vote` is shown in the dialog (the shop: "Walk away"). The member vote relay worked (the
+  warrior voted `e31_0` with the leader, the mage `landing` and `e05_0`; `resolved: true` at once).
+- **Stairs are a vote too:** option `landing` (choice when reaching the open stairs) moves the whole party to the
+  next floor - the mage came along by itself.
+- **Monsters scale to the party level** with one shared stat block: at level 73 every regular cave monster had
+  3,665 HP, 187 attack, 110 armor, 73 resistance, 39,670 XP (rat and spider identical; only speed, range,
+  frequency and rage differ). Cave Traveler (neutral): 19,732 HP, 281 attack. The base values in `G.monsters`
+  do not apply. Floor 2 was somewhat harder than floor 1, both easy for priest + mage.
+- **INFO -> Directions** lists every room of the floor (camps with pack count, encounters, shop, keeper, stairs,
+  exit) with a "Go" button that path-walks there (client `cave_walk_to`). The same data is in the state.
+- **Merchants:** a one-item shop on floor 1 (16,000 for a DEX T-shirt) and one right after the stairs on floor 2.
+  `cave_talk` needs to stand close (`distance` error otherwise).
+- Camps gave chests with 1,500-5,000 cave gold and 1-3 Amber; ~13,000 cave gold and 19 Amber after floor 1.
+
+**`character.cave` state** (from the recorder): `run`, `expires`, `server_time`, `remaining_ms`, `paused`,
+`paused_at`, `rewards[]` (`{where: "purse"|"inventory", gold, amber, map, x, y, id}` or `{item: {name, level,
+p: "cavefound"}, recipient, where, slot}`), `level`, `floor` (0-2), `gold`, `amber`, `limits` (`gold`, `amber`,
+`gold_spawned`, `amber_spawned`), `supplies[]`, `roster[]` (`{name, left, disconnected}`), `doors[]`
+(`{id, x, y, map, to, down, locked}` - floor 1: exit to main at 912,288 and the stairs at 3552,2704),
+`objectives[]` (`{id, x, y, done, floor, kind: "encounter"|"farm"|"fight"|"boss", required, waves, name}` -
+three `required` ones per floor: guard camp `fight`, marked `encounter`, keeper `boss`), and during a vote
+`choice` (`{id, title, kind, danger, scene[] (NPCs with side and hp), text, deadline, resolved, summary,
+votes: {}, options[]}`). Cave entities carry `cave: {room, side: "enemy"|"neutral"|..., citizen}`.
+
 ## Open questions (answer on the manual runs)
 
 - What the effects without data do: `save`/`watch`/`lure`/`hire`/`both`/`cover`, `left`/`right`/`neither`/`peace`/
