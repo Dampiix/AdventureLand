@@ -1,27 +1,115 @@
 {
-  "_comment": "Mapping of repo files to in-game CODE slots. Modules load each other by slot NAME via require_code().",
+  "_comment": "Mapping of repo files to in-game CODE slots. Modules load each other by slot NAME via require_code(). A slot whose entry file loads other files with a relative require(\"./x.js\") is uploaded as a bundle of them (scripts/bundle.mjs).",
   "slots": [
-    { "file": "main.js",            "slot": 20, "name": "bot_main" },
-    { "file": "config.js",          "slot": 21, "name": "bot_config" },
-    { "file": "lib/util.js",        "slot": 22, "name": "bot_util" },
-    { "file": "lib/comms.js",       "slot": 23, "name": "bot_comms" },
-    { "file": "core/targeting.js",  "slot": 24, "name": "bot_targeting" },
-    { "file": "core/supply.js",     "slot": 25, "name": "bot_supply" },
-    { "file": "core/fighter.js",    "slot": 26, "name": "bot_fighter" },
-    { "file": "classes/paladin.js", "slot": 27, "name": "bot_class_paladin" },
-    { "file": "classes/mage.js",    "slot": 28, "name": "bot_class_mage" },
-    { "file": "classes/priest.js",  "slot": 29, "name": "bot_class_priest" },
-    { "file": "roles/merchant.js",  "slot": 30, "name": "bot_merchant" },
-    { "file": "core/party.js",      "slot": 31, "name": "bot_party" },
-    { "file": "core/hunts.js",      "slot": 32, "name": "bot_hunts" },
-    { "file": "core/gear.js",       "slot": 33, "name": "bot_gear" },
-    { "file": "roles/workshop.js",  "slot": 34, "name": "bot_workshop" },
-    { "file": "core/events.js",     "slot": 35, "name": "bot_events" },
-    { "file": "classes/ranger.js",  "slot": 36, "name": "bot_class_ranger" },
-    { "file": "core/drops.js",      "slot": 37, "name": "bot_drops" },
-    { "file": "classes/warrior.js", "slot": 38, "name": "bot_class_warrior" },
-    { "file": "classes/rogue.js",   "slot": 39, "name": "bot_class_rogue" },
-    { "file": "roles/scout.js",     "slot": 40, "name": "bot_scout" },
-    { "file": "core/cave.js",       "slot": 41, "name": "bot_cave" }
+    {
+      "file": "main.js",
+      "slot": 20,
+      "name": "bot_main"
+    },
+    {
+      "file": "config.js",
+      "slot": 21,
+      "name": "bot_config"
+    },
+    {
+      "file": "lib/util.js",
+      "slot": 22,
+      "name": "bot_util"
+    },
+    {
+      "file": "lib/comms.js",
+      "slot": 23,
+      "name": "bot_comms"
+    },
+    {
+      "file": "core/targeting.js",
+      "slot": 24,
+      "name": "bot_targeting"
+    },
+    {
+      "file": "core/supply.js",
+      "slot": 25,
+      "name": "bot_supply"
+    },
+    {
+      "file": "core/fighter.js",
+      "slot": 26,
+      "name": "bot_fighter"
+    },
+    {
+      "file": "classes/paladin.js",
+      "slot": 27,
+      "name": "bot_class_paladin"
+    },
+    {
+      "file": "classes/mage/mage.js",
+      "slot": 28,
+      "name": "bot_class_mage"
+    },
+    {
+      "file": "classes/priest.js",
+      "slot": 29,
+      "name": "bot_class_priest"
+    },
+    {
+      "file": "roles/merchant.js",
+      "slot": 30,
+      "name": "bot_merchant"
+    },
+    {
+      "file": "core/party.js",
+      "slot": 31,
+      "name": "bot_party"
+    },
+    {
+      "file": "core/hunts.js",
+      "slot": 32,
+      "name": "bot_hunts"
+    },
+    {
+      "file": "core/gear.js",
+      "slot": 33,
+      "name": "bot_gear"
+    },
+    {
+      "file": "roles/workshop.js",
+      "slot": 34,
+      "name": "bot_workshop"
+    },
+    {
+      "file": "core/events.js",
+      "slot": 35,
+      "name": "bot_events"
+    },
+    {
+      "file": "classes/ranger.js",
+      "slot": 36,
+      "name": "bot_class_ranger"
+    },
+    {
+      "file": "core/drops.js",
+      "slot": 37,
+      "name": "bot_drops"
+    },
+    {
+      "file": "classes/warrior.js",
+      "slot": 38,
+      "name": "bot_class_warrior"
+    },
+    {
+      "file": "classes/rogue.js",
+      "slot": 39,
+      "name": "bot_class_rogue"
+    },
+    {
+      "file": "roles/scout.js",
+      "slot": 40,
+      "name": "bot_scout"
+    },
+    {
+      "file": "core/cave.js",
+      "slot": 41,
+      "name": "bot_cave"
+    }
   ]
 }

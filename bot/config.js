@@ -7,7 +7,7 @@
 // =====================================================================
 
 module.exports = {
-    version: "1.237.0-pilot",
+    version: "1.237.1-pilot",
 
     team: {
         // Fresh save (2026-11-15). The old characters DampiixWar, Dampiix, DampiixPri and
@@ -860,41 +860,25 @@ module.exports = {
                 keepMs: 60 * 1000,    // splash weapons stay on this long after a pull
             },
         },
+        // Mage (classes/mage/): each skill module has its own defaults; these are our values. Details: the module headers.
         mage: {
-            energizeAbove: 0.6,             // only give mana while we have more than this (and keep this share)
-            energizeBelow: 0.4,             // to a member below this MP ratio
-            // Energize speed burst (v1.225.7): else 1 MP on the strongest fighting damage dealer (solo: ourselves, cast when our
-            // next attack is due within burstLeadMs) for +80 % attack speed for 0.8 s. energize: false switches Energize off.
-            burstLeadMs: 250,
-            // Reflective Shield (level 60, v1.225.7): on whoever takes the most magical attack (at least reflectMinAttack), if
-            // our MP stays above reflectKeepMp after the 540-MP cast. reflect: false switches it off.
+            // Energize: MP to a member below energizeBelow while we keep energizeAbove; else a speed burst on the strongest
+            // fighter (ourselves within burstLeadMs ms of our next attack). energize: false = off.
+            energizeAbove: 0.6, energizeBelow: 0.4, burstLeadMs: 250,
+            // Reflective Shield on whoever takes the most magical attack (at least reflectMinAttack), keeping reflectKeepMp
+            // of our MP. reflect: false = off.
             reflectMinAttack: 100, reflectKeepMp: 0.25,
-            useBurst: false,                // Mana Burst empties the whole MP pool
-            // Blaster mode (v1.224.6, player decision 2026-11-23), like the warrior's Lolipops: the Blaster (great staff,
-            // blast splash, +160 MP per attack, both hands) goes on only for a pack - at least minNeighbours other monsters
-            // within its blast radius (blast / 3.6 px) of our target - while MP is above minMp. Back to staff + book after
-            // keepMs without a pack, below offMp, or on the way.
-            // singleTarget (v1.224.7, player decision): worn all the time while it beats the best staff + book on one target by
-            // singleMargin - MP is kept up with potions (one 400-MP potion per ~2 Blaster attacks).
-            blaster: { enabled: true, names: ["gstaff"], minNeighbours: 2, minMp: 0.5, offMp: 0.2, keepMs: 4000, holdMs: 60000, singleTarget: true, singleMargin: 0.03,
-                // aim (v1.225.6): with the Blaster in hand, shoot the monster of the same kind in range with the most others in its blast radius
-                aim: true,
-                // blockMs (v1.225.8): a shot whose blast would hit a free boss or a monster we can't kite (faster, longer reach,
-                // abilities) is never fired with the Blaster - another safe target of the same kind, else staff + book this long
-                blockMs: 6000,
-                // fearMax (v1.225.9): a blast may pull at most courage + this many per damage type (those on us included), and only
-                // as many as the solo pack check allows - like the warrior's Lolipops (the mage died terrified at the Squigs)
-                fearMax: 0 },
-            // Team Magiport (v1.236.0, player decision 2026-11-24): one rule for every team goal the leader sets (a farm spot,
-            // a boss, Daisy, ...). Everyone walks there on its own path; once WE are there - a spot or Daisy: as for the
-            // members (party.goalEdge / goalRadius); a boss: in our sight within bossRange px for graceMs - we pull every team fighter farther than minDist px (or on another map): the tank first, then in the team's
-            // order, while keepMp of our MP stays (900 MP each); tries per member and goal, retryMs apart. A member seen
-            // at the goal with us is not pulled again for that goal. Never in the cave, under /manual or during a boss
-            // search. The members accept it for a goal they have not been at yet (core/events.js acceptMagiport).
+            useBurst: false, // Mana Burst: empties the whole MP pool
+            // Blaster mode: on for a pack (minNeighbours in its blast radius) above minMp, or always when it beats staff + book
+            // by singleMargin (singleTarget); back after keepMs without a pack or below offMp. aim: shoot the same kind's best
+            // pack. blockMs: staff + book after a held unsafe blast. fearMax: a blast may pull courage + this many.
+            blaster: { enabled: true, names: ["gstaff"], minNeighbours: 2, minMp: 0.5, offMp: 0.2, keepMs: 4000, holdMs: 60000,
+                singleTarget: true, singleMargin: 0.03, aim: true, blockMs: 6000, fearMax: 0 },
+            // Team Magiport at the team goal: pulls fighters farther than minDist px (tank first) while keepMp stays; a boss
+            // goal counts once it is in sight within bossRange px for graceMs; tries per member and goal, retryMs apart.
+            // events.js reads enabled for the members' consent.
             magiport: { enabled: true, keepMp: 0.3, minDist: 600, bossRange: 800, graceMs: 4000, tries: 3, retryMs: 8000 },
-            // Blink on routes (v1.234.0, player decision 2026-11-24): on a path walk jump to the farthest step of the plan on
-            // this map (next door or the goal) when it is at least minDist px away and our MP stays above keepMp after the
-            // 1,600-MP cast; never in a fight or under the manual rules. No range limit on the server (test: 980 px).
+            // Blink on routes: jump to the farthest step on this map at least minDist px away, keeping keepMp of our MP.
             blinkTravel: { enabled: true, minDist: 400, keepMp: 0.4 },
         },
     },

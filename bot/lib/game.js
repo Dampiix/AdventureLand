@@ -1,6 +1,9 @@
 // =====================================================================
-// lib/game.js - Game layer, first part: our own character's HP/MP, skills and weapon (module plan: lib/game.js).
-// Split out of lib/util.js (module plan, pilot step 2); util.js re-exports it unchanged.
+// lib/game.js - the game layer (module plan): the only place a module should touch the game. This is the browser
+// version (Steam / web client); a headless client later implements the same names.
+// First part (pilot steps 2-3): our own character's HP/MP, skills and weapon (from util.js), plus thin wrappers for
+// what the mage's skill modules need. No logic here - every function is a plain call into the client.
+// Stateless, so a bundle may carry its own copy.
 // =====================================================================
 
 function hpRatio() { return character.hp / character.max_hp; }
@@ -29,10 +32,50 @@ function canCast(skill) {
     return !is_on_cooldown(skill);
 }
 
+// ---- wrappers (pilot step 3) -------------------------------------------------------------------------------
+function me() { return character; }                                   // our character
+function data() { return G; }                                         // the game data
+function entities() { return parent.entities || {}; }                 // everything in sight, by id
+function player(name) { return get_player(name); }                    // a player in sight, or null
+function partyInfo() { return get_party() || {}; }                    // party members (lagging positions)
+function targetedMonster() { return get_targeted_monster(); }
+function nearestMonster(filter) { return get_nearest_monster(filter); }
+function inRange(entity, skill) { return is_in_range(entity, skill); }
+function onCooldown(skill) { return is_on_cooldown(skill); }
+function useSkill(name, target, extra) { return use_skill(name, target, extra); }
+function nextAttackAt() { return parent.next_skill && parent.next_skill.attack; } // Date of our next attack, or undefined
+function itemProps(item) { return parent.calculate_item_properties(item); }       // throws in some clients
+function changeTarget(target) { return change_target(target); }
+function canAttack(target) { return can_attack(target); }
+function attackTarget(target) { return attack(target); }            // named apart: "attack" is the client's
+function unequipSlot(slot) { return unequip(slot); }
+function path() { return typeof smart !== "undefined" ? smart : null; } // the running smart_move (plan in .plot)
+function canMoveTo(x, y) { return can_move_to(x, y); }
+function transporting(entity) { return typeof is_transporting === "function" && is_transporting(entity); }
+
 module.exports = {
     hpRatio: hpRatio,
     mpLeftAfter: mpLeftAfter,
     mpRatio: mpRatio,
     mainhandType: mainhandType,
     canCast: canCast,
+    me: me,
+    data: data,
+    entities: entities,
+    player: player,
+    partyInfo: partyInfo,
+    targetedMonster: targetedMonster,
+    nearestMonster: nearestMonster,
+    inRange: inRange,
+    onCooldown: onCooldown,
+    useSkill: useSkill,
+    nextAttackAt: nextAttackAt,
+    itemProps: itemProps,
+    changeTarget: changeTarget,
+    canAttack: canAttack,
+    attackTarget: attackTarget,
+    unequipSlot: unequipSlot,
+    path: path,
+    canMoveTo: canMoveTo,
+    transporting: transporting,
 };
