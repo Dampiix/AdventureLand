@@ -9,6 +9,12 @@
   "VizMage": { "level": 59, "xp": 27849081, "max_xp": 38000000, "gold": 24161, "elixir": ["elixirint0", "2026-11-24T11:34:35Z"] },
   "VizMerch": { "level": 56, "gold": 67392217, "bag": { "elixirluck": 25, "elixirint0": 50, "elixirstr0": 44, "elixirdex0": 50 } },
   "bank": { "seashell": 7234, "funtoken": 23, "elixirint1": 1, "elixirvit0": 3 },
+  "boss_kills": {
+    "source": "tracker (socket 'tracker' -> monsters), per character, read 2026-11-24T00:33:56Z",
+    "VizPri": { "phoenix": 255, "mvampire": 94, "fvampire": 26, "jr": 1, "greenjr": 2, "skeletor": 40, "snowman": 4, "rgoo": 6 },
+    "VizWar": { "phoenix": 299, "mvampire": 94, "fvampire": 26, "jr": 1, "greenjr": 1, "skeletor": 40, "snowman": 5, "rgoo": 6 },
+    "VizMage": { "phoenix": 21, "mvampire": 6, "jr": 1 }
+  },
   "xp_value_per_hour": { "VizMage": 1.43, "VizPri": 0.18, "VizWar": 0.06, "unit": "% power per hour (merchant value report 2026-11-24 00:15 UTC)" },
   "morning_plan": "drops.maxHoursPerCopy to ~100 h, weighted rotation (>= 90 % of the best, 4-6 h per pick), monster hunts on; first drop target likely Winged Boots +7"
 }
