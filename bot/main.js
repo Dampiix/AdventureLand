@@ -91,6 +91,15 @@ function startTeam() {
 // CODE ("Command not found. You can add a handle_command function..."); -1 = not ours.
 // 1.182.3-1.182.5 wrapped the game's say() instead - a wrapper from an earlier code load stopped
 // working after a reload, so that wrapper is taken out again here.
+// A module's view of ctx (stage 7a): only the named modules, each read and written through to ctx.
+function moduleView(ctx, names) {
+    const v = {};
+    names.forEach(function (n) {
+        Object.defineProperty(v, n, { enumerable: true, get: function () { return ctx[n]; }, set: function (x) { ctx[n] = x; } });
+    });
+    return v;
+}
+
 function installChatCommands(ctx) {
     try {
         const page = parent;
@@ -192,14 +201,17 @@ function startBot() {
     }
 
     botComms = createBotComms(BOT_CONFIG, BOT_UTIL);
+    // ctx: every module of this bot, by name - only main.js sees all of it. A module gets moduleView(ctx, names): just the
+    // modules it uses (stage 7a; scripts/check-views.cjs keeps the lists complete), read and written through to ctx, so
+    // one created later is there when used and the fighter's ctx.strike reaches the warrior.
     const ctx = { config: BOT_CONFIG, util: BOT_UTIL, comms: botComms, me: me };
     // The bus (stage 4a): state a lower module reads without calling the higher one (lib/bus.js lists the names).
     ctx.bus = require_code("bot_bus")();
 
     if (me.role === "merchant") {
-        ctx.workshop = require_code("bot_workshop")(ctx);
+        ctx.workshop = require_code("bot_workshop")(moduleView(ctx, ["comms", "config", "util"]));
         ctx.scout = require_code("bot_scout")({ config: ctx.config, util: ctx.util, comms: ctx.comms }); // boss search + safe walking
-        botRunner = require_code("bot_merchant")(ctx);
+        botRunner = require_code("bot_merchant")(moduleView(ctx, ["comms", "config", "scout", "util", "workshop"]));
     } else {
         ctx.party = require_code("bot_party")({ config: ctx.config, util: ctx.util, comms: ctx.comms, bus: ctx.bus });
         // The whole group walks (2026-11-18): members following the leader re-planned on every
@@ -217,19 +229,19 @@ function startBot() {
         ctx.cave = require_code("bot_cave")({ config: ctx.config, util: ctx.util, comms: ctx.comms, bus: ctx.bus, get party() { return ctx.party; } }); // Cave of Many Dreams, manual mode
         ctx.hunts = require_code("bot_hunts")({ config: ctx.config, util: ctx.util, comms: ctx.comms, get party() { return ctx.party; },
             get targeting() { return ctx.targeting; }, get drops() { return ctx.drops; } });
-        ctx.events = require_code("bot_events")(ctx);
+        ctx.events = require_code("bot_events")(moduleView(ctx, ["bus", "cave", "comms", "config", "party", "teamStats", "util"]));
         botEvents = ctx.events;
         installChatCommands(ctx);
         ctx.drops = require_code("bot_drops")({ config: ctx.config, util: ctx.util, comms: ctx.comms, bus: ctx.bus, party: ctx.party,
             get targeting() { return ctx.targeting; } });
         const classSlot = BOT_CLASS_SLOTS[character.ctype];
-        const cls = classSlot ? require_code(classSlot)(ctx) : noClassModule();
-        ctx.targeting = require_code("bot_targeting")(ctx);
+        const cls = classSlot ? require_code(classSlot)(moduleView(ctx, ["cave", "comms", "config", "events", "gear", "party", "strike", "targeting", "util"])) : noClassModule();
+        ctx.targeting = require_code("bot_targeting")(moduleView(ctx, ["cave", "comms", "config", "drops", "events", "hunts", "party", "teamStats", "util"]));
         botTargeting = ctx.targeting;
-        ctx.gear = require_code("bot_gear")(ctx);
+        ctx.gear = require_code("bot_gear")(moduleView(ctx, ["comms", "config", "supply", "util"]));
         ctx.supply = require_code("bot_supply")({ config: ctx.config, util: ctx.util, comms: ctx.comms, get gear() { return ctx.gear; }, get cave() { return ctx.cave; } });
         botSupply = ctx.supply;
-        botRunner = require_code("bot_fighter")(ctx, cls);
+        botRunner = require_code("bot_fighter")(moduleView(ctx, ["bus", "cave", "comms", "config", "events", "gear", "hunts", "party", "strike", "supply", "targeting", "teamStats", "util"]), cls);
     }
 
     BOT_UTIL.log("bot", "v" + BOT_CONFIG.version + " " + character.name + " as " + me.role + " (phase: " + BOT_CONFIG.phase + ")", "green");

@@ -1,6 +1,7 @@
 // Tests for the page-level helpers of lib/game.js: onSocket (stage 5) and hook (stage 3b).
 // Run: node scripts/test-game.cjs
 const path = require("path");
+const fs = require("fs");
 let failed = 0;
 const check = (ok, what) => { console.log((ok ? "ok    " : "FAIL  ") + what); if (!ok) failed++; };
 const game = require(path.join(__dirname, "..", "bot", "lib", "game.js"));
@@ -33,6 +34,17 @@ globalThis.smart_move = () => "sm";
 game.hook("smart_move", orig => () => "x(" + orig() + ")", true);
 game.hook("smart_move", orig => () => "y(" + orig() + ")", true);
 check(smart_move() === "x(sm)", "hook once: the first wrapper stays");
+
+// moduleView (main.js, stage 7a): getters and setters through to ctx, only the named fields.
+const mainSrc = fs.readFileSync(path.join(__dirname, "..", "bot", "main.js"), "utf8");
+const fnSrc = mainSrc.slice(mainSrc.indexOf("function moduleView("), mainSrc.indexOf("function installChatCommands("));
+const moduleView = new Function(fnSrc + "\nreturn moduleView;")();
+const ctx = { a: 1 };
+const v = moduleView(ctx, ["a", "later", "strike"]);
+ctx.later = "made later";
+v.strike = { attack: 1 };
+check(v.a === 1 && v.later === "made later" && ctx.strike && ctx.strike.attack === 1 && !("b" in v) && Object.keys(v).join() === "a,later,strike",
+    "moduleView: reads through (also what is made later), writes through, only the named fields");
 
 console.log(failed ? failed + " FAILED" : "all passed");
 process.exit(failed ? 1 : 0);

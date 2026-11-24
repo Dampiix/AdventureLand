@@ -1,6 +1,6 @@
 # Stage 7: explicit deps everywhere, defaults in the modules (plan, 2026-11-24)
 
-Status: **7a step 1 done (v1.237.16-pilot: gear, supply, drops)**, the rest open. Same branch (`modular-pilot`), **no change in behaviour**. Step 7 of the module plan.
+Status: **7a done** - step 1 v1.237.16-pilot (gear, supply, drops), step 2 v1.237.17-pilot (module views); 7b open. Same branch (`modular-pilot`), **no change in behaviour**. Step 7 of the module plan.
 
 ## 7a. The last ctx users get explicit deps
 
@@ -20,6 +20,12 @@ old-vs-new tests, plus a gear test (equip a better item, the luck swap, a wish s
 state `gr`, five shadowing locals checked by hand), `supply/supply.js` and `farming/drops.js` with deps (identical apart
 from the header). `scripts/test-gear.cjs`: old vs new, 4 scenarios (equip from the guide, wishes, a better copy, the
 merchant's ready ping).
+
+7a step 2 result: instead of rewriting every facade, main.js hands each module `moduleView(ctx, [names])` - an object
+with only the modules it uses, read and written through to ctx (getters, so a module created later is there when used;
+a setter, so the fighter's `ctx.strike` reaches the warrior). The facades' code is unchanged. `scripts/check-views.cjs`
+fails when an entry file uses a ctx field its view lacks, or a module is still created with the whole ctx;
+`scripts/test-game.cjs` tests the view.
 
 ## 7b. Defaults in the modules, `config.js` keeps only ours
 
