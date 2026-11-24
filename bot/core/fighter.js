@@ -31,6 +31,10 @@
 // fight returns true when the basic attack should be skipped.
 // =====================================================================
 
+const game = require("../lib/game.js");
+const createTravel = require("../travel/travel.js");
+const createRageWalls = require("../travel/rage-walls.js");
+
 module.exports = function createFighter(ctx, cls) {
     // A move promise rejects when the next move interrupts it: swallow it (the log filled with "{}", 2026-11-18).
     const quiet = ctx.util.quiet;
@@ -313,95 +317,13 @@ module.exports = function createFighter(ctx, cls) {
         else if (c.mpTopUp !== undefined ? mpMissing >= potionGives("mp") * c.mpTopUp : (c.potionWhenMissing && mpMissing >= potionGives("mp"))) use_skill("use_mp").catch(function () {});
     }
 
-    // A target in sight ends the search walk: smart_move kept walking to the middle of the
-    // spawn while we fought on the way – into the White Wolf pack (2026-11-17).
-    // Only our own search walk is stopped: the way to a target behind a wall is a smart_move
-    // too (xmove), and stopping that every tick left the team standing in town (2026-11-17).
-    let searchWalk = 0;          // id of the running search walk, 0 = none
-    let stoppedOnPurpose = false;
-    function endSearchWalk() {
-        if (!searchWalk || typeof smart === "undefined" || !smart.moving) return;
-        searchWalk = 0;
-        stoppedOnPurpose = true;
-        stop();
-    }
-
-    // A new goal while still walking to an old one turns us around (2026-11-21: the ranger found
-    // Dracul while the priest walked to the giant scorpions - it walked all the way there first and
-    // only then towards the cave, and the members followed its old goal).
-    let travelGoal = null;
-    function sameGoal(a, b) {
-        if (!a || !b) return false;
-        if (typeof a === "string" || typeof b === "string") return a === b;
-        return a.map === b.map && Math.hypot((a.x || 0) - (b.x || 0), (a.y || 0) - (b.y || 0)) < 150;
-    }
-    // Waypoints (config.travel.via, 2026-11-21): a map reached through a dangerous one goes via a safe map
-    // first - the ranger walked main -> level1 -> spookytown to search Jr. and the Vampire Rats there (aggro 1,
-    // 9,200 HP) killed it twice in a row.
-    // In the waypoint map we first walk to its own door to the destination (2026-11-22): arriving in
-    // halloween at the level1 door, the path search found "back through level1" shorter than the walk
-    // to halloween's spookytown door, and level1 sent us to halloween again - a loop every 3 s.
-    function viaFor(destination) {
-        const via = ((config.travel || {}).via) || {};
-        const map = destination && typeof destination === "object" ? destination.map : null;
-        const v = map && via[map];
-        if (!v || character.map === map) return destination;
-        if (character.map !== v) return { map: v };
-        // The door's own spawn point in this map (door[6]) - walkable, right next to the door.
-        const vm = G.maps[v] || {};
-        const door = (vm.doors || []).find(function (d) { return d[4] === map; });
-        const at = door && vm.spawns && vm.spawns[door[6]];
-        if (!at || Math.hypot(character.real_x - at[0], character.real_y - at[1]) < 80) return destination;
-        return { map: v, x: at[0], y: at[1] };
-    }
-    // farm: the farm target we walk to - the leader makes it the team goal (party.setGoal, v1.236.0); boss events are
-    // the leader's event goal (party.leaderGoal), not set here.
-    function travel(destination, label, farm) {
-        if (farm && farm.monster && party.isLeader && String(farm.source || "").indexOf("event ") !== 0) {
-            party.setGoal("spot", farm.monster, destination && typeof destination === "object" ? destination : (targeting.spotFor ? targeting.spotFor(farm.monster, farm.map) : null));
-        }
-        const goal = destination; // the real goal: a failed walk marks it, not the waypoint (2026-11-22 review)
-        destination = viaFor(destination);
-        util.status(label, "yellow");
-        if (is_moving(character) && travelGoal && !sameGoal(travelGoal, destination) && typeof smart !== "undefined" && smart.moving) {
-            stoppedOnPurpose = true;
-            try { stop("smart"); } catch (e) { /* not walking */ }
-        }
-        travelGoal = destination;
-        if (!is_moving(character)) {
-            const id = Date.now();
-            searchWalk = id;
-            smart_move(destination).then(function () {
-                if (searchWalk === id) searchWalk = 0;
-            }).catch(function (e) {
-                if (searchWalk === id) searchWalk = 0;
-                if (stoppedOnPurpose) { stoppedOnPurpose = false; return; } // we stopped it for a target
-                const why = util.errReason(e);
-                if (!/interrupt|stop/i.test(why) && destination === goal) markBadGoal(goal);
-                util.log("move", "route to " + JSON.stringify(destination) + " failed: " + why, "red");
-            });
-        } else if (cls.move) {
-            cls.move(null); // e.g. Warrior Charge on the way
-        }
-    }
-    // Meeting points without a path (2026-11-21): a boss's meeting point (where the finder stood) can
-    // lie on a spot the path search can't reach - priest and ranger got "Path not found!" again and
-    // again while the team met at a boss in the cave. Such a point is skipped for a minute; we walk
-    // to the boss's spawn instead (smart_move by monster name).
-    const badGoals = [];
-    function markBadGoal(d) {
-        if (d && typeof d === "object" && d.map) badGoals.push({ map: d.map, x: d.x, y: d.y, until: Date.now() + 60 * 1000 });
-    }
-    function isBadGoal(d) {
-        const now = Date.now();
-        for (let i = badGoals.length - 1; i >= 0; i--) if (badGoals[i].until < now) badGoals.splice(i, 1);
-        return !!d && typeof d === "object" && badGoals.some(function (b) { return b.map === d.map && Math.hypot(b.x - d.x, b.y - d.y) < 60; });
-    }
-    function goalFor(farm) {
-        if (farm.dest && !isBadGoal(farm.dest)) return farm.dest;
-        if (farm.dest) return farm.monster;
-        return targeting.spotFor(farm.monster, farm.map) || farm.monster;
-    }
+    // Path walks (travel/travel.js) and the rage zones (travel/rage-walls.js, which also wraps this frame's can_move and
+    // smart_move) - stage 3b of the module plan; the names below are the ones the tick always used.
+    const walks = createTravel({ game: game, util: util, config: config, party: party, targeting: targeting, cls: cls });
+    const travel = walks.travel, viaFor = walks.viaFor, goalFor = walks.goalFor, endSearchWalk = walks.endSearchWalk;
+    const rage = createRageWalls({ game: game, util: util, config: config, party: party, targeting: targeting,
+        moveTo: moveTo, stopOnPurpose: walks.stopOnPurpose });
+    const leaveRageZone = rage.leaveRageZone, keepClearOfZones = rage.keepClearOfZones, holdRingStep = rage.holdRingStep;
 
     // Solo recovery (config.combat.recover): after a fight that left us low, no new pull
     // until the potions brought HP and MP back up. Monsters already on us are fought.
@@ -434,7 +356,7 @@ module.exports = function createFighter(ctx, cls) {
             if (hp < r.hpUntil && (hp / r.hpUntil <= mp / r.mpUntil || mp >= r.mpUntil)) use_skill("use_hp").catch(function () {});
             else if (mp < r.mpUntil) use_skill("use_mp").catch(function () {});
         }
-        if (searchWalk) endSearchWalk();
+        if (walks.searching()) endSearchWalk();
         else if (is_moving(character)) stop();
         util.status("rest " + Math.round(Math.min(hp / r.hpUntil, mp / r.mpUntil) * 100) + "%", "white");
         return true;
@@ -454,7 +376,7 @@ module.exports = function createFighter(ctx, cls) {
         // Natural regeneration is slow: after the rest cap we go anyway (potions empty).
         if (Date.now() - topUpSince > ((config.combat.recover || {}).maxMs || 90 * 1000)) return false;
         if (!is_on_cooldown("use_hp")) use_skill("use_hp").catch(function () {});
-        if (searchWalk) endSearchWalk();
+        if (walks.searching()) endSearchWalk();
         else if (is_moving(character)) stop();
         util.status("heal up " + Math.round(character.hp / need * 100) + "% for " + target.mtype, "white");
         return true;
@@ -556,7 +478,7 @@ module.exports = function createFighter(ctx, cls) {
         // A direct step in the middle of a path walk: end the walk first (2026-11-21: the priest's
         // spacing steps broke its path walk in the arena every second - "Lost the path..." spam).
         if (typeof smart !== "undefined" && smart.moving) {
-            stoppedOnPurpose = true;
+            walks.stopOnPurpose();
             moveDest = null;
             try { stop("smart"); } catch (e) { /* not walking */ }
         }
@@ -939,7 +861,7 @@ module.exports = function createFighter(ctx, cls) {
         // search, two steps on the way to the bees (2026-11-17). Close ones, ones already on
         // us and aggressive ones (packs) end it at once.
         const near = util.distanceTo(target) < 250 || !!target.target || targeting.aggressive(target);
-        if (!near && searchWalk && typeof smart !== "undefined" && smart.moving) {
+        if (!near && walks.searching() && typeof smart !== "undefined" && smart.moving) {
             util.status("moving to " + target.mtype, "orange");
             return;
         }
@@ -1453,7 +1375,7 @@ module.exports = function createFighter(ctx, cls) {
         } else if (waited > max) { endWaitStatus(); return false; }
         // Marked for the boss search: a walk stopped by this wait is no failed try (2026-11-20).
         ctx.teamWaitAt = now;
-        if (is_moving(character)) { stoppedOnPurpose = true; stop(); }
+        if (is_moving(character)) { walks.stopOnPurpose(); stop(); }
         util.status("waiting for " + far.join(", "), "yellow");
         waitShown = true;
         return true;
@@ -1579,278 +1501,6 @@ module.exports = function createFighter(ctx, cls) {
         }
         if (covering) return;
         handleCombat();
-    }
-
-    // ---- rage zones as walls for the path search (player decision 2026-11-22) ------------
-    // A path walk (smart_move) plans its route without knowing rage zones - the priest walked right through the big
-    // booboo zone on his way out. Detours after the fact (the route guard, removed 2026-11-22) went round in circles
-    // (the next plan crossed the zone again), and three fighters died at the booboo zones on the way past. So the CODE frame's own can_move - the one smart_move's path search (bfs) asks
-    // for every step, and can_move_to too - refuses a step that ends in, or passes through, a rage box, grown by
-    // travel.rageMargin. Every rage box is a wall except the walk's goal zone and our farm target's zones the team
-    // can take. A step that STARTS inside that grown box is always allowed: whoever stands there
-    // can walk out. Only this frame's copy is wrapped (the game's data stays as it is); installed once per page.
-    // Walls with a fallback (2026-11-22): priest and warrior stood in the strip between the mummy zone and the big
-    // booboo zone (each +100 px) - with the walls only 90 grid cells were reachable, without them 7111, and every walk
-    // ended in "Path not found!". So a failed path search narrows the margin (rageWallSteps: 100 -> 50 -> 0 = box only
-    // -> walls off) and the walk is planned anew. A finished walk, or 2 minutes, bring the full margin back.
-    let rageWallLevel = 0, rageWallAt = 0;
-    function rageWallSteps() {
-        const tc = config.travel || {};
-        return tc.rageWallSteps || [tc.rageMargin || 100, 50, 0, -1];
-    }
-    function rageWallPad() {
-        if (rageWallLevel && Date.now() - rageWallAt > 120 * 1000) rageWallLevel = 0;
-        const steps = rageWallSteps();
-        return steps[Math.min(rageWallLevel, steps.length - 1)];
-    }
-    function rageWallLoosen() {
-        const tc = config.travel || {};
-        if (tc.rageWalls === false) return false;
-        const steps = rageWallSteps();
-        if (rageWallLevel >= steps.length - 1) return false;
-        rageWallLevel++;
-        rageWallAt = Date.now();
-        const pad = steps[rageWallLevel];
-        util.log("move", "no path with the rage walls - " + (pad < 0 ? "walls off" : "margin " + pad + " px") + " for this walk", "orange");
-        return true;
-    }
-    function rageWallReset() { rageWallLevel = 0; }
-    (function installRageWalls() {
-        const W = window;
-        if (!W.__botOrigCanMove) W.__botOrigCanMove = W.can_move;
-        const orig = W.__botOrigCanMove;
-        if (typeof orig !== "function") return;
-        let cache = { at: 0, map: null, boxes: [] };
-        function blocked(mapName) {
-            const tc = config.travel || {};
-            if (tc.rageWalls === false || !targeting.rageBoxes) return [];
-            const now = Date.now();
-            const pad = rageWallPad();
-            if (pad < 0) return [];
-            // The walk's own goal (smart.x/y): its zone is no wall - that is where we want to go, the spot check decides there.
-            const goal = typeof smart !== "undefined" && smart && smart.map === mapName && typeof smart.x === "number" ? { x: smart.x, y: smart.y } : null;
-            const gk = goal ? Math.round(goal.x) + "," + Math.round(goal.y) : "";
-            // Our farm target's zones the team can take stay open too (2026-11-22: the spot check accepted the reset
-            // 4-booboo zone, but the priest could hardly step in - every step into it was a wall).
-            const fn = targeting.farmNow ? targeting.farmNow() : null;
-            const farmType = fn && fn.monster && mapName === character.map ? fn.monster : null;
-            if (cache.map === mapName && cache.pad === pad && cache.goal === gk && cache.farm === farmType && now - cache.at < 2000) return cache.boxes;
-            const boxes = [];
-            targeting.rageBoxes(mapName).forEach(function (z) {
-                if (farmType && z.type === farmType && targeting.failingZoneAt && !targeting.failingZoneAt({ x: (z.b[0] + z.b[2]) / 2, y: (z.b[1] + z.b[3]) / 2 })) return;
-                // Every rage zone on the way is a wall (2026-11-22), not only the ones the team can't take: with the
-                // warrior next to him the booboo zone counted as takeable, and the priest walked right through it.
-                if (goal && goal.x >= z.b[0] && goal.x <= z.b[2] && goal.y >= z.b[1] && goal.y <= z.b[3]) return;
-                boxes.push([z.b[0] - pad, z.b[1] - pad, z.b[2] + pad, z.b[3] + pad]);
-            });
-            cache = { at: now, map: mapName, pad: pad, goal: gk, farm: farmType, boxes: boxes };
-            return boxes;
-        }
-        // Liang-Barsky: does the segment touch the box?
-        function segTouches(x0, y0, x1, y1, b) {
-            let t0 = 0, t1 = 1;
-            const dx = x1 - x0, dy = y1 - y0;
-            const p = [-dx, dx, -dy, dy], q = [x0 - b[0], b[2] - x0, y0 - b[1], b[3] - y0];
-            for (let i = 0; i < 4; i++) {
-                if (p[i] === 0) { if (q[i] < 0) return false; continue; }
-                const r = q[i] / p[i];
-                if (p[i] < 0) { if (r > t1) return false; if (r > t0) t0 = r; }
-                else { if (r < t0) return false; if (r < t1) t1 = r; }
-            }
-            return true;
-        }
-        // Every path walk (travel, following the leader, revives...) retries with a narrower margin when the search
-        // finds no way (2026-11-22: the ranger following the priest got "Path not found!" over and over).
-        // Leaving a map by a safe one (travel.leaveVia, 2026-11-22): from Spooky Town to anywhere else the path search
-        // took spookytown -> level2 -> level1 -> main, right past the level-20 Vampire Rats (aggro 1, 9,200 HP) - priest
-        // and ranger walked through them on the way to pick up the warrior. Every path walk (travel, following, the
-        // merchant pickup, bank and potion walks) that leaves such a map for another one first goes to the safe map.
-        // A goal whose map can't be told (an unknown name) walks as asked.
-        function destMap(d) {
-            if (!d) return null;
-            if (typeof d === "object") {
-                if (d.map) return d.map;
-                d = d.to;
-                if (!d) return null;
-            }
-            if (typeof d !== "string") return null;
-            if (G.maps[d]) return d;
-            if (/^(bank|potions|upgrade|compound|exchange|scrolls|town)$/.test(d)) return "main";
-            const names = Object.keys(G.maps).filter(function (m) { return !G.maps[m].ignore && !G.maps[m].instance; });
-            const byMonster = names.find(function (m) { return (G.maps[m].monsters || []).some(function (p) { return p.type === d; }); });
-            if (byMonster) return byMonster;
-            return names.find(function (m) { return (G.maps[m].npcs || []).some(function (n) { return n.id === d; }); }) || null;
-        }
-        function leaveLeg(d) {
-            const lv = ((config.travel || {}).leaveVia || {})[character.map];
-            if (!lv) return null;
-            const to = destMap(d);
-            if (!to || to === character.map || to === lv) return null;
-            // A direct neighbour (a door from here, e.g. spookytown -> level2) is walked to directly.
-            if (((G.maps[character.map] || {}).doors || []).some(function (dr) { return dr[4] === to; })) return null;
-            return { map: lv };
-        }
-        if (!W.__botOrigSmartMove && typeof W.smart_move === "function") {
-            W.__botOrigSmartMove = W.smart_move;
-            W.smart_move = function () {
-                const self = this, args = arguments;
-                function run(a) {
-                    return W.__botOrigSmartMove.apply(self, a).catch(function (e) {
-                        const why = util.errReason(e);
-                        if (/path not found|failed/i.test(why) && rageWallLoosen()) return run(a);
-                        // Not even without walls (2026-11-22): the goal itself is unreachable - the walls weren't the
-                        // reason, so the full margin is back at once instead of walls off for 2 minutes.
-                        rageWallReset();
-                        throw e;
-                    });
-                }
-                let leg = null;
-                try { leg = leaveLeg(args[0]); } catch (e) { /* walk as asked */ }
-                const first = leg ? run([leg]) : Promise.resolve();
-                return first.then(function () { return run(args); }).then(function (r) { rageWallReset(); return r; });
-            };
-        }
-        W.can_move = function (m, based) {
-            if (!orig.apply(this, arguments)) return false;
-            if (based || !m || !m.map || typeof m.going_x !== "number") return true;
-            try {
-                const boxes = blocked(m.map);
-                for (const b of boxes) {
-                    if (m.x >= b[0] && m.x <= b[2] && m.y >= b[1] && m.y <= b[3]) continue; // starts inside: may walk out
-                    if (segTouches(m.x, m.y, m.going_x, m.going_y, b)) return false;
-                }
-            } catch (e) { /* walls are a help, never a blocker */ }
-            return true;
-        };
-    })();
-
-    // Standing still within travel.rageMargin of a rage zone the team can't take (outside it): a step out to the margin
-    // first (2026-11-22: after "Path not found!" the warrior stood 13 px off the big booboo zone and was taken). Not
-    // while a path walk runs (the rage walls plan those).
-    let clearLogged = 0;
-    function keepClearOfZones() {
-        if (!targeting.failingZoneNear) return false;
-        if (typeof smart !== "undefined" && smart.moving) return false;
-        const margin = ((config.travel || {}).rageMargin) || 100;
-        const me = util.xy(character);
-        const z = targeting.failingZoneNear(me, margin);
-        if (!z || z.gap <= 0) return false; // inside: leaveRageZone
-        const b = z.b;
-        const nx = Math.max(b[0], Math.min(b[2], me.x)), ny = Math.max(b[1], Math.min(b[3], me.y));
-        let dx = me.x - nx, dy = me.y - ny;
-        const len = Math.hypot(dx, dy) || 1;
-        dx /= len; dy /= len;
-        const want = margin + 40;
-        let p = { x: nx + dx * want, y: ny + dy * want };
-        if (!can_move_to(p.x, p.y)) {
-            // Any of 16 directions, 140 px, that ends farthest from the box.
-            let best = null, bestGap = -1;
-            for (let i = 0; i < 16; i++) {
-                const a = i * Math.PI / 8, q = { x: me.x + Math.cos(a) * 140, y: me.y + Math.sin(a) * 140 };
-                if (!can_move_to(q.x, q.y)) continue;
-                const g = Math.hypot(Math.max(b[0] - q.x, 0, q.x - b[2]), Math.max(b[1] - q.y, 0, q.y - b[3]));
-                if (g > bestGap) { bestGap = g; best = q; }
-            }
-            if (!best || bestGap <= z.gap) return false;
-            p = best;
-        }
-        if (Date.now() - clearLogged > 30 * 1000) {
-            clearLogged = Date.now();
-            util.log("move", "standing " + Math.round(z.gap) + " px from the " + z.type + " rage zone - moving off to " + margin + " px", "orange");
-        }
-        moveTo(p);
-        util.status("away from the " + z.type + " zone", "orange");
-        return true;
-    }
-    let lastRing = null; // { map, type, ring, at }
-    function boxGap(p, b) {
-        return Math.hypot(Math.max(b[0] - p.x, 0, p.x - b[2]), Math.max(b[1] - p.y, 0, p.y - b[3]));
-    }
-    function holdRingStep(boss, type) {
-        if (!targeting.bossHoldRing || !targeting.holdingBoss) return false;
-        const now = Date.now();
-        if (boss && !boss.dead) {
-            if (!targeting.holdingBoss(boss)) { lastRing = null; return false; } // the team is here, or not held
-            const ring = targeting.bossHoldRing(boss);
-            lastRing = ring ? { map: character.map, type: type, ring: ring, at: now } : null;
-        }
-        const r = lastRing && lastRing.map === character.map && lastRing.type === type && now - lastRing.at < 60 * 1000 ? lastRing.ring : null;
-        if (!r) return false;
-        const me = util.xy(character), b = r.box;
-        const gap = boxGap(me, b);
-        const cx = (b[0] + b[2]) / 2, cy = (b[1] + b[3]) / 2;
-        // The nearest box point, and the way out from it (from the middle when we stand inside).
-        const nx = Math.max(b[0], Math.min(b[2], me.x)), ny = Math.max(b[1], Math.min(b[3], me.y));
-        let dx = gap > 0 ? me.x - nx : me.x - cx, dy = gap > 0 ? me.y - ny : me.y - cy;
-        const len = Math.hypot(dx, dy) || 1;
-        dx /= len; dy /= len;
-        if (gap < r.margin || (gap > r.margin + 150 && boss && !boss.dead)) {
-            const want = r.margin + 30;
-            let p = { x: nx + dx * want, y: ny + dy * want };
-            if (!can_move_to(p.x, p.y)) {
-                // Around the box: the side nearest to us that we can reach in a straight line.
-                const sides = [{ x: b[0] - want, y: me.y }, { x: b[2] + want, y: me.y }, { x: me.x, y: b[1] - want }, { x: me.x, y: b[3] + want }]
-                    .sort(function (a, c) { return Math.hypot(a.x - me.x, a.y - me.y) - Math.hypot(c.x - me.x, c.y - me.y); });
-                p = sides.find(function (s) { return can_move_to(s.x, s.y); }) || p;
-            }
-            moveTo(p);
-            util.status("waiting outside the " + type + " spawn", "yellow");
-            return true;
-        }
-        if (is_moving(character) && !(typeof smart !== "undefined" && smart.moving)) stop();
-        util.status("waiting outside the " + type + " spawn", "yellow");
-        return true;
-    }
-
-    // Rage zones (2026-11-22, targeting.zoneAt): standing in one whose whole spawn we can't take, we
-    // step out - waiting, resting, a handover or a stopped walk there pulled all 5 booboos. Not while a
-    // path walk only passes through (the game's route; waypoints keep us off the worst maps) - a walk
-    // that ends in the zone is stopped, and a member's walk into a failing zone is stopped on its map.
-    // Members too (no exception for the leader's farm spawn any more, see below).
-    let rageLogged = 0;
-    function leaveRageZone() {
-        if (!targeting.rageZoneHere) return false;
-        // Members: no path walk INTO a failing rage zone at all - stopped as soon as we are on its map (the leader
-        // walks on to the edge, where its spot check stops it).
-        if (party.enabled && party.isMember && typeof smart !== "undefined" && smart.moving && smart.map === character.map &&
-            targeting.failingZoneAt && targeting.failingZoneAt({ x: smart.x, y: smart.y })) {
-            stoppedOnPurpose = true;
-            try { stop("smart"); } catch (e) { /* not walking */ }
-            if (Date.now() - rageLogged > 30 * 1000) { rageLogged = Date.now(); util.log("combat", "not walking into a rage zone the team can't take - waiting for " + config.leader, "orange"); }
-            return false; // the follow logic decides the next step
-        }
-        const z = targeting.rageZoneHere();
-        if (!z) return false;
-        // A path walk passing through may go on - one that ENDS in the zone is stopped (2026-11-22: the warrior's
-        // walk to the leader's route end, the middle of the booboo spawn, ran on into it).
-        if (typeof smart !== "undefined" && smart.moving) {
-            const endsHere = smart.map === character.map && typeof smart.x === "number" &&
-                smart.x >= z.b[0] && smart.x <= z.b[2] && smart.y >= z.b[1] && smart.y <= z.b[3];
-            if (!endsHere) return false;
-            stoppedOnPurpose = true;
-            try { stop("smart"); } catch (e) { /* not walking */ }
-        }
-        // Members too: rageZoneHere only names zones the team model (members have the team's stats) or our own
-        // check fails - no "the leader farms it" exception any more (2026-11-22: two deaths at the booboos).
-        const me = util.xy(character), b = z.b;
-        const cx = (b[0] + b[2]) / 2, cy = (b[1] + b[3]) / 2;
-        // The nearest way out: each side of the box, 80 px beyond it, nearest first.
-        const outs = [
-            { x: b[0] - 80, y: me.y }, { x: b[2] + 80, y: me.y },
-            { x: me.x, y: b[1] - 80 }, { x: me.x, y: b[3] + 80 },
-        ].sort(function (p, q) { return Math.hypot(p.x - me.x, p.y - me.y) - Math.hypot(q.x - me.x, q.y - me.y); });
-        let p = outs.find(function (o) { return can_move_to(o.x, o.y); });
-        if (!p) { // away from the middle, whatever is free
-            const dx = me.x - cx, dy = me.y - cy, len = Math.hypot(dx, dy) || 1;
-            p = { x: me.x + dx / len * 200, y: me.y + dy / len * 200 };
-        }
-        if (Date.now() - rageLogged > 30 * 1000) {
-            rageLogged = Date.now();
-            util.log("combat", "standing in the " + z.type + " rage zone (" + z.why + ") - stepping out", "orange");
-        }
-        moveTo(p);
-        util.status("leaving the " + z.type + " rage zone", "orange");
-        return true;
     }
 
     // True while something else than the fight decides where we go this tick.

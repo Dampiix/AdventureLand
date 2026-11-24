@@ -59,6 +59,21 @@ function stopAction(what) { return stop(what); }                      // e.g. st
 function storageSet(key, value) { return set(key, value); }           // stage 2 (warrior); may throw
 function entityDistance(a, b) { return parent.distance(a, b); }        // hitbox edge to edge; throws in some clients
 function walkStraight(x, y) { return move(x, y); }                    // a straight move (no path search)
+function smartMove(dest) { return smart_move(dest); }                 // stage 3b (travel): a path walk (a promise)
+
+// Wraps a client function of this frame (stage 3b, the rage walls): make(original) returns the replacement. The
+// original is kept on the window as __botOrig<Name> (can_move -> __botOrigCanMove), so a second install wraps the
+// original again, never our own wrapper. once: a function wrapped before stays as it is. False when nothing was wrapped.
+function hook(name, make, once) {
+    const W = window;
+    const key = "__botOrig" + name.split("_").map(function (s) { return s.charAt(0).toUpperCase() + s.slice(1); }).join("");
+    if (once && W[key]) return false;
+    if (!W[key]) W[key] = W[name];
+    const orig = W[key];
+    if (typeof orig !== "function") return false;
+    W[name] = make(orig);
+    return true;
+}
 
 module.exports = {
     hpRatio: hpRatio,
@@ -92,4 +107,6 @@ module.exports = {
     storageSet: storageSet,
     entityDistance: entityDistance,
     walkStraight: walkStraight,
+    smartMove: smartMove,
+    hook: hook,
 };

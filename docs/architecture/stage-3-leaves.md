@@ -1,6 +1,6 @@
 # Stage 3: config comments and the first leaf modules (plan, 2026-11-24)
 
-Status: **plan, not built.** After stage 2 (all classes as modules), same branch (`modular-pilot`), **no change in
+Status: **3a done (v1.237.6-pilot), 3b done (v1.237.7-pilot), 3c open.** After stage 2 (all classes as modules), same branch (`modular-pilot`), **no change in
 behaviour**. Steps 2 and 3 of the module plan's order.
 
 ## 3a. Config comments (no behaviour change at all)
@@ -21,6 +21,10 @@ faked) - it must be identical. Expected: about 900 lines.
 
 The client hooks (smart_move wrapper, can_move) are installed once through `lib/game.js` (new: `hook(name, fn)`), so a
 reload never wraps them twice. The fighter keeps calling the same functions; its tick does not change.
+
+3b result: `travel/travel.js` (111 lines) and `travel/rage-walls.js` (300 lines), `lib/game.js` got `smartMove` and
+`hook(name, make, once)` (keeps the original as `window.__botOrig<Name>`). Test: `scripts/test-travel.cjs` runs the old
+code cut out of the old fighter.js and the new modules through 18 scenarios with the same fake game - identical calls.
 
 ## 3c. cave/cave.js and farming/hunts.js with explicit deps
 

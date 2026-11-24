@@ -3,7 +3,7 @@
 One bot for a whole Adventure Land team: up to three fighters and one merchant, all running the same code.
 The fighters farm, hunt bosses and level up; the merchant supplies them, sells, banks, trades with other players and upgrades their gear.
 
-> **Version:** `1.237.6-pilot` (`bot/config.js` → `version`) · **Teams:** `Dmpx…` (main account) and `Viz…` (second account) · **Code:** `bot/` → in-game CODE slots 20–41
+> **Version:** `1.237.7-pilot` (`bot/config.js` → `version`) · **Teams:** `Dmpx…` (main account) and `Viz…` (second account) · **Code:** `bot/` → in-game CODE slots 20–41
 
 ## Repository
 
@@ -309,7 +309,7 @@ Only `main.js` calls `require_code()`. Every other module is a factory that rece
 | [`lib/comms.js`](bot/lib/comms.js) | 23 `bot_comms` | CODE messages between our own characters |
 | [`core/targeting.js`](bot/core/targeting.js) | 24 `bot_targeting` | Farm spot, safety checks, target picking |
 | [`core/supply.js`](bot/core/supply.js) | 25 `bot_supply` | Fighter side of loot, gold and potions |
-| [`core/fighter.js`](bot/core/fighter.js) | 26 `bot_fighter` | Fighter main loop: potions, combat, kiting, travel, Cavalry, deaths |
+| [`core/fighter.js`](bot/core/fighter.js) | 26 `bot_fighter` | Fighter main loop: potions, combat, kiting, Cavalry, deaths (bundle, stage 3b: with `travel/travel.js` - path walks, waypoints, goals without a path - and `travel/rage-walls.js` - rage zones as walls for the path search, the smart_move wrapper, stepping out of zones, the boss hold ring) |
 | [`classes/paladin/`](bot/classes/paladin/) | 27 `bot_class_paladin` | Paladin (bundle, stage 2): `paladin.js` (class, self-heal, Smash), `mana-shield.js`, `oath.js`, `cleansing.js` |
 | [`classes/mage/`](bot/classes/mage/) | 28 `bot_class_mage` | Mage (bundle, pilot step 4): `mage.js` - the class, `energize.js`, `reflect.js`, `blaster.js`, `blink.js`, `team-port.js` - one skill each, with own defaults and passed-in dependencies |
 | [`classes/priest/`](bot/classes/priest/) | 29 `bot_class_priest` | Priest (bundle, stage 2): `priest.js` - the class, `heal.js` (heal, Party Heal), `absorb.js`, `luck-catch.js`, `revive.js`, `curse.js`, `dark-blessing.js` |
