@@ -83,8 +83,7 @@ module.exports = {
             { item: "crossbow",      price: 400000, want: 1  }, // the ranger's long-term bow
         ],
         sell: [
-            { item: "leather",       price:  120000, keep: 0 }, // a player buys at 100k
-            { item: "snakefang",     price: 3500000, keep: 0 }, // a player buys at 3M
+            
             // Monster Tokens are no longer sold (player decision 2026-11-22): they are saved for the Monster
             // Hunter armor sets at Daisy (53 tokens per class). Was: 1M at our stand, max 20 at a time.
         ],
