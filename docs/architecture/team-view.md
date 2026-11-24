@@ -1,6 +1,6 @@
 # Team view: direct communication between our characters (plan, 2026-11-24)
 
-Status: **steps 0 (v1.237.20-pilot), 1 (v1.237.21-pilot) and 2 (v1.237.22-pilot) built**; steps 3-5 are now value steps on top of step 2 (see below). On `modular-pilot` after stages 1-7. Unlike the rebuild stages this **changes behaviour**
+Status: **steps 0 (v1.237.20-pilot), 1 (v1.237.21-pilot) and 2 (v1.237.22-pilot, same-server rule v1.237.23) built**; steps 3-5 are now value steps on top of step 2 (see below). On `modular-pilot` after stages 1-7. Unlike the rebuild stages this **changes behaviour**
 (information arrives at once instead of in messages every few seconds), so every step gets a live test, not only
 old-vs-new comparisons.
 
@@ -40,6 +40,10 @@ Each bot publishes one entry at start (and again after a reload, replacing the o
 Readers use `teamView.member(name)` / `teamView.members()`; a missing or stale member means "not in this client" and
 the flow falls back to today's message for that member. The messages stay as the fallback (a character in its own
 window or on another machine), so nothing breaks when the team is split.
+
+Same server (v1.237.23, found live): the merchant's Ponty round reopens it on other servers inside our client, so it
+has a fresh entry there too. `member(name)` counts only teammates on our game server (the entry carries `server`);
+messages never reached another server either, so this keeps the old behaviour. `members()` lists all (`/team`).
 
 Rules: entries are read, never written by others; only listed actions are called; every reader copes with a missing
 member; the entry is the contract (no reaching into another module's internals).

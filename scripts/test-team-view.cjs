@@ -95,6 +95,23 @@ check(logs.some(t => /live from the team view/.test(t)), "the journal notes the 
     NOW += 11000; // war's entry goes stale
     pri.send("VizWar", "stats", { hp: 1 });
     check(cm.length === 2 && cm[1][0] === "VizWar", "a stale entry: through the server again");
+    // the merchant's Ponty round reopens it on another server inside our client: not "with us"
+    globalThis.parent = { entities: {}, server_region: "EU", server_identifier: "IV" };
+    globalThis.character = { name: "VizMerch", on: () => 1, remove: () => {} };
+    const merchGot = [];
+    const merch = fresh("lib/comms.js")(config, util);
+    merch.on("stats", d => merchGot.push(d));
+    fresh("team/team-view.js")().publish({ name: "VizMerch", role: "merchant", server: "US I", game: () => ({}), bot: {},
+        actions: { deliver: (msg, from) => merch.receive(msg, from) } });
+    globalThis.character = { name: "VizPri", on: () => 1, remove: () => {} };
+    const tvHere = fresh("team/team-view.js")();
+    check(tvHere.member("VizMerch") === null && tvHere.members().some(e => e.name === "VizMerch"), "a teammate in our client on another server: no member() (members() still lists it)");
+    pri.send("VizMerch", "stats", { hp: 2 });
+    await Promise.resolve(); await Promise.resolve();
+    check(merchGot.length === 0 && cm.length === 3 && cm[2][0] === "VizMerch", "a message to it goes through the server, as before");
+    fresh("team/team-view.js")().publish({ name: "VizMerch", role: "merchant", game: () => ({}), bot: {},
+        actions: { deliver: (msg, from) => merch.receive(msg, from) } }); // back home: its server is ours
+    check(tvHere.member("VizMerch") && tvHere.member("VizMerch").server === "EU IV", "back on our server: a member again (server filled in at publish)");
 
     // ---- step 2: team stats live from the view ----
     globalThis.top = {};

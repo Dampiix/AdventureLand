@@ -137,7 +137,7 @@ function teamReport(teamView) {
         try {
             const c = e.game(), b = e.bot || {};
             const farm = b.farm && b.farm(), goal = b.goal && b.goal(), ev = b.event && b.event();
-            game_log("[team] " + e.name + " (" + e.role + ", " + Math.round((Date.now() - e.beat) / 1000) + " s) " + c.map + " " +
+            game_log("[team] " + e.name + " (" + e.role + ", " + Math.round((Date.now() - e.beat) / 1000) + " s" + (e.server ? ", " + e.server : "") + ") " + c.map + " " +
                 Math.round(c.real_x) + "," + Math.round(c.real_y) + " HP " + Math.round(c.hp) + "/" + c.max_hp +
                 (farm && farm.monster ? " farm " + farm.monster : "") + (goal ? " goal " + goal.kind + ":" + (goal.name || "") : "") +
                 (ev ? " event " + ev.name : "") + (b.status ? " | " + b.status() : ""), "white");

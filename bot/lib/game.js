@@ -60,6 +60,7 @@ function storageSet(key, value) { return set(key, value); }           // stage 2
 function entityDistance(a, b) { return parent.distance(a, b); }        // hitbox edge to edge; throws in some clients
 function walkStraight(x, y) { return move(x, y); }                    // a straight move (no path search)
 function smartMove(dest) { return smart_move(dest); }                 // stage 3b (travel): a path walk (a promise)
+function serverName() { return parent.server_region + " " + parent.server_identifier; } // e.g. "EU IV" (team view)
 
 // The team registry (team view, step 0): one object per client on the game page, reached by every CODE frame of this
 // client (the main character's and the #iframelist characters'). Headless: one object per process instead.
@@ -127,6 +128,7 @@ module.exports = {
     entityDistance: entityDistance,
     walkStraight: walkStraight,
     smartMove: smartMove,
+    serverName: serverName,
     hook: hook,
     onSocket: onSocket,
     teamRegistry: teamRegistry,
