@@ -11,7 +11,7 @@
 // Rules: entries are read, never written by others; only listed actions are called; positions are real_x / real_y
 // (x / y are the little character frames' display values).
 // Readers: party (step 1, the leader report), mage magiport (positions), comms (step 2, direct delivery via
-// actions.deliver), team-stats (step 2, bot.stats()).
+// actions.deliver), team-stats (step 2, bot.stats()), the merchant's pickup walk (step 3, the fighter's live position).
 // deps: { game } (optional - the bundled lib/game.js otherwise)
 // =====================================================================
 

@@ -32,7 +32,8 @@ const PARTS = [
 
 module.exports = function createMerchant(ctx) {
     // Outside dependencies of the parts (module plan, stage 6b).
-    const deps = { config: ctx.config, util: ctx.util, comms: ctx.comms, workshop: ctx.workshop, get scout() { return ctx.scout; } };
+    const deps = { config: ctx.config, util: ctx.util, comms: ctx.comms, workshop: ctx.workshop, get scout() { return ctx.scout; },
+        get teamView() { return ctx.teamView; } }; // teamView: optional (team view step 3, delivery.js)
     // The internal state shared by the parts; they put their functions here too (the facade's as well).
     const mer = { canSupply: canSupply, survive: survive, work: work, loop: loop };
     PARTS.forEach(function (install) { install(mer, deps); });

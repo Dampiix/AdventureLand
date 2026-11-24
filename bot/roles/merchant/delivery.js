@@ -2,7 +2,7 @@
 // roles/merchant/delivery.js - deliveries to the fighters: pickups, gifts, class items, one of each.
 // Part of bot_merchant (module plan, stage 6b): moved verbatim from the old single-file roles/merchant.js. The parts
 // share one internal state (mer: pickup requests, busy, trips, the stand, timers) and call each other through mer;
-// outside dependencies come in deps (config, util, comms, workshop, scout).
+// outside dependencies come in deps (config, util, comms, workshop, scout, teamView - optional).
 // =====================================================================
 
 module.exports = function install(mer, deps) {
@@ -61,15 +61,33 @@ module.exports = function install(mer, deps) {
         }
     }
 
+    // A fighter's live position from its team view entry (team view step 3, 2026-11-25): it runs in our client on our
+    // server - exact and current, where its "pos" message is up to positionEveryMs old. Null otherwise (or dead).
+    function liveSpot(name) {
+        try {
+            const tv = deps.teamView;
+            const e = tv && tv.member(name);
+            const c = e && e.game();
+            if (!c || c.rip || !c.map || typeof c.real_x !== "number") return null;
+            return { map: c.map, x: c.real_x, y: c.real_y, live: true };
+        } catch (x) { return null; }
+    }
+
     // Walk after a fighter that keeps farming (player decision 2026-11-17): towards the
-    // newest position we know - its live position while we see it, otherwise its last
-    // "pos" message - and re-route when it moved on. Returns the fighter once we are next
-    // to it, or null after followMs.
+    // newest position we know - its live position while we see it, else its live position
+    // from the team view (step 3), otherwise its last "pos" message - and re-route when it
+    // moved on. Returns the fighter once we are next to it, or null after followMs.
     async function catchUp(name) {
         const until = Date.now() + (m.followMs || 4 * 60 * 1000);
+        let noted = false;
         const newest = function () {
             const seen = get_player(name);
             if (seen && (!seen.map || seen.map === character.map)) return { map: character.map, x: seen.x, y: seen.y, seen: seen };
+            const live = liveSpot(name);
+            if (live) {
+                if (!noted) { noted = true; util.log("merchant", "following " + name + " by its live position (team view)", "white"); }
+                return live;
+            }
             const r = mer.requests.get(name);
             return r ? { map: r.map, x: r.x, y: r.y } : null;
         };

@@ -1,6 +1,6 @@
 # Team view: direct communication between our characters (plan, 2026-11-24)
 
-Status: **steps 0 (v1.237.20-pilot), 1 (v1.237.21-pilot) and 2 (v1.237.22-pilot, same-server rule v1.237.23) built**; steps 3-5 are now value steps on top of step 2 (see below). On `modular-pilot` after stages 1-7. Unlike the rebuild stages this **changes behaviour**
+Status: **steps 0 (v1.237.20-pilot), 1 (v1.237.21-pilot) and 2 (v1.237.22-pilot, same-server rule v1.237.23) and 3 (v1.237.25-pilot) built**; steps 3-5 are now value steps on top of step 2 (see below). On `modular-pilot` after stages 1-7. Unlike the rebuild stages this **changes behaviour**
 (information arrives at once instead of in messages every few seconds), so every step gets a live test, not only
 old-vs-new comparisons.
 
@@ -55,7 +55,7 @@ member; the entry is the contract (no reaching into another module's internals).
 | 0 | `team-view.js`, every bot publishes its entry; `/team` chat command and a journal line show what each one sees. No reader yet - no behaviour change. | - |
 | 1 | Party and team goal: members read the leader's position, farm, goal, target, event, manual flag live; the mage's magiport reads positions and the goal live | `lead` (party, cave) |
 | 2 | **Built differently than first planned (2026-11-25):** every message goes directly to a teammate in our client - `comms.send` hands it to the recipient's `actions.deliver` (a copy, one microtask later, so the order stays as over the network) - and through the server only to the others, decided per message and recipient. So all 29 types are direct at once when the team shares a client, with no flow rewritten. Plus: the team stats read each teammate's combat stats live (`bot.stats()`) | all, as transport (the server stays the fallback per recipient) |
-| 3 | Merchant: pickups, deliveries, gold, wishes and worn gear, potion needs, drop needs read directly; the fighters' "ready" ping becomes a look at the merchant's entry | `pickup`, `callpickup`, `pos`, `coming`, `served`, `gold`, `wishes`, `ready`, `drops`, `droptimes`, `timesfor`, `values`, `spotgold`, `hunt` |
+| 3 | **Built 2026-11-25, smaller than first planned:** on a pickup the merchant walks to the fighter's live position from its entry (`game()` real_x/real_y/map) when it is not in sight - the `pos` message is up to 5 s old. Worn gear and wishes need no live read: the fighter already resends both at once after an equip that changed its gear (gear/equip.js, since 2026-11-17), and since step 2 that message arrives at once. The rest are events (`ready`, `coming`, `served`, ...), direct since step 2. Later idea (new behaviour, not built): the merchant looking at potion counts and free slots before anyone calls | `pos` (fallback stays) |
 | 4 | Boss search: jobs, acks, finds, sightings and deaths through the entries (the leader hands out jobs by action) | `searchjob`, `searchack`, `searchdone`, `searchstop`, `scoutdone`, `bosssight`, `bossdeath` |
 | 5 | Chests and the cave: opener choice and gold multipliers, the cave vote | `goldm`, `opener`, `cavevote` |
 

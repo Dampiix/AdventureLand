@@ -133,6 +133,37 @@ check(logs.some(t => /live from the team view/.test(t)), "the journal notes the 
     NOW += 11000;
     list = ts.teamStats();
     check(!list.some(s => s.name === "VizWar") && list.some(s => s.name === "VizMage"), "team stats: a stale entry without a report drops out (as before)");
+    // ---- step 3: the merchant follows a fighter's live position on a pickup ----
+    {
+        const walks = [], mlogs = [];
+        let visibleAfter = 3, polls = 0;
+        const warGame = { name: "VizWar", map: "desertland", real_x: 900, real_y: -1200, x: 64, y: 30, rip: false };
+        globalThis.character = { name: "VizMerch", map: "main", x: 0, y: 0, real_x: 0, real_y: 0 };
+        globalThis.stop = () => {};
+        globalThis.sleep = () => { NOW += 1000; return Promise.resolve(); };
+        globalThis.get_player = () => (++polls > visibleAfter ? { name: "VizWar", map: "desertland", x: 905, y: -1195 } : null);
+        const mer = { requests: new Map([["VizWar", { map: "desertland", x: 100, y: -500, want: {} }]]) };
+        const mutil = Object.assign({}, util, { status: () => {}, log: (tag, t) => mlogs.push(t),
+            walk: (d) => { walks.push(d); character.map = d.map; return Promise.resolve(); }, isNear: () => true });
+        const live = { member: n => (n === "VizWar" ? { game: () => warGame } : null) };
+        require(path.join(root, "bot", "roles", "merchant", "delivery.js"))(mer, { config: Object.assign({}, config, { merchantRole: { followMs: 60000 } }),
+            util: mutil, comms: { send: () => {} }, workshop: {}, teamView: live });
+        const found = await mer.catchUp("VizWar");
+        check(walks.length >= 1 && walks[0].x === 900 && walks[0].y === -1200 && walks[0].map === "desertland", "pickup: the merchant walks to the live position, not the old pos message");
+        check(found && found.name === "VizWar", "pickup: in sight it takes the fighter as before");
+        check(mlogs.some(t => /live position \(team view\)/.test(t)), "pickup: the log notes the live position");
+        // without a team view entry: the pos message as before
+        walks.length = 0; polls = 0; character.map = "main";
+        require(path.join(root, "bot", "roles", "merchant", "delivery.js"))(mer, { config: Object.assign({}, config, { merchantRole: { followMs: 60000 } }),
+            util: mutil, comms: { send: () => {} }, workshop: {}, teamView: { member: () => null } });
+        await mer.catchUp("VizWar");
+        check(walks.length >= 1 && walks[0].x === 100 && walks[0].y === -500, "pickup: no entry - the pos message as before");
+        warGame.rip = true; walks.length = 0; polls = 0; character.map = "main";
+        require(path.join(root, "bot", "roles", "merchant", "delivery.js"))(mer, { config: Object.assign({}, config, { merchantRole: { followMs: 60000 } }),
+            util: mutil, comms: { send: () => {} }, workshop: {}, teamView: live });
+        await mer.catchUp("VizWar");
+        check(walks.length >= 1 && walks[0].x === 100, "pickup: a dead fighter's live spot is not used");
+    }
     console.log(failed ? failed + " FAILED" : "all passed");
     process.exit(failed ? 1 : 0);
 })();

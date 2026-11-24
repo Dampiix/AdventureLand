@@ -257,7 +257,7 @@ function startBot() {
     if (me.role === "merchant") {
         ctx.workshop = require_code("bot_workshop")(moduleView(ctx, ["comms", "config", "util"]));
         ctx.scout = require_code("bot_scout")({ config: ctx.config, util: ctx.util, comms: ctx.comms }); // boss search + safe walking
-        botRunner = require_code("bot_merchant")(moduleView(ctx, ["comms", "config", "scout", "util", "workshop"]));
+        botRunner = require_code("bot_merchant")(moduleView(ctx, ["comms", "config", "scout", "teamView", "util", "workshop"]));
     } else {
         ctx.party = require_code("bot_party")({ config: ctx.config, util: ctx.util, comms: ctx.comms, bus: ctx.bus });
         // The whole group walks (2026-11-18): members following the leader re-planned on every
@@ -290,8 +290,8 @@ function startBot() {
         botRunner = require_code("bot_fighter")(moduleView(ctx, ["bus", "cave", "comms", "config", "events", "gear", "hunts", "party", "strike", "supply", "targeting", "teamStats", "util"]), cls);
     }
 
-    // The team view (docs/architecture/team-view.md, step 0): our entry for the others in this client; nothing reads
-    // it yet.
+    // The team view (docs/architecture/team-view.md): our entry for the others in this client (created after the modules;
+    // readers reach it through their view or create their own reader).
     ctx.teamView = require_code("bot_team_view")();
     publishTeamEntry(ctx, me);
 
