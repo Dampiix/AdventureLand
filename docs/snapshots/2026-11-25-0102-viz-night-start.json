@@ -1,0 +1,66 @@
+{
+  "account": "viz",
+  "taken": "2026-11-25T01:02:21Z",
+  "purpose": "Night start (player goes to sleep): baseline for the overnight comparison in the morning",
+  "compareWith": "2026-11-24-2218-viz-modular.json (22:17:57Z, bot 1.237.18/19-pilot)",
+  "bot": "1.238.2-pilot on all four (modular-pilot; team view steps 0-5, rage spawns, boss meeting point)",
+  "party": ["VizPri", "VizWar", "VizMage"],
+  "farm": "gscorpion (guide, team model) in desertland; hunts on, bosses on (merchant scouts). XP value unknown at the moment (fighters restarted < 10 min ago): drop value pick waits for it",
+  "VizPri": {
+    "level": 69, "xp": 234887704, "max_xp": 240000000, "gold": 74161,
+    "elixir": ["elixirluck", "2026-11-25T12:00:22Z"],
+    "stats": { "hp": 6045, "mp": 5175, "attack": 813, "heal": 1935, "frequency": 1.088, "armor": 283, "resistance": 404, "str": 60, "int": 266, "dex": 31, "vit": 55, "speed": 75, "range": 206, "goldm": 1.2, "xpm": 1.66, "luckm": 1.49, "courage": 2, "mcourage": 14, "pcourage": 2 },
+    "gear": { "mainhand": "staffofthedead+7", "offhand": "wbook0+2", "helmet": "wcap+8 (int)", "chest": "wattire+8 (int)", "pants": "wbreeches+8 (int)", "shoes": "wshoes+8 (int)", "gloves": "wgloves+8 (int)", "cape": "horsecape+0 (int)", "belt": "intbelt+2", "amulet": "intamulet+3", "ring1": "intring+3", "ring2": "intring+2", "earring1": "intearring+3", "earring2": "intearring+3", "orb": "orbg+1" },
+    "inv": ["tracker", "mpot1 x153", "hpot1 x300", "elixirluck x4", "stormfeather x6", "ringsj+0"]
+  },
+  "VizWar": {
+    "level": 73, "xp": 326239596, "max_xp": 510000000, "gold": 108700,
+    "elixir": ["elixirstr0", "2026-11-25T11:36:57Z"],
+    "stats": { "hp": 12221, "mp": 1345, "attack": 1125, "frequency": 0.895, "armor": 432, "resistance": 204, "str": 321, "int": 40, "dex": 41, "vit": 61, "speed": 69, "range": 31, "goldm": 1.1, "xpm": 1.26, "luckm": 1.17, "courage": 16, "mcourage": 2, "pcourage": 2 },
+    "gear": { "mainhand": "ololipop+7", "offhand": "ololipop+7", "helmet": "helmet1+8 (str)", "chest": "mcape+7 (str)", "pants": "pants1+7 (str)", "shoes": "shoes1+7 (str)", "gloves": "gloves1+8 (str)", "cape": "cape+0 (str)", "belt": "strbelt+3", "amulet": "stramulet+4", "ring1": "strring+3", "ring2": "strring+2", "earring1": "strearring+3", "earring2": "strearring+3", "orb": "orbg+1" },
+    "inv": ["tracker", "mpot1 x230", "hpot1 x285", "fireblade+7", "fireblade+7", "elixirstr0 x4", "ringsj+0", "hpbelt+0", "vitscroll+0", "stormfeather x3", "firestaff+0"]
+  },
+  "VizMage": {
+    "level": 69, "xp": 15454540, "max_xp": 240000000, "gold": 111736,
+    "elixir": ["elixirint0", "2026-11-25T11:35:52Z"],
+    "stats": { "hp": 4193, "mp": 5010, "attack": 1136, "frequency": 0.993, "armor": 94, "resistance": 259, "str": 31, "int": 267, "dex": 34, "vit": 42, "speed": 59, "range": 201, "goldm": 1.15, "xpm": 2.66, "luckm": 1.22, "courage": 2, "mcourage": 3, "pcourage": 2 },
+    "gear": { "mainhand": "firestaff+7", "offhand": "wbook0+2", "helmet": "helmet+8 (int)", "chest": "coat+8 (int)", "pants": "pants+8 (int)", "shoes": "shoes+8 (int)", "gloves": "gloves+8 (int)", "cape": "horsecape+0 (int)", "belt": "intbelt+2", "amulet": "intamulet+3", "ring1": "intring+2", "ring2": "ringsj+2", "earring1": "intearring+3", "earring2": "intearring+3", "orb": "orbg+1" },
+    "inv": ["tracker", "hpot1 x300", "mpot1 x173", "elixirint0 x4", "gstaff+3", "strearring+0", "stormfeather x3", "hpamulet+0"]
+  },
+  "VizMerch": {
+    "level": 56, "xp": 11521137, "max_xp": 20000000, "gold": 7254382,
+    "where": "main -951,198 (on the way; stand closed at the moment); no trade trip, no Ponty round",
+    "inv": ["stand0", "dexearring+2", "hpot1 x900", "mpot1 x900", "elixirdex0 x50", "elixirstr0 x42", "elixirint0 x48", "elixirluck x23", "intamulet+2", "intamulet+2", "intamulet+1", "dexamulet+3", "dexamulet+2", "strring+1", "strearring+3", "shoes1+0", "intearring+2", "intearring+2", "intearring+2", "intearring+0", "scroll0", "dexring+1", "dexring+2", "dexbelt+2", "dexbelt+1", "strbelt+2", "dexearring+2"],
+    "gold_note": "bank slot bought by the player on 2026-11-24 (~23:15Z) for 100M - the merchant had 101M; since then it sold the Crab Claws +0 and green Lolipops +0 from the bank (v1.237.24); the Reed Scythes stay (cavefound)",
+    "ponty_bought_last": ["2026-11-24T23:05Z shoes1+0 144,000", "2026-11-24T23:05Z pants1+0 93,600"]
+  },
+  "bank": {
+    "source": "merchant's bank snapshot (workshop_bank:VizMerch, 2026-11-25T00:59:16Z) - 144 entries, 66 free slots; MCP get_bank (unverified freshness) shows the same items",
+    "by_name": { "frogt": 7, "gem1": 1343, "mistletoe": 3, "elixirvit0": 3, "ololipop": 23, "dexbelt+1": 1, "embercore": 39, "pants1+1": 1, "seashell": 7247, "dexamulet+1": 1, "gem0": 87, "stormfeather": 4054, "crabclaw": 300, "bow+8": 1, "frostcore": 9, "strring+1": 1, "rfangs": 4, "bwing": 31, "verdantspore": 4, "gloomfeather": 2, "candycane": 34, "dexearring+1": 1, "carrot": 21, "t2bow+3": 1, "firestaff": 2, "bfur": 7, "gslime": 17, "monstertoken": 40, "stramulet+3": 1, "beewings": 3133, "cape": 1, "voidthread": 78, "shadowstone": 19, "blade+8": 2, "intearring+1": 1, "coat1+7": 1, "cryptkey": 1, "cscale": 21, "vitearring": 2, "ijx": 6, "tshirt1+3": 1, "essenceofether": 18, "vitearring+1": 1, "glolipop+7": 1, "intbelt+1": 2, "stramulet+2": 2, "forscroll": 7, "wcap+1": 1, "spores": 46, "drapes": 48, "ascale": 7, "strearring+1": 2, "intamulet+1": 1, "offeringp": 6, "ashleaf": 140, "sword": 2, "essenceoffrost": 2, "pstem": 34, "strbelt": 1, "vitearring+2": 2, "wbook0+2": 1, "dexbelt+2": 1, "candy0": 24, "candy1": 23, "shoes+7": 1, "shoes+8": 1, "dexring": 1, "snakefang": 1, "orbg": 1, "gemfragment": 4, "wbook0": 2, "cshell": 1, "dstones": 13, "vgloves": 2, "hdagger": 2, "intamulet": 1, "embercoal": 45, "dexamulet+3": 1, "feather0": 4, "scythe": 1, "quiver+7": 1, "reefglass": 247, "stramulet": 1, "essenceoffire": 1, "funtoken": 23, "leather": 5, "helmet+7": 1, "coat+7": 1, "elixirint1": 1, "weaponbox": 9, "strring": 1, "intbelt+2": 1, "helmet1+7": 1, "xmace": 1, "marketparcel": 57, "wbreeches+2": 1, "armorbox": 12, "intbelt": 2, "cave_mothsteps": 2, "frostscale": 50, "cave_reedscythe": 4, "cave_amber": 29, "cave_tunnelaxe": 1, "cclaw+8": 2, "stramulet+1": 1 },
+    "notes": ["green Lolipops +0 and Crab Claws +0 are gone (sold); glolipop+7 and cclaw+8 x2 kept on purpose", "the 4 cave_reedscythe carry p: cavefound - the sell rule skips items with a property (like shiny), so they stay", "ololipop +0 x23 kept on purpose (player: maybe +8 later)"]
+  },
+  "boss_kills": {
+    "source": "tracker (socket 'tracker' -> monsters), per character, read 2026-11-25T01:02:21Z",
+    "VizPri": { "phoenix": 333, "mvampire": 141, "fvampire": 57, "jr": 4, "greenjr": 4, "skeletor": 91, "snowman": 5, "rgoo": 6, "fireroamer": 12 },
+    "VizWar": { "phoenix": 378, "mvampire": 141, "fvampire": 57, "jr": 2, "greenjr": 2, "skeletor": 91, "snowman": 6, "rgoo": 6, "fireroamer": 10 },
+    "VizMage": { "phoenix": 99, "mvampire": 53, "fvampire": 31, "jr": 4, "greenjr": 1, "skeletor": 51, "snowman": 1, "fireroamer": 1 },
+    "since_2218Z_VizPri": { "phoenix": 11, "mvampire": 5, "fvampire": 6, "skeletor": 8 }
+  },
+  "farm_kills_VizPri": { "gscorpion": 13325, "cgoo": 1854, "stoneworm": 490, "booboo": 245, "xscorpion": 49, "bbpompom": 83 },
+  "value_report": {
+    "source": "bot_value_report (merchant, 2026-11-25T00:56:34Z)",
+    "xpPower": "null for all three (restarted < 10 min before) - levelPower %/level: VizPri 1.09, VizWar 0.98, VizMage 1.02",
+    "goldPerHour": 3019150,
+    "top_wishes_pct_per_hour": ["wingedboots +7 VizPri +6.78% in 16.1 h (417 feathers) -> 0.42", "wingedboots +7 VizMage +6.02% -> 0.37", "intring +2 VizMage +0.87% in 9.8 h -> 0.09", "intbelt +3 VizPri/VizMage +1.3% in 60 h -> 0.02", "intring +3 VizPri / strring +3 VizWar -> 0.01"]
+  },
+  "summary_since_2218Z": {
+    "hours": 2.74,
+    "xp": { "VizPri": 42049628, "VizWar": 44242308, "VizMage": 95160305 },
+    "team_xp": 181452241,
+    "team_xp_per_hour": 66200000,
+    "xp_note": "lower than the 83.7M/h before: many reloads (team view steps, cleanup, rage spawns), the mummy test (~5 min away from farming) and boss trips",
+    "gold_characters_delta": { "VizPri": 55277, "VizWar": 79488, "VizMage": 78982, "VizMerch": -92716066 },
+    "gold_note": "merchant -92.7M: the 100M bank slot; without it about +7.5M in 2.7 h (sales of the cleared bank items included)",
+    "levels": "VizMage 68 -> 69; VizPri 69 at 97.9% (level 70 soon); VizWar 73 at 64%"
+  }
+}
