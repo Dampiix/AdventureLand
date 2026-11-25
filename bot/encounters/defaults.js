@@ -27,7 +27,8 @@ module.exports = {
         scout: {
             fallbackMs: 10 * 60 * 1000, lapMaxMs: 15 * 60 * 1000, freshMs: 90 * 1000,
             reportMs: 3000, holdMs: 3 * 60 * 1000, arriveRadius: 300, arriveGraceMs: 10 * 1000,
-            keepAway: 250, teamNear: 300, watchMs: 3 * 60 * 1000, lostMs: 8000, spotMs: 3000, pauseAfterDeathMs: 30 * 60 * 1000,
+            keepAway: 250, meetDist: 200, teamNear: 300, // meetDist: the team's meeting point this far before the boss (v1.238.2)
+            watchMs: 3 * 60 * 1000, lostMs: 8000, spotMs: 3000, pauseAfterDeathMs: 30 * 60 * 1000,
             mapOrder: ["main", "arena", "cave", "halloween"],
             // hits: only aggressive monsters that kill the merchant in this many hits are walled.
             safeWalk: { enabled: true, pad: 100, ragePad: 100, offMs: 60 * 1000, hits: 2 },

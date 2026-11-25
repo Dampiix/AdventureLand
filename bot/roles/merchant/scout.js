@@ -185,12 +185,42 @@ module.exports = function createScout(deps) {
             hp: Math.round(100 * m.hp / Math.max(1, m.max_hp)), by: m.target && !own.includes(m.target) ? m.target : null, others: others.slice(0, 6) };
     }
     let lastSent = 0;
+    // The meeting point for the team (v1.238.2, player report 2026-11-25: the merchant saw Dracul at his second spawn
+    // from 670 px; the team walked to where the merchant stood, never saw him and waited out the 3-min hold):
+    //   1. on the line from us to the boss, scout.meetDist px before it, when we can walk there in a straight line;
+    //   2. else just outside the boss's spawn box (meetDist / 4 px out), on the side facing us, if reachable;
+    //   3. else where we stand (walkable for sure - the Phoenix flies over cliffs).
+    function meetPoint(m) {
+        const me = { x: character.real_x, y: character.real_y };
+        const bx = m.real_x !== undefined ? m.real_x : m.x, by = m.real_y !== undefined ? m.real_y : m.y;
+        const keep = sc.meetDist || 200;
+        const d = Math.hypot(me.x - bx, me.y - by);
+        if (d <= keep + 50) return me;
+        const line = { x: bx + (me.x - bx) / d * keep, y: by + (me.y - by) / d * keep };
+        try { if (can_move_to(line.x, line.y)) return line; } catch (e) { /* no path check: next option */ }
+        let box = null, bd = Infinity;
+        ((G.maps[character.map] || {}).monsters || []).forEach(function (p) {
+            if (p.type !== m.mtype) return;
+            util.spawnBoxes(p, character.map).forEach(function (b) {
+                const g = Math.hypot(Math.max(b[0] - bx, 0, bx - b[2]), Math.max(b[1] - by, 0, by - b[3]));
+                if (g < bd) { bd = g; box = b; }
+            });
+        });
+        if (box && bd < 300) {
+            const nx = Math.max(box[0], Math.min(box[2], me.x)), ny = Math.max(box[1], Math.min(box[3], me.y));
+            const dl = Math.hypot(me.x - nx, me.y - ny) || 1, out = keep / 4;
+            const edge = { x: nx + (me.x - nx) / dl * out, y: ny + (me.y - ny) / dl * out };
+            try { if (can_move_to(edge.x, edge.y)) return edge; } catch (e) { /* where we stand */ }
+        }
+        return me;
+    }
     function report(m) {
         if (Date.now() - lastSent < 2000) return;
         lastSent = Date.now();
-        // fx/fy: where we stand - walkable and kept clear of the boss: the team walks here.
+        // fx/fy: the meeting point (meetPoint) - walkable and in sight of the boss: the team walks here.
+        const meet = meetPoint(m);
         comms.send(config.leader, "bosssight", { name: m.mtype, id: m.id, map: character.map, x: Math.round(m.x), y: Math.round(m.y),
-            fx: Math.round(character.real_x), fy: Math.round(character.real_y), info: bossInfo(m) });
+            fx: Math.round(meet.x), fy: Math.round(meet.y), info: bossInfo(m) });
     }
     function teamNear(m) {
         return ((config.team && config.team.fighters) || []).some(function (n) {
@@ -417,5 +447,5 @@ module.exports = function createScout(deps) {
         } catch (e) { /* next round */ }
     }, 30 * 1000);
 
-    return { work: work };
+    return { work: work, meetPoint: meetPoint }; // meetPoint: for tests (scripts/test-meet-point.cjs)
 };

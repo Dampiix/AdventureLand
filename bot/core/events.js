@@ -154,7 +154,7 @@ module.exports = function createEvents(ctx) {
         if (!evs.sightings[data.name] || Date.now() - evs.sightings[data.name].at > 30 * 1000) {
             util.log("event", data.name + " seen by " + from + " " + (data.info ? evs.infoText(data.info) : "(" + data.map + ")"), "green");
         }
-        evs.sightings[data.name] = { id: data.id, map: data.map, x: data.x, y: data.y, fx: data.fx, fy: data.fy, from: from, at: Date.now(), info: data.info || null };
+        evs.sightings[data.name] = { name: data.name, id: data.id, map: data.map, x: data.x, y: data.y, fx: data.fx, fy: data.fy, from: from, at: Date.now(), info: data.info || null };
         // The merchant reports and walks on (events.scout, 2026-11-23): its report holds up to scout.holdMs instead
         // of 10 s - the walk from the farm spot takes 60-90 s, and at 06:09 the team turned back after 32 s.
         if (scfg.enabled && from === config.merchant) {

@@ -31,9 +31,16 @@ module.exports = function install(evs, deps) {
     // Where the team goes for a member's sighting: the finder's own spot (walkable, within sight of
     // the boss), not the boss itself - a Phoenix over unwalkable ground gave "Path not found!" on
     // every try, and the priest and the ranger stood still (2026-11-21). Old reports: the boss.
+    // At the merchant's meeting point without the boss in sight (v1.238.2): on to where it was reported - it roams
+    // its spawn, and the point may be far from it. Sticks for this report (a new report starts at its point again).
     function walkTo(told) {
         const ok = told.fx !== undefined && told.fy !== undefined;
-        return { map: told.map, x: ok ? told.fx : told.x, y: ok ? told.fy : told.y };
+        if (ok && told.scout && !told.onward && character.map === told.map &&
+            Math.hypot(character.real_x - told.fx, character.real_y - told.fy) <= 60) {
+            told.onward = true;
+            util.log("event", told.name + " not in sight at the meeting point - on to where it was reported", "white");
+        }
+        return ok && !told.onward ? { map: told.map, x: told.fx, y: told.fy } : { map: told.map, x: told.x, y: told.y };
     }
 
     function decide() {
