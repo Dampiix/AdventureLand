@@ -471,7 +471,7 @@ module.exports = function createDrops(deps) {
 
     // Stage 3: power per hour of each drop spot (the team's XP value scaled by the spot's XP rate,
     // plus the best wish per needed item that drops there) against the best XP spot.
-    let lastValueLog = 0, lastValueKey = "";
+    let lastValueLog = 0, lastValueKey = "", xpUnknownLogAt = 0;
     function valuePick(isCrowded) {
         const items = values.items || {};
         let ref = 0;
@@ -528,6 +528,8 @@ module.exports = function createDrops(deps) {
             // without values - counted as 0 it let every drop spot win (2026-11-20).
             if (typeof values.xpTeam !== "number" || !(values.xpTeam > 0)) {
                 if (lastPick) util.log("drops", "XP value unknown (restart) - back to the XP spot", "white");
+                // Not silent any more (v1.238.3): a value that never comes kept the team on the XP spot unnoticed.
+                else if (Date.now() - xpUnknownLogAt > 30 * 60 * 1000) { xpUnknownLogAt = Date.now(); util.log("drops", "drop value: the team's XP value is unknown - farming the XP spot", "white"); }
                 lastPick = "";
                 return null;
             }

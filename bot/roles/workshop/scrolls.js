@@ -237,9 +237,22 @@ module.exports = function install(wks, deps) {
         // A fighter without an XP rate yet (its first 10 min after a restart) makes the team's XP
         // value unknown (null), not smaller: counted as 0 it let every drop spot beat the XP spot
         // after each reload (2026-11-20).
-        const team = (config.team && config.team.fighters) || [];
+        // The leader's party as it plays now (v1.238.3): its fighters (config phase "party") whose heartbeat is fresh and says
+        // leader / member (an older heartbeat without a role counts). Every listed fighter before - VizRng, listed but not
+        // played, never sent an XP rate, so xpTeam stayed null and the leader never weighed a drop spot (2026-11-25).
+        const listed = ((config.phases && config.phases.party && config.phases.party.party) || (config.team && config.team.fighters) || []);
+        const team = listed.filter(function (f) {
+            let b = null;
+            try { b = get("bot_beat:" + f); } catch (e) { /* storage unavailable */ }
+            return !!b && b.at && Date.now() - b.at < (cfg.onlineMs || 10 * 60 * 1000) && (!b.role || b.role === "leader" || b.role === "member");
+        });
         const xpKnown = team.length > 0 && team.every(function (f) { return wks.fighterValues[f] && typeof wks.fighterValues[f].xpPower === "number"; });
         const xpTeam = xpKnown ? team.reduce(function (s, f) { return s + wks.fighterValues[f].xpPower; }, 0) : null;
+        if (!xpKnown && Date.now() - (wks.xpUnknownLogAt || 0) > 30 * 60 * 1000) {
+            wks.xpUnknownLogAt = Date.now();
+            const missing = team.filter(function (f) { return !(wks.fighterValues[f] && typeof wks.fighterValues[f].xpPower === "number"); });
+            util.log("drops", "team XP value unknown - " + (team.length ? "no XP rate yet from " + missing.join(", ") : "nobody of the leader's party plays") + " (the leader farms its XP spot meanwhile)", "orange");
+        }
         if (config.leader) comms.send(config.leader, "values", { xpTeam: xpTeam === null ? null : Math.round(xpTeam * 100) / 100, items: items });
         // Ask the leader for the farm times we still lack (answered with "droptimes").
         const ask = [];

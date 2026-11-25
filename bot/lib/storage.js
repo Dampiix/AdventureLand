@@ -23,6 +23,10 @@ function journal(text) {
 // loop step went through, "bot_beat:<name>" = { at, server } in the storage all our windows
 // share. A loop that stops or throws every step stops the beat.
 let lastBeatAt = 0;
+// role: "leader" | "member" | "solo" | "merchant" (v1.238.3, main.js setBeatRole) - the merchant's team XP value counts only
+// the leader's party as it plays now.
+let beatRole = null;
+function setBeatRole(role) { beatRole = role; lastBeatAt = 0; }
 function heartbeat() {
     const now = Date.now();
     if (now - lastBeatAt < 10000) return;
@@ -30,7 +34,7 @@ function heartbeat() {
     try {
         const server = typeof parent !== "undefined" && parent.server_region ? parent.server_region + " " + parent.server_identifier : null;
         // hp: for the priest's Party Heal on members out of its sight (2026-11-21).
-        set("bot_beat:" + character.name, { at: now, server: server, hp: character.max_hp ? Math.round(character.hp / character.max_hp * 100) / 100 : 1, rip: !!character.rip });
+        set("bot_beat:" + character.name, { at: now, server: server, hp: character.max_hp ? Math.round(character.hp / character.max_hp * 100) / 100 : 1, rip: !!character.rip, role: beatRole });
     } catch (e) { /* storage unavailable */ }
 }
 
@@ -51,5 +55,6 @@ module.exports = {
     JOURNAL_TAGS: JOURNAL_TAGS,
     journal: journal,
     heartbeat: heartbeat,
+    setBeatRole: setBeatRole,
     teamServer: teamServer,
 };

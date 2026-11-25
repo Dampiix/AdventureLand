@@ -24,6 +24,7 @@ module.exports = {
     damageTypeOf: combatMath.damageTypeOf,
     teamServer: storage.teamServer,
     heartbeat: storage.heartbeat,
+    setBeatRole: storage.setBeatRole,
     journal: storage.journal,
     tooSpiky: monsterRules.tooSpiky,
     foreignOnlyBlocks: monsterRules.foreignOnlyBlocks,

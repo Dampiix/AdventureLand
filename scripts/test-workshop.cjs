@@ -165,7 +165,8 @@ async function run(load, sc) {
 
 (async function () {
     for (const sc of SCENARIOS) {
-        const o = await run(loadOld, sc), n = await run(loadNew, sc);
+        // v1.238.3 adds a journal line when the team XP value is unknown (the old code was silent) - left out here.
+        const o = await run(loadOld, sc), n = (await run(loadNew, sc)).filter(c => !(c[0] === "log" && /team XP value unknown/.test(c[2] || "")));
         const same = JSON.stringify(o) === JSON.stringify(n);
         const errs = o.filter(c => /threw/.test(c[0]));
         check(same && o.length > 3, sc.name + " (" + o.length + " records, " + errs.length + " errors in both)");

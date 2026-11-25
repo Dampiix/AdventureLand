@@ -299,6 +299,8 @@ function startBot() {
     // readers reach it through their view or create their own reader).
     ctx.teamView = require_code("bot_team_view")();
     publishTeamEntry(ctx, me);
+    // The heartbeat carries our role (v1.238.3): the merchant's team XP value counts the leader's party only.
+    BOT_UTIL.setBeatRole(me.role === "merchant" ? "merchant" : !(ctx.party && ctx.party.enabled) ? "solo" : ctx.party.isLeader ? "leader" : "member");
 
     BOT_UTIL.log("bot", "v" + BOT_CONFIG.version + " " + character.name + " as " + me.role + " (phase: " + BOT_CONFIG.phase + ")", "green");
     botRunner.start();
