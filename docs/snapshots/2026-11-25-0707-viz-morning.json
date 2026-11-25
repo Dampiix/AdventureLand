@@ -1,0 +1,34 @@
+{
+  "account": "viz",
+  "taken": "2026-11-25T07:07:04Z",
+  "purpose": "Morning after the night: compare with the night start",
+  "compareWith": "2026-11-25-0102-viz-night-start.json (01:02:21Z)",
+  "bot": "1.238.2-pilot on all four, no reload overnight",
+  "farm": "gscorpion (guide, team model); hunts and bosses on. drops.target returns null without a log: the merchant's xpTeam is null because config.team.fighters lists VizRng (not played, no XP rate) - the value pick never runs",
+  "VizPri": { "level": 70, "xp": 119447698, "max_xp": 290000000, "gold": 59444,
+    "stats_note": "read mid-fight: attack 331, speed 15 (a debuff at that moment); max_hp 6318, int 270",
+    "gear": "unchanged", "inv": ["tracker", "mpot1 x239", "hpot1 x300", "elixirluck x4"] },
+  "VizWar": { "level": 73, "xp": 450240829, "max_xp": 510000000, "gold": 40084,
+    "gear": "unchanged", "inv": ["tracker", "mpot1 x279", "hpot1 x300", "fireblade+7", "fireblade+7", "elixirstr0 x4", "quiver+0"] },
+  "VizMage": { "level": 70, "xp": 53758827, "max_xp": 290000000, "gold": 46234,
+    "gear": "Blaster (gstaff+3) in hand, firestaff+7 and wbook0+2 in the bag; rest unchanged", "inv": ["tracker", "hpot1 x300", "mpot1 x243", "elixirint0 x4", "firestaff+7", "wbook0+2"] },
+  "VizMerch": { "level": 56, "xp": 12293137, "max_xp": 20000000, "gold": 35994469, "where": "halloween 492,-1036" },
+  "bank": {
+    "source": "merchant's bank snapshot 2026-11-25T07:04:13Z: 180 entries, 30 free (night start: 144, 66 free)",
+    "changes": { "monstertoken": "40 -> 79", "firestaff": "2 -> 15", "fireblade": "0 -> 5", "drapes": "48 -> 139", "ololipop": "23 -> 28", "stormfeather": "4054 -> 4325", "gem1": "1343 -> 1386", "gem0": "87 -> 92", "weaponbox": "9 -> 12", "marketparcel": "57 -> 62", "voidthread": "78 -> 85", "essenceoffire": "1 -> 3", "offeringp": "6 -> 7", "candycane": "34 -> 39", "armorbox": "12 -> 13", "mbones": "0 -> 2", "orbofdex": "0 -> 1", "mcape": "0 -> 1" }
+  },
+  "boss_kills_VizPri": { "phoenix": "333 -> 353", "mvampire": "141 -> 154", "fvampire": "57 -> 66", "skeletor": "91 -> 106", "jr": "4 -> 5", "snowman": "5 -> 6" },
+  "farm_kills_VizPri": { "gscorpion": "13325 -> 14882", "mummy": "0 -> 208", "arcticbee": "1366 -> 1867", "fireroamer": "12 -> 17" },
+  "value_report": { "at": "2026-11-25T07:03:13Z", "xpPower": "VizPri 0.09, VizWar 0.05, VizMage 0.21 = 0.35 %/h (24M + 26M + 61M XP/h)", "top": "wingedboots +7 VizPri 0.43, VizMage 0.39; intring +2 VizMage 0.11 %/h" },
+  "summary_overnight": {
+    "hours": 6.08,
+    "xp": { "VizPri": 124559994, "VizWar": 124001233, "VizMage": 278304287 },
+    "team_xp": 526865514, "team_xp_per_hour": 86700000,
+    "levels": "VizPri 69 -> 70 (41 %), VizMage 69 -> 70 (19 %), VizWar 73 64 % -> 88 %",
+    "gold_delta": { "VizPri": -14717, "VizWar": -68616, "VizMage": -65502, "VizMerch": 28740087 },
+    "gold_total_delta": 28591252, "gold_per_hour": 4700000,
+    "boss_kills_VizPri": 59, "boss_kills_per_hour": 9.7,
+    "deaths": "none in the journals (VizPri from 05:38, VizWar from 03:20, VizMage from 04:58 - older lines rotated out)",
+    "mummies": "208 mummy kills (hunts in level3 / level4, one at a time) - the rage-spawn fixes work"
+  }
+}
