@@ -1,6 +1,6 @@
 # Team config: account, leader, team - and every fighter can start alone (plan, 2026-11-25)
 
-Status: **plan, nothing built.** Player request 2026-11-25. On `modular-pilot`; changes behaviour (who plays solo or in the
+Status: **built** - step 1 v1.238.3-pilot, steps 2-5 v1.238.4-pilot (2026-11-25). Player request 2026-11-25. On `modular-pilot`; changes behaviour (who plays solo or in the
 party is decided at start and re-checked while running).
 
 ## Why

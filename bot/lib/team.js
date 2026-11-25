@@ -1,5 +1,5 @@
 // =====================================================================
-// lib/team.js - The team from config.team (leader, merchant, phases) and its lowest level.
+// lib/team.js - The team from config.account / leader / team (characters, phases, our mode) and its lowest level.
 // Split out of lib/util.js (module plan, pilot step 2); util.js re-exports it unchanged.
 // =====================================================================
 
@@ -17,39 +17,40 @@ function teamLevel(config) {
     return level;
 }
 
-// Fill in the derived fields (leader, merchant, characters, phases) from
-// config.team, so the rest of the bot can keep reading them directly.
+// Fill in the derived fields from config.account / leader / team (2026-11-25, docs/architecture/team-config.md) so the
+// rest of the bot keeps reading config.team (leader, fighters, solo, merchant), config.characters, config.phases:
+//   config.team.fighters  every account character (may run the bot: trusted, served by the merchant, gear protected)
+//   config.team.members   the leader's team; config.team.solo every other account character
+//   config.phases.party   party: leader + team (the same for everyone - the merchant reads it), startWithLeader:
+//                         team + merchant
+//   config.mode           ours: "leader" | "member" (a team member started by the leader - a hidden frame in its
+//                         page) | "solo" (every other fighter, also a team member the player started) | "merchant"
+//   config.startedByLeader  we run inside the leader's page
 function deriveTeam(cfg) {
-    // Team name prefixes for shortName/shortStatus: the fighters' common start, at least 2 letters.
-    names.setPrefixes([cfg.team].concat(cfg.otherTeams || []).map(function (tm) {
-        return tm && tm.fighters && tm.fighters.length > 1 ? names.commonPrefix(tm.fighters) : "";
-    }).filter(function (p) { return p.length >= 2; }));
-    // Several accounts share this config (2026-11-19: a second account next to the first):
-    // the team that lists the running character is used; cfg.team stays the default.
-    const me = typeof character !== "undefined" && character ? character.name : null;
-    const inTeam = function (t) { return t && me && ((t.fighters || []).includes(me) || t.merchant === me); };
-    if (me && !inTeam(cfg.team)) {
-        const other = (cfg.otherTeams || []).find(inTeam);
-        if (other) cfg.team = other;
-    }
-    const t = cfg.team;
-    cfg.leader = t.leader;
-    cfg.merchant = t.merchant || null;
+    const acc = cfg.account || {};
+    const fighters = (acc.characters || []).slice();
+    const leader = cfg.leader;
+    const members = (Array.isArray(cfg.team) ? cfg.team : (cfg.team && cfg.team.members) || []).filter(function (n) { return n !== leader; });
+    const merchant = acc.merchant || null;
+    const party = [leader].concat(members);
+    names.setPrefixes(fighters.length > 1 ? [names.commonPrefix(fighters)].filter(function (p) { return p.length >= 2; }) : []);
+    cfg.team = { leader: leader, fighters: fighters, members: members, merchant: merchant, farm: acc.farm || {},
+        solo: fighters.filter(function (n) { return !party.includes(n); }) };
+    cfg.merchant = merchant;
     cfg.characters = {};
-    t.fighters.forEach(function (name) {
-        cfg.characters[name] = { role: "fighter", farm: (t.farm || {})[name] || null };
-    });
-    if (cfg.merchant) cfg.characters[cfg.merchant] = { role: "merchant" };
-    // team.solo: fighters that farm on their own outside the party (served by the merchant
-    // like the others, never invited or started by the leader) - e.g. a new character levelling.
-    const solo = t.solo || [];
-    const grouped = t.fighters.filter(function (n) { return !solo.includes(n); });
-    const others = grouped.filter(function (n) { return n !== t.leader; });
-    const merchant = cfg.merchant ? [cfg.merchant] : [];
+    fighters.forEach(function (name) { cfg.characters[name] = { role: "fighter", farm: (acc.farm || {})[name] || null }; });
+    if (merchant) cfg.characters[merchant] = { role: "merchant" };
+    cfg.phase = "party";
     cfg.phases = {
-        solo: { startWithLeader: merchant, party: [] },
-        party: { startWithLeader: others.concat(merchant), party: grouped },
+        solo: { startWithLeader: merchant ? [merchant] : [], party: [] },
+        party: { startWithLeader: members.concat(merchant ? [merchant] : []), party: party },
     };
+    // Our mode. A team member counts as started by the leader when the page it runs in is the leader's.
+    const me = typeof character !== "undefined" && character ? character.name : null;
+    let byLeader = false;
+    try { byLeader = !!me && me !== leader && typeof top !== "undefined" && !!top.character && top.character.name === leader; } catch (e) { byLeader = false; }
+    cfg.startedByLeader = byLeader;
+    cfg.mode = me === merchant ? "merchant" : me === leader ? "leader" : members.includes(me) && byLeader ? "member" : "solo";
     return cfg;
 }
 

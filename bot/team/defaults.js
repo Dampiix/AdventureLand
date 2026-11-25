@@ -20,5 +20,7 @@ module.exports = {
         spacing: { enabled: true, minOwnRange: 100, margin: 50, gap: 130, step: 80, everyMs: 700, holdGoalMs: 2500, slack: 15 },
         // Easy targets members pick themselves near the leader; harmlessRatio: hits for at most this share of our max HP.
         spread: { enabled: true, maxHits: 3, maxDamageRatio: 0.05, harmlessRatio: 0.02 },
+        // A member the leader started restarts the leader's code after silentMs without a heartbeat (main.js; slot: bot_main).
+        leaderRescue: { enabled: true, silentMs: 3 * 60 * 1000, gapMs: 5 * 60 * 1000, checkMs: 30 * 1000, slot: 20 },
     },
 };

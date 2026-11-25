@@ -30,7 +30,8 @@ module.exports = function createParty(deps) {
     const phase = config.phases[config.phase] || {};
     const members = phase.party || [];
     const isLeader = character.name === leader;
-    const enabled = members.length > 1 && members.includes(character.name);
+    // A team member the player started in its own window plays solo (config.mode, lib/team.js deriveTeam, 2026-11-25).
+    const enabled = members.length > 1 && members.includes(character.name) && config.mode !== "solo";
 
     const lastInvite = {};
     let lastManage = 0;

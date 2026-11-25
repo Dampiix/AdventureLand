@@ -302,7 +302,7 @@ function startBot() {
     // The heartbeat carries our role (v1.238.3): the merchant's team XP value counts the leader's party only.
     BOT_UTIL.setBeatRole(me.role === "merchant" ? "merchant" : !(ctx.party && ctx.party.enabled) ? "solo" : ctx.party.isLeader ? "leader" : "member");
 
-    BOT_UTIL.log("bot", "v" + BOT_CONFIG.version + " " + character.name + " as " + me.role + " (phase: " + BOT_CONFIG.phase + ")", "green");
+    BOT_UTIL.log("bot", "v" + BOT_CONFIG.version + " " + character.name + " as " + me.role + " (mode: " + BOT_CONFIG.mode + ")", "green");
     botRunner.start();
 
     // Our server into the storage before the team starts (2026-11-21): the merchant takes the
@@ -310,15 +310,46 @@ function startBot() {
     // after a move to another server, it would have read the old server and hopped back.
     BOT_UTIL.heartbeat();
     if (character.name === BOT_CONFIG.leader) startTeam();
-    // A solo fighter (team.solo) brings the merchant along (2026-11-18: the rogue alone had no merchant
-    // after its window was closed); already running is fine.
-    else if ((BOT_CONFIG.team.solo || []).includes(character.name) && BOT_CONFIG.merchant) {
+    // A solo fighter (mode solo: outside the team, or a team member the player started) brings the merchant along
+    // (2026-11-18: the rogue alone had no merchant after its window was closed); already running is fine.
+    else if (BOT_CONFIG.mode === "solo" && BOT_CONFIG.merchant) {
         start_character(BOT_CONFIG.merchant, "bot_main")
             .then(function () { BOT_UTIL.log("bot", "started " + BOT_CONFIG.merchant, "green"); })
             .catch(function () { /* already running or not possible */ });
     }
     startHopWatcher();
     startWatchdog();
+    startLeaderRescue();
+}
+
+// Leader rescue (2026-11-25, docs/architecture/team-config.md): a member the leader started runs in the leader's page;
+// when the leader's heartbeat is silent for party.leaderRescue.silentMs while its page is there and its code was not
+// stopped on purpose (code_run false = the player pressed DISENGAGE), the member restarts the leader's code - the game's
+// /runcode (api_call load_code, run 1; tested live). One member per gapMs (a claim in the shared storage). A closed
+// leader window closes the member too, so there is nothing else to do.
+let leaderRescueOn = false;
+function startLeaderRescue() {
+    const lr = (BOT_CONFIG.party && BOT_CONFIG.party.leaderRescue) || {};
+    if (leaderRescueOn || lr.enabled === false || BOT_CONFIG.mode !== "member") return;
+    leaderRescueOn = true;
+    const L = BOT_CONFIG.leader;
+    setInterval(function () {
+        try {
+            const T = top;
+            if (!T || !T.character || T.character.name !== L || typeof T.api_call !== "function") return; // not in the leader's page
+            if (T.code_run === false) return; // stopped on purpose
+            const b = get("bot_beat:" + L);
+            const silent = b && b.at ? Date.now() - b.at : Infinity;
+            if (silent < (lr.silentMs || 3 * 60 * 1000)) return;
+            const claim = get("bot_leader_rescue") || {};
+            if (claim.at && Date.now() - claim.at < (lr.gapMs || 5 * 60 * 1000)) return;
+            set("bot_leader_rescue", { at: Date.now(), by: character.name });
+            BOT_UTIL.log("party", L + "'s code is silent (" + (isFinite(silent) ? Math.round(silent / 60000) + " min" : "no heartbeat") + ") - restarting it", "orange");
+            T.api_call("load_code", { name: String(lr.slot || 20), run: "1" });
+        } catch (e) {
+            BOT_UTIL.log("party", "leader rescue: " + BOT_UTIL.errReason(e), "red");
+        }
+    }, lr.checkMs || 30 * 1000);
 }
 
 // Server hop for the merchant (player decision 2026-11-20, tested EU III -> EU IV -> EU III):

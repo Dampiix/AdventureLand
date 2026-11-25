@@ -1,32 +1,27 @@
 // =====================================================================
-// bot_config - our decisions: the team, prices, the gear plan, bosses, farm targets, item names. Another team (e.g.
-// new level-1 characters) only needs a new `team` block; classes come from character.ctype (all six have skill modules).
+// bot_config - our decisions: the account and team, prices, the gear plan, bosses, farm targets, item names. Classes come
+// from character.ctype (all six have skill modules).
 // The tuning (timings, distances, thresholds) lives in the defaults.js files next to the modules (module plan, stage
 // 7b): at load every setting missing here is filled from them, ours always win - so a value set here overrides the
 // default for us only. Every character loads this one complete config.
 // =====================================================================
 
 const config = {
-    version: "1.238.3-pilot",
+    version: "1.238.4-pilot",
 
-    team: {
-        // DampiixWar, Dampiix, DampiixPri, Dampiiix are an item archive: never list them (items would go to the merchant).
-        leader: "DmpxPriest",
-        fighters: ["DmpxPriest", "DmpxWar", "DmpxRanger", "DmpxRogue"],
-        // Fighters outside the party: not invited, not started by the leader (at most three fighters online).
-        solo: ["DmpxRogue"],
-        merchant: "DampiixMerch",                       // null for no merchant
-        farm: {},                                       // optional per-character farm override, e.g. { DmpxRanger: "bee" }
+    // One account per player (2026-11-25, docs/architecture/team-config.md). A new character goes into
+    // account.characters; who plays together is leader + team. How a character was started decides its mode: the leader
+    // starts the merchant and the team (members, in its party); a team member the player starts in its own window plays
+    // solo, like every other account character. A member started by the leader restarts the leader's code when it goes
+    // silent (party.leaderRescue). The old main account's characters are an item archive: never list them.
+    account: {
+        characters: ["VizPri", "VizWar", "VizMage", "VizRng"],
+        merchant: "VizMerch",                           // null for no merchant
+        farm: {},                                       // optional per-character farm override, e.g. { VizRng: "bee" }
     },
-    // Other accounts on this code (util.deriveTeam picks the team that lists the running character); one at a time.
-    otherTeams: [
-        { name: "viz", leader: "VizPri", fighters: ["VizPri", "VizWar", "VizMage", "VizRng"], solo: ["VizRng"], merchant: "VizMerch", farm: {} },
-    ],
+    leader: "VizPri",
+    team: ["VizWar", "VizMage"],                        // at most three fighters online
 
-    // Market stand (16 slots for both, 24 from merchant level 70, 30 from 80; prices per unit in gold):
-    //   buy:  { item, price, want, level?, whileWished? } - a buy order for what is missing up to "want" (bag + bank);
-    //         level default +0; whileWished: only while a fighter wishes the item.
-    //   sell: { item, price, keep, level? }  - everything above "keep" is offered (bank copies fetched); wished items never.
     market: {
         buy: [
             // Wanderer's set materials at about 3x the NPC value; they keep the stand open for Merrit's parcels too.

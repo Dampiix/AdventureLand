@@ -3,7 +3,7 @@
 One bot for a whole Adventure Land team: up to three fighters and one merchant, all running the same code.
 The fighters farm, hunt bosses and level up; the merchant supplies them, sells, banks, trades with other players and upgrades their gear.
 
-> **Version:** `1.238.3-pilot` (`bot/config.js` → `version`) · **Teams:** `Dmpx…` (main account) and `Viz…` (second account) · **Code:** `bot/` → in-game CODE slots 20–44
+> **Version:** `1.238.4-pilot` (`bot/config.js` → `version`) · **Teams:** `Dmpx…` (main account) and `Viz…` (second account) · **Code:** `bot/` → in-game CODE slots 20–44
 
 ## Repository
 
@@ -92,13 +92,9 @@ Boss commands answer in chat with `[bot] …` (for example `only the leader (X) 
 
 ### Starting
 
-1. Open the **leader** in the game client. The leader is `team.leader`, or `otherTeams[].leader` for the second account. In solo it is the solo fighter.
+1. Open the **leader** (`leader` in config.js) in the game client - or, to play one fighter solo, just that fighter.
 2. Load CODE slot **20 `bot_main`** and press **Run**.
-3. The leader starts everyone of the current phase as CODE-only characters in the same client:
-   - `solo`: only the merchant;
-   - `party`: the other party fighters and the merchant.
-
-A fighter listed in `team.solo` farms on its own outside the party and starts the merchant itself.
+3. The leader starts the merchant and every `team` member as CODE-only characters in the same client (they play as members). A fighter you start yourself plays solo and starts the merchant if it is not running ([§7](#7-team-phases-and-roles)).
 
 ### Stopping
 
@@ -139,12 +135,14 @@ Our decisions live in [`config.js`](bot/config.js) (slot 21 `bot_config`): the t
 
 ### Solo or party
 
-| Goal | Change |
+No config change for solo play (v1.238.4, [team-config.md](docs/architecture/team-config.md)): **how** a character is started decides.
+
+| Goal | What to do |
 |---|---|
-| **Warrior solo** (Lone Wolf) | `otherTeams[0].leader: "VizWar"`, `phase: "solo"`, `hunts.enabled: false` |
-| **Back to the party** | `otherTeams[0].leader: "VizPri"`, `phase: "party"`, `hunts.enabled: true` |
-| A fighter farms on its own outside the party | add it to `team.solo` |
-| Second account's team | `otherTeams` entry: `{ name, leader, fighters, solo, merchant, farm }`. The team that lists the running character is used. |
+| **The party** | start the leader (`leader`); it starts the merchant and every `team` member in its window |
+| **One fighter solo** (e.g. the warrior, Lone Wolf) | start just that fighter in its own window - a team member started by you plays solo, also when the leader comes online later; it brings the merchant along |
+| **A new character** | add it to `account.characters`; into `team` if it should play in the party |
+| **Who plays together** | `leader` + `team` (at most three fighters online) |
 
 ### Where to farm
 
@@ -338,10 +336,13 @@ Only `main.js` calls `require_code()`. Every other module is a factory: it gets 
 
 ## 7. Team, phases and roles
 
-- **Team.** `util.deriveTeam` picks the team block that lists the running character: `team` (main account) or an `otherTeams` entry (for example `viz`). It fills in `config.leader`, `config.merchant`, `config.characters` and `config.phases`.
-- **Phase.** `config.phase` decides who runs:
-  - `solo`: only the leader fights (Lone Wolf bonus). The leader starts the merchant. There is no party: no following, no spacing, no team wait, no runners. Resting and heal-up before a costly fight are on.
-  - `party`: the leader invites the other fighters (except `team.solo`), starts them and the merchant, and leads.
+- **Team** (v1.238.4, one account per player, [team-config.md](docs/architecture/team-config.md)). config.js has `account` (`characters`: every fighter of the account, `merchant`, optional `farm` overrides), `leader` and `team` (the members). `util.deriveTeam` fills in `config.team` (`fighters` = every account character: trusted for messages, served by the merchant, its gear protected; `members`; `solo` = the rest), `config.characters`, `config.phases` (party: leader + team; the leader starts team + merchant) and **our mode**:
+  - `leader`: starts the merchant and the team, invites them and leads;
+  - `member`: a team member the leader started (a hidden frame in the leader's page) - follows, assists, heals;
+  - `solo`: every other fighter, also a team member the player started in its own window (it never joins later). No party: no following, spacing, team wait or runners; resting and heal-up before a costly fight are on. It starts the merchant if that is not running;
+  - `merchant`.
+  The heartbeat carries the mode (`bot_beat:<name>`.role): the merchant's team XP value counts the leader and the members only (v1.238.3).
+- **Leader rescue** (`party.leaderRescue`): a member the leader started restarts the leader's code when its heartbeat is silent for `silentMs` (3 min) while the leader's page is there and its code was not stopped on purpose - the game's `/runcode` (`api_call("load_code", { name: 20, run: 1 })`), one member per `gapMs` (5 min), journal tag `party`.
 - **Roles.**
   - The **leader** picks the farm spot and searches bosses.
   - **Members** follow, assist and heal.
