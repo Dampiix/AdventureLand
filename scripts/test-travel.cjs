@@ -50,6 +50,9 @@ function world(sc, calls) {
     g.smart_move = (d) => {
         calls.push(["smart_move", JSON.stringify(d)]);
         const f = fails.shift();
+        // wallBlocks: the path search tries a step through the booboo zone first (a wall refuses it) - only such a
+        // walk is planned again with narrower walls (v1.238.0).
+        if (f && sc.wallBlocks) g.can_move({ map: "desertland", x: 800, y: 1150, going_x: 1600, going_y: 1150 });
         return f ? Promise.reject({ reason: f }) : Promise.resolve("arrived");
     };
     const blockedPts = sc.cantMoveTo || [];
@@ -129,7 +132,7 @@ const SCENARIOS = [
         a.travel({ map: "desertland", x: 900, y: 0 }, "b");
         a.travel({ map: "desertland", x: 950, y: 0 }, "c");
     }],
-    ["a failed walk marks the goal for a minute", { pathFails: ["Path not found!", "Path not found!", "Path not found!", "Path not found!", "Path not found!"], travel: { rageWallSteps: [100, -1] } }, async (a, c) => {
+    ["a failed walk marks the goal for a minute", { wallBlocks: true, zones: [BOOBOO], pathFails: ["Path not found!", "Path not found!", "Path not found!", "Path not found!", "Path not found!"], travel: { rageWallSteps: [100, -1] } }, async (a, c) => {
         const farm = { monster: "gscorpion", map: "desertland", dest: { map: "desertland", x: 300, y: 300 } };
         a.travel(a.goalFor(farm), "x", farm);
         for (let i = 0; i < 6; i++) await tick();
@@ -152,14 +155,14 @@ const SCENARIOS = [
         smart.map = "desertland"; smart.x = 1200; smart.y = 1100; NOW += 3000;
         c.push(["can_move goal zone", can_move({ map: "desertland", x: 800, y: 1100, going_x: 1600, going_y: 1100 })]);
     }],
-    ["smart_move: walls loosen on no path, leaveVia leg", { me: { map: "spookytown" }, pathFails: [null, "Path not found!", "Path not found!"] }, async (a, c) => {
+    ["smart_move: walls loosen on no path, leaveVia leg", { wallBlocks: true, zones: [BOOBOO], me: { map: "spookytown" }, pathFails: [null, "Path not found!", "Path not found!"] }, async (a, c) => {
         smart_move("bee").then(r => c.push(["done", r]), e => c.push(["fail", e.reason]));
         for (let i = 0; i < 8; i++) await tick();
         smart_move({ map: "level2" }).then(r => c.push(["done", r]));
         smart_move({ to: "fancypots" }).then(r => c.push(["done", r]));
         for (let i = 0; i < 8; i++) await tick();
     }],
-    ["smart_move: unreachable goal fails after all steps", { pathFails: ["Path not found!", "Path not found!", "Path not found!", "Path not found!", "Path not found!"] }, async (a, c) => {
+    ["smart_move: unreachable goal fails after all steps", { wallBlocks: true, zones: [BOOBOO], pathFails: ["Path not found!", "Path not found!", "Path not found!", "Path not found!", "Path not found!"] }, async (a, c) => {
         smart_move("bee").then(r => c.push(["done", r]), e => c.push(["fail", e.reason]));
         for (let i = 0; i < 12; i++) await tick();
     }],
@@ -200,7 +203,10 @@ const SCENARIOS = [
 (async function () {
     for (const [name, sc, steps] of SCENARIOS) {
         const oldCalls = await run(makeOld, JSON.parse(JSON.stringify(sc)), steps);
-        const newCalls = await run(makeNew, JSON.parse(JSON.stringify(sc)), steps);
+        // v1.238.0 logs the rage-zone lines under the "rage" tag (journal); the old code used move / combat / target.
+        const oldTag = t => /^(standing in the|not walking into)/.test(t) ? "combat" : /^not going into/.test(t) ? "target" : "move";
+        const newCalls = (await run(makeNew, JSON.parse(JSON.stringify(sc)), steps))
+            .map(x => (x[0] === "log" && x[1] === "rage" ? ["log", oldTag(x[2])].concat(x.slice(2)) : x));
         const same = JSON.stringify(oldCalls) === JSON.stringify(newCalls);
         check(same && oldCalls.length > 0, name + " (" + oldCalls.length + " calls)");
         if (!same) { console.log("  old: " + JSON.stringify(oldCalls)); console.log("  new: " + JSON.stringify(newCalls)); }
@@ -213,6 +219,18 @@ const SCENARIOS = [
     check(can_move !== first && __botOrigCanMove !== first, "a second install wraps the original can_move");
     const sm = smart_move; makeNew(w);
     check(smart_move === sm, "smart_move is wrapped once per page");
+    // v1.238.0: a path search no wall refused (Dracul's second spawn: the cave has no rage box) fails at once - no
+    // "rage walls" log, no second plan.
+    {
+        const c2 = [];
+        await run(makeNew, { pathFails: ["Path not found!", "Path not found!", "Path not found!"] }, async (a, c) => {
+            smart_move("bee").then(r => c.push(["done", r]), e => c.push(["fail", e.reason]));
+            for (let i = 0; i < 8; i++) await tick();
+        }).then(r => c2.push(...r));
+        const walks = c2.filter(x => x[0] === "smart_move").length;
+        check(walks === 1 && !c2.some(x => x[0] === "log" && /rage walls/.test(x[2])) && c2.some(x => x[0] === "fail"),
+            "no wall refused a step: no rage-wall log and no second plan (" + walks + " walk)");
+    }
     console.log(failed ? failed + " FAILED" : "all passed");
     process.exit(failed ? 1 : 0);
 })();

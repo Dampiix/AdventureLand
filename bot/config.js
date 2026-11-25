@@ -7,7 +7,7 @@
 // =====================================================================
 
 const config = {
-    version: "1.237.27-pilot",
+    version: "1.238.0-pilot",
 
     team: {
         // DampiixWar, Dampiix, DampiixPri, Dampiiix are an item archive: never list them (items would go to the merchant).

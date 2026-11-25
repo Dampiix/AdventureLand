@@ -3,7 +3,7 @@
 One bot for a whole Adventure Land team: up to three fighters and one merchant, all running the same code.
 The fighters farm, hunt bosses and level up; the merchant supplies them, sells, banks, trades with other players and upgrades their gear.
 
-> **Version:** `1.237.27-pilot` (`bot/config.js` → `version`) · **Teams:** `Dmpx…` (main account) and `Viz…` (second account) · **Code:** `bot/` → in-game CODE slots 20–44
+> **Version:** `1.238.0-pilot` (`bot/config.js` → `version`) · **Teams:** `Dmpx…` (main account) and `Viz…` (second account) · **Code:** `bot/` → in-game CODE slots 20–44
 
 ## Repository
 
@@ -281,7 +281,7 @@ Every bot line starts with a tag: `[tag] text`. The status box above the charact
 | `workshop` | merchant | upgrades, deliveries, budgets, purchases |
 | `value` | merchant | value report (gain per hour per wish) |
 
-The lines tagged `target`, `drops`, `hunt`, `event`, `party`, `cavalry` and `dps` also go into the **decision journal** (`bot_journal:<name>`, last 400 lines).
+The lines tagged `target`, `drops`, `hunt`, `event`, `party`, `cavalry`, `dps`, `kills`, `scout` and `rage` (rage zones and rage walls, v1.238.0) also go into the **decision journal** (`bot_journal:<name>`, last 400 lines).
 
 The merchant logs a **workshop report** every 10 min, for example:
 
@@ -477,8 +477,14 @@ The bot never pulls what it can't survive. Several checks work together.
 - **Standing in such a box** (waiting, resting, handover): the fighter steps out first. Not while a path walk passes through, and not for a member whose leader farms that very spawn.
 - **Cavalry reset:** the call goes out from just outside the box instead of its middle. The sentries only take level 3+, and the level-1/2 booboos would come at us.
 - Why: three booboo deaths on 2026-11-22. Each time one booboo was picked and all 5 came (terrified, dead in 7 s).
+- **The whole spawn in every choice** (v1.238.0, player decision 2026-11-25). Server facts (`server.js`): aggro above 0.99 behaves like 1 (attacks on touch, ~32-64 px, when facing us); rage above ~1.01 never gives up and beats aggro-reducing gear (`rage - aggro_diff`) - the 1.5 of mummies and booboos means "always", not a group pull. Only a spawn's rage box pulls the whole spawn. So far only the movement knew that: a mummy hunt passed the farm check as "3 at once", the members stopped before the 9-mummy box and the leader waited for them elsewhere. Now:
+  - **Which spawns:** the monster rules (`bot/monsters/`: `default.js` for every monster, a `<type>.js` only for special cases) set `wholeSpawn`: `"auto"` (default) = the spawn has a rage box (the 9 mummies and both booboo spawns in Spooky Town, the d2 wizard, the spider instance - not the 3 mummies each in `level3` / `level4`); `true` / `false` override it per monster.
+  - **The level:** the strongest monster seen at such a zone is remembered for 30 min in the shared storage (`bot_rage_seen`, every character's sightings); a partial view (fewer than half the spawn) never lowers a fresh higher level, a good view replaces it (after a Cavalry reset). Nothing seen yet: level 1. The zone verdict, the spot check at the edge and the choices below use it (`seen earlier` in the reason).
+  - **Spawn choice:** a spawn whose whole spawn the team can't take is no free spot - a mummy hunt goes to `level3` / `level4`.
+  - **Farm and hunt choice:** when every spawn of a monster is such a zone and the team takes none, it is not safe (`not safe for the team (booboo rage zone: 5 at once ...)`) - the hunt is skipped instead of taken and stuck.
+  - Log lines about rage zones and walls carry the tag `rage` (journal).
 
-**Wall fallback** (`travel.rageWallSteps`, v1.210.1). The rage walls can shut a fighter in: priest and warrior stood in the strip between the mummy zone and the big booboo zone, and every walk ended in "Path not found!". A failed path search (any `smart_move`: travel, following the leader, revives) now narrows the margin step by step (100, 50, 0 = the box itself, then walls off) and plans the walk again. A finished walk, a walk that fails even without walls (the goal itself is unreachable), or 2 minutes bring the full margin back. Since v1.210.2 every rage zone on the way is a wall, not only the ones the team can't take (with the warrior next to him the booboo zone counted as takeable, and the priest walked right through it). Open stay the zone that holds the walk's own goal, and (v1.210.5) the zones of our own farm target the team can take: the priest could hardly step into the accepted 4-booboo zone.
+**Wall fallback** (`travel.rageWallSteps`, v1.210.1). The rage walls can shut a fighter in: priest and warrior stood in the strip between the mummy zone and the big booboo zone, and every walk ended in "Path not found!". A failed path search (any `smart_move`: travel, following the leader, revives) now narrows the margin step by step (100, 50, 0 = the box itself, then walls off) and plans the walk again. A finished walk, a walk that fails even without walls (the goal itself is unreachable), or 2 minutes bring the full margin back. Since v1.238.0 only a walk a wall actually refused a step of is planned again: a plain failed path search (the cave has no rage box - after a magiport to Dracul's second spawn every character logged "no path with the rage walls" and planned its walk three more times) fails at once. Since v1.210.2 every rage zone on the way is a wall, not only the ones the team can't take (with the warrior next to him the booboo zone counted as takeable, and the priest walked right through it). Open stay the zone that holds the walk's own goal, and (v1.210.5) the zones of our own farm target the team can take: the priest could hardly step into the accepted 4-booboo zone.
 
 The margin is `rageMargin` 100 px: aggro checks the neighbouring 32-px grid cells, up to about 64 px from a monster at the edge. (Before the walls, a route guard detoured after the path was planned; it went round in circles and was removed in v1.212.0.)
 

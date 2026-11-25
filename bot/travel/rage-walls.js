@@ -24,7 +24,10 @@ module.exports = function createRageWalls(deps) {
     // Walls with a fallback: between two zones the walls can leave no way at all ("Path not found!"), so a failed
     // search narrows the margin (rageWallSteps, e.g. 100 -> 50 -> 0 = box only -> walls off) and the walk is planned
     // anew. A finished walk, or 2 minutes, bring the full margin back.
-    let rageWallLevel = 0, rageWallAt = 0;
+    // wallRefusedAt (v1.238.0): when a wall last refused a step. Only a walk the walls actually blocked is planned again
+    // with a narrower margin - at Dracul's second spawn (the cave has no rage box) every "Path not found" after a
+    // magiport was logged as "no path with the rage walls" and the walk was planned three times more.
+    let rageWallLevel = 0, rageWallAt = 0, wallRefusedAt = 0;
     function rageWallSteps() {
         const tc = config.travel || {};
         return tc.rageWallSteps || [tc.rageMargin || 100, 50, 0, -1];
@@ -42,7 +45,7 @@ module.exports = function createRageWalls(deps) {
         rageWallLevel++;
         rageWallAt = Date.now();
         const pad = steps[rageWallLevel];
-        util.log("move", "no path with the rage walls - " + (pad < 0 ? "walls off" : "margin " + pad + " px") + " for this walk", "orange");
+        util.log("rage", "no path with the rage walls - " + (pad < 0 ? "walls off" : "margin " + pad + " px") + " for this walk", "orange");
         return true;
     }
     function rageWallReset() { rageWallLevel = 0; }
@@ -127,7 +130,7 @@ module.exports = function createRageWalls(deps) {
                 const boxes = blocked(m.map);
                 for (const b of boxes) {
                     if (m.x >= b[0] && m.x <= b[2] && m.y >= b[1] && m.y <= b[3]) continue; // starts inside: may walk out
-                    if (segTouches(m.x, m.y, m.going_x, m.going_y, b)) return false;
+                    if (segTouches(m.x, m.y, m.going_x, m.going_y, b)) { wallRefusedAt = Date.now(); return false; }
                 }
             } catch (e) { /* walls are a help, never a blocker */ }
             return true;
@@ -139,9 +142,11 @@ module.exports = function createRageWalls(deps) {
         return function () {
             const self = this, args = arguments;
             function run(a) {
+                const started = Date.now();
                 return orig.apply(self, a).catch(function (e) {
                     const why = util.errReason(e);
-                    if (/path not found|failed/i.test(why) && rageWallLoosen()) return run(a);
+                    // Only when a wall refused a step of this walk - otherwise it is a plain failed path search.
+                    if (/path not found|failed/i.test(why) && wallRefusedAt >= started && rageWallLoosen()) return run(a);
                     // Not even without walls: the goal itself is unreachable - the walls weren't the reason, so the
                     // full margin is back at once instead of walls off for 2 minutes.
                     rageWallReset();
@@ -189,7 +194,7 @@ module.exports = function createRageWalls(deps) {
         }
         if (Date.now() - clearLogged > 30 * 1000) {
             clearLogged = Date.now();
-            util.log("move", "standing " + Math.round(z.gap) + " px from the " + z.type + " rage zone - moving off to " + margin + " px", "orange");
+            util.log("rage", "standing " + Math.round(z.gap) + " px from the " + z.type + " rage zone - moving off to " + margin + " px", "orange");
         }
         deps.moveTo(p);
         util.status("away from the " + z.type + " zone", "orange");
@@ -253,7 +258,7 @@ module.exports = function createRageWalls(deps) {
             targeting.failingZoneAt && targeting.failingZoneAt({ x: smart.x, y: smart.y })) {
             deps.stopOnPurpose();
             try { game.stopAction("smart"); } catch (e) { /* not walking */ }
-            if (Date.now() - rageLogged > 30 * 1000) { rageLogged = Date.now(); util.log("combat", "not walking into a rage zone the team can't take - waiting for " + config.leader, "orange"); }
+            if (Date.now() - rageLogged > 30 * 1000) { rageLogged = Date.now(); util.log("rage", "not walking into a rage zone the team can't take - waiting for " + config.leader, "orange"); }
             return false; // the follow logic decides the next step
         }
         const z = targeting.rageZoneHere();
@@ -282,7 +287,7 @@ module.exports = function createRageWalls(deps) {
         }
         if (Date.now() - rageLogged > 30 * 1000) {
             rageLogged = Date.now();
-            util.log("combat", "standing in the " + z.type + " rage zone (" + z.why + ") - stepping out", "orange");
+            util.log("rage", "standing in the " + z.type + " rage zone (" + z.why + ") - stepping out", "orange");
         }
         deps.moveTo(p);
         util.status("leaving the " + z.type + " rage zone", "orange");

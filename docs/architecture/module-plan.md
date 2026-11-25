@@ -67,6 +67,8 @@ workshop parts (bank, budget, crafting, compound, upgrade, dismantle, material-g
 
 - `encounters/` core: which encounter is active; `boss-tracker` (sightings, current boss, kill booking) and
   `boss-search` (search, split search, runner, merchant scout plan) are shared by all bosses.
+- **Built (v1.238.0):** `bot/monsters/default.js` (every monster; today: `wholeSpawn: "auto"`) and `monsters/monsters.js` (merges a
+  `<type>.js` over it; none needed yet - "auto" reads the rage boxes from the map data).
 - `monsters/<type>.js` exists **only when a monster needs something special** (e.g. fire spirits: fire resistance
   elixir first); otherwise `monsters/default.js` applies - what the bot does everywhere today. Bosses are monsters too
   (phoenix, mvampire, fvampire, skeletor, jr, greenjr, snowman; later icegolem ...).

@@ -4,10 +4,13 @@
 //   watchPoint(type)     where to wait for a lone one: just outside the nearest spawn box of the kind on our map
 //                        (isolation.watchMargin px out; the rage box where the spawn has one), or null
 //   inSpotArea(p, type)  p within the spot check's edge of a spawn of this type (on p's map)
-//   spotBox(type, spot)  the spawn box (with its rage box) whose middle is the spot, or null
+//   spotBox(type, spot)  the spawn box (with its rage box) whose middle is the spot, or null; .rage: the whole spawn
+//                        comes at once there (monsters/monsters.js wholeSpawn - "auto": the spawn has a rage box)
 //   boxDist(p, b)        distance of a point from a box (0 inside)
 // deps: { game, util, config } - config.targeting.isolation and .spotCheck are read when used.
 // =====================================================================
+
+const MONSTERS = require("../monsters/monsters.js");
 
 module.exports = function createSpots(deps) {
     const game = deps.game, util = deps.util;
@@ -48,10 +51,11 @@ module.exports = function createSpots(deps) {
             const boxes = util.spawnBoxes(pack, spot.map);
             boxes.forEach(function (b) {
                 if (box || Math.round((b[0] + b[2]) / 2) !== spot.x || Math.round((b[1] + b[3]) / 2) !== spot.y) return;
-                // Spawn box and rage box together, whichever reaches farther out.
+                // Spawn box and rage box together, whichever reaches farther out. rage: the whole spawn comes at once
+                // (the monster rules: by default where the spawn has a rage box).
                 const r = pack.rage;
                 const u = r ? [Math.min(b[0], r[0]), Math.min(b[1], r[1]), Math.max(b[2], r[2]), Math.max(b[3], r[3])] : b;
-                box = { b: u, rage: !!r, count: pack.count || 1 };
+                box = { b: u, rage: MONSTERS.wholeSpawn(type, pack), count: pack.count || 1 };
             });
         });
         return box;

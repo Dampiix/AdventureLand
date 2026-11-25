@@ -104,8 +104,11 @@ module.exports = function install(tgt, deps) {
         const lv = (none ? "none in sight, level 1 assumed" : "levels " + Math.min.apply(null, levels) + "-" + Math.max.apply(null, levels));
         if (pack) {
             if (!none && !free.length) return { ok: true, why: "all " + seen.length + " busy" };
-            const strongest = none ? { mtype: type, attack: def.attack, max_hp: def.hp, hp: def.hp, frequency: def.frequency, level: 1 }
+            let strongest = none ? { mtype: type, attack: def.attack, max_hp: def.hp, hp: def.hp, frequency: def.frequency, level: 1 }
                 : free.slice().sort(function (a, b) { return (b.attack || 0) - (a.attack || 0) || (b.max_hp || 0) - (a.max_hp || 0); })[0];
+            // What we saw of this zone earlier (v1.238.0, rage-zones.js): the strongest one may be out of sight now.
+            const known = box.rage && tgt.knownAtBox ? tgt.knownAtBox(type, box.b) : null;
+            if (known && (known.attack || 0) > (strongest.attack || 0)) strongest = known;
             // No "harmless" shortcut (2026-11-22): it only means 20 single hits - 3 booboos (1.2 hits/s each,
             // pure) passed as harmless and killed the warrior in 10 s. The pack check counts the rate too.
             // The whole spawn, not just what we see from the edge (2026-11-22): the check saw 2 free booboos,

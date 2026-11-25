@@ -16,6 +16,10 @@ module.exports = function install(tgt, deps) {
         if (tgt.recentDeath(monster)) return "the team (recent death)";
         // A melee leader cannot farm a damage-return monster at all (members just stand by).
         if (util.tooSpiky(config, monster)) return character.name + " (melee vs. damage return)";
+        // Every spawn of it brings its whole spawn at once and the team takes none (v1.238.0, rage-zones.js) - before the
+        // team model's usual pull below: a mummy hunt passed as "3 at once" and the team stuck at the 9-mummy rage box.
+        const rage = tgt.rageSpawnObjection ? tgt.rageSpawnObjection(monster) : null;
+        if (rage) return rage;
         // Team model: the party as a whole can take it – no single member's veto.
         if (tgt.teamModelOn() && tgt.teamVerdict(monster).ok) return null;
         // A "trial" spot only waits for proof when it could hurt: a monster every fighter

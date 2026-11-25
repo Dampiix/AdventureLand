@@ -148,7 +148,10 @@ module.exports = function install(tgt, deps) {
                     const score = (mapName && spot.map === mapName ? 1000 : 0) + spot.count;
                     spot.score = score;
                     if (!best || score > best.score) best = spot;
-                    if (!(tgt.occupiedUntil[spotKey(spot)] > now) && !(tgt.strongSpotUntil[spotKey(spot)] > now) && (!bestFree || score > bestFree.score)) bestFree = spot;
+                    // Nor one whose whole spawn (rage zone) the team can't take (v1.238.0): the mummies in level3 / level4
+                    // instead of the 9 in Spooky Town's rage box.
+                    if (!(tgt.occupiedUntil[spotKey(spot)] > now) && !(tgt.strongSpotUntil[spotKey(spot)] > now) &&
+                        !(tgt.failingSpawnAt && tgt.failingSpawnAt(type, spot)) && (!bestFree || score > bestFree.score)) bestFree = spot;
                 });
             });
         });
