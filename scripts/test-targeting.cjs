@@ -150,7 +150,9 @@ function run(load, sc) {
         rec("rageBoxes", () => tg.rageBoxes(character.map));
         rec("failingZoneNear", () => tg.failingZoneNear({ x: character.x, y: character.y }, 200));
         rec("waitForLone", () => tg.waitForLone("gscorpion"));
-        rec("teamVerdict", () => tg.teamVerdict("booboo"));
+        // v1.238.1: the booboos' own spawn count no longer sets their default pull (densePack skips rage spawns - the
+        // whole-spawn rule judges those); the old default (5) is passed explicitly to keep comparing the model itself.
+        rec("teamVerdict", () => tg.teamVerdict("booboo", null, { pull: 5 }));
         rec("whyUnsafe", () => tg.whyUnsafe("gscorpion"));
         rec("xpRanking", () => tg.xpRanking());
         rec("liveDanger", () => tg.liveDanger());

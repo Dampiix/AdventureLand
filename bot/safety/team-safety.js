@@ -5,6 +5,8 @@
 // dependencies come in deps (game, util, config, comms, party, events, hunts, drops, cave, teamStats).
 // =====================================================================
 
+const MONSTERS = require("../monsters/monsters.js");
+
 module.exports = function install(tgt, deps) {
     const config = deps.config;
     const util = deps.util;
@@ -66,6 +68,9 @@ module.exports = function install(tgt, deps) {
             if (map.ignore || map.instance) return;
             (map.monsters || []).forEach(function (pack) {
                 if (pack.type !== monster || !pack.count) return;
+                // A whole-spawn spawn (rage box) is judged on its own (rage-zones.js) - its count must not make every
+                // other spawn of the kind a pack of 9 (v1.238.1: "mummy level 21 one at a time - 9 at once" in level4).
+                if (MONSTERS.wholeSpawn(monster, pack)) return;
                 const boxes = util.spawnBoxes(pack);
                 boxes.forEach(function (b) {
                     const area = Math.abs((b[2] - b[0]) * (b[3] - b[1]));

@@ -3,7 +3,7 @@
 One bot for a whole Adventure Land team: up to three fighters and one merchant, all running the same code.
 The fighters farm, hunt bosses and level up; the merchant supplies them, sells, banks, trades with other players and upgrades their gear.
 
-> **Version:** `1.238.0-pilot` (`bot/config.js` → `version`) · **Teams:** `Dmpx…` (main account) and `Viz…` (second account) · **Code:** `bot/` → in-game CODE slots 20–44
+> **Version:** `1.238.1-pilot` (`bot/config.js` → `version`) · **Teams:** `Dmpx…` (main account) and `Viz…` (second account) · **Code:** `bot/` → in-game CODE slots 20–44
 
 ## Repository
 
@@ -483,6 +483,7 @@ The bot never pulls what it can't survive. Several checks work together.
   - **Spawn choice:** a spawn whose whole spawn the team can't take is no free spot - a mummy hunt goes to `level3` / `level4`.
   - **Farm and hunt choice:** when every spawn of a monster is such a zone and the team takes none, it is not safe (`not safe for the team (booboo rage zone: 5 at once ...)`) - the hunt is skipped instead of taken and stuck.
   - Log lines about rage zones and walls carry the tag `rage` (journal).
+  - **v1.238.1** (live test 2026-11-25, mummies as the config target: level3 / level4 were level 21 and too strong, then the fallback walked to the 9-mummy rage box and the deadlock came back): a spot whose whole spawn fails counts as taken (`allSpotsTaken` - the hunt / farm choice skips the monster: "every mummy spot taken or too strong"); the "every spot taken" fallback of `spotFor` takes the best spot whose whole spawn does not fail (its edge check holds us outside) and the rage box only when nothing else is left (a forced target). `densePack` leaves rage spawns to this rule - every mummy spawn had counted as a pack of 9 and every booboo spawn as 5.
 
 **Wall fallback** (`travel.rageWallSteps`, v1.210.1). The rage walls can shut a fighter in: priest and warrior stood in the strip between the mummy zone and the big booboo zone, and every walk ended in "Path not found!". A failed path search (any `smart_move`: travel, following the leader, revives) now narrows the margin step by step (100, 50, 0 = the box itself, then walls off) and plans the walk again. A finished walk, a walk that fails even without walls (the goal itself is unreachable), or 2 minutes bring the full margin back. Since v1.238.0 only a walk a wall actually refused a step of is planned again: a plain failed path search (the cave has no rage box - after a magiport to Dracul's second spawn every character logged "no path with the rage walls" and planned its walk three more times) fails at once. Since v1.210.2 every rage zone on the way is a wall, not only the ones the team can't take (with the warrior next to him the booboo zone counted as takeable, and the priest walked right through it). Open stay the zone that holds the walk's own goal, and (v1.210.5) the zones of our own farm target the team can take: the priest could hardly step into the accepted 4-booboo zone.
 

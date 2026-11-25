@@ -97,5 +97,25 @@ check(!/seen earlier/.test(String(tgt.zoneVerdict(tgt.zonesOf("booboo").find(z =
 const M = fresh("monsters/monsters.js");
 check(M.wholeSpawn("mummy", { rage: [1, 2, 3, 4] }) === true && M.wholeSpawn("mummy", {}) === false && M.of("bee").wholeSpawn === "auto", "rules: auto follows the rage box");
 
+// 6. v1.238.1, the live test of 2026-11-25: level3 (and level4) too strong, the 9-mummy rage spawn fails -> every mummy
+// spot counts as taken, and the fallback never picks the rage box while a spawn without one is there
+G.maps.level4 = { monsters: [{ type: "mummy", count: 3, boundary: [120, -4, 378, 338] }] };
+LIMIT = 2000; character.map = "main"; parent.entities = {};
+({ tgt } = makeTgt());
+Object.assign(tgt, { occupiedUntil: {}, strongSpotUntil: {}, crowdedUntil: {}, strongSpots: {}, crowdHistory: {}, cavPlan: null, farm: null });
+fresh("farming/spots-taken.js")(tgt, { config: { targeting: { crowdedForMs: 60000 }, cavalry: {} }, util, party: { enabled: false } });
+const k3 = "level3:-346:-231", k4 = "level4:249:167";
+check(tgt.allSpotsTaken("mummy") === false, "spots: with level3 / level4 open the mummies are a choice");
+tgt.strongSpotUntil[k3] = NOW + 600000; tgt.strongSpotUntil[k4] = NOW + 600000;
+check(tgt.allSpotsTaken("mummy") === true, "spots: level3 / level4 too strong + the rage spawn failing = every mummy spot taken (the hunt is skipped)");
+check(tgt.allSpotsTaken("mummy", true) === false, "spots: for the Cavalry plan (ignoreStrong) a reset could help");
+const pick = tgt.spotFor("mummy", "spookytown");
+check(pick && pick.map !== "spookytown", "fallback: not the 9-mummy rage box although the route names spookytown (" + JSON.stringify(pick) + ")");
+// 7. densePack: the rage spawn's 9 no longer make every mummy spawn a pack of 9
+const ts = { teamStats: { teamStats: () => [] } };
+const tgt2 = Object.assign({}, makeTgt().tgt);
+fresh("safety/team-safety.js")(tgt2, { config: { targeting: { teamSafety: {}, isolation: {} }, team: { fighters: [] } }, util, party: { enabled: false, inParty: () => false }, comms: { on: () => {} }, teamStats: ts.teamStats });
+check(tgt2.densePack("mummy") === 0 && tgt2.densePack("booboo") === 0, "densePack: rage spawns are left to the whole-spawn rule (mummy " + tgt2.densePack("mummy") + ", booboo " + tgt2.densePack("booboo") + ")");
+
 console.log(failed ? failed + " FAILED" : "all passed");
 process.exit(failed ? 1 : 0);

@@ -107,6 +107,9 @@ module.exports = function install(tgt, deps) {
         }
     }
     // ignoreStrong: only other players count (the Cavalry plan resets too-strong spots).
+    // A spot whose whole spawn (rage zone) the team can't take counts as taken like a too-strong one (v1.238.1): the
+    // 9 mummies in Spooky Town were "free" while level3 / level4 were too strong, so the mummies stayed a choice and the
+    // team walked to the rage box and stuck there.
     function allSpotsTaken(type, ignoreStrong) {
         const now = Date.now();
         let any = false, free = false;
@@ -119,7 +122,8 @@ module.exports = function install(tgt, deps) {
                 boxes.forEach(function (b) {
                     any = true;
                     const spot = { map: b[0], x: Math.round((b[1] + b[3]) / 2), y: Math.round((b[2] + b[4]) / 2) };
-                    if (!(tgt.occupiedUntil[spotKey(spot)] > now) && (ignoreStrong || !(tgt.strongSpotUntil[spotKey(spot)] > now))) free = true;
+                    if (!(tgt.occupiedUntil[spotKey(spot)] > now) && (ignoreStrong || (!(tgt.strongSpotUntil[spotKey(spot)] > now) &&
+                        !(tgt.failingSpawnAt && tgt.failingSpawnAt(type, spot))))) free = true;
                 });
             });
         });
@@ -135,7 +139,7 @@ module.exports = function install(tgt, deps) {
             tgt.lastSpot = { map: tgt.cavPlan.spot.map, x: tgt.cavPlan.spot.x, y: tgt.cavPlan.spot.y, type: type };
             return { map: tgt.cavPlan.spot.map, x: tgt.cavPlan.spot.x, y: tgt.cavPlan.spot.y };
         }
-        let best = null, bestFree = null;
+        let best = null, bestSafe = null, bestFree = null;
         const now = Date.now();
         Object.keys(G.maps).forEach(function (m) {
             const map = G.maps[m];
@@ -148,14 +152,19 @@ module.exports = function install(tgt, deps) {
                     const score = (mapName && spot.map === mapName ? 1000 : 0) + spot.count;
                     spot.score = score;
                     if (!best || score > best.score) best = spot;
+                    const failing = !!(tgt.failingSpawnAt && tgt.failingSpawnAt(type, spot));
+                    if (!failing && (!bestSafe || score > bestSafe.score)) bestSafe = spot;
                     // Nor one whose whole spawn (rage zone) the team can't take (v1.238.0): the mummies in level3 / level4
                     // instead of the 9 in Spooky Town's rage box.
                     if (!(tgt.occupiedUntil[spotKey(spot)] > now) && !(tgt.strongSpotUntil[spotKey(spot)] > now) &&
-                        !(tgt.failingSpawnAt && tgt.failingSpawnAt(type, spot)) && (!bestFree || score > bestFree.score)) bestFree = spot;
+                        !failing && (!bestFree || score > bestFree.score)) bestFree = spot;
                 });
             });
         });
-        const pickSpot = bestFree || best; // every spot taken: the best one anyway
+        // Every spot taken: the best one whose whole spawn does not fail (its edge check holds us outside), else the best
+        // one anyway - only a forced target (config, event) gets that far (v1.238.1: the test with the mummies as the
+        // config target walked to the 9-mummy rage box once level3 / level4 were too strong).
+        const pickSpot = bestFree || bestSafe || best;
         if (pickSpot) tgt.lastSpot = { map: pickSpot.map, x: pickSpot.x, y: pickSpot.y, type: type };
         return pickSpot ? { map: pickSpot.map, x: pickSpot.x, y: pickSpot.y } : null;
     }
