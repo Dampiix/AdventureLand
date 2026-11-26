@@ -21,6 +21,12 @@ module.exports = {
             magiport: { enabled: true, keepMp: 0.3, minDist: 600, bossRange: 800, graceMs: 4000, tries: 3, retryMs: 8000 },
             // Blink on routes: jump to the farthest step on this map at least minDist px away, keeping keepMp of our MP.
             blinkTravel: { enabled: true, minDist: 400, keepMp: 0.4 },
+            // Luck swap (v1.238.8, player decision 2026-11-26): the luck pieces (config classes.mage.luckSwap.items: a +0
+            // Wanderer's set, +16 luck for all five) go on when our target dies with the next hit - on bosses (bosses) and when
+            // we fight alone (solo), on every kill only with everyKill. Not below minHp. Back once the target is dead (not before
+            // minMs), backMs at the latest. With Welcome Back the bonus roll is scaled by contribution and luck: the mage does
+            // the most damage of the party.
+            luckSwap: { enabled: true, backMs: 3000, minMs: 500, bosses: true, solo: true, everyKill: false, minHp: 0.6 },
         },
     },
 };

@@ -120,6 +120,9 @@ module.exports = function createCave(deps) {
         try { sig = JSON.stringify(slim); } catch (e) { return; }
         if (sig === lastSig) return;
         lastSig = sig;
+        // v1.238.6: members keep no states (the leader's are the same) - on the second run (2026-11-25) their 150
+        // entries were full after ten minutes and their first floor was gone. Rewards above stay (recipient per member).
+        if (!isLeader && cfg.recordStatesMember === false) return;
         record("state", Object.assign({ remaining_ms: state && state.remaining_ms }, slim));
     }
     try { character.on("cave", onState); } catch (e) { util.log("cave", "no cave state events: " + util.errReason(e), "orange"); }

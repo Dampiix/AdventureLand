@@ -159,6 +159,28 @@ each - truncated), so floor 1's votes are missing; to fix before the next run.
   `cave_talk` needs to stand close (`distance` error otherwise).
 - Camps gave chests with 1,500-5,000 cave gold and 1-3 Amber; ~13,000 cave gold and 19 Amber after floor 1.
 
+## Second run 2026-11-25 (manual, all three in one client, 20:32-20:46 UTC)
+
+Result: floor 1 fully done (all required objectives), 26 Amber and 15,000 cave gold from chests (the priest's reward
+records), the Loaded Die (10,000 cave gold at the floor-1 shop), a Tunnel Axe, a Locktooth, spider silk, a High scroll.
+The player ended the run with ~11 min left because the members did not follow to floor 2.
+
+- **Entering with one client works:** Dorr's "Enter together" took all three (priest played, warrior and mage on
+  their bots in `/manual`).
+- **Stairs are a door:** the floor-1 stairs (state door `{map: zone_<run>_0, to: zone_<run>_1, down: true}`, at
+  3888,2512) open (`locked: false`) once the floor's required objectives are done. The client uses a door with a
+  right click (`socket.emit("transport", {to, s})`, only within ~40 px); standing on it does nothing. The warrior
+  stood exactly on the door at 20:45:16-27 and stayed on floor 1 when the priest went down at 20:45:43 - our member
+  rule (v1.231.3) waits while the leader is on another cave map. **Fixed in v1.238.6:** a member walks to the open
+  door on its floor that leads straight to the leader's floor and sends `transport` there (`bot/cave/cave-doors.js`);
+  never the exit, nothing while the door is sealed. To verify on the next run.
+- **No stairs vote this time:** the first run's `landing` vote moved the whole party; today none came. Player's guess:
+  the vote asks whether to leave a floor with open objectives - today floor 1 was complete.
+- **A shop at the start of every floor** (player observation): its place is fixed, only the item is random.
+- **Recorder (v1.231.5 fix):** no clock-only states any more, the priest's 400 entries cover the whole run. The
+  members' 150 were full after ~10 min (first floor gone) - since v1.238.6 members record no states (the leader's
+  are the same), only entities, requests and rewards.
+
 **`character.cave` state** (from the recorder): `run`, `expires`, `server_time`, `remaining_ms`, `paused`,
 `paused_at`, `rewards[]` (`{where: "purse"|"inventory", gold, amber, map, x, y, id}` or `{item: {name, level,
 p: "cavefound"}, recipient, where, slot}`), `level`, `floor` (0-2), `gold`, `amber`, `limits` (`gold`, `amber`,

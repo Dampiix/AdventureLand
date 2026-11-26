@@ -11,6 +11,7 @@
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { execFileSync } from "node:child_process";
+import { createRequire } from "node:module";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -19,7 +20,8 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const dir = path.join(root, "docs", "gear-guide");
 // bot/config.js is a CODE module (module.exports = {...}) - load it like the game does.
 const cfgModule = { exports: {} };
-new Function("module", "exports", await readFile(path.join(root, "bot", "config.js"), "utf8"))(cfgModule, cfgModule.exports);
+// It requires its defaults files (stage 7b): give it a require relative to bot/.
+new Function("module", "exports", "require", await readFile(path.join(root, "bot", "config.js"), "utf8"))(cfgModule, cfgModule.exports, createRequire(path.join(root, "bot", "config.js")));
 const config = cfgModule.exports;
 const plan = config.gearPlan;
 const chart = JSON.parse(await readFile(path.join(dir, "gear-guide-data.json"), "utf8")); // matched community chart
@@ -130,6 +132,8 @@ function classPage(cls) {
         for (const a of w.alts || []) if (only(a.for)) spec.push({ slot: w.slot, kind: "alternative", s: a });
     }
     for (const [slot, list] of Object.entries(plan.found)) for (const f of list) if (only(f.for)) spec.push({ slot, kind: "when found", s: f });
+    // Bonus (gearPlan.bonus, 2026-11-26): carried for an extra, not for the class's own strength - the luck swap sets.
+    const bonusHtml = (plan.bonus || []).filter((w) => only(w.for)).map((w) => `<div class="spr"><span class="sk">${SLOT_LABEL[w.slot] || w.slot}</span>${step({ item: w.item, to: w.to, how: w.how }, { cls, noChips: true })}<span class="kd">${w.count > 1 ? "carried ×" + w.count : "carried"}</span></div>`).join("");
     const specHtml = spec.map(({ slot, kind, s }) => `<div class="spr"><span class="sk">${SLOT_LABEL[slot] || slot}</span>${step(s, { cls, noChips: true })}<span class="kd">${kind}</span></div>`).join("");
     const generic = ["earring", "ring", "amulet", "belt"].map((sl) => { const w = plan.wishes.find((x) => x.slot === sl); return step({ item: w.item, to: w.to }, { cls }); }).join("");
     const sw = (chart.swaps[cls] || []).map((n) => `<div class="sw">${icon(n, 24)}<span>${esc(title(n))}</span></div>`).join("");
@@ -138,7 +142,8 @@ function classPage(cls) {
     <div class="ttl"><h2>${cls[0].toUpperCase() + cls.slice(1)}</h2><span class="tag">${mainStat(cls).toUpperCase()}</span>${OURS[cls] ? `<span class="ours">${OURS[cls]}</span>` : ""}</div>
     <div class="grid"><div class="left">${modes}
       ${rules ? `<div class="mode"><h3>Our own rules</h3><ul class="ov">${rules}</ul></div>` : ""}
-      <div class="mode"><h3>Class specifics</h3><div class="specs">${specHtml || "<p class=dash>none</p>"}</div></div></div>
+      <div class="mode"><h3>Class specifics</h3><div class="specs">${specHtml || "<p class=dash>none</p>"}</div></div>
+      ${bonusHtml ? `<div class="mode"><h3>Bonus – luck swap</h3><div class="specs">${bonusHtml}</div></div>` : ""}</div>
     <div class="right"><h3>Jewelry end goals</h3><div class="gen">${generic}</div>
       ${sw ? `<h3>Swapouts in the community chart</h3><div class="swl">${sw}</div>` : ""}</div></div></section>`;
 }

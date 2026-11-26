@@ -7,6 +7,7 @@
 //   blaster.js    Blaster mode, aim and splash safety  (always, fight)
 //   blink.js      Blink on routes                       (always)
 //   team-port.js  Team Magiport at the team goal        (always)
+// The luck swap (gear/luck-swap.js) for our own kills is triggered here (fight).
 // Mana Burst (off in config) stays here. The interface for the fighter is the same as before the split:
 // name, survive(), always(), support(), fight(target).
 // Stateful helpers (log/journal, hit factors) come from the one shared ctx.util; lib/game.js is stateless and loaded
@@ -87,6 +88,18 @@ module.exports = function createMage(ctx) {
         },
     }, c.magiport);
 
+    // Luck swap (v1.238.8, player decision 2026-11-26; gear/luck-swap.js does the swap): the luck pieces go on when our
+    // target dies with the next hit - a boss (bosses), or any target while we fight alone (solo), or every kill
+    // (everyKill) - and come off once it is dead. Not below minHp: the swap takes our armor off for that moment.
+    const ls = c.luckSwap || {};
+    let luckFor = null;
+    function luckSwap(target) {
+        if (!ls.enabled || !target || !ctx.gear || !ctx.gear.luckOn || !ctx.targeting || !ctx.targeting.diesSoon) return;
+        if (luckFor === target.id && ctx.gear.luckActive && ctx.gear.luckActive()) return; // already on for this one
+        const why = ls.everyKill ? "kill" : ls.bosses && isBoss(target) ? "boss" : ls.solo && !ctx.party.enabled ? "solo" : null;
+        if (!why || game.hpRatio() < (ls.minHp || 0.6) || !ctx.targeting.diesSoon(target, 1)) return;
+        if (ctx.gear.luckOn(null, [target.id])) luckFor = target.id;
+    }
     return {
         name: "mage",
 
@@ -101,6 +114,7 @@ module.exports = function createMage(ctx) {
         },
 
         fight: function (target) {
+            luckSwap(target); // before the hit that kills it
             if (blaster.fight(target)) return true;
             // Mana Burst: the whole MP pool as damage - off in config (it empties the mage).
             if (c.useBurst && game.canCast("burst") && game.mpRatio() > 0.95 &&

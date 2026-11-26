@@ -17,6 +17,7 @@
 const game = require("../lib/game.js");
 const createSpots = require("../safety/spots.js");
 const createTeamView = require("./team-view.js");
+const caveDoors = require("../cave/cave-doors.js");
 
 module.exports = function createParty(deps) {
     const config = deps.config;
@@ -230,11 +231,32 @@ module.exports = function createParty(deps) {
 
     // isDest: the end of the leader's route - a new destination replaces our current walk.
     let lastGoal = null;
+    let lastDoorTry = 0;
     function moveTowards(point, label, isDest) {
         // In the cave (v1.231.3, 2026-11-24 first run): never a path walk to another map - the warrior's smart_move to
         // the leader's map walked him out of the cave a minute after entering. Same cave map: a straight move only.
+        // v1.238.6 (2026-11-25 second run): the leader on another floor of this run - walk to the open stairs that lead
+        // there and use them (a "transport" request, like the client's right click); standing on them did nothing.
         if (character.cave) {
-            if (point.map !== character.map) { util.status("leader on another cave map - waiting", "yellow"); return; }
+            if (point.map !== character.map) {
+                const door = caveDoors.doorTo(character.cave, character.map, point.map);
+                if (!door) { util.status("leader on another cave map - waiting", "yellow"); return; }
+                if (caveDoors.near(door, character.real_x, character.real_y)) {
+                    util.status("taking the stairs to the leader", "yellow");
+                    if (Date.now() - lastDoorTry < 2000) return;
+                    lastDoorTry = Date.now();
+                    util.log("party", "cave: taking the stairs to " + point.map.slice(-2) + " (the leader is there)", "white");
+                    try {
+                        Promise.resolve(transport(door.to, caveDoors.spawnOf(G.maps, character.map, door.to))).catch(function (e) {
+                            util.log("party", "cave: the stairs refused: " + util.errReason(e), "orange");
+                        });
+                    } catch (e) { util.log("party", "cave: no transport: " + util.errReason(e), "orange"); }
+                    return;
+                }
+                util.status("to the stairs - the leader is on the next floor", "yellow");
+                if (!is_moving(character)) xmove(door.x, door.y);
+                return;
+            }
             util.status(label, "yellow");
             if (!is_moving(character)) xmove(point.x, point.y);
             return;
@@ -290,6 +312,10 @@ module.exports = function createParty(deps) {
     // stops at the edge for the spot check - the warrior went ahead into the 5-booboo rage zone alone. A route end
     // within the spot check's edge of a spawn of the leader's farm target: we follow the leader instead.
     function travelDest(lead) {
+        // Manual mode (v1.238.7, player decision 2026-11-25): the player walks the leader, also to far goals (the cave's
+        // Directions "Go" button path-walks there) - members follow the leader only and never go ahead to its route end.
+        // On the second cave run the warrior, faster than the priest, ran ahead into the rooms alone.
+        if (lead && (lead.manual || character.cave)) return null;
         const d = lead && lead.moving && lead.dest && lead.dest.map ? lead.dest : null;
         if (d && badDest && Date.now() < badDest.until && badDest.map === d.map && Math.hypot(badDest.x - d.x, badDest.y - d.y) < 60) return null;
         // Any map (2026-11-22: started in halloween, the walk went on into the booboo spawn in spookytown).

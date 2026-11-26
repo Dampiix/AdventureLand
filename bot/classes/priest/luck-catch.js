@@ -6,7 +6,7 @@
 // absorbs what its courage holds without fear. Bosses too, never a no-area monster (Giga Crab).
 // Interface: createLuckCatch(deps, options) -> { tryLuckCatch() -> true when cast }
 //   deps: game, members(), partyEnabled(), distanceTo(e), attackersOnMe(), damageTypeOf(m), courageOf(type),
-//         noArea(m), canPredictDeaths() -> diesSoon is available, diesSoon(m, hits), luckOn(), log
+//         noArea(m), canPredictDeaths() -> diesSoon is available, diesSoon(m, hits), luckOn(ids of the dying ones), log
 //   options: see DEFAULTS
 // =====================================================================
 
@@ -61,8 +61,9 @@ module.exports = function createLuckCatch(deps, options) {
             }
             lastCatch[n] = now;
             // Luck swap: the luck gear goes on in the same moment (one equip_batch call) - the dying ones die on us a
-            // moment later with our luck; the gear module changes back after luckSwap.backMs.
-            if (deps.luckOn) deps.luckOn();
+            // moment later with our luck; the gear module changes back once they died (luckSwap.backMs at the latest).
+            // v1.238.8: with the dying ones' ids - the gear comes back once they are dead (backMs at the latest).
+            if (deps.luckOn) deps.luckOn(dying.map(function (m) { return m.id; }));
             game.useSkill("absorb", ally).catch(function () {});
             catchStats.n++;
             catchStats.monsters += on.length;

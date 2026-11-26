@@ -11,6 +11,7 @@
 //   node scripts/gear-plan-v2.mjs --no-pdf   # HTML only
 // =====================================================================
 
+import { createRequire } from "node:module";
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { execFileSync } from "node:child_process";
@@ -21,7 +22,8 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const dir = path.join(root, "docs", "gear-guide");
 const cfgModule = { exports: {} };
-new Function("module", "exports", await readFile(path.join(root, "bot", "config.js"), "utf8"))(cfgModule, cfgModule.exports);
+// It requires its defaults files (stage 7b): give it a require relative to bot/.
+new Function("module", "exports", "require", await readFile(path.join(root, "bot", "config.js"), "utf8"))(cfgModule, cfgModule.exports, createRequire(path.join(root, "bot", "config.js")));
 const config = cfgModule.exports;
 
 // ---- game data and item sprites --------------------------------------------
@@ -267,6 +269,9 @@ const CLASSES = {
                 ["intamulet", 2, B, ""], ["intamulet", 3, B, ""], ["intamulet", 4, B, "item stages"],
                 ["t2intamulet", null, P, "Amulet of the Fierce Mage · gem fragments"]] },
             { slot: "Belt", steps: [["intbelt", 0, B, "Spooky Town map drop"], ["intbelt", 2, B, ""], ["intbelt", 4, B, "item stages"]] },
+            { slot: "Luck swap", set: true, steps: [
+                ["wcap", 0, P, ""], ["wattire", 0, P, ""], ["wbreeches", 0, P, ""], ["wgloves", 0, P, ""], ["wshoes", 0, P, ""]],
+                note: "bonus (2026-11-26): a +0 Wanderer's set, worn for its own kills - a boss, or any kill solo; +16 luck from the set" },
         ],
     },
     // Rogue (2026-11-23): the end-end goal, after the mage - a mass farmer that one-shots a spot with Fan of Knives.

@@ -1,0 +1,38 @@
+{
+  "account": "viz",
+  "taken": "2026-11-26T03:53:09Z",
+  "purpose": "Morning after the night (v1.238.7 fighters): farming for drops overnight, budget extras removed at 03:50Z",
+  "compareWith": "2026-11-25-2112-viz-night.json (21:11:55Z)",
+  "bot": "fighters 1.238.7-pilot, merchant reloaded 03:5xZ with the extras removed from config.js (not committed)",
+  "farm": "bigbird (drop feather0, pants1) most of the night; arcticbee 03:21-03:41 (intring, strring); bosses and Daisy hunts in between",
+  "VizPri": { "level": 71, "xp": 167457427, "max_xp": 350000000, "gold": 41299,
+    "gear": "shoes wshoes+8 -> wingedboots+7 (int), belt intbelt+2 -> +3; rest unchanged",
+    "bag_notable": ["wshoes+8", "wshoes+0", "ringsj+0", "hpbelt+0", "hpamulet x2", "feather0"] },
+  "VizWar": { "level": 74, "xp": 295499521, "max_xp": 620000000, "gold": 55095, "gear": "unchanged (pants1 still +7)", "bag_notable": ["ololipop+7 x2", "feather0 x2"] },
+  "VizMage": { "level": 72, "xp": 68659316, "max_xp": 420000000, "gold": 86636, "gear": "unchanged", "bag_notable": ["gstaff+3", "ringsj+0 x2", "wcap+0", "feather0 x3"] },
+  "VizMerch": { "level": 56, "gold": 54601107, "status": "Ponty?",
+    "ponty_bought_since_2112": { "count": 24, "gold": 3208800, "by_item": { "pants1 +0": "19 for 1.78M", "pants1 +3": "4 for 0.85M", "mcape +0": "1 for 0.58M" },
+      "note": "still feeding the warrior's Rugged Pants +8 goal (pants1 +7 -> +8 needs a Rare scroll, 14 %): no +8 yet" },
+    "workshop_spends_since_2112": { "gear pot": 14996600 } },
+  "bank": {
+    "source": "merchant's bank snapshot 03:51:27Z: 186 entries, 24 free (21:11: 175, 35 free)",
+    "changes": { "essenceoffire": "8 -> 17 (hoarded)", "offeringp": "10 -> 11", "monstertoken": "114 -> 165", "gem1": "1625 -> 1674", "gem0": "118 -> 126",
+      "armorbox": "20 -> 24 (held)", "marketparcel": "74 -> 80 (held)", "weaponbox": "15 -> 17", "feather0": "7 -> 20", "stormfeather": "4968 -> 5263",
+      "drapes": "184 -> 253", "frostcore": "9 -> 17", "voidthread": "108 -> 122", "bfur": "9 -> 21", "spores": "200 -> 240", "ashleaf": "160 -> 200", "mistletoe": "4 -> 8", "cave_amber": "55 -> 55" },
+    "note": "bank space: 24 free (was 35) - fills by ~11 per night"
+  },
+  "boss_kills_VizPri": { "phoenix": "397 -> 416", "mvampire": "184 -> 200", "fvampire": "90 -> 102", "skeletor": "144 -> 162", "jr": "7 -> 8", "greenjr": "5 -> 6", "snowman": "6 -> 7" },
+  "farm_kills_VizPri": { "bigbird": "2595 -> 3712", "mummy": "290 -> 560", "cgoo": "2452 -> 2498", "squig": "508 (lifetime)", "pppompom": "35 -> 56", "gscorpion": "15972 -> 15972" },
+  "deaths": "none in the fighters' journals since 21:12Z; the leader's journal only reaches back to 02:08Z (400 entries, mostly [party] goal / waiting lines) - deaths before that are not visible",
+  "value_picks": ["02:18 bigbird 0.50 vs XP 0.10 %/h", "02:48 bigbird 0.50 vs 0.14", "03:18 bigbird 0.56 vs 0.14", "03:21 arcticbee 0.18 vs 0.13 (intring, strring)", "03:41 bigbird 0.47 vs 0.13"],
+  "summary_since_2112Z": {
+    "hours": 6.69,
+    "xp": { "VizPri": 93710489, "VizWar": 92592989, "VizMage": 116049105 },
+    "team_xp": 302352583, "team_xp_per_hour": 45200000,
+    "levels": "VizMage 71 -> 72; VizPri 71 at 48 %, VizWar 74 at 48 %",
+    "gold_delta": { "VizPri": 26298, "VizWar": 45095, "VizMage": 76636, "VizMerch": 12742990 },
+    "gold_total_delta": 12891019, "gold_per_hour": 1930000,
+    "gold_note": "after 15.0M of gear-pot spending (3.2M of it Rugged / Attire bases at Ponty)",
+    "boss_kills_VizPri": 68, "boss_kills_per_hour": 10.2, "phoenix_per_hour": 2.84
+  }
+}

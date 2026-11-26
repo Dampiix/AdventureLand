@@ -16,7 +16,8 @@ module.exports = {
             luckCatch: { enabled: true, hits: 2, maxPull: 5, minHp: 0.6, everyMs: 1500, tankRange: 400, logEveryMs: 10 * 60 * 1000 },
             // Luck swap (gear/): these pieces go on with the luck catch and come off backMs after the last one; missing
             // pieces are skipped, a piece listed twice fills both slots (two Clover Studs).
-            luckSwap: { enabled: true, backMs: 3000 },
+            // v1.238.8: back as soon as the caught ones are dead (not before minMs), backMs at the latest.
+            luckSwap: { enabled: true, backMs: 3000, minMs: 500 },
             // Dark Blessing (level 70): +25 % party damage for 8 s on targets needing sturdyHits+ of our hits, and on bosses.
             darkBlessing: { enabled: true, sturdyHits: 10 },
         },

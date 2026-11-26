@@ -6,8 +6,22 @@
 // default for us only. Every character loads this one complete config.
 // =====================================================================
 
+// ---- gear sets (2026-11-26, player decision) ------------------------------------------------------------------------
+// Predefined sets, used by name below: luck swap item lists (setItems) and gear plan entries (setWishes), so a set is
+// written in one place and several classes can share it. Later e.g. a default kit every class gets (Winged Boots).
+const SETS = {
+    // Wanderer's set: +16 luck for all five pieces (set bonus - the level adds none), +10 % gold for four.
+    wanderers: { helmet: "wcap", chest: "wattire", pants: "wbreeches", gloves: "wgloves", shoes: "wshoes" },
+};
+// The set's item names, slot order as listed.
+function setItems(name) { return Object.keys(SETS[name]).map(function (slot) { return SETS[name][slot]; }); }
+// One gear plan entry per piece: { slot, item } plus the given fields (to, carry, for, how, ...).
+function setWishes(name, entry) {
+    return Object.keys(SETS[name]).map(function (slot) { return Object.assign({ slot: slot, item: SETS[name][slot] }, entry); });
+}
+
 const config = {
-    version: "1.238.4-pilot",
+    version: "1.238.10-pilot",
 
     // One account per player (2026-11-25, docs/architecture/team-config.md). A new character goes into
     // account.characters; who plays together is leader + team. How a character was started decides its mode: the leader
@@ -85,7 +99,9 @@ const config = {
         skip: ["firestars"],
         materials: {
             // Fire weapons go to +8 before the Fiery Gloves and Ember Seals get any essence (workshop.materialHold).
-            essenceoffire: { upTo: 8, budget: "ladder", deliver: "better", buyCopies: false, extra: [] },
+            // upTo 7 (player decision 2026-11-25): +8 burnt every copy (14 % per step with High scrolls, ~0.5 % from +0) - every
+            // fighter has its +7 already, so the goal rests and the essence is hoarded until we push +8 with grace / Primlings.
+            essenceoffire: { upTo: 7, budget: "ladder", deliver: "better", buyCopies: false, extra: [] },
             mbones: {
                 upTo: 7, budget: "goals", deliver: "better", buyCopies: true,
                 sources: ["maceofthedead", "staffofthedead", "bowofthedead", "daggerofthedead"], // not the Sword of the Dead: kept, never Bones
@@ -166,7 +182,7 @@ const config = {
     classes: {
         priest: {
             // Luck swap: these pieces go on with the luck catch; a piece listed twice fills both slots (two Clover Studs).
-            luckSwap: { items: ["mshield", "rabbitsfoot", "wcap", "wattire", "wbreeches", "wgloves", "wshoes", "cloverstud", "cloverstud"] },
+            luckSwap: { items: ["mshield", "rabbitsfoot"].concat(setItems("wanderers"), ["cloverstud", "cloverstud"]) },
         },
         warrior: {
             swordSwap: { names: ["swordofthedead"] }, // Swords of the Dead on targets that die in a few hits
@@ -180,6 +196,8 @@ const config = {
         },
         mage: {
             blaster: { names: ["gstaff"] }, // the Blaster weapon
+            // Luck swap (2026-11-26): a +0 Wanderer's set - the luck is the set bonus (+16 for all five), the level adds none.
+            luckSwap: { items: setItems("wanderers") },
         },
     },
 
@@ -217,7 +235,7 @@ const config = {
     // =================================================================
     gearPlan: {
         version: "2.0",
-        updated: "2026-11-22",
+        updated: "2026-11-26",
         about: "General gear progression rules the bot follows. Derived from the community chart and our own decisions.",
         principles: [
             "Every slot has a ladder: base -> better pieces -> end goal. Each step has a target upgrade level.",
@@ -228,7 +246,7 @@ const config = {
             "Item stages: an item goes up level by level across the team - e.g. STR rings +4 are wished only once every STR-ring wish at +3 is fulfilled. Different items never block each other.",
             "A worn alternative pauses the ladder of its slot: while e.g. a Loaded Die is worn, no class orb is built.",
             "Shop weapons stop at +8 and only while no better copy is there (a worn Fiery Blade +7 already beats a Blade +8: 54 + burn vs 50). Above that the fire weapon ladder is the way up.",
-            "Wanderer's set: each piece has the stats of the shop piece of its slot plus a little (cap +120 HP, attire +80 MP, breeches +1 speed) and the set bonus (2: +200 HP, 3: +100 MP, 4: +10% gold, 5: +16 luck). Only the chest opener (priest) runs it (2026-11-23): it wishes its pieces actively (2026-11-20); once its Wanderer goals are done, spare copies are sold.",
+            "Wanderer's set: each piece has the stats of the shop piece of its slot plus a little (cap +120 HP, attire +80 MP, breeches +1 speed) and the set bonus (2: +200 HP, 3: +100 MP, 4: +10% gold, 5: +16 luck). Only the chest opener (priest) runs it (2026-11-23): it wishes its pieces actively (2026-11-20); once its Wanderer goals are done, spare copies are sold. The mage carries a +0 set as its luck swap set (2026-11-26).",
         ],
         decisions: {
             "2026-11-19": [
@@ -254,6 +272,11 @@ const config = {
                 "Wanderer's set only for the priest (chest opener, luck catch); spare copies are sold once its goals are done.",
                 "Rugged +0 copies nobody wears and nobody wishes are sold (e.g. Rugged Coats after the warrior's Dracul's Attire).",
             ],
+            "2026-11-26": [
+                "The mage carries a +0 Wanderer's set as its luck swap set (the +16 luck is the five-piece set bonus; the level adds none).",
+                "Gear plan split: `wishes` for the class's own strength, `bonus` for extras (the luck swap sets).",
+                "Predefined sets (SETS, setItems, setWishes at the top of config.js) - the Wanderer's set first; later e.g. a default kit for every class.",
+            ],
         },
         groups: {
             physical: ["warrior", "ranger", "rogue", "paladin"],
@@ -270,7 +293,7 @@ const config = {
                 return (Array.isArray(f) ? f : [f]).some(function (x) { return x === ctype || (groups[x] || []).includes(ctype); });
             };
             const res = function (n) { return n.replace('{stat}', mainStat || ''); };
-            return this.wishes.filter(function (w) { return inGroup(w.for); }).map(function (w) {
+            return this.wishes.concat(this.bonus || []).filter(function (w) { return inGroup(w.for); }).map(function (w) {
                 if (w.single) return { name: res(w.item), level: w.to };
                 let steps;
                 if (w.steps) steps = w.steps.map(function (s) { return { name: res(s[0]), level: s[1] }; });
@@ -302,7 +325,7 @@ const config = {
             mage: ["staff", "staffofthedead", "firestaff"],
         },
         // Highest level the list items are upgraded to (per item, else default).
-        weaponCaps: { default: 7, fireblade: 8, firestaff: 8, firebow: 8 },
+        weaponCaps: { default: 7, fireblade: 7, firestaff: 7, firebow: 7 }, // fire weapons capped at +7 (2026-11-25, see materialGoals)
         // Shop armor per slot: gear goals push the worn piece through workshop.gearGoals.stages - no wish needed.
         shop: { helmet: "helmet", chest: "coat", pants: "pants", shoes: "shoes", gloves: "gloves" },
         // A piece that replaces the worn shop piece of its slot at the same level or higher.
@@ -357,10 +380,6 @@ const config = {
             // Ranger gloves: Thundergrips, crafted from Gloves of the Hunter Ranger +6 (8 Monster Tokens).
             { slot: "gloves", steps: [["thundergrips", 7], ["thundergrips", 8]], replace: true, for: "ranger",
                 how: "craft: hunter gloves +6 + 80 storm feathers + 12 essence of ether" },
-            // Priest luck swap set: carried, never worn by the equip pass - classes.priest.luckSwap puts them on.
-            { slot: "orb", item: "rabbitsfoot", to: 0, carry: true, for: "priest", how: "120 Fun Tokens" },
-            { slot: "offhand", item: "mshield", to: 7, carry: true, for: "priest", how: "10 Fun Tokens (after the Rabbit's Foot: workshop.tokenOrder)" },
-            { slot: "earring", item: "cloverstud", to: 0, carry: true, count: 2, for: "priest", how: "craft: vit earring +2 + verdant core + 40 ash leaf + 40 spores + 5 green slime (x2, one per earring slot)" },
             // Ranger AoE: Poucher and Alloy Quiver are held in the bag for a later AoE mode.
             { slot: "mainhand", item: "pouchbow", to: 7, carry: true, for: "ranger", how: "craft: bow + Pouch of Poof" },
             { slot: "offhand", item: "alloyquiver", to: 0, carry: true, for: "ranger", how: "drop: targetrons 1:4,000" },
@@ -371,6 +390,20 @@ const config = {
             { slot: "mainhand", item: "glolipop", to: 7, carry: true, count: 2, insteadOf: "ololipop", for: "warrior", how: "drop: Green Jr." },
             // Mage Blaster (classes.mage.blaster), carried. to: 0 - upgraded by hand with Primlings, never by the workshop.
             { slot: "mainhand", item: "gstaff", to: 0, carry: true, for: "mage", how: "craft: staff +8 + Essence of Greed (crafted 2026-11-23)" },
+        ],
+        // Bonus (2026-11-26, player decision): what a class carries for an extra, not for its own strength - the luck swap
+        // sets so far. Same entry format as `wishes`; the bot reads both (bonus after the wishes, chainsFor), the workshop
+        // already treats these as bonus wishes (no measurable gain), and the gear plan PDF shows them in a block of their own.
+        bonus: [
+            // Priest luck swap set: carried, never worn by the equip pass - classes.priest.luckSwap puts them on.
+            { slot: "orb", item: "rabbitsfoot", to: 0, carry: true, for: "priest", how: "120 Fun Tokens" },
+            { slot: "offhand", item: "mshield", to: 7, carry: true, for: "priest", how: "10 Fun Tokens (after the Rabbit's Foot: workshop.tokenOrder)" },
+            { slot: "earring", item: "cloverstud", to: 0, carry: true, count: 2, for: "priest", how: "craft: vit earring +2 + verdant core + 40 ash leaf + 40 spores + 5 green slime (x2, one per earring slot)" },
+            // Priest: the Wanderer's set as a swap set too - its worn / carried +8 pieces count, so this only wishes a
+            // missing piece (+0).
+            ...setWishes("wanderers", { to: 0, carry: true, for: "priest", how: "Ponty / craft (the worn +8 pieces count)" }),
+            // Mage luck swap set (2026-11-26): a +0 Wanderer's set, carried - classes.mage.luckSwap puts it on for a kill.
+            ...setWishes("wanderers", { to: 0, carry: true, for: "mage", how: "Ponty / craft" }),
         ],
         // Not wished: worn when we have them and the valuation rates them higher.
         found: {
@@ -392,7 +425,7 @@ const config = {
         classes: {
             warrior: {
                 modes: {
-                    single: { mainhand: [["blade", 8], ["swordofthedead", 7], ["fireblade", 9]], offhand: [["blade", 8], ["swordofthedead", 7], ["fireblade", 9]] },
+                    single: { mainhand: [["blade", 8], ["swordofthedead", 7], ["fireblade", 7]], offhand: [["blade", 8], ["swordofthedead", 7], ["fireblade", 7]] },
                     aoe: { mainhand: [["glolipop", 7], ["ololipop", 7], ["vhammer", null, "found"]], offhand: [["glolipop", 7], ["ololipop", 7]],
                         note: "Missing Vampiric Hammer: a second Lolipop. Missing orange Lolipop: the green one." },
                 },
@@ -419,7 +452,7 @@ const config = {
             },
             mage: {
                 modes: {
-                    single: { mainhand: [["staff", 8], ["firestaff", 9]], offhand: [["wbook0", 4]] },
+                    single: { mainhand: [["staff", 8], ["firestaff", 7]], offhand: [["wbook0", 4]] },
                     aoe: { mainhand: [["gstaff", 3, "craft"], ["sparkstaff", null, "found"]], offhand: [] }, // the Blaster takes both hands
                 },
             },
@@ -459,6 +492,7 @@ const config = {
         // Grace farming (off): the fodder - a cheap upgradeable shop item no gear goal uses (Wooden Basher, 4,900 gold).
         grace: { enabled: false, fodder: "wbasher" },
         // Ladder pot: income share (last 24 h) for the materialGoals "ladder" budget; optional extra: { amount, until }.
+        // (The 25M extra for the 100M bank slot, 2026-11-25 until 23:12Z, was removed after its review on 2026-11-26.)
         bruteForce: { incomeShare: 0.25 },
         // Box armor: spare Rugged copies are upgraded towards upTo while wished; sold once nobody needs them.
         boxArmor: { names: ["helmet1", "gloves1", "pants1", "coat1", "shoes1"], upTo: 8 },
@@ -492,6 +526,7 @@ const config = {
                 incomeShare: 0.7,
                 // One-time fresh start of every pot (no effect after 24 h). Optional: extra: { amount, until } on top.
                 resetAt: "2026-11-24T00:00:00Z",
+                // (The 70M extra for the 100M bank slot, 2026-11-25 until 23:12Z, was removed after its review on 2026-11-26.)
             },
         },
         wishes: {}, // fixed wishes on top of the guide's, e.g. DmpxPala: [{ name: "concordmace", level: 4 }]

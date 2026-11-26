@@ -117,7 +117,7 @@ module.exports = function createGear(ctx) {
                 return i && i.name === gr.usualWeapons[s].name && (i.level || 0) >= gr.usualWeapons[s].level;
             })) gr.usualWeapons = null; // back in our usual weapons
         }
-        if (gr.luck && Date.now() >= gr.luck.until) gr.luckBack();
+        if (gr.luck && gr.luckDone()) gr.luckBack(); // the time is up, or the monsters it was for are dead (v1.238.8)
         if (Date.now() < gr.lockedUntil) return; // luck swap: no equip pass, no wish report (they would undo or misreport it)
         if (!held && gr.usualWeapons && !gr.equipping && Date.now() >= gr.nextEquipAt && !util.townChannel() && gr.restoreUsual()) return;
         gr.sendWishes(); // reports our usual weapons during a hold

@@ -3,7 +3,7 @@
 One bot for a whole Adventure Land team: up to three fighters and one merchant, all running the same code.
 The fighters farm, hunt bosses and level up; the merchant supplies them, sells, banks, trades with other players and upgrades their gear.
 
-> **Version:** `1.238.4-pilot` (`bot/config.js` → `version`) · **Teams:** `Dmpx…` (main account) and `Viz…` (second account) · **Code:** `bot/` → in-game CODE slots 20–44
+> **Version:** `1.238.10-pilot` (`bot/config.js` → `version`) · **Teams:** `Dmpx…` (main account) and `Viz…` (second account) · **Code:** `bot/` → in-game CODE slots 20–44
 
 ## Repository
 
@@ -207,6 +207,8 @@ No config change for solo play (v1.238.4, [team-config.md](docs/architecture/tea
 | Essence and Bones goals | `materialGoals.materials.<material>` (`upTo`, `deliver`, `budget`, `buyCopies`, `sources`) |
 | Items turned into material | `dismantle.names` |
 | Gear wish chains (rings, belts, Rugged, Wanderer's …) | `gearPlan.wishes` |
+| Bonus chains (luck swap sets), v1.238.9 | `gearPlan.bonus` |
+| Predefined sets (Wanderer's …), v1.238.10 | `SETS` + `setItems(name)` / `setWishes(name, entry)` at the top of `config.js` |
 | Shop gear stages | `workshop.gearGoals.stages` (`[7, 8]`) |
 | Never equip | `gear.noEquip` |
 | Ponty base buying | `workshop.baseTargetPieces` (1), `maxBaseCopies` (20) |
@@ -341,7 +343,7 @@ Only `main.js` calls `require_code()`. Every other module is a factory: it gets 
   - `member`: a team member the leader started (a hidden frame in the leader's page) - follows, assists, heals;
   - `solo`: every other fighter, also a team member the player started in its own window (it never joins later). No party: no following, spacing, team wait or runners; resting and heal-up before a costly fight are on. It starts the merchant if that is not running;
   - `merchant`.
-  The heartbeat carries the mode (`bot_beat:<name>`.role): the merchant's team XP value counts the leader and the members only (v1.238.3).
+  The heartbeat carries the mode (`bot_beat:<name>`.role): the merchant's team XP value counts the leader and the members only (v1.238.3). Since v1.238.5 the merchant keeps the fighters' XP values across its restarts (`workshop_values:<merchant>`; every Ponty hop is one) and keeps a fighter's last XP rate while the fighter, just restarted, reports none yet - both up to 30 min old. Before, each restart sent the team to the XP spot for 15-25 min.
 - **Leader rescue** (`party.leaderRescue`): a member the leader started restarts the leader's code when its heartbeat is silent for `silentMs` (3 min) while the leader's page is there and its code was not stopped on purpose - the game's `/runcode` (`api_call("load_code", { name: 20, run: 1 })`), one member per `gapMs` (5 min), journal tag `party`.
 - **Roles.**
   - The **leader** picks the farm spot and searches bosses.
@@ -661,7 +663,9 @@ A visible boss is checked with its live stats (bosses grow).
 - **Chests:** everyone opens cave chests within 400 px (cave gold and Amber go to the shared purse).
 - **Recorder** (`record`): cave states (`character.on("cave")`), every cave request and its result, and every `entsEveryMs` the cave's monsters/NPCs with all flat fields - in the storage `bot_cave_rec:<name>` (leader 400 entries, members 150), for the later automation. Since v1.231.5 a state is kept only when more than the clock changed (the first run filled 236 of 300 entries with one-second clock states), without the phrase objects, up to 12,000 chars; every reward goes in once as a `reward` entry; entities keep only game fields; a full storage drops the oldest half.
 - **`/manual [on|off]`** (v1.231.1, chat command in the leader's client): the same fight rules outside the cave, so the player can walk the leader (e.g. to Dorr) without stopping its code. The leader keeps broadcasting its position (field `manual`), the members follow it across maps and use the same rules. Kept across code loads (`bot_manual:<name>`) until `/manual` again; no events, supply, Daisy or Cavalry meanwhile, and no Agitate, Cleave or Stomp (v1.231.2, `util.setNoAreaHook`). Switching it off picks a farm target again at once (v1.231.2). Respawn and chests stay normal outside the cave. Healing walks of the priest stay (a hurt member counts as a fight).
-- Entering: whether every member must choose Enter at Dorr itself is unknown until the first run - start warrior and mage in their own clients beforehand.
+- **Stairs** (v1.238.6, second run 2026-11-25): a cave stair is a door the client uses with a `transport` request (right click, within ~40 px) - standing on it does nothing, and the members waited on floor 1 while the leader was on floor 2. With the leader on another floor of the same run, a member walks straight to the open door on its floor that leads there and sends `transport` (`cave/cave-doors.js`, every 2 s at most); never the exit, nothing while the door is sealed (then it waits as before). Members record no cave states since v1.238.6 (`recordStatesMember: false`; the leader's are the same) - their 150 entries were full after ten minutes.
+- **No going ahead in manual mode** (v1.238.7, player decision 2026-11-25): with the leader in `/manual` (field `manual` in its report) or in the cave, members ignore the end of the leader's route (`dest`) and follow the leader itself - the cave's Directions "Go" button path-walks the leader to a room, and the warrior, faster than the priest, ran ahead alone. Outside manual mode members still go ahead to the route end (player decision 2026-11-21).
+- Entering: Dorr's "Enter together" takes the whole party (it must stand close) - one client with warrior and mage on their bots works (second run).
 
 **Merchant search** (`events.scout`, v1.220.0, player decision; `roles/merchant/scout.js`, slot 40 `bot_scout`).
 - **Lists:** the merchant searches the bosses on `scout.bosses` (Phoenix, Dracul, Ms. Dracul, Skeletor, Green Jr.); the runner keeps `runner.bosses` and searches Jr. (Spooky Town: rage zones, Vampire Rats on the way). The three fighters stay at the farm spot and only leave when the merchant reports a find.
@@ -731,13 +735,14 @@ Items that can't be bought come before XP when they are worth more (`drops`).
 | gloves | Thundergrips +7 → +8 (crafted from hunter gloves +6) | ranger |
 | carried | 2 orange Lolipop Maces +7 (green ones stand in) | warrior |
 | carried | Shield M +7, Rabbit's Foot, 2x Clover Stud (luck swap set) | priest |
+| carried | Wanderer's set +0 (luck swap set, v1.238.8) | mage |
 | carried | Poucher +7, Alloy Quiver (held for a later AoE mode) | ranger |
 
 **From the back** (v1.219.1, like the weapon lists): when the merchant holds a copy of a later item of a fighter's chain (a Dracul's Attire +0 in the bank), it works on that one at its first step's level instead of the wished earlier step; paused there, one item further to the front. **Tokens** (`workshop.tokenOrder`): Fun Tokens go to the Rabbit's Foot before the Shield M. **Fire weapons** go to +8 (`materialGoals` essence of fire `upTo: 8`, `gearPlan.weaponCaps`) before essence goes to the Fiery Gloves or Ember Seals.
 
 Crafted compound pieces (seals, Moonshard, Wind Belt) are wished at **+2**: the first level that beats the worn +4 piece (+2 = 9 crafted copies). Weapons per class (`gearPlan.weapons`): the ranger's list is Bow → Hunting Bow → Fire Bow → Crossbow.
 
-**Luck swap** (priest, `classes.priest.luckSwap`, v1.219.0): the priest wears its INT gear; right before Absorb Sins (luck catch) it puts on Shield M, Rabbit's Foot, the five Wanderer's pieces (+16 luck) and two Clover Studs (one per earring slot, v1.223.2) with one `equip_batch` call, and changes back 3 s after the last catch. Meanwhile the equip pass and the wish report pause; the best copies of each luck piece (as many as listed) and the swapped-out gear stay in the bag.
+**Luck swap** (priest, `classes.priest.luckSwap`, v1.219.0): the priest wears its INT gear; right before Absorb Sins (luck catch) it puts on Shield M, Rabbit's Foot, the five Wanderer's pieces (+16 luck) and two Clover Studs (one per earring slot, v1.223.2) with one `equip_batch` call, and changes back 3 s after the last catch. Meanwhile the equip pass and the wish report pause; the best copies of each luck piece (as many as listed) and the swapped-out gear stay in the bag. **Since v1.238.8** (player decision 2026-11-26) `luckOn(ms, ids)` takes the monsters the luck is for: the gear comes back as soon as all of them are dead or out of sight (not before `minMs` 500), `backMs` 3 s at the latest - the drops are rolled at the death; the priest passes the dying ones of each catch. **Mage** (`classes.mage.luckSwap`, v1.238.8): a +0 Wanderer's set (the +16 luck is the five-piece set bonus, the level adds none; gear plan: five carried wishes `to: 0`) goes on when its target dies with the next hit - a boss (`bosses`), any target while it fights alone (`solo`), every kill only with `everyKill` - not below `minHp` 0.6, back once the target is dead. With Welcome Back the bonus roll is scaled by contribution and luck, and the mage does the most damage.
 
 **Limits** (`gear.minLevel`, `gear.maxWorn`): Dracul's Attire and Heavy Underarmor are never put on below +7; at most one Zapper is worn.
 

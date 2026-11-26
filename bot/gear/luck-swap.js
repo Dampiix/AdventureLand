@@ -27,7 +27,11 @@ module.exports = function install(gr, deps) {
     }
     // How often a luck piece is listed (2026-11-23: two Clover Studs, one for each earring slot).
     function luckCount(name) { return luckNames().filter(function (n) { return n === name; }).length; }
-    function luckOn(ms) {
+    // ids (v1.238.8, player decision 2026-11-26): the monsters whose death the luck is for - the gear comes back as soon as
+    // all of them are dead or gone (at least LS.minMs after the swap), at the latest after ms / LS.backMs. The drops are
+    // rolled at the death, so the luck is not needed after it (before: always backMs, also when they died at once, and
+    // a kill later than backMs got no luck). Without ids: the time only, as before.
+    function luckOn(ms, ids) {
         const names = luckNames();
         if (!names.length) return false;
         const batch = [], back = [];
@@ -55,9 +59,25 @@ module.exports = function install(gr, deps) {
             if (!gr.luck) util.log("gear", "luck gear on: " + batch.map(function (b) { return character.items[b.num].name; }).join(", "), "white");
         }
         if (!batch.length && !gr.luck) return false;
-        gr.luck = { until: Date.now() + (ms || LS.backMs || 3000), back: (gr.luck ? gr.luck.back : []).concat(back) };
+        const prev = gr.luck;
+        // One call without ids (time only) keeps the gear on for the full time; the ids of all calls are waited for.
+        const watch = (prev && !prev.ids) || !Array.isArray(ids) || !ids.length ? null
+            : (prev ? prev.ids : []).concat(ids.map(String).filter(function (id) { return !(prev && prev.ids.includes(id)); }));
+        gr.luck = { until: Date.now() + (ms || LS.backMs || 3000), last: Date.now(), ids: watch,
+            back: (prev ? prev.back : []).concat(back) };
         gr.lockedUntil = gr.luck.until + 2000;
         return true;
+    }
+    // Time to change back: the time is up, or every watched monster is dead or out of sight (not before LS.minMs).
+    function luckDone() {
+        const l = gr.luck;
+        if (!l) return false;
+        if (Date.now() >= l.until) return true;
+        if (!l.ids || !l.ids.length || Date.now() - l.last < (LS.minMs || 500)) return false;
+        return l.ids.every(function (id) {
+            const e = (typeof parent !== "undefined" && parent.entities) ? parent.entities[id] : null;
+            return !e || e.dead || e.rip;
+        });
     }
     function luckBack() {
         const batch = [], used = [];
@@ -83,5 +103,6 @@ module.exports = function install(gr, deps) {
         luckCount: luckCount,
         luckOn: luckOn,
         luckBack: luckBack,
+        luckDone: luckDone,
     });
 };

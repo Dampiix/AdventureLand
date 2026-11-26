@@ -173,6 +173,36 @@ async function run(load, sc) {
         if (!same) for (let i = 0; i < Math.max(o.length, n.length); i++) if (JSON.stringify(o[i]) !== JSON.stringify(n[i])) { console.log("  first difference at " + i + "\n  old " + JSON.stringify(o[i]).slice(0, 300) + "\n  new " + JSON.stringify(n[i]).slice(0, 300)); break; }
         if (process.env.SHOW) { errs.slice(0, 3).forEach(c => console.log("    " + JSON.stringify(c).slice(0, 300))); o.filter(c => !/^(set|status)$/.test(c[0])).slice(0, 12).forEach(c => console.log("    " + JSON.stringify(c).slice(0, 200))); }
     }
+    // v1.238.5 (new only): the fighters' XP values survive a merchant restart (every Ponty hop reopens it) and a fighter's
+    // first report after its own restart (no XP rate yet) does not wipe its last known rate.
+    {
+        const K = "workshop_values:VizMerch", T0 = 1795550000000;
+        let calls = [];
+        let w = world({ store: {} }, calls);
+        loadNew()(w.ctx);
+        w.handlers.wishes({ wishes: [], ctype: "warrior", value: { xpPerHour: 20000000, levelPower: 1.01, xpPower: 0.06 } }, "VizWar");
+        const saved = g.get(K);
+        check(saved && saved.VizWar && saved.VizWar.xpPower === 0.06 && saved.VizWar.xpAt === T0, "values: a fighter's XP rate is stored");
+        // the merchant restarts 10 min later (a Ponty hop): the stored values come back
+        calls = [];
+        w = world({ store: { [K]: saved } }, calls);
+        NOW = T0 + 10 * 60 * 1000;
+        loadNew()(w.ctx);
+        // the warrior restarted too: its first report has no XP rate - the last known one stays
+        w.handlers.wishes({ wishes: [], ctype: "warrior", value: { xpPerHour: null, levelPower: 1.01, xpPower: null } }, "VizWar");
+        const kept = g.get(K);
+        check(kept.VizWar.xpPower === 0.06 && kept.VizWar.xpKept === true && kept.VizWar.xpAt === T0, "values: after a restart the last rate stays for a fighter that reports none yet");
+        // a new real rate replaces it
+        w.handlers.wishes({ wishes: [], ctype: "warrior", value: { xpPerHour: 25000000, levelPower: 1.01, xpPower: 0.07 } }, "VizWar");
+        check(g.get(K).VizWar.xpPower === 0.07 && !g.get(K).VizWar.xpKept, "values: a new rate replaces the kept one");
+        // older than 30 min: not loaded, and an empty report stays empty
+        calls = [];
+        w = world({ store: { [K]: saved } }, calls);
+        NOW = T0 + 31 * 60 * 1000;
+        loadNew()(w.ctx);
+        w.handlers.wishes({ wishes: [], ctype: "warrior", value: { xpPerHour: null, levelPower: 1.01, xpPower: null } }, "VizWar");
+        check(g.get(K).VizWar.xpPower === null, "values: a rate older than 30 min is not kept");
+    }
     console.log(failed ? failed + " FAILED" : "all passed");
     process.exit(failed ? 1 : 0);
 })();

@@ -43,7 +43,7 @@ module.exports = function createPriest(ctx) {
         attackersOnMe: util.attackersOnMe, damageTypeOf: util.damageTypeOf, courageOf: util.courageOf, noArea: noArea,
         canPredictDeaths: function () { return !!(ctx.targeting && ctx.targeting.diesSoon); },
         diesSoon: function (m, hits) { return ctx.targeting.diesSoon(m, hits); },
-        luckOn: function () { if (ctx.gear && ctx.gear.luckOn) ctx.gear.luckOn(); },
+        luckOn: function (ids) { if (ctx.gear && ctx.gear.luckOn) ctx.gear.luckOn(null, ids); },
         log: util.log,
     }, Object.assign({ enabled: false }, c.luckCatch || {}));
     const revive = createRevive({

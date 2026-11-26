@@ -140,7 +140,22 @@ module.exports = function createWorkshop(ctx) {
         wks.saveIncome();
     });
     // Value report (stage 1): the fighters' XP value and the leader's per-copy farm times.
-    wks.fighterValues = {};
+    // Kept across restarts (v1.238.5, 2026-11-25): every Ponty hop reopens the merchant, and each restart emptied them -
+    // the team's XP value was unknown and the leader farmed its XP spot for 15-25 min (14:07 and 15:39 that day). Entries
+    // whose XP rate is older than VALUES_MS are dropped at the start.
+    wks.VALUES_KEY = "workshop_values:" + character.name;
+    wks.VALUES_MS = 30 * 60 * 1000;
+    wks.fighterValues = (function () {
+        const out = {};
+        try {
+            const saved = get(wks.VALUES_KEY) || {};
+            Object.keys(saved).forEach(function (f) {
+                const v = saved[f];
+                if (v && Date.now() - (v.xpAt || v.at || 0) < wks.VALUES_MS) out[f] = v;
+            });
+        } catch (e) { /* storage unavailable */ }
+        return out;
+    })();
     // Kept across restarts: without them every wish needing drops sorts as "unknown" for 15 min.
     wks.dropTimes = (function () { try { return get("bot_drop_times") || {}; } catch (e) { return {}; } })();
     // Team gold per hour given up while farming each drop (leader's guide, player decision
@@ -166,7 +181,20 @@ module.exports = function createWorkshop(ctx) {
         }
     });
     comms.on("wishes", function (data, from) {
-        if (data.value) wks.fighterValues[from] = Object.assign({ at: Date.now() }, data.value);
+        if (data.value) {
+            const old = wks.fighterValues[from];
+            const v = Object.assign({ at: Date.now() }, data.value);
+            // A fighter that just restarted has no XP rate for its first ~10 min: its last known rate stays while it is
+            // younger than VALUES_MS (v1.238.5) - the team's XP value no longer drops out after each fighter reload.
+            if (typeof v.xpPower !== "number" && old && typeof old.xpPower === "number" && Date.now() - (old.xpAt || old.at || 0) < wks.VALUES_MS) {
+                v.xpPower = old.xpPower;
+                v.xpPerHour = old.xpPerHour;
+                v.xpAt = old.xpAt || old.at;
+                v.xpKept = true;
+            } else if (typeof v.xpPower === "number") v.xpAt = Date.now();
+            wks.fighterValues[from] = v;
+            try { set(wks.VALUES_KEY, wks.fighterValues); } catch (e) { /* storage unavailable */ }
+        }
         wks.wishes[from] = (data.list || []).filter(function (w) { return w && G.items[w.name]; });
         try { set(WISHES_KEY, { at: Date.now(), list: wks.wishes }); } catch (e) { /* storage unavailable */ }
         if (data.ctype && G.classes[data.ctype]) wks.classes[from] = data.ctype;

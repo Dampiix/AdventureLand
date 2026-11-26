@@ -1,0 +1,32 @@
+{
+  "account": "viz",
+  "taken": "2026-11-25T12:15:54Z",
+  "purpose": "Midday: the first hours of farming for drops (Big Birds for the Winged Boots feathers) after the value pick fix",
+  "compareWith": "2026-11-25-0707-viz-morning.json (07:07:04Z)",
+  "bot": "1.238.4-pilot on all four; config.js (not committed): budget extras until 23:12Z, fire weapons capped at +7",
+  "farm": "bigbird (drop feather0) since 08:07 with breaks (restarts 08:13, merchant 11:30 and 12:13 -> XP spot until the merchant has the XP rates again); at 12:16 back on the XP spot after the merchant restart",
+  "VizPri": { "level": 70, "xp": 211969632, "max_xp": 290000000, "gold": 17004, "gear": "unchanged" },
+  "VizWar": { "level": 74, "xp": 34631966, "max_xp": 620000000, "gold": 20389, "gear": "fireblade+7 x2 in hand, ololipop+7 x2 in the bag" },
+  "VizMage": { "level": 70, "xp": 265407096, "max_xp": 290000000, "gold": 18160, "gear": "firestaff+7 + wbook0+2 in hand, the Blaster in the bag" },
+  "VizMerch": { "level": 56, "gold": 47867609, "status": "upgrading wingedboots +7", "bag_notable": ["feather0 x59", "pants1+3", "shoes1+3", "scroll0 x4"],
+    "ponty_bought_since_0707": ["11:31 shoes1+3 264,000", "11:31 pants1+3 213,600", "11:53 pants1+3 213,600", "12:15 pants1+3 213,600", "12:15 shoes1+3 264,000"] },
+  "bank": {
+    "source": "merchant's bank snapshot 12:15:27Z: 171 entries, 39 free (07:04: 180, 30 free)",
+    "changes": { "firestaff": "15 -> 0", "fireblade": "5 -> 0", "essenceoffire": "3 -> 0", "funtoken": "23 -> 49", "offeringp": "7 -> 9", "mcape": "1 -> 7", "cshell": "1 -> 7", "ololipop": "28 -> 34", "gem1": "1386 -> 1441", "gem0": "92 -> 104", "stormfeather": "4325 -> 4602", "ashleaf": "140 -> 160", "candy0": "27 -> 31", "candy1": "26 -> 30", "weaponbox": "12 -> 13", "armorbox": "13 -> 15", "marketparcel": "62 -> 66", "monstertoken": "79 -> 79", "feather0": "4 (bank) -> 0 (bank), 59 in the merchant's bag" },
+    "fire_weapons_note": "all 20 went into the essence-of-fire ladder (7.6M from the ladder pot since 11:00, budget extra) - no +8 came out (14 % per +7->+8 step with High scrolls, ~0.5 % from +0); capped at +7 since 12:13"
+  },
+  "boss_kills_VizPri": { "phoenix": "353 -> 374", "mvampire": "154 -> 163", "fvampire": "66 -> 75", "skeletor": "106 -> 119", "jr": "5 -> 6", "greenjr": "4 -> 5" },
+  "farm_kills_VizPri": { "bigbird": "16 -> 1126", "gscorpion": "14882 -> 15472", "mummy": "208 -> 208" },
+  "deaths": ["12:01:28Z VizWar at the Giga Crab event (crabxx)"],
+  "value_picks": ["08:07 XP 0.4 vs bigbird 0.58 %/h -> bigbird", "11:48 XP 0.25 vs bigbird 0.83 %/h (gear 0.79) -> bigbird"],
+  "summary_since_0707Z": {
+    "hours": 5.15,
+    "xp": { "VizPri": 92521934, "VizWar": 94391137, "VizMage": 211648269 },
+    "team_xp": 398561340, "team_xp_per_hour": 77400000,
+    "levels": "VizWar 73 -> 74; VizPri 70 at 73 %; VizMage 70 at 92 %",
+    "gold_delta": { "VizPri": -42440, "VizWar": -19695, "VizMage": -28074, "VizMerch": 11873140 },
+    "gold_total_delta": 11782931, "gold_per_hour": 2290000,
+    "gold_note": "after workshop spending: 7.6M ladder (fire weapons) + gear pot (Winged Boots, Rugged +3 bases from Ponty) since the budget extra at 11:30",
+    "boss_kills_VizPri": 54, "boss_kills_per_hour": 10.5
+  }
+}

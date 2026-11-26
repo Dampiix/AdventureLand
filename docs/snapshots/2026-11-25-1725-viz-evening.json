@@ -1,0 +1,32 @@
+{
+  "account": "viz",
+  "taken": "2026-11-25T17:25:42Z",
+  "purpose": "Evening (player back home): the afternoon with the value pick (Big Birds), the +7 cap on fire weapons, the kept XP values (v1.238.5)",
+  "compareWith": "2026-11-25-1216-viz-midday.json (12:15:54Z)",
+  "bot": "fighters 1.238.4-pilot, merchant 1.238.5-pilot; config.js not committed (budget extras until 23:12Z, fire weapons +7)",
+  "farm": "bigbird (drop feather0) between hunts and bosses; at the moment: event mvampire",
+  "VizPri": { "level": 71, "xp": 11382387, "max_xp": 350000000, "gold": 195499, "gear": "unchanged", "bag_notable": ["wshoes+0", "feather0 x6", "hpamulet x4", "ringsj x3", "hpbelt"] },
+  "VizWar": { "level": 74, "xp": 141168677, "max_xp": 620000000, "gold": 46871, "gear": "shoes1 +7 -> +8 (str); rest unchanged", "bag_notable": ["ololipop+7 x2", "feather0 x2"] },
+  "VizMage": { "level": 71, "xp": 170812813, "max_xp": 350000000, "gold": 47931, "gear": "orb orbg+1 -> orbofint+0; rest unchanged" },
+  "VizMerch": { "level": 56, "gold": 35029788, "status": "follow Pri (pickup)",
+    "bought_since_1216": { "count": 38, "gold": 12225603, "by_item": { "pants1 +3": "16 for 3.39M", "shoes1 +3": "11 for 2.90M", "pants1 +0": "8 for 0.71M", "shoes1 +0": "1 for 0.14M", "pants1 +6": "1 for 4.50M (player stand)", "mcape +0": "1 for 0.58M" },
+      "note": "bases for the warrior's Rugged +8 goals (shoes1 reached +8; pants1 still +7) and Dracul's Attire +8 (mcape in the bank 7 -> 1)" } },
+  "bank": {
+    "source": "merchant's bank snapshot 17:25:38Z: 165 entries, 45 free (12:15: 171, 39 free)",
+    "changes": { "essenceoffire": "0 -> 6 (hoarded since the +7 cap)", "feather0": "0 -> 38 (bank)", "monstertoken": "79 -> 108", "mcape": "7 -> 1", "armorbox": "15 -> 16 (held, never opened)", "offeringp": "9 -> 10", "gem1": "1441 -> 1552", "gem0": "104 -> 112", "drapes": "139 -> 167", "voidthread": "91 -> 101", "stormfeather": "4602 -> 4787", "marketparcel": "66 -> 71", "spores": "46 -> 66", "dstones": "13 -> 21", "essenceofnature": "0 -> 1" }
+  },
+  "boss_kills_VizPri": { "phoenix": "374 -> 387", "mvampire": "163 -> 175", "fvampire": "75 -> 84", "skeletor": "119 -> 134", "crabxx": "1 (lifetime)" },
+  "farm_kills_VizPri": { "bigbird": "1126 -> 1742", "mummy": "208 -> 274", "gscorpion": "15472 -> 15972", "pppompom": "35 (Pom Pom hunts)" },
+  "deaths": ["17:06:54Z VizMage and 17:06:58Z VizWar at Pom Pom (pppompom, level2n: 64k HP, 920 physical, range 300) on the 5th 7x Pom Pom hunt in a row - the priest survived; the hunt is skipped for an hour since"],
+  "value_picks": ["16:19 bigbird 0.49 vs XP 0.16 %/h", "16:49 bigbird 0.50 vs 0.15", "17:19 bigbird 0.50 vs 0.13 (right after the 17:00 Ponty round - no 'XP value unknown' any more, v1.238.5)"],
+  "summary_since_1216Z": {
+    "hours": 5.16,
+    "xp": { "VizPri": 89412755, "VizWar": 106536711, "VizMage": 195405717 },
+    "team_xp": 391355183, "team_xp_per_hour": 75800000,
+    "levels": "VizPri 70 -> 71, VizMage 70 -> 71, VizWar 74 at 23 %",
+    "gold_delta": { "VizPri": 178495, "VizWar": 26482, "VizMage": 29771, "VizMerch": -12837821 },
+    "gold_total_delta": -12603073,
+    "gold_note": "the merchant spent 12.2M on Rugged / Attire bases (Ponty and player stands) plus upgrade scrolls - the budget extra (70M gear pot until 23:12Z) paid for it",
+    "boss_kills_VizPri": 49, "boss_kills_per_hour": 9.5
+  }
+}
